@@ -122,6 +122,42 @@ Regras:
   - Codex: pelos eventos `rate_limits`;
   - Gemini: por erro de cota e pelas estatísticas do JSON (a validar).
 - Gemini sem interação: `gemini -p ... -o json -m <modelo>`, com extensões e MCP desligados (`-e`, `--allowed-mcp-server-names`) e ferramentas negadas pelo Policy Engine (a validar).
-- Conta de empresa nunca entra.
+- As quatro contas são pessoais do usuário (confirmado em 05/11).
 - Nos termos de consumidor da Anthropic não há cláusula contra ter mais de uma conta (lido em 05/11). O sistema não cria conta, não compartilha login e usa cada conta dentro do próprio limite.
 - O Gemini recebe a mesma minimização dos outros, sem PII. A política de uso de dados do plano Google deve ser conferida antes de ligar.
+
+## 10. Modelo e esforço na medida
+
+Cada tarefa usa o modelo e o esforço mínimos que dão conta do trabalho. Modelo top-tier nunca é a primeira tentativa.
+
+Degraus equivalentes entre provedores (nomes do Codex confirmados no bench):
+
+| Degrau | Claude | Codex | Gemini | Ollama |
+|---|---|---|---|---|
+| R0 local | | | | modelo do bench |
+| R1 leve | Haiku, `--effort low` | luna ou terra, esforço baixo | Flash | |
+| R2 médio | Sonnet, `--effort medium` | luna ou terra, esforço médio | Flash | |
+| R3 forte | Sonnet, `--effort high` | sol, esforço médio | Pro | |
+| R4 top | Opus ou Fable, `--effort high` | sol, esforço alto | Pro | |
+
+Ponto de partida até o bench calibrar:
+
+| Tarefa | Começa em | Sobe para |
+|---|---|---|
+| fit.explain | R0 | R1 |
+| question.map | R1 | R2 |
+| question.draft | R1 | R2 |
+| form.remap | R1 | R2 |
+| resume.factcheck | R1, família diferente do redator | R2 |
+| cover.write | R2 | R3 |
+| resume.tailor | R2 | R3, depois R4 |
+| interview.prep | R2 | R3 |
+
+Regras:
+- **Subir de degrau.** Só quando a saída falha na validação: schema inválido depois do reparo, afirmação sem fonte na checagem ou nota de qualidade abaixo do corte.
+- **Cota não sobe degrau.** Limite de cota troca de conta no mesmo degrau (§9).
+- **R4 é exceção.** Tem teto próprio de 2 por noite e só vale para `resume.tailor`.
+- **Sempre explícito.** Cada chamada passa modelo e esforço explícitos e nunca herda o padrão do seu CLI. O Codex está configurado com `gpt-6.1-sol` em `xhigh` no `~/.codex/config.toml`, e sem override cada chamada sairia no degrau mais caro.
+- **Controles de esforço.** Claude usa `--effort low|medium|high|xhigh|max`. Codex usa `-c model_reasoning_effort=...` com `-m`. O Gemini CLI não expõe esforço, então escolhe só entre Flash e Pro.
+- **Calibração.** O `jo llm bench` acha o degrau mínimo de cada tarefa que passa no corte nas fixtures: 100% de JSON válido, zero afirmação sem fonte e aderência acima do limite. Roda de novo quando um CLI ou modelo muda. A tela Provedores mostra o resultado, por exemplo: "resume.tailor: Sonnet médio passou, Haiku reprovou por afirmação sem fonte".
+- **Rastreio.** Cada material registra quem fez: conta, modelo e esforço.

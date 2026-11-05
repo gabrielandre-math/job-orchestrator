@@ -49,7 +49,7 @@ job-orchestrator/
     JobOrchestrator.Resume/               seleção de fatos, composição, proveniência, templates, PDF
     JobOrchestrator.Tracking/             Gmail/IMAP, classificação, casamento, ICS, follow-ups
     JobOrchestrator.Cli/                  jo: doctor, status, campaign, submit-mode, llm bench, replay, export
-  dashboard/                              React + Vite + TS, cliente gerado do OpenAPI
+  dashboard/                              React + Vite + TS, @xyflow/react (canvas), simple-icons (logos), cliente gerado do OpenAPI
   fake-ats/                               ASP.NET mínimo com os 10 cenários e contador de envios
   omarchy-plugin/                         widget da barra (manifest.json + BarWidget.qml)
   tests/  Unit/ Integration/ Contracts/ E2E/ Chaos/ Security/
@@ -515,3 +515,5 @@ O exemplo não liga envio, não liga provedor em nuvem e não informa cota. Cota
 | 0008 | Acompanhamento por Gmail `gmail.readonly`; IMAP como alternativa |
 | 0009 | Sem Redis no início; Postgres é a fonte da verdade e a fila |
 | 0010 | Segredos no Secret Service (gnome-keyring); consentimento só pelo painel, nunca por arquivo |
+| 0011 | Canvas do fluxo com React Flow; topologia de segurança fixa; stack-diagram só como referência e skill de documentação |
+| 0012 | Modelo e esforço na medida: começa no degrau mínimo calibrado por tarefa e só sobe quando a validação falha (`docs/integracao-ia.md` §10) |

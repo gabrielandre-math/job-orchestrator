@@ -256,6 +256,7 @@ Painel em `127.0.0.1:7410`, React + Vite, sóbrio, claro e escuro, sem número s
 10. **Perfil verdadeiro:** fatos, evidências, autorização de trabalho, respostas padrão, consentimentos.
 11. **Configurações e segurança:** modo privado (tudo local), retenção, janela, limites, backups, revogar autorizações, exportar e apagar dados.
 12. **Execuções:** histórico, diagnósticos, replay seguro das fases reversíveis.
+13. **Fluxo:** canvas estilo n8n (§10.1).
 
 Fora do painel:
 - widget na barra do omarchy-shell;
@@ -263,6 +264,27 @@ Fora do painel:
 - bookmarklet "Salvar vaga";
 - copiloto lateral;
 - painel no celular pelo Tailscale, opcional e desligado por padrão.
+
+### 10.1 Fluxo visual (estilo n8n)
+
+- **Canvas.** Feito com React Flow (`@xyflow/react`, MIT). Cada agente é um nó com:
+  - logo (Simple Icons, CC0);
+  - status e contagem da noite;
+  - provedor, modelo e esforço em uso.
+
+  As arestas mostram quantos itens passaram, e o fallback aparece em linha tracejada.
+- **Ao vivo.** De madrugada (SSE), os nós acendem conforme rodam e os itens correm pelas arestas.
+- **Clique no nó.** Abre um painel lateral com:
+  - configuração: ordem das contas, degrau de modelo e esforço, tetos, ligar ou desligar;
+  - métricas, erros recentes e últimos itens.
+- **Execução de uma candidatura.** O mesmo grafo destaca o caminho que ela fez, com:
+  - entrada e saída redigidas de cada nó;
+  - a rota escolhida e o motivo;
+  - os retries.
+- **Replay** de uma noite passada, passo a passo.
+- **Fontes.** Um sub-grafo mostra as fontes alimentando o Batedor, com o rendimento de cada uma.
+- **Topologia fixa onde há segurança.** Dá para configurar, ligar e desligar nós. Não dá para tirar o Guardião do caminho de envio nem ligar o Remetente direto no Preparador.
+- **stack-diagram** (`caru-ini/stack-diagram`, MIT, 1768 estrelas, push em 03/11). É uma agent skill que desenha diagramas de arquitetura com logos oficiais, não um editor de fluxo. Entra como referência visual e, com seu ok depois de auditada, como skill para gerar os diagramas da documentação. Nenhum código dela é copiado.
 
 ## 11. Fases de entrega
 
@@ -290,7 +312,7 @@ Host, cinco repos, fontes, provedores. Resultado: núcleo próprio, os cinco com
    - adapters fake com os seis resultados de falha;
    - NativeBrowser v0 (Playwright .NET);
    - Fake ATS com o cenário Greenhouse e contador de envios no servidor.
-5. **Painel v0:** visão geral, vagas, candidatura, revisão. Health checks e logs JSON redigidos.
+5. **Painel v0:** visão geral, vagas, candidatura, revisão, e o canvas do fluxo só de leitura (nós, status, contagens). Health checks e logs JSON redigidos.
 
 **Aceite:**
 - A fatia completa funciona: descoberta fake, nota, material, formulário, bloqueio em `PREPARE_ONLY`, aprovação, envio, recibo e `SUBMITTED_CONFIRMED` no painel.
@@ -435,7 +457,7 @@ Host, cinco repos, fontes, provedores. Resultado: núcleo próprio, os cinco com
    - pipeline com canários, descoberta, avaliação, materiais, preparo, envio espaçado, verificação e resumo;
    - encerramento limpo no fim da janela.
 3. **Relatórios:** resumo em Markdown e JSON, notificações, widget final.
-4. **Interface:** Execuções com replay seguro; Configurações e segurança (modo privado, retenção, exportar, apagar tudo, revogar).
+4. **Interface:** Execuções com replay seguro; Configurações e segurança (modo privado, retenção, exportar, apagar tudo, revogar); canvas do fluxo completo (ao vivo, configuração por nó, replay da noite).
 5. **Documentação e testes:**
    - runbook e guia de uso;
    - `scripts/night-sim.sh` com relógio acelerado;
