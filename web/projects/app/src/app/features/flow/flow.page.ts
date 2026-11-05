@@ -213,6 +213,10 @@ export class FlowPage implements AfterViewInit {
     return feed.filter((l) => !seen.has(l.message.id) && seen.add(l.message.id)).slice(-9);
   });
 
+  /** Pacotes de luz nas arestas de cima: quando um número aumenta entre duas leituras, um pacote corre por aquela aresta. */
+  private previous = new Map<string, number>();
+  protected readonly flowPackets = signal<{ id: string; d: string; lane: string }[]>([]);
+
   /** Pacotes de luz: cada passagem de uma estação para a próxima nos últimos 1,4 s corre pela aresta. */
   protected readonly packets = computed(() => {
     const now = this.now();
@@ -297,6 +301,19 @@ export class FlowPage implements AfterViewInit {
   });
 
   constructor() {
+    effect(() => {
+      const edges = this.edges();
+      const fresh: { id: string; d: string; lane: string }[] = [];
+      for (const e of edges) {
+        const before = this.previous.get(e.id);
+        if (before !== undefined && e.count > before && e.tone === 'flow') fresh.push({ id: `${e.id}-${e.count}-${Date.now()}`, d: e.d, lane: e.lane });
+        this.previous.set(e.id, e.count);
+      }
+      if (fresh.length > 0) {
+        this.flowPackets.update((p) => [...p, ...fresh]);
+        setTimeout(() => this.flowPackets.update((p) => p.filter((x) => !fresh.includes(x))), 1600);
+      }
+    });
     const tick = setInterval(() => this.now.set(Date.now()), 500);
     this.destroy.onDestroy(() => clearInterval(tick));
     void this.loadBaseline();
@@ -345,30 +362,187 @@ export class FlowPage implements AfterViewInit {
     else { this.tx.update((x) => x - e.deltaX); this.ty.update((y) => y - e.deltaY); }
   }
 
+  // Gestos: um dedo (ou o mouse) arrasta com inércia; dois dedos fazem pinça e arrastam juntos; toque duplo aproxima;
+  // toque com dois dedos afasta. Trackpad: pinça chega como Ctrl + roda (wheel).
+  private readonly pointers = new Map<number, { x: number; y: number }>();
+  private pinch: { dist: number; k: number; wx: number; wy: number } | null = null;
+  private gesture: { t: number; x: number; y: number; travel: number; fingers: number } | null = null;
+  private lastTap = { t: 0, x: 0, y: 0 };
+  private velocity = { x: 0, y: 0, t: 0 };
+  private frame = 0;
+
+  private local(x: number, y: number) {
+    const r = this.viewport().nativeElement.getBoundingClientRect();
+    return { x: x - r.left, y: y - r.top };
+  }
+
   protected down(e: PointerEvent) {
-    if ((e.target as HTMLElement).closest('.node, .mini, .controls, .drawer, .feed, app-conversation')) return;
-    this.drag = { x: e.clientX, y: e.clientY };
-    this.moved = true;
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    const target = e.target as HTMLElement;
+    if (target.closest('.mini, .controls, .drawer, .feed, app-conversation')) return;
+    const onNode = !!target.closest('.node');
+    cancelAnimationFrame(this.frame);
+    this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const now = performance.now();
+    if (this.pointers.size === 1) {
+      // Em cima de um nó, o toque rápido abre o nó; só vira arrasto depois de andar alguns pixels.
+      this.nodeTouch = onNode ? e.pointerId : null;
+      if (!onNode) { this.capture(e.pointerId); this.drag = { x: e.clientX, y: e.clientY }; this.moved = true; }
+      this.gesture = { t: now, x: e.clientX, y: e.clientY, travel: 0, fingers: 1 };
+      this.velocity = { x: 0, y: 0, t: now };
+    } else if (this.pointers.size === 2) {
+      for (const id of this.pointers.keys()) this.capture(id);
+      this.nodeTouch = null;
+      this.moved = true;
+      const [a, b] = [...this.pointers.values()];
+      const mid = this.local((a.x + b.x) / 2, (a.y + b.y) / 2);
+      this.pinch = { dist: Math.max(1, Math.hypot(b.x - a.x, b.y - a.y)), k: this.k(), wx: (mid.x - this.tx()) / this.k(), wy: (mid.y - this.ty()) / this.k() };
+      this.drag = null;
+      if (this.gesture && now - this.gesture.t < 200) this.gesture.fingers = 2;
+    }
+  }
+
+  private nodeTouch: number | null = null;
+  private capture(id: number) {
+    try { this.viewport().nativeElement.setPointerCapture(id); } catch { /* ponteiro já saiu */ }
   }
 
   protected move(e: PointerEvent) {
+    const prev = this.pointers.get(e.pointerId);
+    if (!prev) return;
+    this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (this.gesture) this.gesture.travel += Math.hypot(e.clientX - prev.x, e.clientY - prev.y);
+    if (this.pinch && this.pointers.size >= 2) {
+      const [a, b] = [...this.pointers.values()];
+      const mid = this.local((a.x + b.x) / 2, (a.y + b.y) / 2);
+      const k = clamp(this.pinch.k * (Math.hypot(b.x - a.x, b.y - a.y) / this.pinch.dist), 0.3, 1.8);
+      // O ponto do mundo que estava entre os dedos continua entre os dedos: pinça e arrasto ao mesmo tempo.
+      this.k.set(k);
+      this.tx.set(mid.x - this.pinch.wx * k);
+      this.ty.set(mid.y - this.pinch.wy * k);
+      return;
+    }
+    if (this.nodeTouch === e.pointerId && this.gesture && this.gesture.travel > 8) {
+      this.nodeTouch = null;
+      this.capture(e.pointerId);
+      this.drag = { x: e.clientX, y: e.clientY };
+      this.moved = true;
+    }
     if (!this.drag) return;
-    this.tx.update((x) => x + e.clientX - this.drag!.x);
-    this.ty.update((y) => y + e.clientY - this.drag!.y);
-    this.drag = { x: e.clientX, y: e.clientY };
+    const dx = e.clientX - prev.x, dy = e.clientY - prev.y;
+    this.tx.update((x) => x + dx);
+    this.ty.update((y) => y + dy);
+    const t = performance.now();
+    const dt = Math.max(8, t - this.velocity.t);
+    this.velocity = { x: 0.7 * (dx / dt) + 0.3 * this.velocity.x, y: 0.7 * (dy / dt) + 0.3 * this.velocity.y, t };
   }
 
-  protected up() { this.drag = null; }
+  protected up(e?: PointerEvent) {
+    if (e) this.pointers.delete(e.pointerId);
+    else this.pointers.clear();
+    if (this.pointers.size < 2) this.pinch = null;
+    if (this.pointers.size === 1) {
+      // Saiu um dedo da pinça: o que ficou continua arrastando.
+      const [p] = [...this.pointers.values()];
+      this.drag = { x: p.x, y: p.y };
+      this.velocity = { x: 0, y: 0, t: performance.now() };
+      return;
+    }
+    if (this.pointers.size > 0) return;
+    this.drag = null;
+    const g = this.gesture;
+    this.gesture = null;
+    const tappedNode = this.nodeTouch !== null;
+    this.nodeTouch = null;
+    if (!g || !e || (tappedNode && g.fingers === 1)) return;
+    const now = performance.now();
+    const quick = now - g.t < 260 && g.travel < 12;
+    const at = this.local(e.clientX, e.clientY);
+    if (quick && g.fingers === 2) { this.animateZoom(1 / 1.6, at.x, at.y); return; }
+    if (quick) {
+      const double = now - this.lastTap.t < 320 && Math.hypot(e.clientX - this.lastTap.x, e.clientY - this.lastTap.y) < 36;
+      this.lastTap = double ? { t: 0, x: 0, y: 0 } : { t: now, x: e.clientX, y: e.clientY };
+      if (double) { if (this.k() >= 1.5) this.animateFit(); else this.animateZoom(1.6, at.x, at.y); }
+      return;
+    }
+    this.glide();
+  }
+
+  /** Inércia: o canvas continua na velocidade do arrasto e desacelera até parar. */
+  private glide() {
+    let { x: vx, y: vy } = this.velocity;
+    if (Math.hypot(vx, vy) < 0.25 || now() - this.velocity.t > 80) return;
+    let last = now();
+    const step = () => {
+      const t = now();
+      const dt = Math.min(32, t - last);
+      last = t;
+      this.tx.update((x) => x + vx * dt);
+      this.ty.update((y) => y + vy * dt);
+      const decay = Math.pow(0.94, dt / 16);
+      vx *= decay;
+      vy *= decay;
+      if (Math.hypot(vx, vy) > 0.02) this.frame = requestAnimationFrame(step);
+    };
+    this.frame = requestAnimationFrame(step);
+  }
+
+  /** Zoom e enquadramento animados (220 ms, saída suave). Com movimento reduzido no sistema, vai direto. */
+  private animateTo(k: number, tx: number, ty: number) {
+    cancelAnimationFrame(this.frame);
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) { this.k.set(k); this.tx.set(tx); this.ty.set(ty); return; }
+    const from = { k: this.k(), tx: this.tx(), ty: this.ty() };
+    const start = now();
+    const step = () => {
+      const p = Math.min(1, (now() - start) / 220);
+      const ease = 1 - Math.pow(1 - p, 3);
+      this.k.set(from.k + (k - from.k) * ease);
+      this.tx.set(from.tx + (tx - from.tx) * ease);
+      this.ty.set(from.ty + (ty - from.ty) * ease);
+      if (p < 1) this.frame = requestAnimationFrame(step);
+    };
+    this.frame = requestAnimationFrame(step);
+  }
+
+  protected animateZoom(factor: number, px = this.size().w / 2, py = this.size().h / 2) {
+    this.moved = true;
+    const k = this.k();
+    const next = clamp(k * factor, 0.3, 1.8);
+    this.animateTo(next, px - ((px - this.tx()) * next) / k, py - ((py - this.ty()) * next) / k);
+  }
+
+  protected animateFit() {
+    const b = this.bounds();
+    const v = this.size();
+    const k = clamp(Math.min(v.w / b.w, v.h / b.h), 0.3, 1);
+    this.animateTo(k, (v.w - b.w * k) / 2 - b.x * k, (v.h - b.h * k) / 2 - b.y * k);
+  }
+
+  /** Minimapa: arrastar o retângulo leva a vista junto. */
+  private miniDrag = false;
+  protected miniDown(e: PointerEvent) {
+    this.miniDrag = true;
+    (e.currentTarget as Element).setPointerCapture(e.pointerId);
+    this.jump(e);
+  }
+  protected miniMove(e: PointerEvent) { if (this.miniDrag) this.jump(e); }
+  protected miniUp() { this.miniDrag = false; }
 
   protected key(e: KeyboardEvent) {
-    if (e.key === '+' || e.key === '=') this.zoom(1.2);
-    else if (e.key === '-') this.zoom(1 / 1.2);
-    else if (e.key === '0') this.fit();
+    const pan = e.shiftKey ? 240 : 80;
+    if (e.key === '+' || e.key === '=') this.animateZoom(1.25);
+    else if (e.key === '-') this.animateZoom(1 / 1.25);
+    else if (e.key === '0') this.animateFit();
+    else if (e.key === '1') this.animateZoom(1 / this.k());
+    else if (e.key.startsWith('Arrow')) {
+      e.preventDefault();
+      this.moved = true;
+      const d = { ArrowLeft: [pan, 0], ArrowRight: [-pan, 0], ArrowUp: [0, pan], ArrowDown: [0, -pan] }[e.key] ?? [0, 0];
+      this.animateTo(this.k(), this.tx() + d[0], this.ty() + d[1]);
+    }
     else if (e.key === 'Escape') { this.selected.set(null); this.talking.set(null); }
   }
 
-  protected jump(e: MouseEvent) {
+  protected jump(e: MouseEvent | PointerEvent) {
     const m = this.mini();
     const b = this.bounds();
     const r = (e.currentTarget as SVGElement).getBoundingClientRect();
@@ -395,6 +569,7 @@ export class FlowPage implements AfterViewInit {
 }
 
 function clamp(v: number, min: number, max: number) { return Math.min(max, Math.max(min, v)); }
+function now() { return performance.now(); }
 function short(s: string, n: number) { return s.length > n ? s.slice(0, n - 1).trimEnd() + '…' : s; }
 
 /** Pontos de uma aresta em ângulo reto. "Embaixo" sai abaixo do nome e do subtítulo, para não cortar o texto. */

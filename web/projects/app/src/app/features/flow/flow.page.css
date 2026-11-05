@@ -4,6 +4,15 @@
   background-image: linear-gradient(to right, var(--grid-line) 1px, transparent 1px), linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
   cursor: grab; outline: none; user-select: none; }
 .canvas:active { cursor: grabbing; }
+/* O canvas cuida de todos os gestos de toque; o navegador não rola nem amplia a página por cima. */
+.canvas { touch-action: none; -webkit-user-select: none; overscroll-behavior: contain; }
+.mini { touch-action: none; }
+.zoom { border: 0; background: transparent; cursor: pointer; font: inherit; height: 28px; border-radius: 4px; }
+.zoom:hover { background: var(--surface-2); color: var(--text); }
+.packet.discovery { fill: oklch(90% 0.07 205); filter: drop-shadow(0 0 6px oklch(80% 0.1 205)); }
+.packet.application { fill: oklch(88% 0.08 300); filter: drop-shadow(0 0 6px oklch(74% 0.12 300)); }
+:host-context([data-theme="light"]) .packet.discovery { fill: oklch(55% 0.1 215); filter: none; }
+:host-context([data-theme="light"]) .packet.application { fill: oklch(52% 0.14 300); filter: none; }
 .canvas:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
 .world { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
 

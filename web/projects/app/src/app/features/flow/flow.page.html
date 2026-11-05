@@ -12,9 +12,9 @@
 
   @if (flow.problem(); as p) { <p class="problem">{{ p.detail }}</p> }
 
-  <div #viewport class="canvas" tabindex="0" role="application" aria-label="Fluxo dos agentes. Arraste para mover, Ctrl e roda para zoom, 0 para ajustar."
+  <div #viewport class="canvas" tabindex="0" role="application" aria-label="Fluxo dos agentes. Arraste para mover, pinça ou Ctrl e roda para zoom, setas para andar, 0 para ajustar e 1 para 100%."
        [class.live]="live()" [style.background-size]="grid().size" [style.background-position]="grid().pos"
-       (wheel)="wheel($event)" (pointerdown)="down($event)" (pointermove)="move($event)" (pointerup)="up()" (pointercancel)="up()" (keydown)="key($event)">
+       (wheel)="wheel($event)" (pointerdown)="down($event)" (pointermove)="move($event)" (pointerup)="up($event)" (pointercancel)="up($event)" (lostpointercapture)="up($event)" (keydown)="key($event)">
     <div class="world" [style.transform]="transform()">
       @for (f of frames(); track f.id) {
         <div class="frame" [attr.data-lane]="f.lane" [style.left.px]="f.x" [style.top.px]="f.y" [style.width.px]="f.w" [style.height.px]="f.h">
@@ -38,6 +38,9 @@
         @for (e of aiEdges(); track e.id) {
           <path [attr.d]="e.d" [attr.class]="'edge ai-edge' + (e.hot ? ' hot' : e.text ? ' done' : '')" [attr.marker-end]="'url(#arrow-' + (e.hot || e.text ? 'ai' : 'idle') + ')'" />
           @if (e.hot) { <path [attr.d]="e.d" class="pulse ai hot" /> }
+        }
+        @for (p of flowPackets(); track p.id) {
+          <circle [attr.class]="'packet ' + p.lane" r="4.5"><animateMotion dur="1.3s" repeatCount="1" fill="freeze" [attr.path]="p.d" /></circle>
         }
         @for (p of packets(); track p.id) {
           <circle class="packet" r="5"><animateMotion dur="1.1s" repeatCount="1" fill="freeze" [attr.path]="p.d" /></circle>
@@ -121,13 +124,13 @@
     }
 
     <div class="controls">
-      <button type="button" class="btn" (click)="zoom(1 / 1.2)" aria-label="Diminuir zoom"><jo-icon name="minus" [size]="14" /></button>
-      <span class="zoom num">{{ (k() * 100).toFixed(0) }}%</span>
-      <button type="button" class="btn" (click)="zoom(1.2)" aria-label="Aumentar zoom"><jo-icon name="plus" [size]="14" /></button>
-      <button type="button" class="btn" (click)="fit()"><jo-icon name="corners-out" [size]="14" />Ajustar</button>
+      <button type="button" class="btn" (click)="animateZoom(1 / 1.25)" aria-label="Diminuir zoom"><jo-icon name="minus" [size]="14" /></button>
+      <button type="button" class="zoom num" (click)="animateZoom(1 / k())" title="Voltar para 100%">{{ (k() * 100).toFixed(0) }}%</button>
+      <button type="button" class="btn" (click)="animateZoom(1.25)" aria-label="Aumentar zoom"><jo-icon name="plus" [size]="14" /></button>
+      <button type="button" class="btn" (click)="animateFit()"><jo-icon name="corners-out" [size]="14" />Ajustar</button>
     </div>
 
-    <svg class="mini" [attr.width]="mini().w" [attr.height]="mini().h" (click)="jump($event)" role="img" aria-label="Minimapa">
+    <svg class="mini" [attr.width]="mini().w" [attr.height]="mini().h" (pointerdown)="miniDown($event)" (pointermove)="miniMove($event)" (pointerup)="miniUp()" (pointercancel)="miniUp()" role="img" aria-label="Minimapa. Arraste para mover a vista.">
       @for (m of mini().nodes; track m.id) {
         <rect [attr.x]="m.x" [attr.y]="m.y" [attr.width]="m.w" [attr.height]="m.w" rx="2" [attr.class]="m.status" />
       }
