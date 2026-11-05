@@ -10,7 +10,11 @@ namespace JobOrchestrator.Automation.Adapters;
 internal sealed class RemotiveSource(IHttpClientFactory http, TimeProvider time) : PublicSource(http, "remotive", "remotive.com")
 {
     private static readonly TimeSpan MinInterval = TimeSpan.FromHours(6);
+    /// <summary>Teto dos termos da Remotive: 4 leituras por dia somando todas as buscas, não por busca.</summary>
+    internal const int DailyCap = 4;
     private static readonly ConcurrentDictionary<string, (DateTime At, IReadOnlyList<DiscoveredPosting> Items)> LastCall = new();
+    private static readonly Lock Gate = new();
+    private static (DateOnly Day, int Calls) Usage;
     public override string Id => "remotive-api";
     public override string Name => "Remotive API";
 
@@ -20,10 +24,24 @@ internal sealed class RemotiveSource(IHttpClientFactory http, TimeProvider time)
         var search = Key(source);
         var now = time.GetUtcNow().UtcDateTime;
         if (LastCall.TryGetValue(search, out var last) && now - last.At < MinInterval) return last.Items;
+        if (!Take(DateOnly.FromDateTime(now)))
+            return LastCall.TryGetValue(search, out var old) ? old.Items : throw new InvalidOperationException($"Teto da Remotive: {DailyCap} leituras por dia já usadas; volta amanhã.");
         using var doc = await Json.GetAsync(Client, $"https://remotive.com/api/remote-jobs?search={Uri.EscapeDataString(search)}&limit=100", ct);
         IReadOnlyList<DiscoveredPosting> items = [.. doc.RootElement.GetProperty("jobs").EnumerateArray().Select(j => Parse(source, j))];
         LastCall[search] = (now, items);
         return items;
+    }
+
+    /// <summary>Conta uma leitura do dia; false quando o teto dos termos já foi usado.</summary>
+    internal static bool Take(DateOnly today)
+    {
+        lock (Gate)
+        {
+            if (Usage.Day != today) Usage = (today, 0);
+            if (Usage.Calls >= DailyCap) return false;
+            Usage = (today, Usage.Calls + 1);
+            return true;
+        }
     }
 
     public override Task<PostingStatus> CheckOpenAsync(string applyUrl, CancellationToken ct) => Task.FromResult(new PostingStatus(true, "Listada agora pelo Remotive."));

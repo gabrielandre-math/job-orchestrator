@@ -97,8 +97,11 @@ internal sealed class AshbySource(IHttpClientFactory http) : PublicSource(http, 
     {
         var board = Key(source);
         using var doc = await Json.GetAsync(Client, $"https://api.ashbyhq.com/posting-api/job-board/{Uri.EscapeDataString(board)}?includeCompensation=true", ct);
-        return [.. doc.RootElement.GetProperty("jobs").EnumerateArray().Select(j => Parse(source, board, j))];
+        // Vaga com isListed=false é da empresa e não foi publicada: a documentação da Ashby diz para não mostrar.
+        return [.. doc.RootElement.GetProperty("jobs").EnumerateArray().Where(Listed).Select(j => Parse(source, board, j))];
     }
+
+    internal static bool Listed(JsonElement j) => !(j.TryGetProperty("isListed", out var l) && l.ValueKind == JsonValueKind.False);
 
     internal static DiscoveredPosting Parse(string source, string board, JsonElement j)
     {

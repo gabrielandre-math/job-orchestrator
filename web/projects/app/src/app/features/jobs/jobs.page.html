@@ -250,6 +250,7 @@
               <dt>Visto</dt><dd>{{ d.job.sponsorship ?? 'não informado' }}</dd>
               <dt>Candidatura</dt><dd>{{ channel(d.job.applyChannel) }}</dd>
               <dt>Fonte</dt><dd class="mono">{{ source(d.job.source) }}</dd>
+              @if (credit(d.job.source); as c) { <dt>Crédito</dt><dd>Vaga via <a [href]="c.site" target="_blank" rel="noopener">{{ c.name }}</a>. {{ c.text }}</dd> }
               <dt>Vista</dt><dd>{{ ago(d.job.firstSeenAt) }}</dd>
             </dl>
           </section>

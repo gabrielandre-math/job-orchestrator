@@ -78,6 +78,16 @@ export class JobsPage {
   protected readonly stats = query<JobStats>(() => '/jobs/stats', 15000);
   protected readonly profile = query<Profile>(() => '/profile', 0);
   protected readonly campaigns = query<Campaign[]>(() => '/campaigns', 0);
+  /** Crédito que a fonte exige (Remotive, Himalayas e outras do registro): aparece em cada vaga que veio dela. */
+  private readonly registry = query<{ sources: { prefix: string; name: string; docsUrl: string; attribution: string | null }[] }>(() => '/sources/registry', 0);
+  protected credit(source: string) {
+    const prefix = source.split(':')[0];
+    const p = this.registry.value()?.sources.find((x) => x.prefix === prefix && x.attribution);
+    if (!p) return null;
+    let site = p.docsUrl;
+    try { site = `https://${new URL(p.docsUrl).hostname}`; } catch { /* mantém a documentação */ }
+    return { name: p.name, text: p.attribution!, site };
+  }
   /** Universal: as palavras-chave da campanha (de qualquer área) que aparecem no título ou na descrição da vaga aberta. */
   protected readonly matched = computed(() => {
     const d = this.detail.value();
