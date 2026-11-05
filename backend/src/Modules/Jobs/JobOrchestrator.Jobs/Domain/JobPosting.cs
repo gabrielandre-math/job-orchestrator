@@ -44,6 +44,9 @@ internal sealed class JobPosting : AggregateRoot
     public string? Sponsorship { get; private set; }
     public string ApplyChannel { get; private set; } = "ats";
     public string? ApplyEmail { get; private set; }
+    public List<string> Stack { get; private set; } = [];
+    public string? CompanyDomain { get; private set; }
+    public bool Enriched { get; private set; }
     public uint Version { get; private set; }
 
     public static JobPosting Discover(Guid campaignId, DiscoveredPosting p, DateTime now)
@@ -97,6 +100,15 @@ internal sealed class JobPosting : AggregateRoot
         Sponsorship = n.Sponsorship;
         ApplyChannel = n.ApplyChannel;
         ApplyEmail = n.ApplyEmail is null ? null : Cut(n.ApplyEmail, 200);
+        Enrich();
+    }
+
+    /// <summary>Stack pedida e domínio da empresa (para a logo), tirados do texto da vaga.</summary>
+    public void Enrich()
+    {
+        Stack = Domain.Stack.Detect(Title, Description);
+        CompanyDomain = Domain.CompanyDomain.Find(Description, ApplyUrl);
+        Enriched = true;
     }
 
     /// <summary>A mesma vaga já chegou por outra fonte: fica registrada, mas não gera candidatura.</summary>

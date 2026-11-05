@@ -35,6 +35,7 @@ internal sealed class JobsDbContext(DbContextOptions<JobsDbContext> options) : D
             e.Property(x => x.Sponsorship).HasMaxLength(40);
             e.Property(x => x.ApplyChannel).HasMaxLength(10);
             e.Property(x => x.ApplyEmail).HasMaxLength(200);
+            e.Property(x => x.CompanyDomain).HasMaxLength(120);
             e.Property(x => x.Version).IsRowVersion();
             e.HasIndex(x => new { x.CampaignId, x.Source, x.ExternalId }).IsUnique();
             e.HasIndex(x => new { x.CampaignId, x.CanonicalKey });
