@@ -53,6 +53,8 @@ public static class AutomationModule
         s.AddScoped<ISourceConnector, TheMuseSource>();
         s.AddScoped<ISourceConnector, RemoteOkSource>();
         s.AddScoped<ISourceConnector, WorkableSearchSource>();
+        s.AddScoped<ISourceConnector, FreehireSource>();
+        s.AddScoped<ISourceConnector, JobTechSource>();
         s.AddScoped<ISourceConnector, WeWorkRemotelySource>();
         s.AddScoped<ISourceConnector, RecruiteeSource>();
         s.AddScoped<ISourceConnector, BreezySource>();

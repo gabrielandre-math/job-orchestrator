@@ -157,6 +157,16 @@ namespace JobOrchestrator.Jobs.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("duplicate_of");
 
+                    b.Property<string>("Eligibility")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("eligibility");
+
+                    b.Property<string>("EligibilityEvidence")
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)")
+                        .HasColumnName("eligibility_evidence");
+
                     b.Property<string>("English")
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)")
@@ -271,6 +281,9 @@ namespace JobOrchestrator.Jobs.Data.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_postings");
+
+                    b.HasIndex("Eligibility")
+                        .HasDatabaseName("ix_postings_eligibility");
 
                     b.HasIndex("CampaignId", "CanonicalKey")
                         .HasDatabaseName("ix_postings_campaign_id_canonical_key");

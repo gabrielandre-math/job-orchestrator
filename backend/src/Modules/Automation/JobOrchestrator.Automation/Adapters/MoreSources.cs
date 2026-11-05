@@ -150,6 +150,81 @@ internal sealed class WorkableSearchSource(IHttpClientFactory http, TimeProvider
     }
 }
 
+/// <summary>
+/// freehire (freehire:termo): busca pública sobre ~420 fontes (ATS, boards e governos) já normalizadas, com região, país e modo de
+/// trabalho. Sem chave para uso pessoal e não comercial (os termos deles: https://freehire.me/docs/api). Três consultas por termo:
+/// remoto na América Latina, remoto no mundo todo e qualquer vaga no Brasil, até 300 por consulta. A vaga guarda o link de origem.
+/// </summary>
+internal sealed class FreehireSource(IHttpClientFactory http, TimeProvider time) : Aggregator(http, time, "freehire", "freehire.me")
+{
+    public override string Id => "freehire-api";
+    public override string Name => "freehire (busca em 420 fontes)";
+    protected override TimeSpan MinInterval => TimeSpan.FromHours(2);
+
+    protected override async Task<IReadOnlyList<DiscoveredPosting>> FetchAsync(string source, string key, CancellationToken ct)
+    {
+        var list = new List<DiscoveredPosting>();
+        var ids = new HashSet<string>();
+        foreach (var (filter, pages) in new[] { ("&work_mode=remote&regions=latam", 3), ("&work_mode=remote&regions=global", 2), ("&countries=BR", 3) })
+            for (var page = 0; page < pages; page++)
+            {
+                using var doc = await Json.GetAsync(Client, $"https://freehire.me/api/v1/jobs/search?q={Uri.EscapeDataString(key)}{filter}&limit=100&offset={page * 100}", ct);
+                if (!doc.RootElement.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Array) break;
+                var count = 0;
+                foreach (var j in data.EnumerateArray())
+                {
+                    count++;
+                    var id = j.Str("external_id") is { Length: > 0 } e ? e : j.Str("public_slug");
+                    if (!ids.Add(id) || j.Str("closed_at").Length > 0) continue;
+                    var mode = j.Str("work_mode");
+                    list.Add(new DiscoveredPosting(source, id, j.Str("company"), j.Str("title"), j.Str("location"), Untracked(j.Str("url")), Json.Plain(j.Str("description")),
+                        j.Date("posted_at"), j.GetRawText(), Workplace: mode is "remote" or "hybrid" or "onsite" ? mode : null, ListedAsOpen: true));
+                }
+                if (count < 100) break;
+                await Task.Delay(600, ct);
+            }
+        return list;
+    }
+
+    /// <summary>O link da vaga sem o utm_source que o freehire acrescenta: é o mesmo endereço do ATS, e a deduplicação casa com a fonte direta.</summary>
+    internal static string Untracked(string url) =>
+        System.Text.RegularExpressions.Regex.Replace(url, @"([?&])utm_source=freehire\.me(&|$)", m => m.Groups[2].Value == "&" ? m.Groups[1].Value : "").TrimEnd('?', '&');
+}
+
+/// <summary>
+/// JobTech JobSearch da Suécia (jobtech:termo): a API oficial da Arbetsförmedlingen, dados CC0, sem chave (https://jobsearch.api.jobtechdev.se).
+/// Até 200 vagas por termo; em geral pedem estar na Suécia, o que a elegibilidade marca pelo texto de cada uma.
+/// </summary>
+internal sealed class JobTechSource(IHttpClientFactory http, TimeProvider time) : Aggregator(http, time, "jobtech", "jobsearch.api.jobtechdev.se")
+{
+    public override string Id => "jobtech-api";
+    public override string Name => "JobTech (Suécia, oficial)";
+    protected override TimeSpan MinInterval => TimeSpan.FromHours(3);
+
+    protected override async Task<IReadOnlyList<DiscoveredPosting>> FetchAsync(string source, string key, CancellationToken ct)
+    {
+        var list = new List<DiscoveredPosting>();
+        for (var offset = 0; offset < 200; offset += 100)
+        {
+            using var doc = await Json.GetAsync(Client, $"https://jobsearch.api.jobtechdev.se/search?q={Uri.EscapeDataString(key)}&limit=100&offset={offset}", ct);
+            if (!doc.RootElement.TryGetProperty("hits", out var hits) || hits.ValueKind != JsonValueKind.Array) break;
+            var count = 0;
+            foreach (var j in hits.EnumerateArray())
+            {
+                count++;
+                var place = j.Obj("workplace_address");
+                var where = string.Join(", ", new[] { place.Str("municipality"), place.Str("region"), place.Str("country") }.Where(v => v.Length > 0));
+                var apply = j.Obj("application_details").Str("url") is { Length: > 0 } u ? u : j.Str("webpage_url");
+                list.Add(new DiscoveredPosting(source, j.Str("id"), j.Obj("employer").Str("name"), j.Str("headline"), where.Length > 0 ? where : "Suécia", apply,
+                    Json.Plain(j.Obj("description").Str("text")), j.Date("publication_date"), j.GetRawText(), ListedAsOpen: true));
+            }
+            if (count < 100) break;
+            await Task.Delay(400, ct);
+        }
+        return list;
+    }
+}
+
 /// <summary>RemoteOK: API pública; a regra deles pede crédito e link para a vaga no RemoteOK, que é o ApplyUrl guardado.</summary>
 internal sealed class RemoteOkSource(IHttpClientFactory http, TimeProvider time) : Aggregator(http, time, "remoteok", "remoteok.com")
 {

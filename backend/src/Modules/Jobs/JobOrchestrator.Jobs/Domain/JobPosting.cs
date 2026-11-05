@@ -42,6 +42,9 @@ internal sealed class JobPosting : AggregateRoot
     public string? Contract { get; private set; }
     public string? English { get; private set; }
     public string? Sponsorship { get; private set; }
+    /// <summary>Elegibilidade de quem mora no Brasil (Eligibility) e a frase do anúncio que a sustenta, com "declarado" ou "inferido".</summary>
+    public string? Eligibility { get; private set; }
+    public string? EligibilityEvidence { get; private set; }
     public string ApplyChannel { get; private set; } = "ats";
     public string? ApplyEmail { get; private set; }
     public List<string> Stack { get; private set; } = [];
@@ -100,7 +103,16 @@ internal sealed class JobPosting : AggregateRoot
         Sponsorship = n.Sponsorship;
         ApplyChannel = n.ApplyChannel;
         ApplyEmail = n.ApplyEmail is null ? null : Cut(n.ApplyEmail, 200);
+        Classify();
         Enrich();
+    }
+
+    /// <summary>Recalcula a elegibilidade com a regra atual (as vagas antigas ganham na subida, uma vez).</summary>
+    public void Classify()
+    {
+        var e = Domain.Eligibility.Classify(Title, Description, Location, Modality);
+        Eligibility = e.Class;
+        EligibilityEvidence = Cut($"{(e.Declared ? "declarado" : "inferido")}: {e.Evidence}", 320);
     }
 
     /// <summary>Stack pedida e domínio da empresa (para a logo), tirados do texto da vaga.</summary>

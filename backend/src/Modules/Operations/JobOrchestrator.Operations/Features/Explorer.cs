@@ -32,7 +32,7 @@ internal sealed class Explorer(IServiceScopeFactory scopes, [FromKeyedServices("
     public static string PrintFile => Path.Combine(Folder, "campaign.txt");
 
     /// <summary>Listas de empresas lidas pelo Explorador (README no GitHub), relidas a cada 7 dias. Explorer:Lists troca a lista.</summary>
-    internal static readonly string[] DefaultLists = ["lerrua/remote-jobs-brazil", "sitemap:pandape", "poteto/hiring-without-whiteboards", "yanirs/established-remote"];
+    internal static readonly string[] DefaultLists = ["catalog:job-board-directory", "catalog:lastroundai", "lerrua/remote-jobs-brazil", "sitemap:pandape", "poteto/hiring-without-whiteboards", "yanirs/established-remote", "remoteintech/remote-jobs"];
     /// <summary>Quadros de vagas brasileiros que o robots.txt deixa ler (o coletor lê o dado estruturado e o navegador o que monta com JavaScript).
     /// Entram como pistas para qualquer currículo; o juiz decide pela área de cada pessoa.</summary>
     internal static readonly string[] Boards =
@@ -44,7 +44,7 @@ internal sealed class Explorer(IServiceScopeFactory scopes, [FromKeyedServices("
 
     /// <summary>APIs públicas que buscam por texto: cada palavra (e cargo, onde a busca entende frase) vira uma fonte candidata. A Remotive pede
     /// poucas chamadas por dia: entra só com as duas primeiras palavras e só se a campanha ainda não tiver uma busca nela.</summary>
-    private static readonly (string Api, bool Titles)[] SearchApis = [("getonbrd", true), ("himalayas", true), ("workable-search", true), ("remotive", false), ("jobicy", false), ("remoteok", false)];
+    private static readonly (string Api, bool Titles)[] SearchApis = [("getonbrd", true), ("himalayas", true), ("workable-search", true), ("freehire", true), ("jobtech", false), ("remotive", false), ("jobicy", false), ("remoteok", false)];
 
     /// <summary>Repositórios brasileiros de vagas em issues, por comunidade (backend, front, mobile, QA, PHP, Java): qualquer área testa os seus.</summary>
     internal static readonly string[] JobRepos =
@@ -138,7 +138,8 @@ internal sealed class Explorer(IServiceScopeFactory scopes, [FromKeyedServices("
         {
             try
             {
-                foreach (var l in due.StartsWith("sitemap:", StringComparison.Ordinal) ? await automation.PlatformLeadsAsync(due[8..], ct) : await automation.CompanyListAsync(due, ct))
+                foreach (var l in due.StartsWith("sitemap:", StringComparison.Ordinal) || due.StartsWith("catalog:", StringComparison.Ordinal)
+                    ? await automation.PlatformLeadsAsync(due[8..], ct) : await automation.CompanyListAsync(due, ct))
                     Lead(l.Source, l.Origin, "listas de empresas");
                 lists[due] = DateTime.UtcNow;
             }
@@ -160,7 +161,7 @@ internal sealed class Explorer(IServiceScopeFactory scopes, [FromKeyedServices("
         foreach (var d in await jobs.CompanyDomainsAsync(60, ct)) Lead($"web:{d}", "site da empresa de uma vaga", "sites de empresa");
         foreach (var k in frontier.Keys.Where(k => !Fresh(k)).ToList()) frontier.Remove(k);
         // A fila vai para o disco antes dos testes: se o processo cair no meio do ciclo, as pistas ficam.
-        Write(FrontierFile, frontier.Take(5000).ToDictionary());
+        Write(FrontierFile, frontier.Take(25000).ToDictionary());
         Write(ListsFile, lists);
 
         // Teste de quadro é barato (uma chamada à API pública; o Llama só entra quando as palavras batem): 30 quadros e 15 da Gupy por ciclo.
@@ -223,8 +224,8 @@ internal sealed class Explorer(IServiceScopeFactory scopes, [FromKeyedServices("
         var fit = verdicts.Where(v => v.Fit).Select(v => v.Source).Take(Math.Max(0, max - campaign.Sources.Count)).ToList();
         var added = fit.Count == 0 ? 0 : await runs.AddSourcesAsync(campaign.Id, fit, ct);
         var fetching = added > 0 && await runs.RequestSourcesAsync(campaign.Id, fit, "explorer", ct);
-        Write(SeenFile, seen.OrderByDescending(x => x.Value.At).Take(8000).ToDictionary());
-        Write(FrontierFile, frontier.Take(5000).ToDictionary());
+        Write(SeenFile, seen.OrderByDescending(x => x.Value.At).Take(30000).ToDictionary());
+        Write(FrontierFile, frontier.Take(25000).ToDictionary());
         var seconds = Math.Round(clock.Elapsed.TotalSeconds, 1);
         await Note(ai, thread, "Curador", added > 0 ? $"{added} {(added == 1 ? "fonte nova entrou" : "fontes novas entraram")} na campanha" : "Nenhuma fonte nova com vaga da sua área neste ciclo",
             (fetching ? "As vagas delas já estão chegando na Busca ao vivo.\n" : "") +

@@ -33,6 +33,9 @@ internal sealed class JobsDbContext(DbContextOptions<JobsDbContext> options) : D
             e.Property(x => x.Contract).HasMaxLength(20);
             e.Property(x => x.English).HasMaxLength(40);
             e.Property(x => x.Sponsorship).HasMaxLength(40);
+            e.Property(x => x.Eligibility).HasMaxLength(32);
+            e.Property(x => x.EligibilityEvidence).HasMaxLength(320);
+            e.HasIndex(x => x.Eligibility);
             e.Property(x => x.ApplyChannel).HasMaxLength(10);
             e.Property(x => x.ApplyEmail).HasMaxLength(200);
             e.Property(x => x.CompanyDomain).HasMaxLength(120);

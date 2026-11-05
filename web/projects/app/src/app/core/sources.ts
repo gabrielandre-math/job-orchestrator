@@ -10,7 +10,7 @@ export const PLATFORMS: Record<string, { name: string; domain: string; kind: Sou
   remotive: { name: 'Remotive', domain: 'remotive.com', kind: 'api' }, arbeitnow: { name: 'Arbeitnow', domain: 'arbeitnow.com', kind: 'api' },
   himalayas: { name: 'Himalayas', domain: 'himalayas.app', kind: 'api' }, jobicy: { name: 'Jobicy', domain: 'jobicy.com', kind: 'api' },
   themuse: { name: 'The Muse', domain: 'themuse.com', kind: 'api' }, remoteok: { name: 'RemoteOK', domain: 'remoteok.com', kind: 'api' },
-  'workable-search': { name: 'Workable (todas as empresas)', domain: 'workable.com', kind: 'api' },
+  'workable-search': { name: 'Workable (todas as empresas)', domain: 'workable.com', kind: 'api' }, freehire: { name: 'freehire', domain: 'freehire.me', kind: 'api' }, jobtech: { name: 'JobTech (Suécia)', domain: 'jobtechdev.se', kind: 'api' },
   wwr: { name: 'We Work Remotely', domain: 'weworkremotely.com', kind: 'api' }, github: { name: 'GitHub', domain: 'github.com', kind: 'community' },
   hn: { name: 'Hacker News', domain: 'news.ycombinator.com', kind: 'community' }, web: { name: 'Site de carreiras', domain: '', kind: 'site' },
 };

@@ -109,3 +109,11 @@
   .facts { grid-template-columns: 96px minmax(0, 1fr); }
 }
 @media (prefers-reduced-motion: reduce) { .card, .fill, .seg span, .drawer, .scrim, .skeleton, .mini-st.working jo-iso { animation: none; } }
+/* Elegibilidade: um ponto na cor do veredito; a frase do anúncio que sustenta fica no title da etiqueta. */
+.chip.elig .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-3); flex: none; }
+.chip.elig.ok .dot { background: var(--ok); }
+.chip.elig.warn .dot { background: var(--warn); }
+.chip.elig.bad .dot { background: var(--bad, #e5484d); }
+.tag.elig.ok { color: var(--ok); border-color: color-mix(in oklch, var(--ok) 40%, var(--line)); }
+.tag.elig.warn { color: var(--warn); border-color: color-mix(in oklch, var(--warn) 40%, var(--line)); }
+.tag.elig.bad { color: var(--bad, #e5484d); border-color: color-mix(in oklch, var(--bad, #e5484d) 40%, var(--line)); }

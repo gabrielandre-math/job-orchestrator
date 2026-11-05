@@ -26,6 +26,14 @@ const SOURCE_LOGO: Record<string, { file: string; mono: boolean }> = {
 };
 const PIPELINE = ['Seletor', 'Redator', 'Conferente', 'Revisor', 'Renderizador', 'Inspetor ATS'];
 const LEVELS = ['Estágio', 'Júnior', 'Pleno', 'Sênior', 'Especialista', 'Liderança'];
+/** Elegibilidade de quem mora no Brasil (especificação V2), na ordem do melhor para o pior. */
+export const ELIGIBILITY: Record<string, { label: string; tone: 'ok' | 'warn' | 'bad' | '' }> = {
+  BR_ELIGIBLE_CONFIRMED: { label: 'Aberta ao Brasil', tone: 'ok' }, BR_ELIGIBLE_POSSIBLE: { label: 'Remota, a confirmar', tone: '' },
+  RELOCATION_WITH_SPONSORSHIP: { label: 'Visto ou mudança pagos', tone: 'ok' }, REVIEW: { label: 'Anúncio contraditório', tone: 'warn' },
+  RELOCATION_UNVERIFIED: { label: 'No exterior, sem visto dito', tone: 'warn' }, UNKNOWN: { label: 'Sem local', tone: '' },
+  BR_RESTRICTED: { label: 'Restrita a outro país', tone: 'bad' },
+};
+const ORDER = Object.keys(ELIGIBILITY);
 const MODES: Record<string, string> = { Remoto: 'globe-hemisphere-west', 'Híbrido': 'arrows-left-right', Presencial: 'buildings' };
 interface Facet { key: string; n: number }
 type Sort = 'score' | 'new' | 'company';
@@ -54,6 +62,10 @@ export class JobsPage {
   protected readonly modeSel = signal<ReadonlySet<string>>(new Set());
   protected readonly levelSel = signal<ReadonlySet<string>>(new Set());
   protected readonly contractSel = signal<ReadonlySet<string>>(new Set());
+  protected readonly eligSel = signal<ReadonlySet<string>>(new Set());
+  /** Padrão da especificação: vaga restrita a outro país sai da lista até você pedir. */
+  protected readonly hideRestricted = signal(true);
+  protected readonly eligibility = ELIGIBILITY;
   protected readonly withSalary = signal(false);
   protected readonly atsOnly = signal(false);
   protected readonly minScore = signal(0);
@@ -115,13 +127,14 @@ export class JobsPage {
     return {
       tech: tally((j) => j.stack), source: tally((j) => [j.source.split(':')[0]]), mode: tally((j) => [j.modality]),
       level: level.sort((a, b) => (LEVELS.indexOf(a.key) + 99) % 99 - (LEVELS.indexOf(b.key) + 99) % 99), contract: tally((j) => [j.contract]),
+      elig: tally((j) => [j.eligibility]).sort((a, b) => ORDER.indexOf(a.key) - ORDER.indexOf(b.key)),
       salary: jobs.filter((j) => j.salaryText).length, ats: jobs.filter((j) => j.applyChannel === 'ats').length,
     };
   });
   protected readonly techShown = computed(() => this.allTech() ? this.facets().tech : this.facets().tech.slice(0, 14));
 
   protected readonly activeCount = computed(() =>
-    [this.techSel(), this.sourceSel(), this.modeSel(), this.levelSel(), this.contractSel()].reduce((n, s) => n + s.size, 0)
+    [this.techSel(), this.sourceSel(), this.modeSel(), this.levelSel(), this.contractSel(), this.eligSel()].reduce((n, s) => n + s.size, 0)
     + (this.withSalary() ? 1 : 0) + (this.atsOnly() ? 1 : 0) + (this.minScore() > 0 ? 1 : 0) + (this.status() ? 1 : 0) + (this.search().trim() ? 1 : 0));
 
   protected readonly rows = computed(() => {
@@ -131,6 +144,7 @@ export class JobsPage {
       && (!this.remoteOnly() || j.modality === 'Remoto')
       && (this.techSel().size === 0 || j.stack.some((t) => this.techSel().has(t)))
       && any(this.sourceSel(), j.source.split(':')[0]) && any(this.modeSel(), j.modality) && any(this.levelSel(), j.seniority) && any(this.contractSel(), j.contract)
+      && any(this.eligSel(), j.eligibility) && (!this.hideRestricted() || this.eligSel().has('BR_RESTRICTED') || j.eligibility !== 'BR_RESTRICTED')
       && (!this.withSalary() || !!j.salaryText) && (!this.atsOnly() || j.applyChannel === 'ats') && (this.minScore() === 0 || (j.score ?? 0) >= this.minScore())
       && (!s || `${j.company} ${j.title} ${j.stack.join(' ')}`.toLowerCase().includes(s)));
     const by: Record<Sort, (a: JobRow, b: JobRow) => number> = {
@@ -144,7 +158,8 @@ export class JobsPage {
   }
   protected clearFilters() {
     transition(() => {
-      for (const sel of [this.techSel, this.sourceSel, this.modeSel, this.levelSel, this.contractSel]) sel.set(new Set());
+      for (const sel of [this.techSel, this.sourceSel, this.modeSel, this.levelSel, this.contractSel, this.eligSel]) sel.set(new Set());
+      this.hideRestricted.set(true);
       this.withSalary.set(false); this.atsOnly.set(false); this.minScore.set(0); this.search.set(''); this.remoteOnly.set(false);
       void this.router.navigate([], { queryParams: { status: null }, queryParamsHandling: 'merge' });
     });

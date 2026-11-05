@@ -23,6 +23,8 @@ internal record JobRow
     public string? Contract { get; init; }
     public string? English { get; init; }
     public string? Sponsorship { get; init; }
+    public string? Eligibility { get; init; }
+    public string? EligibilityEvidence { get; init; }
     public string ApplyChannel { get; init; } = "";
     public string? ApplyEmail { get; init; }
     public string[] Stack { get; init; } = [];
@@ -36,7 +38,7 @@ internal sealed class ListJobsHandler(IReadDb<JobsDbContext> db) : IQueryHandler
 {
     private const string Sql = """
         select id, company, title, location, status, score, confidence, reason, apply_url, source, first_seen_at, last_verified_at, open, duplicate_of,
-               seniority, modality, salary_text, contract, english, sponsorship, apply_channel, apply_email, stack, company_domain
+               seniority, modality, salary_text, contract, english, sponsorship, eligibility, eligibility_evidence, apply_channel, apply_email, stack, company_domain
         from jobs.postings
         where (@Status is null or status = @Status)
           and (@Search is null or company ilike '%' || @Search || '%' or title ilike '%' || @Search || '%')

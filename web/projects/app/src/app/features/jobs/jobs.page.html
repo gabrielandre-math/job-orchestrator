@@ -73,6 +73,19 @@
         }
       </div>
     </div>
+    @if (facets().elig.length > 0) {
+      <div class="fb-group">
+        <span class="fb-label">Para quem mora no Brasil</span>
+        <div class="chips" role="group" aria-label="Filtrar por elegibilidade">
+          @for (e of facets().elig; track e.key) {
+            <button type="button" class="chip elig" [class]="'chip elig ' + (eligibility[e.key]?.tone ?? '')" [attr.aria-pressed]="eligSel().has(e.key)" (click)="toggle(eligSel, e.key)">
+              <span class="dot" aria-hidden="true"></span>{{ eligibility[e.key]?.label ?? e.key }}<span class="n">{{ e.n }}</span>
+            </button>
+          }
+          <button type="button" class="chip" [attr.aria-pressed]="hideRestricted()" (click)="hideRestricted.set(!hideRestricted())"><jo-icon name="funnel-simple" [size]="14" />Esconder as restritas</button>
+        </div>
+      </div>
+    }
     @if (facets().tech.length > 0) {
       <div class="fb-group">
         <span class="fb-label">Tecnologias</span>
@@ -153,6 +166,7 @@
             <jo-score [value]="j.status === 'Rejected' ? null : j.score" />
           </span>
           <span class="tags">
+            @if (j.eligibility && eligibility[j.eligibility]; as e) { <span class="tag elig" [class]="'tag elig ' + e.tone" [attr.title]="j.eligibilityEvidence">{{ e.label }}</span> }
             @if (j.modality) { <span class="tag">{{ j.modality }}</span> }
             @if (j.seniority) { <span class="tag">{{ j.seniority }}</span> }
             @if (j.contract) { <span class="tag">{{ j.contract }}</span> }

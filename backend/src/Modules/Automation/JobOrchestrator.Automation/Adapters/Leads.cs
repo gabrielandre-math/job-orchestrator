@@ -1,3 +1,4 @@
+using System.Text;
 using System.Globalization;
 using System.Text.RegularExpressions;
 using JobOrchestrator.Intelligence.Contracts;
@@ -64,6 +65,8 @@ internal sealed partial class Leads(IHttpClientFactory http, ScrapyRunner runner
 
     public async Task<IReadOnlyList<SourceLead>> PlatformLeadsAsync(string platform, CancellationToken ct)
     {
+        if (platform == "job-board-directory") return await BoardDirectoryAsync(ct);
+        if (platform == "lastroundai") return await LastRoundAsync(ct);
         if (platform != "pandape") return [];
         // O sitemap que o robots.txt do Pandapé indica: um índice .gz de pedaços .gz com as vagas abertas de todas as empresas.
         var index = await GunzipAsync("https://www.pandape.com.br/pandapeindexofertas.xml.gz", ct);
@@ -73,6 +76,59 @@ internal sealed partial class Leads(IHttpClientFactory http, ScrapyRunner runner
                 counts[tenant] = counts.GetValueOrDefault(tenant) + 1;
         return [.. counts.OrderByDescending(c => c.Value).Take(500).Select(c => new SourceLead($"pandape:{c.Key}", $"lista sitemap do Pandapé ({c.Value} vagas)"))];
     }
+
+    /// <summary>
+    /// Diretório público de páginas de carreira (github.com/kalebconfer-sys/job-board-directory): plataforma, token e endereço de cada
+    /// quadro, com o número de vagas que o ATS informou. Só para descobrir quadros, que depois passam pelo teste do Explorador; o
+    /// diretório não é republicado. Os maiores primeiro, até 4 mil por leitura.
+    /// </summary>
+    private async Task<IReadOnlyList<SourceLead>> BoardDirectoryAsync(CancellationToken ct)
+    {
+        var csv = await Client.GetStringAsync("https://kalebconfer-sys.github.io/job-board-directory/job-board-directory.csv", ct);
+        var rows = new List<(string Key, int Roles, string Company)>();
+        foreach (var line in csv.Split('\n').Skip(1))
+        {
+            var c = CsvLine(line.TrimEnd('\r'));
+            if (c.Count < 6 || SourceKeys.Board(c[3]) is not { } key) continue;
+            rows.Add((key, int.TryParse(c[5], out var n) ? n : 0, c[2]));
+        }
+        return [.. rows.GroupBy(r => r.Key).Select(g => g.OrderByDescending(r => r.Roles).First()).OrderByDescending(r => r.Roles).Take(4000)
+            .Select(r => new SourceLead(r.Key, $"diretório job-board-directory ({r.Company}, {r.Roles} vagas no ATS)"))];
+    }
+
+    /// <summary>Diretório da LastRoundAI (CC BY 4.0, github.com/fyrosofttech/lastroundai-hiring-data): empresa e slug de Greenhouse, Lever e Ashby.</summary>
+    private async Task<IReadOnlyList<SourceLead>> LastRoundAsync(CancellationToken ct)
+    {
+        var csv = await Client.GetStringAsync("https://raw.githubusercontent.com/fyrosofttech/lastroundai-hiring-data/main/ats-directory/lastroundai-ats-company-directory-2026-08.csv", ct);
+        var leads = new List<SourceLead>();
+        foreach (var line in csv.Split('\n').Skip(1))
+        {
+            var c = CsvLine(line.TrimEnd('\r'));
+            if (c.Count < 3 || c[0] is not ("greenhouse" or "lever" or "ashby") || !Slug().IsMatch(c[2])) continue;
+            leads.Add(new SourceLead($"{c[0]}:{c[2].ToLowerInvariant()}", $"diretório LastRoundAI, CC BY 4.0 ({c[1]})"));
+        }
+        return [.. leads.DistinctBy(l => l.Source).Take(4000)];
+    }
+
+    /// <summary>Uma linha de CSV com aspas (nomes de empresa com vírgula vêm entre aspas, e aspas dobradas dentro delas).</summary>
+    internal static List<string> CsvLine(string line)
+    {
+        var cells = new List<string>();
+        var cell = new StringBuilder();
+        var quoted = false;
+        for (var i = 0; i < line.Length; i++)
+        {
+            var ch = line[i];
+            if (quoted && ch == '"' && i + 1 < line.Length && line[i + 1] == '"') { cell.Append('"'); i++; }
+            else if (ch == '"') quoted = !quoted;
+            else if (ch == ',' && !quoted) { cells.Add(cell.ToString()); cell.Clear(); }
+            else cell.Append(ch);
+        }
+        cells.Add(cell.ToString());
+        return cells;
+    }
+
+    [GeneratedRegex(@"^[A-Za-z0-9._-]{1,80}$")] private static partial Regex Slug();
 
     private async Task<string> GunzipAsync(string url, CancellationToken ct)
     {
