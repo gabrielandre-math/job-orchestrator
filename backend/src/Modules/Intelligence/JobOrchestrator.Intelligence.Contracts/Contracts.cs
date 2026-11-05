@@ -32,7 +32,8 @@ public sealed record AgentThread(Guid Id, string Kind, string Subject)
 public sealed record AgentThreadView(Guid Id, string Kind, string Subject, DateTime StartedAt, DateTime LastAt, int Messages, IReadOnlyList<string> Agents, IReadOnlyList<string> Providers, bool Failed);
 
 /// <summary>Uma mensagem do fio. Kind: ask (pedido ao modelo), answer, note (agente sem IA), fail.</summary>
-public sealed record AgentMessageView(Guid Id, DateTime At, string Agent, string Kind, string? ProviderId, string? Model, string? Effort, string Title, string? Body, double Seconds, bool Ok, string? To);
+/// <summary>Data: JSON opcional com números da etapa (fonte, vagas, nota), para as telas ao vivo desenharem sem interpretar texto.</summary>
+public sealed record AgentMessageView(Guid Id, DateTime At, string Agent, string Kind, string? ProviderId, string? Model, string? Effort, string Title, string? Body, double Seconds, bool Ok, string? To, string? Data = null);
 
 /// <summary>
 /// A resposta, com quem fez, qual modelo, qual esforço e quanto tempo levou.
@@ -94,4 +95,6 @@ public interface IIntelligenceApi
 
     /// <summary>Nota de um agente sem IA no fio: o que conferiu, o que passou adiante e para quem.</summary>
     Task NoteAsync(AgentThread thread, string agent, string title, string? body, string? to = null, bool ok = true, CancellationToken ct = default);
+    /// <summary>Nota com dados estruturados (serializados como JSON) para as telas ao vivo.</summary>
+    Task NoteAsync(AgentThread thread, string agent, string title, string? body, object data, string? to = null, bool ok = true, CancellationToken ct = default);
 }

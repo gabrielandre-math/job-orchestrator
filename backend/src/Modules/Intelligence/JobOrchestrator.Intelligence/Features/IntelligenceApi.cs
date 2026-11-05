@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using JobOrchestrator.Intelligence.Providers;
 
 namespace JobOrchestrator.Intelligence.Features;
@@ -191,13 +192,16 @@ internal sealed class IntelligenceApi(ProviderSet set, IntelligenceDbContext db,
     public Task NoteAsync(AgentThread thread, string agent, string title, string? body, string? to = null, bool ok = true, CancellationToken ct = default) =>
         SayAsync(thread, agent, "note", title, body is null ? null : Excerpt(body, 20000), null, null, null, 0, ok, to, ct);
 
-    private async Task SayAsync(AgentThread t, string agent, string kind, string title, string? body, string? provider, string? model, string? effort, double seconds, bool ok, string? to, CancellationToken ct)
+    public Task NoteAsync(AgentThread thread, string agent, string title, string? body, object data, string? to = null, bool ok = true, CancellationToken ct = default) =>
+        SayAsync(thread, agent, "note", title, body is null ? null : Excerpt(body, 20000), null, null, null, 0, ok, to, ct, JsonSerializer.Serialize(data, JsonSerializerOptions.Web));
+
+    private async Task SayAsync(AgentThread t, string agent, string kind, string title, string? body, string? provider, string? model, string? effort, double seconds, bool ok, string? to, CancellationToken ct, string? data = null)
     {
         db.Messages.Add(new AgentMessage
         {
             ThreadId = t.Id, ThreadKind = Cut(t.Kind, 40), Subject = Cut(t.Subject, 200), At = Now, Agent = Cut(agent.Length > 0 ? agent : "Agente", 60), Kind = kind,
             ProviderId = provider, Model = model is null ? null : Cut(model, 80), Effort = effort is null ? null : Cut(effort, 20), Title = Cut(title, 300), Body = body,
-            To = to is null ? null : Cut(to, 60), Seconds = Math.Round(seconds, 2), Ok = ok
+            To = to is null ? null : Cut(to, 60), Seconds = Math.Round(seconds, 2), Ok = ok, Data = data
         });
         await db.SaveChangesAsync(ct);
     }
@@ -219,7 +223,7 @@ internal sealed class IntelligenceApi(ProviderSet set, IntelligenceDbContext db,
 
     public async Task<IReadOnlyList<AgentMessageView>> ThreadAsync(Guid id, CancellationToken ct) =>
         await db.Messages.AsNoTracking().Where(m => m.ThreadId == id).OrderBy(m => m.At).ThenBy(m => m.Id)
-            .Select(m => new AgentMessageView(m.Id, m.At, m.Agent, m.Kind, m.ProviderId, m.Model, m.Effort, m.Title, m.Body, m.Seconds, m.Ok, m.To)).ToListAsync(ct);
+            .Select(m => new AgentMessageView(m.Id, m.At, m.Agent, m.Kind, m.ProviderId, m.Model, m.Effort, m.Title, m.Body, m.Seconds, m.Ok, m.To, m.Data)).ToListAsync(ct);
 
     /// <summary>Nome do agente que respondeu, pelo provedor.</summary>
     private string Who(string providerId) => providers.FirstOrDefault(p => p.Id == providerId)?.Name ?? (providerId == "ollama" ? "Llama local" : providerId);

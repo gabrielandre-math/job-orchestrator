@@ -25,7 +25,7 @@
 
     <div class="cols">
       <section class="panel">
-        <header><h2>Coletor</h2><jo-badge [label]="st.installed ? 'Scrapy ' + (st.version ?? '') : 'não instalado'" [tone]="st.installed ? 'ok' : 'warn'" /></header>
+        <header><h2>Coletor</h2><jo-badge [label]="st.installed ? (st.version ?? 'Scrapy') : 'não instalado'" [tone]="st.installed ? 'ok' : 'warn'" /></header>
         <dl class="facts">
           <div><dt>Páginas por rodada</dt><dd class="num">{{ st.maxPages }}</dd></div>
           <div><dt>Tempo máximo</dt><dd class="num">{{ minutes(st.maxSeconds) }}</dd></div>

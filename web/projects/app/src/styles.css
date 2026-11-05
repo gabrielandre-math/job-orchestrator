@@ -1,6 +1,8 @@
 /* Base global: tipografia, tabelas, botões e campos. Componentes têm o próprio CSS. */
 *, *::before, *::after { box-sizing: border-box; }
 html, body { height: 100%; }
+/* Barras de rolagem finas, na cor da linha, que não roubam a atenção. */
+* { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
 body { margin: 0; background: var(--bg); color: var(--text); font: 400 13.5px/1.45 var(--font-ui); font-feature-settings: "cv11", "ss01"; -webkit-font-smoothing: antialiased; }
 a { color: inherit; }
 h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.01em; }
@@ -86,13 +88,10 @@ input[type="checkbox"]:focus, input[type="radio"]:focus { box-shadow: 0 0 0 3px 
 
 /* Troca de página e de filtro (View Transitions): esmaecido curto e cartões que deslizam para o lugar novo. */
 ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 180ms; animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1); }
-/* Troca de página: o conteúdo antigo sai subindo um pouco e o novo entra no lugar, cruzados, sem quadro vazio no meio. */
-html.route-vt::view-transition-old(root), html.route-vt::view-transition-new(root) { animation: none; }
-html.route-vt::view-transition-group(page) { animation: none; }
-html.route-vt::view-transition-old(page) { animation: page-out 160ms cubic-bezier(0.4, 0, 1, 1) both; }
-html.route-vt::view-transition-new(page) { animation: page-in 300ms cubic-bezier(0.2, 0.8, 0.2, 1) 40ms both; }
-@keyframes page-out { to { opacity: 0; transform: translateY(-4px); } }
-@keyframes page-in { from { opacity: 0; transform: translateY(8px); } }
+/* Troca de página: o conteúdo novo assenta no lugar (de 55% a 100% e 6 px de subida), sem quadro vazio. Anima os filhos da página,
+   não a página, para o deslocamento ficar dentro do respiro de baixo e nunca acender a barra de rolagem. */
+main > * > .page > * { animation: page-in 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@keyframes page-in { from { opacity: 0.55; transform: translateY(6px); } }
 /* A barra lateral e a superior ficam fixas na troca de página: só o conteúdo faz a transição. */
 ::view-transition-old(sidebar), ::view-transition-new(sidebar), ::view-transition-old(topbar), ::view-transition-new(topbar) { animation: none; }
 ::view-transition-group(sidebar), ::view-transition-group(topbar) { animation: none; }

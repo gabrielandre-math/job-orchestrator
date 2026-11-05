@@ -67,7 +67,7 @@ internal static class LiveStream
                 var m = await db.Messages.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
                 if (m is null) continue;
                 yield return new AgentMessageLive(m.ThreadId, m.ThreadKind, m.Subject,
-                    new AgentMessageView(m.Id, m.At, m.Agent, m.Kind, m.ProviderId, m.Model, m.Effort, m.Title, m.Body, m.Seconds, m.Ok, m.To));
+                    new AgentMessageView(m.Id, m.At, m.Agent, m.Kind, m.ProviderId, m.Model, m.Effort, m.Title, m.Body, m.Seconds, m.Ok, m.To, m.Data));
             }
         }
         finally

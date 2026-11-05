@@ -27,6 +27,12 @@
     }
   </nav>
   <footer>
+    @if (search.state()?.running || search.starting()) {
+      <a class="mini" routerLink="/busca" [attr.title]="'Busca em andamento'">
+        <span class="mini-row"><span class="pulse" aria-hidden="true"></span><span class="label">Buscando vagas</span><span class="label num faint">{{ search.state()?.sources?.length ? doneSources() + '/' + search.state()!.sources.length : '' }}</span></span>
+        <span class="mini-bar" aria-hidden="true"><span [style.width.%]="search.progress() * 100"></span></span>
+      </a>
+    }
     <span class="status" [class.on]="online()" [attr.title]="online() ? 'API no ar' : 'API fora do ar'"><span class="label">{{ online() ? 'API no ar' : 'API fora do ar' }}</span></span>
     <button class="theme" type="button" (click)="theme.toggle()" [attr.title]="theme.mode() === 'dark' ? 'Tema claro' : 'Tema escuro'">
       <jo-icon [name]="theme.mode() === 'dark' ? 'sun' : 'moon'" [size]="18" />

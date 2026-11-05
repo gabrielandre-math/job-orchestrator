@@ -51,6 +51,7 @@ internal sealed class AgentMessage
     public string? To { get; init; }
     public double Seconds { get; init; }
     public bool Ok { get; init; }
+    public string? Data { get; init; }
 }
 
 internal sealed class IntelligenceDbContext(DbContextOptions<IntelligenceDbContext> options) : DbContext(options)
@@ -102,6 +103,7 @@ internal sealed class IntelligenceDbContext(DbContextOptions<IntelligenceDbConte
         {
             e.ToTable("messages");
             e.HasKey(x => x.Id);
+            e.Property(x => x.Data).HasColumnType("jsonb");
             e.Property(x => x.ThreadKind).HasMaxLength(40);
             e.Property(x => x.Subject).HasMaxLength(200);
             e.Property(x => x.Agent).HasMaxLength(60);

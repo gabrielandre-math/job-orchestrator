@@ -1,0 +1,39 @@
+<section class="page">
+  <jo-page-hero title="Atenção" [scene]="['gate', 'you', 'guardian']" [stats]="stats()"
+    lead="O que só você resolve: aprovações, CAPTCHA, login, perguntas que o formulário fez pela primeira vez e envios que não deu para confirmar. Nada disso o sistema decide sozinho." />
+
+  @if (tasks.problem(); as p) { <p class="problem">{{ p.detail }}</p> }
+
+  @if (tasks.value()) {
+    @if (open().length === 0) {
+      <section class="calm panel">
+        <jo-iso name="checker" [size]="112" />
+        <div>
+          <h2>Tudo em dia</h2>
+          <p class="muted">Nenhuma pendência. Quando um formulário pedir CAPTCHA, login ou uma resposta nova, ou quando um envio precisar do seu ok, ele aparece aqui com o próximo passo.</p>
+          <a class="btn" routerLink="/fluxo"><jo-icon name="flow-arrow" [size]="14" />Ver o trabalho no fluxo</a>
+        </div>
+      </section>
+    } @else {
+      <div class="chips" role="group" aria-label="Filtrar por tipo">
+        <button type="button" class="chip" [attr.aria-pressed]="filter() === null" (click)="filter.set(null)">Todas<span class="n">{{ open().length }}</span></button>
+        @for (k of kinds(); track k.key) {
+          <button type="button" class="chip" [attr.aria-pressed]="filter() === k.key" (click)="pick(k.key)">{{ k.label }}<span class="n">{{ k.n }}</span></button>
+        }
+      </div>
+      <div class="list">
+        @for (t of rows(); track t.id) {
+          <a class="task" [routerLink]="['/candidaturas', t.applicationId]">
+            <jo-iso [name]="meta(t.kind).iso" [size]="54" />
+            <span class="what">
+              <span class="kind">{{ meta(t.kind).label }}<span class="faint"> · {{ ago(t.createdAt) }}</span></span>
+              <strong>{{ t.title }}</strong>
+              <span class="muted detail">{{ t.detail || meta(t.kind).hint }}</span>
+            </span>
+            <span class="go">{{ meta(t.kind).action }}<jo-icon name="arrow-right" [size]="14" /></span>
+          </a>
+        }
+      </div>
+    }
+  }
+</section>

@@ -8,6 +8,7 @@ import { modeLabel } from './core/format';
 import { Theme } from './core/theme';
 import { Live } from './core/live';
 import { Toasts } from './core/toast';
+import { SearchRun } from './core/search';
 
 interface NavItem { path: string; label: string; icon: string; exact?: boolean; count?: 'review' | 'attention'; }
 
@@ -24,6 +25,7 @@ export class App {
   protected readonly theme = inject(Theme);
   protected readonly live = inject(Live);
   protected readonly toasts = inject(Toasts);
+  protected readonly search = inject(SearchRun);
   private readonly router = inject(Router);
   private readonly navRef = viewChild<ElementRef<HTMLElement>>('navEl');
   /** O destaque da página atual desliza de um item para o outro em vez de pular. */
@@ -37,7 +39,7 @@ export class App {
   protected readonly nav: { group: string; items: NavItem[] }[] = [
     { group: 'Operação', items: [
       { path: '/', label: 'Visão geral', icon: 'house', exact: true },
-      { path: '/fluxo', label: 'Fluxo', icon: 'flow-arrow' },
+      { path: '/busca', label: 'Busca ao vivo', icon: 'magnifying-glass' },
       { path: '/atencao', label: 'Atenção', icon: 'bell-simple', count: 'attention' },
       { path: '/revisao', label: 'Revisão', icon: 'check-square-offset', count: 'review' },
     ] },
@@ -66,6 +68,8 @@ export class App {
     const active = this.navRef()?.nativeElement.querySelector<HTMLElement>('a.active');
     this.glide.set(active ? { top: active.offsetTop, height: active.offsetHeight } : { top: 0, height: 0 });
   }
+
+  protected doneSources() { return this.search.state()?.sources.filter((x) => x.state === 'done' || x.state === 'failed').length ?? 0; }
 
   protected count(kind?: NavItem['count']): number {
     const d = this.overview.value();

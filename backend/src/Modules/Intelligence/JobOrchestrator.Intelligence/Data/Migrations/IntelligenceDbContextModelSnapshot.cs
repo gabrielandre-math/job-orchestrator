@@ -100,6 +100,10 @@ namespace JobOrchestrator.Intelligence.Data.Migrations
                         .HasColumnType("text")
                         .HasColumnName("body");
 
+                    b.Property<string>("Data")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("data");
+
                     b.Property<string>("Effort")
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")

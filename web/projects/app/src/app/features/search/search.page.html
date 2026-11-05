@@ -1,0 +1,112 @@
+<section class="page">
+  <header class="stage" [class.running]="s()?.running || run.starting()">
+    <div class="text">
+      <p class="eyebrow"><span class="pulse" aria-hidden="true"></span>{{ s()?.running ? 'Buscando agora' : run.starting() ? 'Preparando a busca' : 'Busca ao vivo' }}</p>
+      @if (s(); as st) {
+        @if (st.running) {
+          <h1>{{ stations()[0].value }} de {{ st.sources.length }} fontes consultadas <span class="faint">· {{ elapsed() }}</span></h1>
+          <p class="lead">Cada fonte é consultada pela API oficial ou pelo coletor, uma de cada vez. Você pode sair desta tela: a busca continua e avisa quando terminar.</p>
+        } @else {
+          <h1>Busca concluída {{ ago(st.lastAt) }}</h1>
+          <p class="lead">{{ st.kept }} vagas da sua área em {{ st.sources.length }} fontes, {{ st.fresh ?? 0 }} novas e {{ st.shortlisted ?? 0 }} na fila, em {{ elapsed() }}. As rodadas seguem no horário da campanha; aqui você acompanha cada uma.</p>
+        }
+      } @else {
+        <h1>Nenhuma busca ainda</h1>
+        <p class="lead">Quando a campanha busca vagas, esta tela mostra cada etapa ao vivo: as fontes consultadas, o que é da sua área, o que é novo, a nota e o que vai para a fila.</p>
+      }
+      <div class="actions">
+        <button type="button" class="btn primary" (click)="run.start()" [disabled]="s()?.running || run.starting()">
+          @if (s()?.running || run.starting()) { <span class="spinner sm" aria-hidden="true"></span>Buscando } @else { <jo-icon name="magnifying-glass" [size]="14" />Buscar agora }
+        </button>
+        <a class="btn" routerLink="/vagas"><jo-icon name="briefcase" [size]="14" />Ver as vagas</a>
+        <a class="btn ghost" routerLink="/campanha"><jo-icon name="sliders-horizontal" [size]="14" />Ajustar a campanha</a>
+      </div>
+    </div>
+    <div class="bar" role="progressbar" aria-label="Progresso da busca" [attr.aria-valuenow]="Math.round(run.progress() * 100)" aria-valuemin="0" aria-valuemax="100">
+      <span [style.width.%]="run.progress() * 100"></span>
+    </div>
+  </header>
+
+  <section class="panel pipeline" aria-label="Etapas da busca">
+    <ol class="line">
+      @for (st of stations(); track st.key; let i = $index; let last = $last) {
+        <li [class]="'station ' + st.state">
+          <div class="art">
+            <jo-iso [name]="st.iso" [size]="88" />
+            <span class="badge" aria-hidden="true"><jo-icon name="check" [size]="11" /></span>
+          </div>
+          <strong>{{ st.label }}</strong>
+          <span class="value num">@if (st.value !== null) { <jo-count [value]="st.value" /> } @else { <span class="faint">—</span> }</span>
+          <span class="sub">{{ st.sub }}</span>
+        </li>
+        @if (!last) { <li class="belt" [class.on]="flowing(i)" [class.lit]="st.state === 'done'" aria-hidden="true"><span class="track"></span></li> }
+      }
+    </ol>
+  </section>
+
+  <div class="cols">
+    <section class="panel">
+      <header><h2>Fontes</h2><span class="faint small">@if (s(); as st) { {{ st.sources.length }} nesta rodada }</span></header>
+      @if (s(); as st) {
+        <ul class="sources">
+          @for (x of st.sources; track x.source) {
+            <li [class]="'src ' + x.state">
+              <span class="logo">
+                <jo-company [name]="x.company ?? x.platformName" [domain]="x.companyDomain ?? x.platformDomain" [size]="28" />
+                @if (x.kind === 'ats') { <span class="plat" [title]="x.platformName"><jo-company [name]="x.platformName" [domain]="x.platformDomain" [size]="14" /></span> }
+              </span>
+              <span class="what"><strong>{{ x.label }}</strong><span class="faint small">{{ sourceText(x) }}</span></span>
+              <span class="state" aria-hidden="true">
+                @switch (x.state) {
+                  @case ('working') { <span class="spinner sm"></span> }
+                  @case ('done') { <jo-icon name="check" [size]="14" /> }
+                  @case ('failed') { <jo-icon name="warning" [size]="14" /> }
+                  @default { <span class="wait"></span> }
+                }
+              </span>
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="empty faint">As fontes da campanha aparecem aqui quando a busca começa.</p>
+      }
+    </section>
+
+    <section class="panel">
+      <header><h2>O que está acontecendo</h2><span class="faint small">em frases, a mais nova primeiro</span></header>
+      <ol class="story">
+        @for (m of narration(); track m.id; let first = $first) {
+          <li [class.now]="first && s()?.running" [class.bad]="!m.ok">
+            <jo-iso [name]="icons[m.agent] ?? 'router'" [size]="30" />
+            <span class="what"><span class="who">{{ m.agent }}<span class="faint"> · {{ time(m.at) }}</span></span><span class="title">{{ m.title }}</span></span>
+          </li>
+        } @empty {
+          <li class="empty faint">Sem conversa ainda.</li>
+        }
+      </ol>
+    </section>
+  </div>
+
+  @if (s(); as st) {
+    @if (!st.running && st.stage === 'done') {
+      <div class="cols">
+        <section class="panel">
+          <header><h2>Notas desta rodada</h2><span class="faint small">{{ st.scored }} vagas avaliadas</span></header>
+          <div class="chart"><jo-columns [data]="bands()" [cutAt]="st.cut / 10" [cutLabel]="'corte ' + st.cut" /></div>
+        </section>
+        <section class="panel">
+          <header><h2>Entraram na fila</h2><span class="faint small">{{ st.shortlisted }} nesta rodada</span></header>
+          @if (st.top.length > 0) {
+            <ul class="top">
+              @for (t of st.top; track t.id) {
+                <li><a [routerLink]="['/vagas']" [queryParams]="{ abrir: t.id }"><jo-company [name]="t.company" [domain]="t.domain" [size]="28" /><span class="what"><strong>{{ t.title }}</strong><span class="faint small">{{ t.company }}</span></span><span class="score num">{{ t.score }}</span></a></li>
+              }
+            </ul>
+          } @else {
+            <div class="calm"><jo-iso name="checker" [size]="64" /><p class="muted">Nada novo acima do corte desta vez. As vagas que já passaram continuam na fila e a próxima rodada procura de novo.</p></div>
+          }
+        </section>
+      </div>
+    }
+  }
+</section>
