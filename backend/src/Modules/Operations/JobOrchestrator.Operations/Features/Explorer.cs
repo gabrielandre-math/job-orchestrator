@@ -329,26 +329,42 @@ internal sealed class Continuous(Explorer explorer, IServiceScopeFactory scopes,
     protected override async Task ExecuteAsync(CancellationToken stop)
     {
         await Task.Delay(TimeSpan.FromSeconds(45), stop);
-        var lastExplore = Explorer.Read<ExploreSummary>(Explorer.LastFile)?.At ?? DateTime.MinValue;
+        // Dois laços independentes: um ciclo longo do Explorador nunca atrasa a rodada da campanha.
+        await Task.WhenAll(SearchAsync(stop), ExploreAsync(stop));
+    }
+
+    private async Task SearchAsync(CancellationToken stop)
+    {
         while (!stop.IsCancellationRequested)
         {
             try
             {
-                await using (var scope = scopes.CreateAsyncScope())
+                await using var scope = scopes.CreateAsyncScope();
+                var every = TimeSpan.FromMinutes(Math.Clamp(config.GetValue("Search:IntervalMinutes", 60), 30, 1440));
+                var asked = await scope.ServiceProvider.GetRequiredService<ICampaignRuns>().RequestDueAsync(every, "continuous", stop);
+                if (asked > 0) log.LogInformation("Continuous search requested {Count} runs", asked);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException) { log.LogWarning("Continuous search failed: {Error}", ex.Message); }
+            await Task.Delay(TimeSpan.FromMinutes(1), stop);
+        }
+    }
+
+    private async Task ExploreAsync(CancellationToken stop)
+    {
+        var last = Explorer.Read<ExploreSummary>(Explorer.LastFile)?.At ?? DateTime.MinValue;
+        while (!stop.IsCancellationRequested)
+        {
+            try
+            {
+                var every = TimeSpan.FromMinutes(Math.Clamp(config.GetValue("Explorer:IntervalMinutes", 10), 5, 1440));
+                if (config.GetValue("Explorer:Enabled", true) && DateTime.UtcNow - last >= every)
                 {
-                    var every = TimeSpan.FromMinutes(Math.Clamp(config.GetValue("Search:IntervalMinutes", 60), 30, 1440));
-                    var asked = await scope.ServiceProvider.GetRequiredService<ICampaignRuns>().RequestDueAsync(every, "continuous", stop);
-                    if (asked > 0) log.LogInformation("Continuous search requested {Count} runs", asked);
-                }
-                var exploreEvery = TimeSpan.FromMinutes(Math.Clamp(config.GetValue("Explorer:IntervalMinutes", 10), 5, 1440));
-                if (config.GetValue("Explorer:Enabled", true) && DateTime.UtcNow - lastExplore >= exploreEvery)
-                {
-                    lastExplore = DateTime.UtcNow;
+                    last = DateTime.UtcNow;
                     var s = await explorer.CycleAsync(stop);
                     log.LogInformation("Explorer: {Tested} tested, {Added} added, {Frontier} in the queue", s.Tested, s.Added.Count, s.Frontier);
                 }
             }
-            catch (Exception ex) when (ex is not OperationCanceledException) { log.LogWarning("Continuous loop failed: {Error}", ex.Message); }
+            catch (Exception ex) when (ex is not OperationCanceledException) { log.LogWarning("Explorer cycle failed: {Error}", ex.Message); }
             await Task.Delay(TimeSpan.FromMinutes(1), stop);
         }
     }
