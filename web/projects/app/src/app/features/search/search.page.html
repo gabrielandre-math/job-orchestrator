@@ -109,4 +109,18 @@
       </div>
     }
   }
+
+  @if ((reports.value() ?? []).length > 0) {
+    <section class="panel">
+      <header><h2>Resumos da noite</h2><span class="faint small">gerados às 7h45 pelo timer, ou pela noite simulada</span></header>
+      <ul class="reports">
+        @for (r of reports.value() ?? []; track r.name) {
+          <li [class.open]="opened()?.name === r.name">
+            <button type="button" (click)="openReport(r.name)"><jo-icon [name]="opened()?.name === r.name ? 'caret-down' : 'caret-right'" [size]="14" /><strong>{{ reportDate(r.name) }}</strong><span class="faint small">{{ r.summary }}</span></button>
+            @if (opened()?.name === r.name) { <div class="md" [innerHTML]="opened()!.html"></div> }
+          </li>
+        }
+      </ul>
+    </section>
+  }
 </section>

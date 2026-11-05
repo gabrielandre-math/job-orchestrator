@@ -25,6 +25,12 @@ public sealed record RunRequestedV1(Guid RunId, Guid CampaignId, DateTime Reques
 }
 
 /// <summary>Contrato público do módulo Campaigns.</summary>
+/// <summary>Pede rodadas sem o botão: o timer da noite pede uma para cada campanha ligada e com fontes.</summary>
+public interface ICampaignRuns
+{
+    Task<int> RequestEnabledAsync(string trigger, CancellationToken ct);
+}
+
 public interface ICampaignsApi
 {
     Task<CampaignSettings?> GetAsync(Guid id, CancellationToken ct);

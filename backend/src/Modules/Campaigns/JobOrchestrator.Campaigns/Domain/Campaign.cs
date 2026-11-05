@@ -67,6 +67,9 @@ internal sealed class Campaign : AggregateRoot
         UpdatedAt = now;
     }
 
+    /// <summary>Busca da noite: o timer só pede rodada de campanha ligada.</summary>
+    public void Schedule(bool enabled, DateTime now) { Enabled = enabled; UpdatedAt = now; }
+
     public void Target(IEnumerable<string> titles, DateTime now)
     {
         Titles = [.. titles.Select(t => t.Trim()).Where(t => t.Length > 1).Distinct(StringComparer.OrdinalIgnoreCase).Take(8)];

@@ -1,11 +1,14 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ChartRow, Columns } from '@jo/ui/charts';
 import { Company } from '@jo/ui/company';
 import { Count } from '@jo/ui/count';
 import { Icon } from '@jo/ui/icon';
 import { Iso } from '@jo/ui/iso';
+import { get } from '../../core/api';
 import { ago } from '../../core/format';
+import { markdown } from '../../core/markdown';
+import { query } from '../../core/query';
 import { AGENT_ICON } from '../../core/live';
 import { SearchRun } from '../../core/search';
 
@@ -28,6 +31,18 @@ export class SearchPage {
   protected readonly s = this.run.state;
   protected readonly icons = AGENT_ICON;
   protected readonly ago = ago;
+
+  protected readonly reports = query<{ name: string; at: string; summary: string }[]>(() => '/night/reports', 60000);
+  protected readonly opened = signal<{ name: string; html: string } | null>(null);
+  protected async openReport(name: string) {
+    if (this.opened()?.name === name) { this.opened.set(null); return; }
+    const r = await get<{ name: string; markdown: string }>(`/night/reports/${name}`);
+    this.opened.set({ name, html: markdown(r.markdown.split('\n').slice(1).join('\n')) });
+  }
+  protected reportDate(name: string) {
+    const [y, m, d, hm] = name.split('-');
+    return `${d}/${m}/${y} às ${hm?.slice(0, 2)}h${hm?.slice(2)}`;
+  }
 
   constructor() { void this.run.load(); }
 

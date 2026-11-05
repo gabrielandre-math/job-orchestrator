@@ -1,0 +1,20 @@
+# Worker: rodadas, currículos, formulários, e-mail e limpeza. Parar é seguro: a intenção de envio é gravada antes do clique e a
+# próxima subida reconcilia o que ficou incerto, nunca reenvia.
+[Unit]
+Description=Job Orchestrator: Worker
+After=job-orchestrator-api.service
+Wants=job-orchestrator-api.service
+
+[Service]
+Slice=jobs.slice
+WorkingDirectory=%h/.local/opt/job-orchestrator/worker
+ExecStart=/usr/bin/dotnet %h/.local/opt/job-orchestrator/worker/JobOrchestrator.Worker.dll
+Environment=DOTNET_ENVIRONMENT=Production DOTNET_SYSTEM_NET_DISABLEIPV6=1 Scraper__Project=%h/.local/opt/job-orchestrator/scraper
+TimeoutStopSec=60
+KillSignal=SIGTERM
+Restart=on-failure
+RestartSec=10
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=default.target

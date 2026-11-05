@@ -72,6 +72,8 @@ internal sealed class IntelligenceApi(ProviderSet set, IntelligenceDbContext db,
         if (config.GetValue("Llm:Disabled", false)) return new LlmResult(false, null, "nenhum", "", "", "IA desligada nesta instalação.", 0);
         var spec = LlmTasks.Find(request.Task);
         var r = config[$"Llm:Tasks:{request.Task}:Rung"] is { } rung && Enum.TryParse<Rung>(rung, out var forced) ? request with { Rung = forced } : request;
+        // Modo privado (Configurações): nada vai para a nuvem; o pedido desce para o modelo local equivalente.
+        if (config.GetValue("Privacy:LocalOnly", false) && r.Rung is not (Rung.Local or Rung.LocalStrong)) r = r with { Rung = r.Rung >= Rung.Medium ? Rung.LocalStrong : Rung.Local };
         var local = r.Rung is Rung.Local or Rung.LocalStrong;
 
         if (r.Thread is { } thread)

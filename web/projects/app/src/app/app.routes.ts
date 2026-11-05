@@ -19,6 +19,7 @@ export const routes: Routes = [
   { path: 'adapters', redirectTo: 'fontes/adapters' },
   { path: 'salvar', title: 'Salvar vaga', loadComponent: () => import('./features/capture/capture.page').then((m) => m.CapturePage) },
   { path: 'provedores', title: 'Provedores de IA', loadComponent: () => import('./features/providers/providers.page').then((m) => m.ProvidersPage) },
+  { path: 'configuracoes', title: 'Configurações', loadComponent: () => import('./features/settings/settings.page').then((m) => m.SettingsPage) },
   { path: 'campanha', title: 'Campanha', loadComponent: () => import('./features/campaign/campaign.page').then((m) => m.CampaignPage) },
   { path: '**', redirectTo: '' },
 ];

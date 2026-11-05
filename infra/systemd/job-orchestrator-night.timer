@@ -1,0 +1,13 @@
+# Três rodadas na madrugada, espaçadas, dentro da janela 23h às 8h. Persistent: perdeu a hora (PC desligado), roda ao ligar.
+[Unit]
+Description=Job Orchestrator: rodadas da noite
+
+[Timer]
+OnCalendar=*-*-* 23:05:00
+OnCalendar=*-*-* 01:35:00
+OnCalendar=*-*-* 04:05:00
+RandomizedDelaySec=300
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,9 @@
+[Unit]
+Description=Job Orchestrator: resumo no fim da janela
+
+[Timer]
+OnCalendar=*-*-* 07:45:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

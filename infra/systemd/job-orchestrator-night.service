@@ -1,0 +1,9 @@
+# Uma rodada da busca da noite para cada campanha ligada (Configurações, Busca da noite).
+[Unit]
+Description=Job Orchestrator: rodada da noite
+After=job-orchestrator-api.service
+
+[Service]
+Type=oneshot
+Slice=jobs.slice
+ExecStart=/usr/bin/curl -fsS -X POST http://127.0.0.1:7410/api/night/run

@@ -1,0 +1,9 @@
+# Fim da janela: o resumo da noite em Markdown e JSON na pasta de dados, com aviso na área de trabalho.
+[Unit]
+Description=Job Orchestrator: resumo da noite
+After=job-orchestrator-api.service
+
+[Service]
+Type=oneshot
+Slice=jobs.slice
+ExecStart=/usr/bin/curl -fsS -X POST http://127.0.0.1:7410/api/night/report

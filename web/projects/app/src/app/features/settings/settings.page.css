@@ -1,0 +1,14 @@
+.small { font-size: 12px; }
+.rows { display: grid; }
+.row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.row:last-child { border-bottom: 0; }
+label.row { grid-template-columns: auto minmax(0, 1fr); cursor: pointer; }
+.row p { margin: 3px 0 0; font-size: 12.5px; line-height: 1.5; max-width: 72ch; }
+.row select { width: 140px; }
+code { display: inline-block; margin-top: 8px; padding: 6px 10px; border-radius: 4px; background: var(--bg); border: 1px solid var(--line); font-size: 12.5px; }
+.btn.armed { color: var(--danger); background: var(--danger-weak); }
+.danger { border-color: color-mix(in oklch, var(--danger) 30%, var(--line)); }
+.danger input { margin-top: 10px; max-width: 260px; }
+.danger-btn:not(:disabled) { color: var(--danger); border-color: color-mix(in oklch, var(--danger) 45%, var(--line-strong)); }
+.danger-btn:not(:disabled):hover { background: var(--danger-weak); }
+@media (max-width: 760px) { .row { grid-template-columns: 1fr; } }

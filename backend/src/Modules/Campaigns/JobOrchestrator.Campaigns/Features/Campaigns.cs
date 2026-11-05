@@ -34,7 +34,7 @@ internal sealed class ListCampaignsHandler(IReadDb<CampaignsDbContext> db) : IQu
 }
 
 /// <summary>Comando: muda critérios, limites e modo da campanha.</summary>
-internal sealed record ConfigureCampaignCommand(Guid Id, string Mode, int MinFitScore, int MaxSubmissionsPerDay, string[] Technologies, string[] Locations, string[] Sources, string? Name = null, string[]? Titles = null)
+internal sealed record ConfigureCampaignCommand(Guid Id, string Mode, int MinFitScore, int MaxSubmissionsPerDay, string[] Technologies, string[] Locations, string[] Sources, string? Name = null, string[]? Titles = null, bool? Night = null)
     : ICommand<Done>, ICampaignsCommand;
 
 internal sealed class ConfigureCampaignValidator : AbstractValidator<ConfigureCampaignCommand>
@@ -59,6 +59,7 @@ internal sealed class ConfigureCampaignHandler(CampaignsDbContext db, TimeProvid
         campaign.Configure(mode, c.MinFitScore, c.MaxSubmissionsPerDay, c.Technologies, c.Locations, c.Sources, time.GetUtcNow().UtcDateTime);
         if (c.Name is { Length: > 0 } name) campaign.Rename(name);
         if (c.Titles is { } titles) campaign.Target(titles, time.GetUtcNow().UtcDateTime);
+        if (c.Night is { } night) campaign.Schedule(night, time.GetUtcNow().UtcDateTime);
         return new Done();
     }
 }

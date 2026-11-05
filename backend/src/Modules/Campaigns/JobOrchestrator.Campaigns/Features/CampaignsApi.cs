@@ -28,3 +28,25 @@ internal sealed record AuthorizationRow
     public int MinScore { get; init; }
     public string[] Adapters { get; init; } = [];
 }
+
+/// <summary>Rodada pedida pelo timer da noite: mesmo caminho do botão (registro da rodada e evento no outbox, numa transação).</summary>
+internal sealed class CampaignRuns(CampaignsDbContext db, TimeProvider time) : ICampaignRuns
+{
+    public async Task<int> RequestEnabledAsync(string trigger, CancellationToken ct)
+    {
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        var now = time.GetUtcNow().UtcDateTime;
+        var campaigns = await db.Campaigns.Where(c => c.Enabled).ToListAsync(ct);
+        var count = 0;
+        foreach (var campaign in campaigns.Where(c => c.Sources.Count > 0))
+        {
+            var run = campaign.RequestRun(trigger, now);
+            db.Runs.Add(run);
+            db.Publish(RunRequestedV1.EventType, new RunRequestedV1(run.Id, campaign.Id, now), now);
+            count++;
+        }
+        await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
+        return count;
+    }
+}

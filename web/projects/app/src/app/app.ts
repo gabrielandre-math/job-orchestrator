@@ -56,6 +56,7 @@ export class App {
       { path: '/fontes', label: 'Fontes', icon: 'plugs-connected' },
       { path: '/provedores', label: 'Provedores de IA', icon: 'cpu' },
       { path: '/campanha', label: 'Campanha', icon: 'sliders-horizontal' },
+      { path: '/configuracoes', label: 'Configurações', icon: 'gear-six' },
     ] },
   ];
 

@@ -1,0 +1,8 @@
+# Backup do banco (pg_dump comprimido) na pasta de dados, guardando os últimos 14.
+[Unit]
+Description=Job Orchestrator: backup do banco
+
+[Service]
+Type=oneshot
+Slice=jobs.slice
+ExecStart=%h/.local/opt/job-orchestrator/backup.sh

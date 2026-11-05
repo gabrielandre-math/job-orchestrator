@@ -12,6 +12,7 @@ public static class CampaignsModule
         s.AddModuleDatabase<CampaignsDbContext>(config, "Campaigns");
         s.AddTransient(typeof(IPipelineBehavior<,>), typeof(CampaignsTransaction<,>));
         s.AddScoped<ICampaignsApi, Features.CampaignsApi>();
+        s.AddScoped<ICampaignRuns, Features.CampaignRuns>();
         return s;
     }
 

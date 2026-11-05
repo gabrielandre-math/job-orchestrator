@@ -1,0 +1,9 @@
+[Unit]
+Description=Job Orchestrator: backup diário
+
+[Timer]
+OnCalendar=*-*-* 07:55:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

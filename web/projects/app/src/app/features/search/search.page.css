@@ -85,3 +85,11 @@ h1 { font-size: 22px; font-weight: 650; letter-spacing: -0.015em; }
 }
 @keyframes belt-v { to { background-position: 0 13px; } }
 @media (max-width: 760px) { .stage { padding: 16px 16px 0; } .bar { margin: 8px -16px 0; } }
+
+.reports { list-style: none; margin: 0; padding: 4px 0; display: grid; }
+.reports li > button { width: 100%; display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: 10px; align-items: center; padding: 9px 16px; border: 0; background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.reports li > button:hover { background: var(--surface-2); }
+.reports li > button .small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.reports .md { padding: 4px 16px 14px 40px; line-height: 1.6; animation: say 0.3s ease-out; }
+.reports .md :is(p, ul) { margin: 0 0 8px; }
+.reports .md p.h { font-weight: 650; margin-top: 10px; }

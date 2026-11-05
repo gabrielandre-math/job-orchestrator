@@ -1,0 +1,18 @@
+# API e painel em 127.0.0.1:7410. O Postgres sobe junto (contêiner do compose).
+[Unit]
+Description=Job Orchestrator: API e painel
+After=network-online.target
+
+[Service]
+Slice=jobs.slice
+WorkingDirectory=%h/.local/opt/job-orchestrator/api
+ExecStartPre=/usr/bin/docker compose -f %h/.local/opt/job-orchestrator/compose.yaml up -d --wait postgres
+ExecStart=/usr/bin/dotnet %h/.local/opt/job-orchestrator/api/JobOrchestrator.Api.dll
+Environment=DOTNET_ENVIRONMENT=Production ASPNETCORE_URLS=http://127.0.0.1:7410 DOTNET_SYSTEM_NET_DISABLEIPV6=1
+Environment=Web__Root=%h/.local/opt/job-orchestrator/web Scraper__Project=%h/.local/opt/job-orchestrator/scraper
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=default.target

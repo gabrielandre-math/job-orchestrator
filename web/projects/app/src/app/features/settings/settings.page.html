@@ -1,0 +1,60 @@
+<section class="page">
+  <jo-page-hero title="Configurações e segurança" [scene]="['guardian', 'gate', 'identity']"
+    lead="A busca da noite, o que pode sair para a nuvem, por quanto tempo os registros ficam e os atalhos de segurança: exportar, revogar e apagar." />
+
+  <section class="panel">
+    <header><h2>Busca da noite</h2><span class="faint small">rodadas às 23h05, 1h35 e 4h05; resumo às 7h45; backup às 7h55</span></header>
+    <div class="rows">
+      <label class="row">
+        <input type="checkbox" class="switch" [checked]="campaign()?.enabled" (change)="night($any($event.target).checked)" [disabled]="!campaign() || nightSaving.running()" />
+        <span><strong>Rodar a campanha durante a noite</strong><p class="muted">O timer do systemd pede as rodadas; o modo da campanha continua valendo (só descobrir, só preparar, revisão sua ou automático autorizado).</p></span>
+      </label>
+      <div class="row install">
+        <span><strong>Serviços de usuário</strong><p class="muted">Para a noite funcionar com o PC ligado e você longe, instale e ligue os serviços e timers (API, Worker, rodadas, resumo e backup):</p>
+          <code class="mono">{{ install }}</code></span>
+        <button type="button" class="btn" (click)="copy()"><jo-icon [name]="copied() ? 'check' : 'copy'" [size]="14" />{{ copied() ? 'Copiado' : 'Copiar' }}</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <header><h2>Privacidade</h2></header>
+    <div class="rows">
+      <label class="row">
+        <input type="checkbox" class="switch" [checked]="settings.value()?.localOnly" (change)="privacy($any($event.target).checked)" [disabled]="saving.running()" />
+        <span><strong>Modo privado: só o modelo local</strong><p class="muted">Nada vai para Claude, ChatGPT ou API: cada pedido desce para o Llama na sua placa de vídeo. Os textos ficam mais simples e mais lentos.</p></span>
+      </label>
+      <div class="row">
+        <span><strong>Guardar registros por</strong><p class="muted">Conversas dos agentes, chamadas de IA e cópias das vagas mais antigas que isso saem sozinhas. Candidaturas e provas ficam.</p></span>
+        <select [value]="settings.value()?.retentionDays ?? 90" (change)="retention(+$any($event.target).value)">
+          @for (d of [30, 90, 180, 365]; track d) { <option [value]="d">{{ d }} dias</option> }
+        </select>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <header><h2>Seus dados</h2></header>
+    <div class="rows">
+      <div class="row">
+        <span><strong>Exportar tudo em JSON</strong><p class="muted">Perfil, fatos, campanha, vagas, candidaturas com o histórico e os e-mails. O arquivo é seu.</p></span>
+        <a class="btn" href="/api/settings/export" download><jo-icon name="download-simple" [size]="14" />Exportar</a>
+      </div>
+      <div class="row">
+        <span><strong>Revogar tudo</strong><p class="muted">Desliga as autorizações de envio automático e o automático do e-mail. A campanha volta para a revisão sua.</p></span>
+        <button type="button" class="btn" [class.armed]="arming()" (click)="revoke()" [disabled]="revoking.running()">{{ arming() ? 'Confirmar' : 'Revogar' }}</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel danger">
+    <header><h2>Apagar tudo</h2></header>
+    <div class="rows">
+      <div class="row">
+        <span><strong>Perfil, documentos, vagas, candidaturas, e-mails, conversas e relatórios</strong><p class="muted">Não tem volta. Contas de IA, a campanha e as configurações ficam. Digite <span class="mono">{{ phrase }}</span> para liberar o botão.</p>
+          <input class="mono" [value]="typed()" (input)="typed.set($any($event.target).value)" [placeholder]="phrase" aria-label="Frase de confirmação" /></span>
+        <button type="button" class="btn danger-btn" (click)="wipe()" [disabled]="typed().trim() !== phrase || wiping.running()"><jo-icon name="trash" [size]="14" />Apagar tudo</button>
+      </div>
+    </div>
+  </section>
+</section>
