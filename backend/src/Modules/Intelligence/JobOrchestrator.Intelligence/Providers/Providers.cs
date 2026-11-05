@@ -133,23 +133,28 @@ internal static class Reserves
     private static string Until(UsageWindow w) => w.ResetsAt is { } r ? $", volta às {r.ToLocalTime():HH:mm} de {r.ToLocalTime():dd/MM}" : "";
 }
 
-/// <summary>Codex pela assinatura do ChatGPT. Esforço sempre explícito: o padrão do seu config.toml é xhigh.</summary>
-internal sealed class CodexCli(IConfiguration config) : IProvider
+/// <summary>
+/// Codex pela assinatura do ChatGPT. Uma instância por conta: a padrão (~/.codex) e as outras com CODEX_HOME próprio.
+/// Esforço sempre explícito: o padrão do seu config.toml é xhigh.
+/// </summary>
+internal sealed class CodexCli(string id, string name, string? home, IConfiguration config) : IProvider
 {
-    public string Id => "codex";
-    public string Name => "ChatGPT (Codex)";
+    public string Id => id;
+    public string Name => name;
     public string Family => "openai";
+    private Dictionary<string, string>? Env => home is null ? null : new() { ["CODEX_HOME"] = home };
+    private string Home => home ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".codex");
 
     public async Task<ProviderView> ProbeAsync(int order, LlmResult? lastTest, CancellationToken ct)
     {
         var bin = CliRunner.Find("codex");
         if (bin is null) return new(Id, Name, Family, order, false, null, "CLI não instalado", null, [], false, "missing", "Instale o Codex CLI.", lastTest);
-        var version = (await CliRunner.RunAsync(bin, ["--version"], null, TimeSpan.FromSeconds(10), null, ct)).Stdout.Trim();
-        var status = await CliRunner.RunAsync(bin, ["login", "status"], null, TimeSpan.FromSeconds(15), null, ct);
+        var version = (await CliRunner.RunAsync(bin, ["--version"], null, TimeSpan.FromSeconds(10), Env, ct)).Stdout.Trim();
+        var status = await CliRunner.RunAsync(bin, ["login", "status"], null, TimeSpan.FromSeconds(15), Env, ct);
         var text = (status.Stdout + status.Stderr).Trim();
         var chatgpt = text.Contains("ChatGPT", StringComparison.OrdinalIgnoreCase);
         var apiKey = text.Contains("API key", StringComparison.OrdinalIgnoreCase);
-        var (raw, plan) = RolloutUsage();
+        var (raw, plan) = RolloutUsage(Home);
         IReadOnlyList<UsageWindow> usage = [.. raw.Select(u => Reserves.Fresh(u)!)];
         if (apiKey) return new(Id, Name, Family, order, true, version, "API key", plan, usage, false, "blocked", "Login por API key detectado: bloqueado para não gerar cobrança.", lastTest);
         var reserve = Reserves.Check(Id, usage, config);
@@ -173,7 +178,7 @@ internal sealed class CodexCli(IConfiguration config) : IProvider
             if (model is { Length: > 0 }) args.InsertRange(1, ["-m", model]);
             args.Add("-");
             var clock = Stopwatch.StartNew();
-            var run = await CliRunner.RunAsync(CliRunner.Find("codex") ?? "codex", args, $"{r.System}\n\n{r.Prompt}", TimeSpan.FromSeconds(r.TimeoutSeconds), null, ct);
+            var run = await CliRunner.RunAsync(CliRunner.Find("codex") ?? "codex", args, $"{r.System}\n\n{r.Prompt}", TimeSpan.FromSeconds(r.TimeoutSeconds), Env, ct);
             var seconds = clock.Elapsed.TotalSeconds;
             var used = model ?? "padrão do CLI";
             if (run.TimedOut) return new LlmResult(false, null, Id, used, effort, "tempo esgotado", seconds);
@@ -189,9 +194,9 @@ internal sealed class CodexCli(IConfiguration config) : IProvider
     }
 
     /// <summary>Uso real nos eventos rate_limits do arquivo de sessão mais recente do Codex (só leitura).</summary>
-    private static (IReadOnlyList<UsageWindow>, string?) RolloutUsage()
+    private static (IReadOnlyList<UsageWindow>, string?) RolloutUsage(string home)
     {
-        var root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".codex", "sessions");
+        var root = Path.Combine(home, "sessions");
         if (!Directory.Exists(root)) return ([], null);
         var latest = new DirectoryInfo(root).EnumerateFiles("*.jsonl", SearchOption.AllDirectories).OrderByDescending(f => f.LastWriteTimeUtc).FirstOrDefault();
         if (latest is null) return ([], null);

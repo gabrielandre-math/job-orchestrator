@@ -38,9 +38,11 @@ public sealed record AgentMessageView(Guid Id, DateTime At, string Agent, string
 /// A resposta, com quem fez, qual modelo, qual esforço e quanto tempo levou.
 /// Degraded: o modelo local respondeu no lugar da nuvem. Cached: mesma tarefa e mesma entrada, reaproveitada.
 /// </summary>
-public sealed record LlmResult(bool Ok, string? Json, string ProviderId, string Model, string Effort, string? Error, double Seconds, bool Degraded = false, bool Cached = false)
+public sealed record LlmResult(bool Ok, string? Json, string ProviderId, string Model, string Effort, string? Error, double Seconds, bool Degraded = false, bool Cached = false,
+    int Tokens = 0, string? ProviderFamily = null)
 {
-    public string Family => ProviderId switch { "codex" => "openai", "ollama" => "local", _ when ProviderId.StartsWith("claude", StringComparison.Ordinal) => "anthropic", _ => "" };
+    /// <summary>Família do modelo que respondeu: o revisor precisa ser de outra.</summary>
+    public string Family => ProviderFamily ?? ProviderId switch { "ollama" => "local", _ when ProviderId.StartsWith("claude", StringComparison.Ordinal) => "anthropic", _ when ProviderId.StartsWith("codex", StringComparison.Ordinal) => "openai", _ => "" };
 }
 
 /// <summary>Uma tarefa do catálogo: degrau padrão, se aceita rascunho local com a nuvem fora e o teto de chamadas na nuvem por dia (0 = só local).</summary>

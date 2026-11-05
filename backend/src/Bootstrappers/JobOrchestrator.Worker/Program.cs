@@ -11,6 +11,7 @@ using JobOrchestrator.Profile;
 // Worker: outbox, consumidores entre módulos, fila de etapas e navegador. Roda sob systemd --user.
 var builder = Host.CreateApplicationBuilder(args);
 var config = builder.Configuration;
+config.AddJsonFile(Path.Combine(AppPaths.Config, "settings.json"), optional: true, reloadOnChange: true);
 var modules = new[] { CampaignsModule.Assembly, JobsModule.Assembly, ApplicationsModule.Assembly, AutomationModule.Assembly, IntelligenceModule.Assembly, ProfileModule.Assembly, MaterialsModule.Assembly };
 builder.Services.AddSystemd();
 builder.Services.AddJoBlocks(modules)

@@ -75,3 +75,16 @@ export async function upload<T>(path: string, file: File): Promise<T> {
   if (!r.ok) throw await toProblem(r);
   return r.json() as Promise<T>;
 }
+
+export interface Account { id: string; kind: string; name: string; position: number; enabled: boolean; ownFolder: boolean; baseUrl: string | null; models: Record<string, string>; monthlyTokens: number | null; tokensThisMonth: number; }
+export interface LoginState { running: boolean; url: string | null; ok: boolean | null; output: string | null; }
+export interface Gpu { vendor: string; name: string; totalMb: number; usedMb: number; freeMb: number; }
+export interface Hardware { gpus: Gpu[]; cpu: string; threads: number; avx2: boolean; avx512: boolean; ramTotalMb: number; ramFreeMb: number; diskFreeGb: number; ollamaInstalled: boolean; ollamaVersion: string | null; ollamaRunning: boolean; }
+export interface CatalogModel { name: string; family: string; diskGb: number; vramGb: number; score: number | null; speed: string; note: string; installed: boolean; benchScore: number | null; }
+export interface LocalCatalog { hardware: Hardware; models: CatalogModel[]; recommendation: { fast: string; strong: string; why: string; budgetGb: number }; fast: string | null; strong: string | null; }
+export interface InstallState { running: boolean; done: boolean; failed: boolean; steps: { name: string; status: string; detail: string; percent: number }[]; }
+
+export async function remove(path: string): Promise<void> {
+  const r = await fetch(API + path, { method: 'DELETE', headers: { accept: 'application/json' } });
+  if (!r.ok) throw await toProblem(r);
+}

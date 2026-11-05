@@ -11,14 +11,16 @@ namespace JobOrchestrator.Intelligence.Features;
 /// Degraus Local e LocalStrong vão só para o Ollama. Com a nuvem fora (ou o teto do dia atingido), a tarefa que aceita
 /// vira rascunho do modelo local forte, marcado como Degraded. Toda chamada fica registrada; respostas boas da nuvem ficam em cache.
 /// </summary>
-internal sealed class IntelligenceApi(IEnumerable<IProvider> providers, IntelligenceDbContext db, IConfiguration config, TimeProvider time, ILogger<IntelligenceApi> log) : IIntelligenceApi
+internal sealed class IntelligenceApi(ProviderSet set, IntelligenceDbContext db, IConfiguration config, TimeProvider time, ILogger<IntelligenceApi> log) : IIntelligenceApi
 {
     private static readonly ConcurrentDictionary<string, LlmResult> LastTests = new();
     private static readonly ConcurrentDictionary<string, DateTime> PausedUntil = new();
     private static (DateTime At, IReadOnlyList<ProviderView> Views)? cache;
     private static readonly SemaphoreSlim Gate = new(1);
 
-    private string[] Order => config.GetSection("Llm:Order").Get<string[]>() is { Length: > 0 } o ? o : ["claude-pro", "codex", "claude-max"];
+    private IReadOnlyList<IProvider> providers => set.All;
+    /// <summary>Ordem de gasto: a das contas ligadas (tela Provedores). Llm:Order só para testes e para forçar uma ordem.</summary>
+    private string[] Order => config.GetSection("Llm:Order").Get<string[]>() is { Length: > 0 } o ? o : [.. set.Enabled];
     private DateTime Now => time.GetUtcNow().UtcDateTime;
     private IProvider? Local => providers.FirstOrDefault(p => p.Id == "ollama");
 
@@ -40,8 +42,13 @@ internal sealed class IntelligenceApi(IEnumerable<IProvider> providers, Intellig
             if (cache is { } again && now - again.At < TimeSpan.FromSeconds(60)) return Decorate(again.Views, now);
             var order = Order;
             // Quem saiu da ordem de gasto não aparece nem roda.
-            var probes = providers.Where(p => p.Id == "ollama" || order.Contains(p.Id))
-                .Select(async p => await p.ProbeAsync(p.Id == "ollama" ? 0 : Array.IndexOf(order, p.Id) + 1, LastTests.GetValueOrDefault(p.Id), ct));
+            // Contas desligadas também aparecem (ordem 99), para você religar; só não entram na rota.
+            var probes = providers.Select(async p =>
+            {
+                var position = p.Id == "ollama" ? 0 : Array.IndexOf(order, p.Id) + 1;
+                var view = await p.ProbeAsync(position == 0 && p.Id != "ollama" ? 99 : position, LastTests.GetValueOrDefault(p.Id), ct);
+                return position == 0 && p.Id != "ollama" ? view with { Available = false, Status = "off", Detail = "Conta desligada: fora da ordem de gasto." } : view;
+            });
             var views = (await Task.WhenAll(probes)).OrderBy(v => v.Order == 0 ? -1 : v.Order).ToList();
             cache = (now, views);
             return Decorate(views, now);
@@ -90,6 +97,13 @@ internal sealed class IntelligenceApi(IEnumerable<IProvider> providers, Intellig
         foreach (var v in chain)
         {
             if (!v.Available || (r.AvoidFamily is not null && v.Family == r.AvoidFamily)) continue;
+            // Chave de API: teto de tokens por mês. Passou, a conta sai da rota até virar o mês.
+            if (providers.First(p => p.Id == v.Id) is IMetered metered)
+            {
+                var month = new DateTime(Now.Year, Now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+                var used = await db.Calls.Where(x => x.ProviderId == v.Id && x.At >= month).SumAsync(x => (long)x.Tokens, ct);
+                if (metered.MonthlyTokens <= 0 || used >= metered.MonthlyTokens) continue;
+            }
             if (r.Thread is { } working) await SayAsync(working, Who(v.Id), "working", $"Pegou o pedido do {r.Agent}", null, v.Id, null, null, 0, true, r.Agent, ct);
             last = await providers.First(p => p.Id == v.Id).RunAsync(r, ct);
             await RecordAsync(r, last, ct);
@@ -162,7 +176,7 @@ internal sealed class IntelligenceApi(IEnumerable<IProvider> providers, Intellig
         db.Calls.Add(new LlmCall
         {
             At = Now, Task = task, ProviderId = Cut(r.ProviderId, 40), Model = Cut(r.Model, 80), Effort = Cut(r.Effort, 20), Ok = r.Ok,
-            Error = r.Error is null ? null : Cut(r.Error, 300), Seconds = Math.Round(r.Seconds, 2), Degraded = r.Degraded, Cached = r.Cached
+            Error = r.Error is null ? null : Cut(r.Error, 300), Seconds = Math.Round(r.Seconds, 2), Degraded = r.Degraded, Cached = r.Cached, Tokens = r.Tokens
         });
         await db.SaveChangesAsync(ct);
         if (request.Thread is { } thread)
@@ -208,10 +222,7 @@ internal sealed class IntelligenceApi(IEnumerable<IProvider> providers, Intellig
             .Select(m => new AgentMessageView(m.Id, m.At, m.Agent, m.Kind, m.ProviderId, m.Model, m.Effort, m.Title, m.Body, m.Seconds, m.Ok, m.To)).ToListAsync(ct);
 
     /// <summary>Nome do agente que respondeu, pelo provedor.</summary>
-    private static string Who(string providerId) => providerId switch
-    {
-        "claude-pro" => "Claude Pro", "claude-max" => "Claude Max", "codex" => "ChatGPT (Codex)", "ollama" => "Llama local", _ => providerId
-    };
+    private string Who(string providerId) => providers.FirstOrDefault(p => p.Id == providerId)?.Name ?? (providerId == "ollama" ? "Llama local" : providerId);
 
     private static string Label(string task) => task switch
     {

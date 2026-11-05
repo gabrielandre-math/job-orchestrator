@@ -42,6 +42,7 @@ table.grid tr:last-child td { border-bottom: 0; }
 
 /* Página: cabeçalho com título, apoio e ações; conteúdo com respiro fixo. */
 .page { padding: 20px 28px 40px; display: grid; gap: 16px; align-content: start; min-width: 0; }
+.page > * { min-width: 0; }
 .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; padding-bottom: 4px; }
 .page-head p { margin: 4px 0 0; color: var(--text-2); }
 .page-head .actions { display: flex; gap: 8px; align-items: center; }

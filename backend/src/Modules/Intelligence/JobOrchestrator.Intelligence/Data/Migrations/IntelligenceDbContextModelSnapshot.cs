@@ -23,6 +23,62 @@ namespace JobOrchestrator.Intelligence.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("JobOrchestrator.Intelligence.Data.Account", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("id");
+
+                    b.Property<string>("BaseUrl")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("base_url");
+
+                    b.Property<string>("ConfigDir")
+                        .HasMaxLength(400)
+                        .HasColumnType("character varying(400)")
+                        .HasColumnName("config_dir");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("enabled");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("Models")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("models");
+
+                    b.Property<long?>("MonthlyTokens")
+                        .HasColumnType("bigint")
+                        .HasColumnName("monthly_tokens");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("name");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("integer")
+                        .HasColumnName("position");
+
+                    b.HasKey("Id")
+                        .HasName("pk_accounts");
+
+                    b.ToTable("accounts", "intelligence");
+                });
+
             modelBuilder.Entity("JobOrchestrator.Intelligence.Data.AgentMessage", b =>
                 {
                     b.Property<Guid>("Id")
@@ -220,6 +276,10 @@ namespace JobOrchestrator.Intelligence.Data.Migrations
                         .HasMaxLength(60)
                         .HasColumnType("character varying(60)")
                         .HasColumnName("task");
+
+                    b.Property<int>("Tokens")
+                        .HasColumnType("integer")
+                        .HasColumnName("tokens");
 
                     b.HasKey("Id")
                         .HasName("pk_calls");

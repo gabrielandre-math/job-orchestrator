@@ -12,3 +12,4 @@ global using Microsoft.Extensions.Logging;
 global using JobOrchestrator.BuildingBlocks.Data;
 global using JobOrchestrator.Intelligence.Data;
 global using Microsoft.EntityFrameworkCore;
+global using JobOrchestrator.BuildingBlocks.Web;

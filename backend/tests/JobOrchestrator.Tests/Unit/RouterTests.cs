@@ -67,7 +67,7 @@ public sealed class RouterTests : IAsyncLifetime
         var settings = new Dictionary<string, string?> { ["Llm:Order:0"] = "claude-pro", ["Llm:Order:1"] = "codex", ["Llm:Order:2"] = "claude-max" };
         foreach (var (k, v) in extra ?? []) settings[k] = v;
         IntelligenceApi.Reset();
-        return new IntelligenceApi(providers, db, new ConfigurationBuilder().AddInMemoryCollection(settings).Build(), TimeProvider.System, NullLogger<IntelligenceApi>.Instance);
+        return new IntelligenceApi(new ProviderSet([.. providers], []), db, new ConfigurationBuilder().AddInMemoryCollection(settings).Build(), TimeProvider.System, NullLogger<IntelligenceApi>.Instance);
     }
 
     private static LlmRequest Tailor(string prompt = "fatos", string? avoid = null) =>

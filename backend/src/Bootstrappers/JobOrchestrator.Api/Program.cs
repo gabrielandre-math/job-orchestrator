@@ -14,6 +14,8 @@ using Microsoft.Extensions.FileProviders;
 // API e painel. Só escuta em 127.0.0.1; o trabalho pesado fica no Worker.
 var builder = WebApplication.CreateBuilder(args);
 var config = builder.Configuration;
+// Escolhas feitas na tela (modelos locais e afins) ficam em settings.json no diretório de configuração e recarregam sozinhas.
+config.AddJsonFile(Path.Combine(AppPaths.Config, "settings.json"), optional: true, reloadOnChange: true);
 var modules = new[] { CampaignsModule.Assembly, JobsModule.Assembly, ApplicationsModule.Assembly, AutomationModule.Assembly, IntelligenceModule.Assembly, ProfileModule.Assembly, MaterialsModule.Assembly };
 builder.Services.AddJoBlocks(modules).AddJoWeb(modules)
     .AddCampaignsModule(config).AddJobsModule(config).AddApplicationsModule(config).AddAutomationModule(config).AddIntelligenceModule(config).AddProfileModule(config).AddMaterialsModule(config);

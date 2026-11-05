@@ -2,93 +2,179 @@
   <header class="page-head">
     <div>
       <h1>Provedores de IA</h1>
-      <p>Só os CLIs oficiais das suas assinaturas e o Llama local. Nenhuma API paga. A ordem abaixo é a ordem de gasto; cada conta pausa sozinha na reserva.</p>
+      <p>As suas contas, quantas quiser de cada provedor. A ordem da lista é a ordem de gasto; cada conta pausa sozinha na reserva e chave de API para no teto do mês.</p>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn primary" (click)="adding.set(!adding())"><jo-icon name="plus" [size]="14" />Conectar conta</button>
     </div>
   </header>
-  @if (list.problem(); as p) { <p class="problem">{{ p.detail }}</p> }
-  @if (test.problem(); as p) { <p class="problem">{{ p.detail }}</p> }
+  @for (p of [list.problem(), accounts.problem(), test.problem(), creating.problem(), logging.problem(), deleting.problem()]; track $index) { @if (p) { <p class="problem">{{ p.detail }}</p> } }
+
+  @if (adding()) {
+    <article class="panel connect">
+      <header><h2>Conectar conta</h2><button type="button" class="btn ghost" (click)="adding.set(false)" aria-label="Fechar"><jo-icon name="x" [size]="14" /></button></header>
+      <div class="kinds" role="radiogroup" aria-label="Tipo de conta">
+        @for (k of kinds; track k.kind) {
+          <button type="button" class="kind" role="radio" [attr.aria-checked]="draft().kind === k.kind" (click)="setDraft('kind', k.kind)">
+            <strong>{{ k.label }}</strong><span class="faint">{{ k.key ? 'chave de API' : 'login no navegador' }}</span>
+          </button>
+        }
+      </div>
+      <div class="form-grid">
+        <p class="hint">{{ kind().hint }}</p>
+        <label class="field">Nome da conta<input [value]="draft().name" (input)="setDraft('name', $any($event.target).value)" /></label>
+        @if (kind().key) {
+          <label class="field">Chave de API<input type="password" autocomplete="off" [value]="draft().apiKey" (input)="setDraft('apiKey', $any($event.target).value)" placeholder="cole aqui; vai direto para o keyring" /></label>
+          <label class="field">Teto de tokens por mês<input inputmode="numeric" [value]="draft().monthlyTokens" (input)="setDraft('monthlyTokens', +$any($event.target).value.replace(/\D/g, ''))" /></label>
+          @if (draft().kind === 'openai-compatible') {
+            <label class="field wide">Endereço da API<input [value]="draft().baseUrl" (input)="setDraft('baseUrl', $any($event.target).value)" placeholder="https://openrouter.ai/api/v1" /></label>
+          }
+        }
+      </div>
+      <footer>
+        <span class="faint small">{{ kind().key ? 'A chave nunca vai para arquivo, banco ou log.' : 'Depois de criar, o navegador abre para você entrar.' }}</span>
+        <button type="button" class="btn primary" (click)="connect()" [disabled]="creating.running()">{{ creating.running() ? 'Conectando…' : kind().key ? 'Guardar chave' : 'Criar e entrar' }}</button>
+      </footer>
+    </article>
+  }
+
+  @if (login(); as l) {
+    <article class="panel login" [class.ok]="l.state.ok === true" [class.bad]="l.state.ok === false">
+      <jo-iso name="you" [size]="64" />
+      <div>
+        <h2>{{ l.state.running ? 'Entre na sua conta no navegador' : l.state.ok ? 'Conta conectada' : 'O login não terminou' }}</h2>
+        <p class="muted">{{ l.state.running ? 'O navegador abriu na página oficial. Quando você terminar lá, esta tela atualiza sozinha.' : l.state.ok ? 'Pronto para uso. Teste a conta abaixo.' : 'Feche e tente de novo. A saída do CLI está abaixo.' }}</p>
+        @if (l.state.url && l.state.running) { <p class="small">Se o navegador não abriu: <a [href]="l.state.url" target="_blank" rel="noopener">abrir a página de login</a></p> }
+        @if (l.state.ok === false && l.state.output) { <pre class="mono out">{{ l.state.output }}</pre> }
+      </div>
+      <button type="button" class="btn ghost" (click)="login.set(null)" aria-label="Fechar"><jo-icon name="x" [size]="14" /></button>
+    </article>
+  }
 
   <div class="cards">
-    @for (p of list.value() ?? []; track p.id) {
-      <article class="panel card" [class.dim]="!p.available">
+    @for (r of rows(); track r.account.id; let i = $index; let last = $last) {
+      <article class="panel card" [class.dim]="!r.account.enabled || !r.view?.available">
         <header>
-          @if (logos[p.id]; as l) {
-            @if (l.mono) { <span class="logo mono" [style.--logo]="'url(/logos/' + l.file + '.svg)'" role="img" [attr.aria-label]="p.name"></span> }
-            @else { <img class="logo" [src]="'/logos/' + l.file + '.svg'" [alt]="p.name" width="28" height="28" /> }
+          @if (r.logo; as l) {
+            @if (l.mono) { <span class="logo mono" [style.--logo]="'url(/logos/' + l.file + '.svg)'" role="img" [attr.aria-label]="r.account.name"></span> }
+            @else { <img class="logo" [src]="'/logos/' + l.file + '.svg'" [alt]="r.account.name" width="28" height="28" /> }
           }
           <div class="title">
-            <h2>{{ p.name }}</h2>
-            <p class="mono faint">{{ p.order === 0 ? 'local, na RTX' : p.order + 'º na ordem de gasto' }}</p>
+            <h2>{{ r.account.name }}</h2>
+            <p class="mono faint">{{ r.account.enabled ? (i + 1) + 'º na ordem de gasto' : 'fora da ordem' }} · {{ kindLabel(r.account.kind) }}</p>
           </div>
-          <jo-badge [label]="statusLabel(p.status)" [tone]="statusTone(p.status)" />
+          <jo-badge [label]="statusLabel(r.view?.status ?? 'stopped')" [tone]="statusTone(r.view?.status ?? 'stopped')" />
         </header>
-        <dl class="facts">
-          <dt>Versão</dt><dd class="mono">{{ p.version ?? 'não instalado' }}</dd>
-          <dt>Login</dt><dd>{{ p.login }}</dd>
-          <dt>Plano</dt><dd>{{ p.plan ?? 'sem dado' }}</dd>
-        </dl>
-        @if (p.usage.length > 0) {
-          <div class="usage">
-            @for (u of p.usage; track u.name) {
-              <div class="meter">
-                <span class="m-name">{{ u.name }}</span>
-                <span class="bar"><span [style.width.%]="u.usedPercent ?? 0" [class.high]="(u.usedPercent ?? 0) >= 60"></span></span>
-                <span class="m-value num">{{ u.usedPercent === null ? 'sem dado' : u.usedPercent + '%' }}</span>
-                @if (u.usedPercent !== null && u.resetsAt) { <span class="m-reset faint">{{ reset(u.resetsAt) }}</span> }
-              </div>
+        @if (r.view; as p) {
+          <dl class="facts">
+            <dt>Versão</dt><dd class="mono">{{ p.version ?? 'sem dado' }}</dd>
+            <dt>Login</dt><dd>{{ p.login }}</dd>
+            <dt>Plano</dt><dd>{{ p.plan ?? 'sem dado' }}</dd>
+            @if (r.account.monthlyTokens) { <dt>Este mês</dt><dd class="num">{{ tokens(r.account.tokensThisMonth) }} de {{ tokens(r.account.monthlyTokens) }} tokens</dd> }
+          </dl>
+          @if (p.usage.length > 0) {
+            <div class="usage">
+              @for (u of p.usage; track u.name) {
+                <div class="meter">
+                  <span class="m-name">{{ u.name }}</span>
+                  <span class="bar"><span [style.width.%]="u.usedPercent ?? 0" [class.high]="(u.usedPercent ?? 0) >= 60"></span></span>
+                  <span class="m-value num">{{ u.usedPercent === null ? 'sem dado' : u.usedPercent + '%' }}</span>
+                  @if (u.usedPercent !== null && u.resetsAt) { <span class="m-reset faint">{{ reset(u.resetsAt) }}</span> }
+                </div>
+              }
+            </div>
+          }
+          <p class="detail">{{ p.detail }}</p>
+        }
+        <footer>
+          <div class="tools">
+            <button type="button" class="btn ghost" (click)="move(r.account, -1)" [disabled]="i === 0" aria-label="Subir na ordem" title="Subir na ordem"><jo-icon name="arrow-up" [size]="14" /></button>
+            <button type="button" class="btn ghost" (click)="move(r.account, 1)" [disabled]="last" aria-label="Descer na ordem" title="Descer na ordem"><jo-icon name="arrow-down" [size]="14" /></button>
+            <button type="button" class="btn ghost" (click)="toggle(r.account)">{{ r.account.enabled ? 'Desligar' : 'Ligar' }}</button>
+            @if (r.account.ownFolder && (r.account.kind === 'claude-cli' || r.account.kind === 'codex-cli')) {
+              <button type="button" class="btn ghost" (click)="signIn(r.account.id)" [disabled]="logging.running()">Entrar</button>
+            }
+            @if (r.account.ownFolder || r.account.kind.includes('api') || r.account.kind === 'openai-compatible') {
+              <button type="button" class="btn ghost danger" (click)="drop(r.account)">{{ confirmDelete() === r.account.id ? 'Confirmar remoção' : 'Remover' }}</button>
             }
           </div>
-        }
-        <p class="detail">{{ p.detail }}</p>
-        <footer>
-          @if (p.lastTest; as t) {
-            <span class="last" [class.bad]="!t.ok">
-              <jo-icon [name]="t.ok ? 'check' : 'warning'" [size]="14" />
-              {{ t.ok ? 'Respondeu em ' + t.seconds.toFixed(1) + ' s com ' + t.model + ', esforço ' + t.effort : (t.error ?? 'falhou') }}
-            </span>
-          } @else { <span class="faint">Teste usa uma resposta curta, no degrau mais leve.</span> }
-          <button type="button" class="btn" [disabled]="testing() !== null || !p.installed" (click)="run(p.id)">
-            <jo-icon name="arrows-clockwise" [size]="14" />{{ testing() === p.id ? 'Testando…' : 'Testar' }}
+          <button type="button" class="btn" [disabled]="testing() !== null" (click)="run(r.account.id)">
+            <jo-icon name="arrows-clockwise" [size]="14" />{{ testing() === r.account.id ? 'Testando…' : 'Testar' }}
           </button>
         </footer>
+        @if (r.view?.lastTest; as t) {
+          <p class="last" [class.bad]="!t.ok"><jo-icon [name]="t.ok ? 'check' : 'warning'" [size]="14" />{{ t.ok ? 'Respondeu em ' + t.seconds.toFixed(1) + ' s com ' + t.model + ', esforço ' + t.effort : (t.error ?? 'falhou') }}</p>
+        }
       </article>
     }
   </div>
 
-  <article class="panel">
+  <article class="panel local">
     <header>
-      <h2>Modelos locais</h2>
-      <span class="faint">{{ benchAt() ? 'jo llm bench de ' + date(benchAt()!) + ' às ' + time(benchAt()!) + ', 50 casos' : 'rode jo llm bench para medir' }}</span>
+      <h2>Modelo local</h2>
+      @if (ollama(); as o) { <jo-badge [label]="statusLabel(o.status)" [tone]="statusTone(o.status)" /> }
     </header>
-    <div class="scroll">
-      <table class="grid">
-        <thead>
-          <tr><th>Modelo</th><th>Vaga</th><th class="r">Tamanho</th><th class="r">Acerto</th><th class="r">Ler vaga</th><th class="r">E-mail</th><th class="r">Perguntas</th><th class="r">p50</th><th class="r">Na GPU</th><th>Agora</th></tr>
-        </thead>
-        <tbody>
-          @for (m of localRows(); track m.name) {
-            <tr [class.off]="!m.slot">
-              <td class="mono">{{ m.name }}</td>
-              <td>{{ m.slot ?? 'fora' }}</td>
-              <td class="r num">{{ m.sizeGb.toFixed(1) }} GB</td>
-              @if (m.bench; as b) {
-                <td class="r num strong">{{ pct(b.overall) }}</td>
-                <td class="r num">{{ pct(b.jobExtract) }}</td>
-                <td class="r num">{{ pct(b.emailClassify) }}</td>
-                <td class="r num">{{ pct(b.questionMap) }}</td>
-                <td class="r num">{{ b.p50.toFixed(1) }} s</td>
-                <td class="r num">{{ b.gpuPercent === null ? '?' : b.gpuPercent + '%' }}</td>
-              } @else {
-                <td class="r faint" colspan="6">sem medição</td>
-              }
-              <td>{{ m.loaded ? 'na VRAM' + (m.gpuPercent !== null ? ', ' + m.gpuPercent + '% na GPU' : '') : 'ocioso' }}</td>
-            </tr>
-          } @empty {
-            <tr><td colspan="10" class="faint">Ollama fora do ar ou sem modelos baixados.</td></tr>
+    @if (local.value(); as c) {
+      <div class="machine">
+        <jo-iso name="model" [size]="96" />
+        <div class="hw">
+          @if (gpu(); as g) {
+            <div class="hw-row"><span class="faint">Placa de vídeo</span><strong>{{ g.name }}</strong></div>
+            <div class="vram" [attr.aria-label]="'VRAM: ' + gb(g.usedMb) + ' de ' + gb(g.totalMb) + ' GB em uso'">
+              <span class="used" [style.width.%]="(g.usedMb / g.totalMb) * 100"></span>
+              <span class="label num">{{ gb(g.usedMb) }} de {{ gb(g.totalMb) }} GB em uso agora</span>
+            </div>
+          } @else {
+            <div class="hw-row"><span class="faint">Placa de vídeo</span><strong>nenhuma achada: modelos de CPU</strong></div>
           }
-        </tbody>
-      </table>
-    </div>
+          <div class="hw-row"><span class="faint">CPU</span><span>{{ c.hardware.cpu }}, {{ c.hardware.threads }} threads{{ c.hardware.avx512 ? ', AVX-512' : c.hardware.avx2 ? ', AVX2' : '' }}</span></div>
+          <div class="hw-row"><span class="faint">Memória</span><span class="num">{{ gb(c.hardware.ramFreeMb) }} de {{ gb(c.hardware.ramTotalMb) }} GB livres · disco {{ c.hardware.diskFreeGb }} GB livres</span></div>
+          <div class="hw-row"><span class="faint">Ollama</span><span>{{ c.hardware.ollamaRunning ? 'no ar, versão ' + c.hardware.ollamaVersion : c.hardware.ollamaInstalled ? 'instalado, parado' : 'não instalado: o instalador cuida disso' }}</span></div>
+        </div>
+        <div class="reco">
+          <p class="faint small">Recomendado para esta máquina</p>
+          <p><strong>Rápido:</strong> <span class="mono">{{ c.recommendation.fast }}</span></p>
+          <p><strong>Forte:</strong> <span class="mono">{{ c.recommendation.strong }}</span></p>
+          <p class="faint small">{{ c.recommendation.why }}</p>
+          <button type="button" class="btn" (click)="useRecommendation()">Usar a recomendação</button>
+        </div>
+      </div>
+      <div class="scroll">
+        <table class="grid">
+          <thead><tr><th></th><th>Modelo</th><th class="r">Disco</th><th class="r">VRAM inteira</th><th class="r">Acerto</th><th>Ritmo</th><th>Para quem</th><th>Rápido</th><th>Forte</th></tr></thead>
+          <tbody>
+            @for (m of c.models; track m.name) {
+              <tr [class.off]="!m.installed">
+                <td><input type="checkbox" [checked]="m.installed || picks().has(m.name)" [disabled]="m.installed" (change)="pick(m.name)" [attr.aria-label]="'Baixar ' + m.name" /></td>
+                <td class="mono">{{ m.name }}@if (m.installed) { <span class="faint"> · baixado</span> }</td>
+                <td class="r num">{{ m.diskGb }} GB</td>
+                <td class="r num" [class.bad]="m.vramGb > c.recommendation.budgetGb && c.hardware.gpus.length > 0">{{ m.vramGb }} GB</td>
+                <td class="r num strong">{{ m.benchScore ?? m.score ?? '' }}{{ (m.benchScore ?? m.score) !== null ? '%' : '' }}</td>
+                <td>{{ m.speed }}</td>
+                <td class="faint wrap">{{ m.note }}</td>
+                <td><input type="radio" name="fast" [checked]="(slots().fast ?? c.fast) === m.name" (change)="setSlot('fast', m.name)" [attr.aria-label]="m.name + ' como rápido'" /></td>
+                <td><input type="radio" name="strong" [checked]="(slots().strong ?? c.strong) === m.name" (change)="setSlot('strong', m.name)" [attr.aria-label]="m.name + ' como forte'" /></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <footer>
+        <span class="faint small">Marque o que quer baixar e escolha o rápido e o forte. O que faltar (Ollama e modelos) é instalado na sua pasta, sem sudo.</span>
+        <button type="button" class="btn primary" (click)="installPicked()" [disabled]="installing.running() || install()?.running">{{ install()?.running ? 'Instalando…' : 'Instalar e usar' }}</button>
+      </footer>
+    }
+    @if (install(); as st) {
+      <ol class="steps" aria-live="polite">
+        @for (s of st.steps; track s.name) {
+          <li [class]="'step ' + s.status">
+            <span class="s-name mono">{{ s.name }}</span>
+            <span class="s-bar"><span [style.width.%]="s.percent"></span></span>
+            <span class="s-detail faint">{{ s.detail || (s.status === 'waiting' ? 'na fila' : '') }}</span>
+          </li>
+        }
+      </ol>
+    }
   </article>
 
   <article class="panel">

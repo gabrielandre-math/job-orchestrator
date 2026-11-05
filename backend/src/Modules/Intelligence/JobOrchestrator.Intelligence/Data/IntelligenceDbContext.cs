@@ -17,6 +17,7 @@ internal sealed class LlmCall
     public double Seconds { get; init; }
     public bool Degraded { get; init; }
     public bool Cached { get; init; }
+    public int Tokens { get; init; }
 }
 
 /// <summary>Resposta guardada por 30 dias: mesma tarefa, mesmas instruções e mesma entrada não gastam cota de novo.</summary>
@@ -57,6 +58,7 @@ internal sealed class IntelligenceDbContext(DbContextOptions<IntelligenceDbConte
     public DbSet<LlmCall> Calls => Set<LlmCall>();
     public DbSet<CachedAnswer> Cache => Set<CachedAnswer>();
     public DbSet<AgentMessage> Messages => Set<AgentMessage>();
+    public DbSet<Account> Accounts => Set<Account>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -82,6 +84,19 @@ internal sealed class IntelligenceDbContext(DbContextOptions<IntelligenceDbConte
             e.Property(x => x.Model).HasMaxLength(80);
             e.Property(x => x.Effort).HasMaxLength(20);
             e.HasIndex(x => x.ExpiresAt);
+        });
+        b.Entity<Account>(e =>
+        {
+            e.ToTable("accounts");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(40);
+            e.Property(x => x.Kind).HasMaxLength(30);
+            e.Property(x => x.Name).HasMaxLength(80);
+            e.Property(x => x.ConfigDir).HasMaxLength(400);
+            e.Property(x => x.BaseUrl).HasMaxLength(300);
+            e.Property(x => x.Models).HasColumnType("jsonb");
+            e.Ignore(x => x.Paid);
+            e.Ignore(x => x.ModelMap);
         });
         b.Entity<AgentMessage>(e =>
         {
