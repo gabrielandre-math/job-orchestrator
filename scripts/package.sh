@@ -8,6 +8,14 @@ V="$(grep -oP '(?<=<Version>)[^<]+' "$R/backend/src/Bootstrappers/JobOrchestrato
 N="job-orchestrator-$V-linux-x64"
 P="$R/dist/$N"
 export DOTNET_SYSTEM_NET_DISABLEIPV6=1
+# Um job-orchestrator rodando de dentro do pacote antigo não pode ficar: o binário de arquivo único relê o próprio arquivo para carregar
+# assemblies sob demanda, e trocar o arquivo por baixo dele quebra o processo no meio (FileNotFound em rotas que ainda não tinham rodado).
+for exe in /proc/[0-9]*/exe; do
+  t="$(readlink "$exe" 2>/dev/null || true)"
+  case "$t" in "$P"/*) pid="${exe#/proc/}"; pid="${pid%/exe}"; echo "parando o job-orchestrator $pid, que roda do pacote antigo (suba de novo depois)"; kill -TERM "$pid" 2>/dev/null || true
+    for _ in $(seq 60); do kill -0 "$pid" 2>/dev/null || break; sleep 0.5; done ;;
+  esac
+done
 mkdir -p "$R/dist" && rm -rf "$P" "$P.tar.gz" && mkdir -p "$P"
 
 echo "1/5 binário (.NET autocontido, arquivo único)"
