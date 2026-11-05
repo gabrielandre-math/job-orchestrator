@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-05T23:45:00.3209797Z",
+  "generated_at": "2026-11-05T23:52:17.8240072Z",
   "generated_by": "jo sources probe",
   "experimental_on": true,
   "catalog": {
@@ -111,9 +111,9 @@
         "ok": true,
         "count": 33,
         "http": 200,
-        "seconds": 0.5,
+        "seconds": 1.3,
         "error": null,
-        "at": "2026-11-05T23:44:23.881902Z"
+        "at": "2026-11-05T23:51:42.2501624Z"
       }
     },
     {
@@ -145,9 +145,9 @@
         "ok": true,
         "count": 86,
         "http": 200,
-        "seconds": 2.1,
+        "seconds": 2,
         "error": null,
-        "at": "2026-11-05T23:44:25.5472165Z"
+        "at": "2026-11-05T23:51:42.9500866Z"
       }
     },
     {
@@ -179,9 +179,9 @@
         "ok": true,
         "count": 170,
         "http": 200,
-        "seconds": 0.1,
+        "seconds": 0.4,
         "error": null,
-        "at": "2026-11-05T23:44:23.5538271Z"
+        "at": "2026-11-05T23:51:41.3207147Z"
       }
     },
     {
@@ -215,7 +215,7 @@
         "http": 200,
         "seconds": 36.8,
         "error": null,
-        "at": "2026-11-05T23:45:00.254681Z"
+        "at": "2026-11-05T23:52:17.808129Z"
       }
     },
     {
@@ -249,7 +249,7 @@
         "http": null,
         "seconds": 0,
         "error": "sem amostra pública segura",
-        "at": "2026-11-05T23:44:23.4323383Z"
+        "at": "2026-11-05T23:51:40.9617007Z"
       }
     },
     {
@@ -281,9 +281,9 @@
         "ok": true,
         "count": 12,
         "http": 200,
-        "seconds": 1.3,
+        "seconds": 1.5,
         "error": null,
-        "at": "2026-11-05T23:44:24.8998224Z"
+        "at": "2026-11-05T23:51:42.8503901Z"
       }
     },
     {
@@ -315,9 +315,9 @@
         "ok": true,
         "count": 0,
         "http": 200,
-        "seconds": 0.9,
+        "seconds": 1.1,
         "error": "A fonte respondeu, mas não tem vaga aberta agora. Pode salvar: ela entra nas próximas rodadas.",
-        "at": "2026-11-05T23:44:24.7640468Z"
+        "at": "2026-11-05T23:51:43.3100744Z"
       }
     },
     {
@@ -349,9 +349,9 @@
         "ok": true,
         "count": 3,
         "http": 200,
-        "seconds": 0.2,
+        "seconds": 0.3,
         "error": null,
-        "at": "2026-11-05T23:44:24.9439829Z"
+        "at": "2026-11-05T23:51:43.1735645Z"
       }
     },
     {
@@ -385,7 +385,7 @@
         "http": 200,
         "seconds": 1.3,
         "error": null,
-        "at": "2026-11-05T23:44:26.2145418Z"
+        "at": "2026-11-05T23:51:44.248755Z"
       }
     },
     {
@@ -417,9 +417,9 @@
         "ok": true,
         "count": 6,
         "http": 200,
-        "seconds": 0.3,
+        "seconds": 0.4,
         "error": null,
-        "at": "2026-11-05T23:44:25.2367908Z"
+        "at": "2026-11-05T23:51:43.5657284Z"
       }
     },
     {
@@ -451,9 +451,9 @@
         "ok": true,
         "count": 60,
         "http": 200,
-        "seconds": 3.3,
+        "seconds": 4.8,
         "error": null,
-        "at": "2026-11-05T23:44:28.5770401Z"
+        "at": "2026-11-05T23:51:48.124574Z"
       }
     },
     {
@@ -485,9 +485,9 @@
         "ok": true,
         "count": 20,
         "http": 200,
-        "seconds": 14.5,
+        "seconds": 15.1,
         "error": null,
-        "at": "2026-11-05T23:44:40.0532318Z"
+        "at": "2026-11-05T23:51:58.6727953Z"
       }
     },
     {
@@ -506,22 +506,22 @@
       "catalog_ids": [
         "rippling-careers-board"
       ],
-      "notes": "Sem conector: o endpoint público não foi confirmado em 05/11/2026 (o quadro do próprio Rippling redireciona para rippling.com/careers). Pendente em docs/NEXT_SOURCES.md.",
+      "notes": "Endereço que o quadro público usa (api.rippling.com/platform/api/ats/v1/board/{empresa}/jobs), conferido em 05/11/2026 com quadros do job-board-directory; lista e detalhe, unlistedFromSearch escondida.",
       "authorization_kind": "none",
       "credential_present": false,
-      "connector": false,
-      "ingestion_enabled": false,
+      "connector": true,
+      "ingestion_enabled": true,
       "gate": null,
       "disabled": false,
       "probe": {
         "prefix": "rippling",
-        "source": null,
-        "ok": false,
-        "count": 0,
-        "http": null,
-        "seconds": 0,
-        "error": "sem amostra pública segura",
-        "at": "2026-11-05T23:44:23.4325003Z"
+        "source": "rippling:aaca",
+        "ok": true,
+        "count": 3,
+        "http": 200,
+        "seconds": 1.6,
+        "error": null,
+        "at": "2026-11-05T23:51:45.8393143Z"
       }
     },
     {
@@ -551,9 +551,9 @@
         "ok": true,
         "count": 20,
         "http": 200,
-        "seconds": 22.6,
+        "seconds": 17.1,
         "error": null,
-        "at": "2026-11-05T23:44:48.8563495Z"
+        "at": "2026-11-05T23:52:02.8906623Z"
       }
     },
     {
@@ -585,7 +585,7 @@
         "http": null,
         "seconds": 0,
         "error": "sem amostra pública segura",
-        "at": "2026-11-05T23:44:23.4325036Z"
+        "at": "2026-11-05T23:51:40.9618803Z"
       }
     },
     {
@@ -617,9 +617,9 @@
         "ok": true,
         "count": 5,
         "http": 200,
-        "seconds": 2.7,
+        "seconds": 3.4,
         "error": null,
-        "at": "2026-11-05T23:44:31.2298781Z"
+        "at": "2026-11-05T23:51:51.5117328Z"
       }
     },
     {
@@ -649,9 +649,9 @@
         "ok": true,
         "count": 18,
         "http": 200,
-        "seconds": 1,
+        "seconds": 0.9,
         "error": null,
-        "at": "2026-11-05T23:44:32.2339279Z"
+        "at": "2026-11-05T23:51:52.4600305Z"
       }
     },
     {
@@ -681,9 +681,9 @@
         "ok": true,
         "count": 3,
         "http": 200,
-        "seconds": 0.1,
+        "seconds": 0.2,
         "error": null,
-        "at": "2026-11-05T23:44:32.3603103Z"
+        "at": "2026-11-05T23:51:52.670483Z"
       }
     },
     {
@@ -716,7 +716,7 @@
         "http": 200,
         "seconds": 2.8,
         "error": null,
-        "at": "2026-11-05T23:44:35.1118092Z"
+        "at": "2026-11-05T23:51:55.5104736Z"
       }
     },
     {
@@ -750,7 +750,7 @@
         "http": 200,
         "seconds": 0.1,
         "error": null,
-        "at": "2026-11-05T23:44:35.2363711Z"
+        "at": "2026-11-05T23:51:55.594505Z"
       }
     },
     {
@@ -782,9 +782,9 @@
         "ok": true,
         "count": 99,
         "http": 200,
-        "seconds": 0.6,
+        "seconds": 1.2,
         "error": null,
-        "at": "2026-11-05T23:44:35.8217054Z"
+        "at": "2026-11-05T23:51:56.804314Z"
       }
     },
     {
@@ -816,9 +816,9 @@
         "ok": true,
         "count": 13,
         "http": 200,
-        "seconds": 0.5,
+        "seconds": 0.7,
         "error": null,
-        "at": "2026-11-05T23:44:36.2833152Z"
+        "at": "2026-11-05T23:51:57.5285275Z"
       }
     },
     {
@@ -852,7 +852,7 @@
         "http": 200,
         "seconds": 0.2,
         "error": null,
-        "at": "2026-11-05T23:44:36.4539789Z"
+        "at": "2026-11-05T23:51:57.6937119Z"
       }
     },
     {
@@ -886,7 +886,7 @@
         "http": 200,
         "seconds": 1.6,
         "error": null,
-        "at": "2026-11-05T23:44:38.0975778Z"
+        "at": "2026-11-05T23:51:59.2460423Z"
       }
     },
     {
@@ -918,9 +918,9 @@
         "ok": true,
         "count": 150,
         "http": 200,
-        "seconds": 3.6,
+        "seconds": 3.1,
         "error": null,
-        "at": "2026-11-05T23:44:41.6833927Z"
+        "at": "2026-11-05T23:52:01.7873274Z"
       }
     },
     {
@@ -952,9 +952,9 @@
         "ok": true,
         "count": 0,
         "http": 200,
-        "seconds": 0.4,
+        "seconds": 0.3,
         "error": "A fonte respondeu, mas não tem vaga aberta agora. Pode salvar: ela entra nas próximas rodadas.",
-        "at": "2026-11-05T23:44:40.4936856Z"
+        "at": "2026-11-05T23:51:59.5143412Z"
       }
     },
     {
@@ -986,9 +986,9 @@
         "ok": true,
         "count": 20,
         "http": 200,
-        "seconds": 1.1,
+        "seconds": 1,
         "error": null,
-        "at": "2026-11-05T23:44:41.5700368Z"
+        "at": "2026-11-05T23:52:00.5346116Z"
       }
     },
     {
@@ -1020,9 +1020,9 @@
         "ok": true,
         "count": 200,
         "http": 200,
-        "seconds": 11.8,
+        "seconds": 10.5,
         "error": null,
-        "at": "2026-11-05T23:44:53.3901293Z"
+        "at": "2026-11-05T23:52:11.0352411Z"
       }
     },
     {
@@ -1055,9 +1055,9 @@
         "ok": true,
         "count": 14,
         "http": 200,
-        "seconds": 11.2,
+        "seconds": 15.2,
         "error": "Também declarou 15 anúncios encerrados, que fecham as vagas que já estiverem aqui.",
-        "at": "2026-11-05T23:44:52.8557286Z"
+        "at": "2026-11-05T23:52:17.0044551Z"
       }
     },
     {
@@ -1089,9 +1089,9 @@
         "ok": true,
         "count": 200,
         "http": 200,
-        "seconds": 1.5,
+        "seconds": 1.4,
         "error": null,
-        "at": "2026-11-05T23:44:50.37184Z"
+        "at": "2026-11-05T23:52:04.3310919Z"
       }
     },
     {
@@ -1123,9 +1123,9 @@
         "ok": true,
         "count": 718,
         "http": 200,
-        "seconds": 9.9,
+        "seconds": 10.2,
         "error": null,
-        "at": "2026-11-05T23:45:00.2247726Z"
+        "at": "2026-11-05T23:52:14.5566751Z"
       }
     },
     {
@@ -1155,9 +1155,9 @@
         "ok": true,
         "count": 59,
         "http": 200,
-        "seconds": 2.8,
+        "seconds": 2.9,
         "error": null,
-        "at": "2026-11-05T23:44:55.6725901Z"
+        "at": "2026-11-05T23:52:13.9353648Z"
       }
     },
     {
@@ -1189,7 +1189,7 @@
         "http": 200,
         "seconds": 1,
         "error": null,
-        "at": "2026-11-05T23:44:54.4265311Z"
+        "at": "2026-11-05T23:52:14.9770288Z"
       }
     },
     {
@@ -1221,9 +1221,9 @@
         "ok": true,
         "count": 3,
         "http": 200,
-        "seconds": 1.3,
+        "seconds": 1.2,
         "error": null,
-        "at": "2026-11-05T23:44:55.6778009Z"
+        "at": "2026-11-05T23:52:15.7563047Z"
       }
     },
     {
@@ -1253,9 +1253,9 @@
         "ok": true,
         "count": 44,
         "http": 200,
-        "seconds": 0.8,
+        "seconds": 0.7,
         "error": null,
-        "at": "2026-11-05T23:44:56.4624817Z"
+        "at": "2026-11-05T23:52:15.6993378Z"
       }
     },
     {
@@ -1287,7 +1287,7 @@
         "http": null,
         "seconds": 0,
         "error": "sem amostra pública segura",
-        "at": "2026-11-05T23:44:23.4325559Z"
+        "at": "2026-11-05T23:51:40.9619006Z"
       }
     },
     {
@@ -1321,7 +1321,7 @@
         "http": null,
         "seconds": 0,
         "error": "sem amostra pública segura",
-        "at": "2026-11-05T23:44:23.4325571Z"
+        "at": "2026-11-05T23:51:40.9619013Z"
       }
     },
     {
@@ -1353,7 +1353,7 @@
         "http": null,
         "seconds": 0,
         "error": "sem amostra pública segura",
-        "at": "2026-11-05T23:44:23.4325582Z"
+        "at": "2026-11-05T23:51:40.9619019Z"
       }
     },
     {
@@ -1381,13 +1381,13 @@
       "disabled": false,
       "probe": {
         "prefix": "adzuna",
-        "source": null,
+        "source": "adzuna:developer",
         "ok": false,
         "count": 0,
         "http": null,
         "seconds": 0,
-        "error": "sem amostra pública segura",
-        "at": "2026-11-05T23:44:23.4325599Z"
+        "error": "A consulta falhou: Conecte a chave da Adzuna em Fontes › Chaves de API.",
+        "at": "2026-11-05T23:52:15.7128442Z"
       }
     },
     {
@@ -1415,13 +1415,13 @@
       "disabled": false,
       "probe": {
         "prefix": "jooble",
-        "source": null,
+        "source": "jooble:developer",
         "ok": false,
         "count": 0,
         "http": null,
         "seconds": 0,
-        "error": "sem amostra pública segura",
-        "at": "2026-11-05T23:44:23.432561Z"
+        "error": "A consulta falhou: Conecte a chave do Jooble em Fontes › Chaves de API.",
+        "at": "2026-11-05T23:52:15.7197786Z"
       }
     },
     {
@@ -1450,13 +1450,13 @@
       "disabled": false,
       "probe": {
         "prefix": "usajobs",
-        "source": null,
+        "source": "usajobs:developer",
         "ok": false,
         "count": 0,
         "http": null,
         "seconds": 0,
-        "error": "sem amostra pública segura",
-        "at": "2026-11-05T23:44:23.4325642Z"
+        "error": "A consulta falhou: CREDENTIALS_REQUIRED: conecte a chave do USAJOBS em Fontes › Chaves de API.",
+        "at": "2026-11-05T23:52:15.7321224Z"
       }
     },
     {
@@ -1484,13 +1484,13 @@
       "disabled": false,
       "probe": {
         "prefix": "reliefweb",
-        "source": null,
+        "source": "reliefweb:officer",
         "ok": false,
         "count": 0,
         "http": null,
         "seconds": 0,
-        "error": "sem amostra pública segura",
-        "at": "2026-11-05T23:44:23.4325658Z"
+        "error": "A consulta falhou: CREDENTIALS_REQUIRED: conecte o appname aprovado da ReliefWeb em Fontes › Chaves de API.",
+        "at": "2026-11-05T23:52:15.7389827Z"
       }
     },
     {
@@ -1522,7 +1522,7 @@
         "http": null,
         "seconds": 0,
         "error": "não sondada: BLOCKED",
-        "at": "2026-11-05T23:44:23.4325674Z"
+        "at": "2026-11-05T23:51:40.9619077Z"
       }
     },
     {
@@ -1556,7 +1556,7 @@
         "http": null,
         "seconds": 0,
         "error": "não sondada: BLOCKED",
-        "at": "2026-11-05T23:44:23.4325676Z"
+        "at": "2026-11-05T23:51:40.9619078Z"
       }
     },
     {
@@ -1590,7 +1590,7 @@
         "http": null,
         "seconds": 0,
         "error": "não sondada: PARTNER_ONLY",
-        "at": "2026-11-05T23:44:23.4325677Z"
+        "at": "2026-11-05T23:51:40.9619079Z"
       }
     }
   ]

@@ -60,15 +60,17 @@ internal abstract class PublicSource(IHttpClientFactory http, string prefix, par
 }
 
 /// <summary>Lever Postings API: "lever:empresa".</summary>
-internal sealed class LeverSource(IHttpClientFactory http) : PublicSource(http, "lever", "jobs.lever.co", "api.lever.co")
+internal sealed class LeverSource(IHttpClientFactory http) : PublicSource(http, "lever", "jobs.lever.co", "api.lever.co", "jobs.eu.lever.co", "api.eu.lever.co")
 {
     public override string Id => "lever-postings-api";
     public override string Name => "Lever Postings API";
 
+    /// <summary>"lever:empresa" lê a instância dos EUA; "lever:eu/empresa" lê a europeia (jobs.eu.lever.co), como a documentação do Lever separa.</summary>
     public override async Task<IReadOnlyList<DiscoveredPosting>> DiscoverAsync(string source, CancellationToken ct)
     {
-        var company = Key(source);
-        using var doc = await Json.GetAsync(Client, $"https://api.lever.co/v0/postings/{Uri.EscapeDataString(company)}?mode=json", ct);
+        var key = Key(source);
+        var (api, company) = key.StartsWith("eu/", StringComparison.OrdinalIgnoreCase) ? ("api.eu.lever.co", key[3..]) : ("api.lever.co", key);
+        using var doc = await Json.GetAsync(Client, $"https://{api}/v0/postings/{Uri.EscapeDataString(company)}?mode=json", ct);
         return [.. doc.RootElement.EnumerateArray().Select(j => Parse(source, company, j))];
     }
 

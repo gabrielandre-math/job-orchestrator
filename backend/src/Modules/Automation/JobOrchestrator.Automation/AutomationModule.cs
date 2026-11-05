@@ -63,6 +63,7 @@ public static class AutomationModule
         s.AddScoped<ISourceConnector, SeasonalJobsSource>();
         s.AddScoped<ISourceConnector, UsaJobsSource>();
         s.AddScoped<ISourceConnector, ReliefWebSource>();
+        s.AddScoped<ISourceConnector, RipplingSource>();
         s.AddScoped<ISourceConnector, GetOnBoardSource>();
         s.AddScoped<ISourceConnector, PersonioSource>();
         s.AddScoped<ISourceConnector, WorkableSource>();

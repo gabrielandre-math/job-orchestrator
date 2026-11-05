@@ -49,7 +49,7 @@ public static class SourceRegistry
             null, "6 h por site", ["workday-careers-cxs"], "Endpoint dos sites públicos; tenant, host e site exatos; páginas de 20."),
         new("rippling", "Rippling ATS board", "ats", "OBSERVED", "EXPERIMENTAL", [Global], "https://ats.rippling.com/", null,
             null, "6 h por empresa", ["rippling-careers-board"],
-            "Sem conector: o endpoint público não foi confirmado em 05/11/2026 (o quadro do próprio Rippling redireciona para rippling.com/careers). Pendente em docs/NEXT_SOURCES.md."),
+            "Endereço que o quadro público usa (api.rippling.com/platform/api/ats/v1/board/{empresa}/jobs), conferido em 05/11/2026 com quadros do job-board-directory; lista e detalhe, unlistedFromSearch escondida."),
         new("oracle", "Oracle Recruiting Cloud", "ats", "OBSERVED", "EXPERIMENTAL", [Global], "https://www.oracle.com/human-capital-management/recruiting/", null,
             null, "6 h por site", [], "API REST pública dos sites de carreira (requisitionList); robots.txt conferido."),
         new("successfactors", "SAP SuccessFactors", "ats", "OBSERVED", "EXPERIMENTAL", [Global], "https://www.sap.com/products/hcm/recruiting-software.html", null,
@@ -133,7 +133,7 @@ public static class SourceRegistry
         ["recruitee"] = "recruitee:bunq", ["solides"] = "solides:solides", ["pandape"] = "pandape:infojobs", ["oracle"] = "oracle:eeho.fa.us2.oraclecloud.com/CX_1",
         ["4dayweek"] = "4dayweek:engineering", ["workingnomads"] = "workingnomads:development", ["freehire"] = "freehire:developer", ["personio"] = "personio:personio",
         // Com chave da pessoa: a sondagem mostra "pede credencial" até a chave existir.
-        ["usajobs"] = "usajobs:developer", ["reliefweb"] = "reliefweb:officer", ["adzuna"] = "adzuna:developer", ["jooble"] = "jooble:developer",
+        ["rippling"] = "rippling:aaca", ["usajobs"] = "usajobs:developer", ["reliefweb"] = "reliefweb:officer", ["adzuna"] = "adzuna:developer", ["jooble"] = "jooble:developer",
     };
 
     public static SourceProfile? Find(string source)

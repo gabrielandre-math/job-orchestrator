@@ -1,6 +1,6 @@
 # Lacunas de cobertura
 
-Gerado por `jo sources coverage` em 05/11/2026 23:45 UTC, contra a API local. O universo é a auditoria dos 249 países e territórios ISO 3166-1
+Gerado por `jo sources coverage` em 05/11/2026 23:52 UTC, contra a API local. O universo é a auditoria dos 249 países e territórios ISO 3166-1
 (`data/catalog/auditoria-249-paises-v2.csv`, do usuário). O estado de cada país sai só do que existe: conector do país sondado com vaga, fonte do país
 no registro ainda sem conector, vaga aberta vista com local nele, ou o estado da auditoria. **Isto não é cobertura mundial completa.**
 
@@ -9,10 +9,10 @@ no registro ainda sem conector, vaga aberta vista com local nele, ou o estado da
 | | Quantas |
 |---|---|
 | Fontes configuradas (plataformas no registro) | 45 |
-| Com conector no app | 41 |
+| Com conector no app | 42 |
 | Autorizadas (portão aberto) | 38 |
-| Funcionando (última sondagem com vaga) | 30 |
-| Quadros de empresa na campanha | 23 |
+| Funcionando (última sondagem com vaga) | 31 |
+| Quadros de empresa na campanha | 25 |
 | Empresas com vaga aberta | 88 |
 | Vagas únicas abertas | 143 |
 | Vagas abertas com data da fonte | 143 |
@@ -27,7 +27,7 @@ no registro ainda sem conector, vaga aberta vista com local nele, ou o estado da
 | Registros no catálogo V2 (referência, não fonte) | 321 |
 | Vagas abertas sem país no local (remotas, mundo todo) | 18 |
 
-Fontes globais ou regionais ativas (cobrem qualquer país, mas só onde as empresas anunciam): `greenhouse`, `lever`, `ashby`, `smartrecruiters`, `teamtailor`, `personio`, `breezy`, `recruitee`, `workable`, `workable-search`, `workday`, `oracle`, `successfactors`, `pandape`, `himalayas`, `remoteok`, `wwr`, `remotive`, `jobicy`, `getonbrd`, `arbeitnow`, `themuse`, `freehire`, `4dayweek`, `workingnomads`, `hn`, `rss`, `web`, `alertas`.
+Fontes globais ou regionais ativas (cobrem qualquer país, mas só onde as empresas anunciam): `greenhouse`, `lever`, `ashby`, `smartrecruiters`, `teamtailor`, `personio`, `breezy`, `recruitee`, `workable`, `workable-search`, `workday`, `rippling`, `oracle`, `successfactors`, `pandape`, `himalayas`, `remoteok`, `wwr`, `remotive`, `jobicy`, `getonbrd`, `arbeitnow`, `themuse`, `freehire`, `4dayweek`, `workingnomads`, `hn`, `rss`, `web`, `alertas`.
 
 ## Por continente
 

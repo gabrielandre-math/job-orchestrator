@@ -9,11 +9,15 @@ switch (command)
         return await Bench.RunAsync(models, Option("url") ?? "http://127.0.0.1:11434", Option("out"), Option("json"));
     case "sources probe":
         return await Sources.ProbeAsync(Option("api") ?? "http://127.0.0.1:7410", Option("json") ?? "data/source-registry.json", Option("md") ?? "docs/SOURCE_AUDIT.md");
+    case "sources boards":
+        return await Boards.ImportAsync(Option("api") ?? "http://127.0.0.1:7410", Option("out") ?? "data/ats-board-catalog.json", int.TryParse(Option("sample"), out var n) ? n : 60);
     case "sources coverage":
         return await CoverageReport.WriteAsync(Option("api") ?? "http://127.0.0.1:7410", Option("md") ?? "docs/COVERAGE_GAPS.md");
     default:
         Console.WriteLine("""
             uso:
+              jo sources boards [--api http://127.0.0.1:7410] [--out data/ats-board-catalog.json] [--sample 60]
+                importa os catálogos públicos de quadros de ATS, deduplica, guarda a licença e valida uma amostra de verdade
               jo sources coverage [--api http://127.0.0.1:7410] [--md docs/COVERAGE_GAPS.md]
                 a cobertura dos 249 países, por continente e país, com o que existe e o que falta
               jo sources probe [--api http://127.0.0.1:7410] [--json data/source-registry.json] [--md docs/SOURCE_AUDIT.md]
