@@ -14,6 +14,7 @@ internal sealed class AssistantEndpoints : ICarterModule
         g.MapGet("conversations", async (AssistantService assistant, CancellationToken ct) => Results.Ok(await assistant.ConversationsAsync(ct)));
         g.MapGet("conversations/{id:guid}", async (Guid id, AssistantService assistant, CancellationToken ct) => Results.Ok(await assistant.ConversationAsync(id, ct)));
         g.MapPost("setup", async (AssistantService assistant, CancellationToken ct) => Results.Ok(await assistant.SetupAsync(ct)));
+        g.MapPost("cover/{jobId:guid}", async (Guid jobId, AssistantService assistant, CancellationToken ct) => Results.Ok(await assistant.CoverAsync(jobId, ct)));
 
         app.MapGet("/api/onboarding", async (IConfiguration config, IIntelligenceApi ai, IProfileApi profile, ICampaignsApi campaigns, CancellationToken ct) =>
         {

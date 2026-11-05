@@ -1,3 +1,5 @@
+using System.Net;
+
 namespace JobOrchestrator.Tests.EndToEnd;
 
 /// <summary>
@@ -51,6 +53,30 @@ public sealed class FlowTests
         Assert.Equal("FormValidated", await s.StateAsync("Eco Injeção"));
         Assert.Equal("PrepareOnly", (await s.GetAsync("/campaigns"))[0].GetProperty("mode").GetString());
         Assert.Equal(0, await s.SubmissionsAsync());
+    }
+
+    [Fact]
+    public async Task Automatico_so_com_autorizacao_dentro_do_teto_e_revogar_volta_para_revisao()
+    {
+        await using var s = await Stack.StartAsync();
+        var id = (await s.GetAsync("/campaigns"))[0].GetProperty("id").GetString();
+        await s.ConfigureAsync("ReviewRequired");
+        // O arquivo de configuração e o PUT da campanha não ligam o automático.
+        Assert.Equal(HttpStatusCode.Forbidden, await s.PutAsync($"/campaigns/{id}", new { mode = "AutoSubmit", minFitScore = 80, maxSubmissionsPerDay = 15,
+            technologies = new[] { "C#", ".NET" }, locations = new[] { "Brasil", "Remoto" }, sources = new[] { $"greenhouse:{s.Ats}/boards/demo" } }));
+        Assert.Equal(HttpStatusCode.BadRequest, await s.PostAsync($"/campaigns/{id}/authorizations", new { days = 1, maxPerDay = 1, minScore = 80, adapters = new[] { "greenhouse-form" }, accepted = false }));
+        Assert.Equal(HttpStatusCode.OK, await s.PostAsync($"/campaigns/{id}/authorizations", new { days = 1, maxPerDay = 1, minScore = 80, adapters = new[] { "greenhouse-form" }, accepted = true }));
+        Assert.Equal("AutoSubmit", (await s.GetAsync("/campaigns"))[0].GetProperty("mode").GetString());
+
+        await s.RunAsync();
+        await s.WaitAsync(async () => await s.SubmissionsAsync() >= 1, Settle, "o primeiro envio automático");
+        await SettledAsync(s, 4);
+        // Teto de 1 por dia da autorização: um envio só, mesmo com duas vagas prontas (a lenta conta enquanto está incerta).
+        Assert.Equal(1, await s.SubmissionsAsync());
+
+        var auth = (await s.GetAsync($"/campaigns/{id}/authorizations"))[0].GetProperty("id").GetString();
+        Assert.Equal(HttpStatusCode.NoContent, (await s.Http.DeleteAsync($"{s.Api}/campaigns/{id}/authorizations/{auth}")).StatusCode);
+        Assert.Equal("ReviewRequired", (await s.GetAsync("/campaigns"))[0].GetProperty("mode").GetString());
     }
 
     [Fact]

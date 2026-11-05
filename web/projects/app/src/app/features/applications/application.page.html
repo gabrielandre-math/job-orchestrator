@@ -27,7 +27,18 @@
         </div>
       </div>
     }
-    @if (d.application.state === 'NeedsHuman') {
+    @if (d.application.state === 'NeedsHuman' && uncertain()) {
+      <div class="decision panel">
+        <div>
+          <h2>O envio chegou?</h2>
+          <p class="muted">O clique de envio pode ter saído e a confirmação não apareceu. Confira o e-mail de confirmação ou o portal do candidato antes de decidir: assim nada é enviado em dobro.</p>
+        </div>
+        <div class="actions">
+          <button class="btn" type="button" [disabled]="retry.running() || !d.hasResume" (click)="doRetry()">Não chegou, preparar de novo</button>
+          <button class="btn primary" type="button" [disabled]="declaring.running()" (click)="arrived()">Chegou</button>
+        </div>
+      </div>
+    } @else if (d.application.state === 'NeedsHuman') {
       <div class="decision panel">
         <div>
           <h2>Parada com você</h2>
@@ -38,6 +49,10 @@
           <button class="btn primary" type="button" [disabled]="retry.running() || !d.hasResume" (click)="doRetry()">Refazer preparo</button>
         </div>
       </div>
+    }
+
+    @if (d.application.state === 'ManualHandoff' || (d.application.state === 'NeedsHuman' && !uncertain())) {
+      <app-copilot [applicationId]="d.application.id" [jobId]="d.application.jobId" (done)="arrived2()" />
     }
 
     <div class="cols">

@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 import { Badge } from '@jo/ui/badge';
 import { Icon } from '@jo/ui/icon';
 import { Iso } from '@jo/ui/iso';
+import { LinkedInImport } from './linkedin-import';
 import { HeroStat, PageHero } from '@jo/ui/page-hero';
 import { Confirmations, Identity, Profile, ProfileFact, get, send, upload } from '../../core/api';
 import { command } from '../../core/command';
@@ -19,7 +20,7 @@ const COUNTRIES: [string, string][] = [['BR', 'Brasil'], ['US', 'Estados Unidos'
  */
 @Component({
   selector: 'app-profile',
-  imports: [RouterLink, Badge, Icon, Iso, PageHero],
+  imports: [RouterLink, Badge, Icon, Iso, LinkedInImport, PageHero],
   templateUrl: './profile.page.html',
   styleUrl: './profile.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -80,6 +81,8 @@ export class ProfilePage {
   private englishFromFacts(facts: ProfileFact[]) {
     return facts.find((f) => f.kind === 'language' && /ingl|english/i.test(f.statement))?.level ?? null;
   }
+
+  protected readonly linkedin = signal(false);
 
   protected async drop(e: DragEvent) {
     e.preventDefault();

@@ -54,7 +54,7 @@ internal sealed class ConfigureCampaignHandler(CampaignsDbContext db, TimeProvid
         var campaign = await db.Campaigns.FirstOrDefaultAsync(x => x.Id == c.Id, ct);
         if (campaign is null) return Error.NotFound("campaign-not-found", "Campanha não encontrada.");
         var mode = Enum.Parse<SubmissionMode>(c.Mode);
-        if (mode == SubmissionMode.AutoSubmit)
+        if (mode == SubmissionMode.AutoSubmit && campaign.Mode != SubmissionMode.AutoSubmit)
             return Error.Forbidden("consent-required", "O envio automático só liga com uma autorização criada na tela de autorizações.");
         campaign.Configure(mode, c.MinFitScore, c.MaxSubmissionsPerDay, c.Technologies, c.Locations, c.Sources, time.GetUtcNow().UtcDateTime);
         if (c.Name is { Length: > 0 } name) campaign.Rename(name);

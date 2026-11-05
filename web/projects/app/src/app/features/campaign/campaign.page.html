@@ -11,11 +11,17 @@
       <header><h2>Até onde o sistema vai sozinho</h2></header>
       <div class="modes" role="radiogroup" aria-label="Modo de envio">
         @for (m of modes; track m.key) {
-          <button type="button" role="radio" class="mode" [attr.aria-checked]="form().mode === m.key" [disabled]="m.locked" (click)="set('mode', m.key)">
+          <button type="button" role="radio" class="mode" [attr.aria-checked]="form().mode === m.key" [disabled]="m.locked" (click)="pick(m.key)">
             <span class="m-label">{{ m.label }}</span><span class="m-hint">{{ m.hint }}</span>
           </button>
         }
       </div>
+      @if (active(); as a) {
+        <div class="auth">
+          <span><strong>Envio automático autorizado até {{ until(a) }}</strong><span class="faint small"> · até {{ a.maxPerDay }} por dia · nota a partir de {{ a.minScore }} · {{ a.adapters.length ? a.adapters.join(', ') : 'todos os formulários com envio testado' }}</span></span>
+          <button class="btn" type="button" (click)="revoke(c, a.id)" [disabled]="revoking.running()">Revogar</button>
+        </div>
+      }
     </section>
 
     <section class="panel">
@@ -23,6 +29,7 @@
       <div class="form">
         <label class="field">Nota mínima para entrar na fila<input type="number" min="0" max="100" [value]="form().minFitScore" (input)="set('minFitScore', $any($event.target).value)" /></label>
         <label class="field">Envios por dia, no máximo<input type="number" min="0" max="100" [value]="form().maxSubmissionsPerDay" (input)="set('maxSubmissionsPerDay', $any($event.target).value)" /></label>
+        <label class="field wide">Cargos-alvo, separados por vírgula. A nota compara o título da vaga com eles.<input [value]="form().titles" (input)="set('titles', $any($event.target).value)" placeholder="ex.: Enfermeira de UTI, Analista de RH, Desenvolvedor .NET" /></label>
         <label class="field wide">Palavras-chave e competências, separadas por vírgula: ferramentas, especialidades, registros profissionais. A vaga precisa citar ao menos uma das duas primeiras.<input [value]="form().technologies" (input)="set('technologies', $any($event.target).value)" /></label>
         <label class="field wide">Locais aceitos, separados por vírgula<input [value]="form().locations" (input)="set('locations', $any($event.target).value)" /></label>
         <label class="field wide">Fontes, uma por linha. O jeito guiado fica na tela Fontes.<textarea rows="4" [value]="form().sources" (input)="set('sources', $any($event.target).value)"></textarea></label>
@@ -39,3 +46,7 @@
     <p class="problem">{{ p.detail }}</p>
   }
 </section>
+
+@if (authorizing() && list.value()?.[0]; as c) {
+  <app-authorize [campaign]="c" (close)="authorizing.set(false)" (changed)="granted()" />
+}

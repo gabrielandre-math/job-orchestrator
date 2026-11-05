@@ -119,6 +119,34 @@ internal sealed class RetryHandler(ApplicationsDbContext db, TimeProvider time) 
     }
 }
 
+/// <summary>
+/// Comando: você enviou pelo site original (LinkedIn, Gupy, site da empresa) ou confirmou que um envio incerto chegou.
+/// Vira "declarada por você", com evidência nível 2; nunca conta como confirmada pelo ATS.
+/// </summary>
+internal sealed record DeclareCommand(Guid Id, string? Note) : ICommand<Done>, IApplicationsCommand;
+
+internal sealed class DeclareHandler(ApplicationsDbContext db, TimeProvider time) : ICommandHandler<DeclareCommand, Done>
+{
+    public async Task<Result<Done>> Handle(DeclareCommand c, CancellationToken ct)
+    {
+        var app = await db.Applications.FirstOrDefaultAsync(a => a.Id == c.Id, ct);
+        if (app is null) return Error.NotFound("application-not-found", "Candidatura não encontrada.");
+        if (app.State is not (ApplicationState.ManualHandoff or ApplicationState.NeedsHuman))
+            return Error.Conflict("cannot-declare", "Só dá para registrar envio feito por você numa candidatura que está com você.");
+        var now = time.GetUtcNow().UtcDateTime;
+        await db.ResolveTasksAsync(app.Id, "Enviada por você", now, ct);
+        app.Move(ApplicationState.SubmittedDeclared, "Você registrou o envio pelo site original.", "Você", now, new { note = c.Note });
+        db.Evidence.Add(new Evidence { Id = Guid.CreateVersion7(), ApplicationId = app.Id, Level = 2, Kind = "declared_by_you", Detail = c.Note is { Length: > 0 } n ? n : "Envio feito por você, fora do app.", At = now });
+        return new Done();
+    }
+}
+
+/// <summary>O que o copiloto mostra para você candidatar pelo site original: o link, o currículo da vaga e as respostas aprovadas, prontas para copiar.</summary>
+internal sealed record CopilotView(string ApplyUrl, string Channel, bool HasResume, IReadOnlyList<CopilotAnswer> Answers, string FirstName, string LastName, string Email, string Phone, string LinkedIn);
+internal sealed record CopilotAnswer(string Key, string Value);
+
+internal sealed record DeclareBody(string? Note);
+
 /// <summary>Rotas HTTP (Carter) das candidaturas e da revisão.</summary>
 internal sealed class ApplicationEndpoints : ICarterModule
 {
@@ -134,6 +162,17 @@ internal sealed class ApplicationEndpoints : ICarterModule
         {
             var path = await db.FirstAsync<string>("select resume_path from applications.applications where id = @id", new { id }, ct);
             return path is not null && File.Exists(path) ? Results.File(path, "application/pdf", enableRangeProcessing: true) : Results.NotFound();
+        });
+        group.MapPost("{id:guid}/declare", async (Guid id, DeclareBody? body, ISender sender, CancellationToken ct) =>
+            (await sender.Send(new DeclareCommand(id, body?.Note), ct)).ToHttp(_ => Results.NoContent()));
+        group.MapGet("{id:guid}/copilot", async (Guid id, ApplicationsDbContext db, Features.Workflow.Bundles bundles, CancellationToken ct) =>
+        {
+            var a = await db.Applications.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
+            if (a is null) return Results.NotFound();
+            var b = await bundles.ForAsync(a, ct);
+            return Results.Ok(new CopilotView(a.ApplyUrl, a.ApplyChannel, a.ResumePath is not null && File.Exists(a.ResumePath),
+                b is null ? [] : [.. b.Answers.Where(x => !string.IsNullOrWhiteSpace(x.Value)).Select(x => new CopilotAnswer(x.Key, x.Value))],
+                b?.FirstName ?? "", b?.LastName ?? "", b?.Email ?? "", b?.Phone ?? "", b?.LinkedIn ?? ""));
         });
         app.MapGet("/api/tasks", async (ISender sender, CancellationToken ct) => (await sender.Send(new ListTasksQuery(), ct)).ToHttp(Results.Ok)).WithTags("Applications");
     }

@@ -11,6 +11,7 @@ public sealed record AskResponse(Guid ConversationId, string Rung, string Why, I
 public sealed record ChatTurn(Guid Id, DateTime At, string Role, string Text, string? Data);
 public sealed record ConversationView(Guid Id, string Subject, DateTime StartedAt, DateTime LastAt, int Messages);
 public sealed record ProposedSource(string Source, string Why);
+public sealed record CoverLetter(bool Ok, string Text, string Language, string Model, IReadOnlyList<string> Removed, string? Error);
 public sealed record SetupProposal(bool Ok, string? Error, string Area, string Summary, IReadOnlyList<string> Titles, IReadOnlyList<string> Keywords, IReadOnlyList<string> Locations,
     bool Remote, string Seniority, int MinFitScore, IReadOnlyList<ProposedSource> Sources, string ProviderId, string Model, bool FromAi);
 
@@ -260,6 +261,49 @@ internal sealed partial class AssistantService(IIntelligenceApi ai, IServiceScop
             _ => $"{f.Kind}: {f.Statement}{(f.Level is { Length: > 0 } l ? $" ({l})" : "")}{tech}",
         };
     }
+
+    /// <summary>
+    /// Carta para o copiloto (candidatura pelo site original): a IA escreve só com os fatos verificados, o Conferente tira frase com termo
+    /// ou número sem fonte e o nome entra aqui, depois da IA. Idioma da vaga.
+    /// </summary>
+    public async Task<CoverLetter> CoverAsync(Guid jobId, CancellationToken ct)
+    {
+        var job = await jobs.TextAsync(jobId, ct);
+        var p = await profile.CurrentAsync(ct);
+        if (job is null || p is null || p.Facts.Count == 0) return new CoverLetter(false, "", "pt", "", [], "Falta o perfil ou a vaga.");
+        var lower = job.Description.ToLowerInvariant();
+        var english = EnWords().Matches(lower).Count > PtWords().Matches(lower).Count;
+        var facts = string.Join("\n", p.Facts.Where(f => f.Kind is "experience" or "skill" or "achievement" or "education" or "certification" or "language").Take(60).Select(f => $"- {Fact(f)}"));
+        var system = english
+            ? "Write a short cover letter (up to 180 words) in English for this job, using only the verified resume facts. Never invent numbers, companies, titles or results. Tie 2 or 3 facts to what the job asks. No em dashes. Do not write the candidate's name or contact details. Plain text."
+            : "Escreva uma carta de apresentação curta (até 180 palavras) em português do Brasil para esta vaga, usando só os fatos verificados do currículo. Nunca invente número, empresa, cargo ou resultado. Ligue 2 ou 3 fatos ao que a vaga pede. Sem travessão. Não escreva o nome nem o contato da pessoa. Texto simples.";
+        var thread = AgentThread.New("cover", $"Carta para {job.Company}: {job.Title}");
+        const string schema = """{"type":"object","properties":{"letter":{"type":"string"}},"required":["letter"],"additionalProperties":false}""";
+        var prompt = $"Vaga: {job.Title} na {job.Company} ({job.Location}).\n{(job.Description.Length > 3500 ? job.Description[..3500] : job.Description)}\n\nFatos verificados:\n{facts}";
+        var res = await ai.CompleteAsync(new LlmRequest(LlmTasks.CoverWrite.Name, system, prompt, schema, LlmTasks.CoverWrite.Rung, null, 180, true, thread, "Redator"), ct);
+        var language = english ? "en" : "pt";
+        if (!res.Ok || res.Json is null) return new CoverLetter(false, "", language, res.Model, [], res.Error ?? "sem resposta");
+        string letter;
+        try { using var d = JsonDocument.Parse(res.Json); letter = d.RootElement.GetProperty("letter").GetString() ?? ""; }
+        catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { return new CoverLetter(false, "", language, res.Model, [], "resposta fora do formato"); }
+        var sources = p.Facts.Select(f => $"{f.Statement} {f.Role} {f.Organization} {string.Join(' ', f.Technologies)} {f.Level}").Append(job.Description).Append($"{job.Company} {job.Title} {job.Location}").ToList();
+        var removed = new List<string>();
+        var kept = letter.Split('\n').Select(line => string.Join(" ", SentenceEnd().Split(line).Where(x => x.Trim().Length > 0).Where(x =>
+        {
+            var bad = Claims.Unsupported(x, sources);
+            if (bad.Count > 0) removed.Add($"\"{x.Trim()}\" ({string.Join(", ", bad)})");
+            return bad.Count == 0;
+        })));
+        var text = Gaps().Replace(string.Join("\n", kept), "\n\n").Trim() + $"\n\n{p.Identity.FullName}";
+        await ai.NoteAsync(thread, "Conferente", removed.Count == 0 ? "Cada afirmação tem fonte no currículo ou na vaga" : $"{removed.Count} frase(s) sem fonte saíram",
+            removed.Count == 0 ? null : string.Join("\n", removed), new { stage = "check", removed = removed.Count }, "Você", removed.Count == 0, ct);
+        return new CoverLetter(true, text, language, res.Model, removed, null);
+    }
+
+    [GeneratedRegex(@"\b(the|and|with|you|will|our)\b")] private static partial Regex EnWords();
+    [GeneratedRegex(@"\b(de|com|para|você|nossa|vaga)\b")] private static partial Regex PtWords();
+    [GeneratedRegex(@"(?<=[.!?])\s+")] private static partial Regex SentenceEnd();
+    [GeneratedRegex(@"\n{3,}")] private static partial Regex Gaps();
 
     /// <summary>Primeiro contato: lê o perfil verificado e propõe a campanha inteira (área, cargos, palavras, locais, fontes). Sem IA, monta pelo próprio perfil.</summary>
     public async Task<SetupProposal> SetupAsync(CancellationToken ct)

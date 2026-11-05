@@ -58,7 +58,7 @@ export class Welcome {
     const c = campaigns[0];
     if (!c) throw { status: 0, code: 'no-campaign', detail: 'Nenhuma campanha para configurar.' };
     const sources = [...new Set([...this.picks().filter((p) => p.on).map((p) => p.source)])];
-    await send('PUT', `/campaigns/${c.id}`, { mode: c.mode, minFitScore: this.minScore(), maxSubmissionsPerDay: c.maxSubmissionsPerDay, technologies: this.keywords(), locations: this.locations(), sources, name: this.proposal()?.area || undefined });
+    await send('PUT', `/campaigns/${c.id}`, { mode: c.mode, minFitScore: this.minScore(), maxSubmissionsPerDay: c.maxSubmissionsPerDay, technologies: this.keywords(), titles: this.titles(), locations: this.locations(), sources, name: this.proposal()?.area || undefined });
     await send('PUT', '/onboarding', { done: true });
   }, 'Ambiente pronto. A primeira busca já começou.');
 

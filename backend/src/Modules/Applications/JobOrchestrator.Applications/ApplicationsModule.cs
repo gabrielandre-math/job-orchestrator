@@ -15,6 +15,8 @@ public static class ApplicationsModule
     {
         s.AddModuleDatabase<ApplicationsDbContext>(config, "Applications");
         s.AddTransient(typeof(IPipelineBehavior<,>), typeof(ApplicationsTransaction<,>));
+        // O copiloto (API) e o fluxo (Worker) montam o mesmo pacote de candidatura.
+        s.TryAddScoped<Bundles>();
         return s;
     }
 
@@ -25,7 +27,7 @@ public static class ApplicationsModule
         s.AddSingleton(new WorkQueue(NpgsqlDataSource.Create(config.ConnectionFor("Applications"))));
         s.TryAddSingleton<GuardKey>();
         s.AddSingleton<TokenIssuer>();
-        s.AddScoped<Bundles>();
+        s.TryAddScoped<Bundles>();
         s.AddScoped<StepKit>();
         s.AddScoped<IStep, MaterialsStep>();
         s.AddScoped<IStep, PrepareStep>();

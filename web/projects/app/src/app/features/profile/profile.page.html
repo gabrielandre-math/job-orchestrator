@@ -5,6 +5,7 @@
       <jo-badge [label]="statusLabel(p.status)" [tone]="statusTone(p.status)" />
       @if (p.version > 0) { <span class="faint mono">versão {{ p.version }}</span> }
     }
+    <button type="button" class="btn" (click)="linkedin.set(true)"><jo-icon name="identification-card" [size]="14" />Importar do LinkedIn</button>
   </jo-page-hero>
   @if (profile.problem(); as e) { <p class="problem">{{ e.detail }}</p> }
   @if (sending.problem(); as e) { <p class="problem">{{ e.detail }}</p> }
@@ -218,3 +219,5 @@
     </div>
   }
 </section>
+
+@if (linkedin()) { <app-linkedin-import (close)="linkedin.set(false)" (changed)="profile.reload()" /> }

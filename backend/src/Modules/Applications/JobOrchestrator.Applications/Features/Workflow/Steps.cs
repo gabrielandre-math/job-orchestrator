@@ -203,7 +203,9 @@ internal sealed class SubmitStep(StepKit k, TokenIssuer tokens) : IStep
         var input = new GuardInput(
             campaign.Mode, app.State, app.PayloadHash,
             await db.Approvals.Where(a => a.ApplicationId == app.Id).OrderByDescending(a => a.At).FirstOrDefaultAsync(ct),
-            await db.Applications.CountAsync(a => a.CampaignId == app.CampaignId && a.State == ApplicationState.SubmittedConfirmed && a.UpdatedAt >= today, ct),
+            // Teto do dia conta o que já saiu e o que está saindo ou incerto: envio incerto pode ter chegado.
+            await db.Applications.CountAsync(a => a.CampaignId == app.CampaignId && a.Id != app.Id && (a.State == ApplicationState.SubmittedConfirmed && a.UpdatedAt >= today
+                || a.State == ApplicationState.SubmissionUnknown || a.State == ApplicationState.Submitting), ct),
             campaign.MaxSubmissionsPerDay,
             await db.Intents.AnyAsync(i => i.ApplicationId == app.Id && (i.State == IntentState.Open || i.State == IntentState.SentUnverified), ct),
             await db.Tasks.CountAsync(t => t.ApplicationId == app.Id && t.ResolvedAt == null, ct),

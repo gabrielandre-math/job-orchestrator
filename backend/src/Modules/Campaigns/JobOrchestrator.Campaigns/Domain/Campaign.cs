@@ -56,7 +56,8 @@ internal sealed class Campaign : AggregateRoot
     /// <summary>Envio automático não se liga por aqui: só por autorização dada no painel.</summary>
     public void Configure(SubmissionMode mode, int minFitScore, int maxSubmissionsPerDay, IEnumerable<string> technologies, IEnumerable<string> locations, IEnumerable<string> sources, DateTime now)
     {
-        if (mode == SubmissionMode.AutoSubmit) throw new DomainRuleException("O envio automático exige uma autorização dada no painel.");
+        // Automático não se liga por aqui; se já está ligado (por autorização), salvar outros critérios mantém.
+        if (mode == SubmissionMode.AutoSubmit && Mode != SubmissionMode.AutoSubmit) throw new DomainRuleException("O envio automático exige uma autorização dada no painel.");
         Mode = mode;
         MinFitScore = minFitScore;
         MaxSubmissionsPerDay = maxSubmissionsPerDay;
