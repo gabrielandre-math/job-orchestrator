@@ -1,0 +1,124 @@
+<jo-wizard [steps]="['Provedor', 'Senha de app', 'Teste', 'Como enviar', 'Pronto']" [step]="step()" label="Conectar e-mail" (close)="close.emit()">
+  @switch (step()) {
+    @case (1) {
+      <div class="wz-step">
+        <div class="intro">
+          <jo-iso name="inbox" [size]="96" />
+          <div>
+            <h2>Qual e-mail vai falar com os recrutadores?</h2>
+            <p class="muted">O envio usa uma senha de app, criada no seu provedor só para o Job Orchestrator. Ela fica no gnome-keyring, nunca em arquivo ou banco, e você revoga quando quiser.</p>
+          </div>
+        </div>
+        <div class="grid">
+          @for (p of providers; track p.id) {
+            <button type="button" class="tile" (click)="pick(p)">
+              <span class="logo-box">@if (p.logo) { <img class="logo" [src]="p.logo" alt="" /> } @else if (p.domain) { <jo-company [name]="p.name" [domain]="p.domain" [size]="34" /> } @else { <jo-iso name="send" [size]="40" /> }</span>
+              <strong>{{ p.name }}</strong><span class="faint small">{{ p.id === 'smtp' ? 'Qualquer servidor SMTP e IMAP' : 'Senha de app, um minuto' }}</span>
+            </button>
+          }
+        </div>
+      </div>
+    }
+    @case (2) {
+      <div class="wz-step">
+        <div class="intro">
+          <jo-iso name="guardian" [size]="96" />
+          <div>
+            <h2>Crie a senha de app {{ provider()?.id === 'smtp' ? 'e informe o servidor' : 'do ' + provider()?.name }}</h2>
+            <p class="muted">{{ preset()?.hint ?? 'Use o usuário e a senha de app do seu provedor. SSL na porta 465 ou STARTTLS na 587.' }}</p>
+          </div>
+        </div>
+        @if (preset(); as p) { <a class="btn" [href]="p.appPasswordUrl" target="_blank" rel="noopener"><jo-icon name="key" [size]="14" />Abrir a página da senha de app<jo-icon name="arrow-square-out" [size]="14" /></a> }
+        <div class="form">
+          <label class="field">Seu e-mail<input type="email" autocomplete="email" [value]="address()" (input)="address.set($any($event.target).value)" placeholder="voce@exemplo.com" /></label>
+          <label class="field">Nome que aparece para quem recebe<input [value]="name()" (input)="name.set($any($event.target).value)" placeholder="o nome do seu perfil" /></label>
+          <label class="field wide">Senha de app
+            <span class="key"><input [type]="show() ? 'text' : 'password'" autocomplete="off" spellcheck="false" [value]="password()" (input)="password.set($any($event.target).value)" placeholder="abcd efgh ijkl mnop" />
+              <button type="button" class="btn ghost" (click)="show.set(!show())" [attr.aria-label]="show() ? 'Esconder' : 'Mostrar'"><jo-icon [name]="show() ? 'eye-slash' : 'eye'" [size]="16" /></button></span>
+          </label>
+          @if (provider()?.id === 'smtp') {
+            <label class="field">Servidor SMTP<input [value]="smtpHost()" (input)="smtpHost.set($any($event.target).value)" placeholder="smtp.exemplo.com" /></label>
+            <label class="field">Porta<input type="number" [value]="smtpPort()" (input)="smtpPort.set(num($event))" /></label>
+            <label class="line small-line"><input type="checkbox" class="switch" [checked]="smtpSsl()" (change)="smtpSsl.set($any($event.target).checked)" /><span>SSL direto (porta 465). Desligado usa STARTTLS.</span></label>
+            <label class="field">Servidor IMAP<input [value]="imapHost()" (input)="imapHost.set($any($event.target).value)" placeholder="imap.exemplo.com" /></label>
+            <label class="field">Porta IMAP<input type="number" [value]="imapPort()" (input)="imapPort.set(num($event))" /></label>
+          }
+        </div>
+        @if (connecting.problem(); as p) { <p class="problem">{{ p.detail }}</p> }
+      </div>
+    }
+    @case (3) {
+      <div class="wz-step">
+        <div class="intro">
+          <jo-iso name="checker" [size]="96" />
+          <div>
+            <h2>{{ connected()?.address }} conectado</h2>
+            <p class="muted">O login de envio (SMTP) e o de leitura (IMAP) foram testados agora. Quer conferir de verdade? Mande um e-mail de teste para você mesmo.</p>
+          </div>
+        </div>
+        <div class="done-actions">
+          <button type="button" class="btn" (click)="testing.run(connected()!.id)" [disabled]="testing.running()">
+            @if (testing.running()) { <span class="spinner sm" aria-hidden="true"></span>Enviando } @else { <jo-icon name="paper-plane-right" [size]="14" />Mandar um teste para mim }
+          </button>
+        </div>
+      </div>
+    }
+    @case (4) {
+      <div class="wz-step">
+        <div class="intro">
+          <jo-iso name="gate" [size]="96" />
+          <div>
+            <h2>Como os e-mails saem?</h2>
+            <p class="muted">Sempre só para o e-mail que a vaga publica para candidatura, um por vaga e um lembrete se não houver resposta. A IA escreve a partir dos fatos do seu currículo e o Conferente tira o que não tiver fonte.</p>
+          </div>
+        </div>
+        <div class="cards row" role="radiogroup" aria-label="Modo de envio">
+          @for (m of modes; track m.key) {
+            <button type="button" class="card" role="radio" [attr.aria-checked]="mode() === m.key" (click)="mode.set($any(m.key))">
+              <span class="dot" aria-hidden="true"></span><strong>{{ m.label }}</strong>@if (m.rec) { <span class="badge rec">recomendado</span> }<span class="muted small">{{ m.hint }}</span>
+            </button>
+          }
+        </div>
+        <div class="limits">
+          <label class="field">Teto por dia <span class="num accent">{{ cap() }}</span><input type="range" min="1" max="15" [value]="cap()" (input)="cap.set(num($event))" /></label>
+          <label class="field">Lembrete depois de <span class="num accent">{{ followUp() }} dias</span><input type="range" min="3" max="21" [value]="followUp()" (input)="followUp.set(num($event))" /></label>
+          <label class="field">Janela de envio <span class="num accent">{{ windowStart() }}h às {{ windowEnd() }}h</span>
+            <span class="pair"><input type="range" min="0" max="23" [value]="windowStart()" (input)="windowStart.set(num($event))" aria-label="Início" /><input type="range" min="1" max="24" [value]="windowEnd()" (input)="windowEnd.set(num($event))" aria-label="Fim" /></span>
+          </label>
+          <label class="line"><input type="checkbox" class="switch" [checked]="attach()" (change)="attach.set($any($event.target).checked)" /><span><strong>Anexar o currículo da vaga</strong><p>O PDF sob medida, perfeito para ATS, com o nome Nome-Sobrenome-Curriculo.pdf.</p></span></label>
+        </div>
+        @if (mode() === 'Auto') {
+          <label class="consent" [class.on]="consent()">
+            <input type="checkbox" [checked]="consent()" (change)="consent.set($any($event.target).checked)" />
+            <span><strong>Consentimento para o envio automático</strong><p>{{ consentText() }}</p></span>
+          </label>
+        }
+        @if (saving.problem(); as p) { <p class="problem">{{ p.detail }}</p> }
+      </div>
+    }
+    @case (5) {
+      <div class="wz-step">
+        <div class="intro">
+          <jo-iso name="send" [size]="96" />
+          <div>
+            <h2>Pronto</h2>
+            <p class="muted">{{ mode() === 'Auto' ? 'O automático escreve e envia dentro do teto de ' + cap() + ' por dia, entre ' + windowStart() + 'h e ' + windowEnd() + 'h, e para quando a empresa responde.' : mode() === 'Review' ? 'Cada e-mail aparece em Para aprovar, com o texto, o anexo e o que o Conferente tirou.' : 'Os rascunhos aparecem em Para aprovar para você copiar.' }} A caixa é lida a cada 10 minutos para ligar as respostas às vagas.</p>
+          </div>
+        </div>
+        <div class="done-actions"><button type="button" class="btn primary" (click)="close.emit()">Concluir</button></div>
+      </div>
+    }
+  }
+  @if (step() > 1 && step() < 5) {
+    <footer class="wz-foot" wz-foot>
+      @if (step() === 2) { <button type="button" class="btn ghost" (click)="step.set(1)"><jo-icon name="arrow-left" [size]="14" />Voltar</button> } @else { <span></span> }
+      <span class="end">
+        @switch (step()) {
+          @case (2) { <button type="button" class="btn primary" (click)="connect()" [disabled]="connecting.running() || !address().includes('@') || password().trim().length < 6">@if (connecting.running()) { <span class="spinner sm" aria-hidden="true"></span>Testando } @else { Testar e conectar }</button> }
+          @case (3) { <button type="button" class="btn primary" (click)="step.set(4)">Continuar<jo-icon name="arrow-right" [size]="14" /></button> }
+          @case (4) { <button type="button" class="btn primary" (click)="save()" [disabled]="saving.running() || (mode() === 'Auto' && !consent())">Salvar</button> }
+        }
+      </span>
+    </footer>
+  }
+</jo-wizard>

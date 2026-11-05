@@ -102,3 +102,13 @@ export interface AskResponse { conversationId: string; rung: string; why: string
 export interface ChatTurn { id: string; at: string; role: 'user' | 'assistant' | 'route'; text: string; data: string | null; }
 export interface ConversationView { id: string; subject: string; startedAt: string; lastAt: string; messages: number; }
 export interface SourceTestResult { ok: boolean; count: number; seconds: number; sample: { title: string; company: string; location: string; applyUrl: string; applyEmail: string | null }[]; error: string | null; }
+
+// E-mail.
+export interface MailPreset { id: string; name: string; smtp: string; smtpPort: number; smtpSsl: boolean; imap: string; imapPort: number; appPasswordUrl: string; hint: string; }
+export interface MailOverview { sentToday: number; dailyCap: number; awaiting: number; scheduled: number; sent: number; replied: number; interviews: number; mode: 'Draft' | 'Review' | 'Auto'; consent: boolean; connected: boolean; }
+export interface MailAccountView { id: string; provider: string; address: string; displayName: string; smtpHost: string; smtpPort: number; imapHost: string; checkedAt: string | null; lastError: string | null; }
+export interface MailSettings { mode: 'Draft' | 'Review' | 'Auto'; dailyCap: number; followUpDays: number; windowStart: number; windowEnd: number; attachResume: boolean; autoConsentAt: string | null; autoConsentText: string | null; }
+export interface MailTemplate { id: string; kind: 'first' | 'followup'; language: 'pt' | 'en'; subject: string; body: string; updatedAt: string; }
+export interface MailTarget { jobId: string; company: string; title: string; location: string; applyEmail: string; applyUrl: string; companyDomain: string | null; score: number; mailStatus: string | null; mailId: string | null; }
+export interface OutgoingMail { id: string; jobId: string; company: string; jobTitle: string; to: string; subject: string; body: string; kind: 'first' | 'followup'; followsId: string | null; status: string; createdAt: string; approvedAt: string | null; sentAt: string | null; messageId: string | null; attachmentPath: string | null; attachmentName: string | null; error: string | null; draftedBy: string; checkNotes: string | null; repliedAt: string | null; replyClass: string | null; threadId: string | null; }
+export interface IncomingMail { id: string; messageId: string; from: string; subject: string; date: string; snippet: string; class: string | null; actionNeeded: boolean; outgoingId: string | null; receivedAt: string; }

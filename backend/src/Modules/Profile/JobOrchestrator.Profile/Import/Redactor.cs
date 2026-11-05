@@ -17,6 +17,7 @@ internal static partial class Redactor
     /// <summary>O que dá para achar sem IA: nome (primeira linha que parece um nome), e-mail, telefone e links.</summary>
     public static Identity Detect(string text)
     {
+        text = JoinBrokenLinks(text);
         var lines = text.Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Take(60).Select(l => l.Trim('•', '-', ' ', '\t')).ToList();
         // O nome vem logo antes do título profissional (a linha com "|", como no PDF do LinkedIn, que põe a coluna de contato e competências antes).
         var name = "";
@@ -37,7 +38,7 @@ internal static partial class Redactor
 
     public static string Redact(string text, Identity id)
     {
-        var t = Email().Replace(text, "{{EMAIL}}");
+        var t = Email().Replace(JoinBrokenLinks(text), "{{EMAIL}}");
         t = Url().Replace(t, m =>
             m.Value.Contains("linkedin.com", StringComparison.OrdinalIgnoreCase) ? "{{LINKEDIN}}"
             : m.Value.Contains("github.com", StringComparison.OrdinalIgnoreCase) ? "{{GITHUB}}" : "{{SITE}}");
@@ -69,10 +70,14 @@ internal static partial class Redactor
         return words.All(w => Particles.Contains(w) || (char.IsUpper(w[0]) && w.All(c => char.IsLetter(c) || c is '\'' or '-' or '.')));
     }
 
+    /// <summary>O PDF do LinkedIn quebra o endereço do perfil em duas linhas ("linkedin.com/in/" e "slug (LinkedIn)"): junta antes de ler ou redigir.</summary>
+    private static string JoinBrokenLinks(string text) => BrokenLink().Replace(text, "$1$2");
+
     private static int Digits(string s) => s.Count(char.IsDigit);
     private static string Absolute(string url) => url.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? url : $"https://{url}";
 
     [GeneratedRegex(@"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")] private static partial Regex Email();
+    [GeneratedRegex(@"((?:linkedin\.com/in|github\.com)/)[ \t]*\r?\n[ \t]*([A-Za-z0-9][A-Za-z0-9_%-]*)", RegexOptions.IgnoreCase)] private static partial Regex BrokenLink();
     [GeneratedRegex(@"(?:https?://|www\.)[^\s<>()""]+|(?<![\w@./])(?:[a-z]{2,3}\.)?(?:linkedin\.com/in|github\.com)/[^\s<>()""]+", RegexOptions.IgnoreCase)] private static partial Regex Url();
     [GeneratedRegex(@"(?<![\d/.])(?:\+\d{1,3}[\s.-]?)?(?:\(\d{2,3}\)|\d{2,3})[\s.-]?\d{4,5}[\s.-]?\d{4}(?![\d/])")] private static partial Regex Phone();
     [GeneratedRegex(@"\b\d{3}\.\d{3}\.\d{3}-\d{2}\b")] private static partial Regex Cpf();

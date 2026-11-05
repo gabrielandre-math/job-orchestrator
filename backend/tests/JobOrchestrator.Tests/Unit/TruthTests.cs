@@ -70,6 +70,10 @@ public sealed class TruthTests
     {
         const string cv = "Contact\n+55 (11) 98888-7777 (Mobile)\nmaria.teste@example.com\nTop Skills\nGestão de Projetos\nAtendimento ao Cliente\nLanguages\nInglês (Professional Working)\n\nMaria Souza Teste\n\nEnfermeira | UTI | Gestão de Leitos\nSão Paulo, São Paulo, Brazil\nSummary";
         Assert.Equal("Maria Souza Teste", Redactor.Detect(cv).FullName);
+        const string broken = "Contact\nwww.linkedin.com/in/\nmaria-teste-123 (LinkedIn)\n\nMaria Souza Teste\nEnfermeira | UTI";
+        var id = Redactor.Detect(broken);
+        Assert.Equal("https://www.linkedin.com/in/maria-teste-123", id.LinkedIn);
+        Assert.DoesNotContain("maria-teste-123", Redactor.Redact(broken, id));
     }
 
     [Fact]

@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="MailKit" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
+    <ProjectReference Include="../../../BuildingBlocks/JobOrchestrator.BuildingBlocks/JobOrchestrator.BuildingBlocks.csproj" />
+    <ProjectReference Include="../../../BuildingBlocks/JobOrchestrator.BuildingBlocks.Data/JobOrchestrator.BuildingBlocks.Data.csproj" />
+    <ProjectReference Include="../../../BuildingBlocks/JobOrchestrator.BuildingBlocks.Web/JobOrchestrator.BuildingBlocks.Web.csproj" />
+    <ProjectReference Include="../../Intelligence/JobOrchestrator.Intelligence.Contracts/JobOrchestrator.Intelligence.Contracts.csproj" />
+    <ProjectReference Include="../../Profile/JobOrchestrator.Profile.Contracts/JobOrchestrator.Profile.Contracts.csproj" />
+    <ProjectReference Include="../../Jobs/JobOrchestrator.Jobs.Contracts/JobOrchestrator.Jobs.Contracts.csproj" />
+    <ProjectReference Include="../../Materials/JobOrchestrator.Materials.Contracts/JobOrchestrator.Materials.Contracts.csproj" />
+  </ItemGroup>
+</Project>

@@ -5,6 +5,7 @@ using JobOrchestrator.BuildingBlocks.Data;
 using JobOrchestrator.Campaigns;
 using JobOrchestrator.Intelligence;
 using JobOrchestrator.Jobs;
+using JobOrchestrator.Mail;
 using JobOrchestrator.Materials;
 using JobOrchestrator.Profile;
 
@@ -12,11 +13,11 @@ using JobOrchestrator.Profile;
 var builder = Host.CreateApplicationBuilder(args);
 var config = builder.Configuration;
 config.AddJsonFile(Path.Combine(AppPaths.Config, "settings.json"), optional: true, reloadOnChange: true);
-var modules = new[] { CampaignsModule.Assembly, JobsModule.Assembly, ApplicationsModule.Assembly, AutomationModule.Assembly, IntelligenceModule.Assembly, ProfileModule.Assembly, MaterialsModule.Assembly };
+var modules = new[] { CampaignsModule.Assembly, JobsModule.Assembly, ApplicationsModule.Assembly, AutomationModule.Assembly, IntelligenceModule.Assembly, ProfileModule.Assembly, MaterialsModule.Assembly, MailModule.Assembly };
 builder.Services.AddSystemd();
 builder.Services.AddJoBlocks(modules)
-    .AddCampaignsModule(config).AddJobsModule(config).AddApplicationsModule(config).AddAutomationModule(config).AddIntelligenceModule(config).AddProfileModule(config).AddMaterialsModule(config)
-    .AddCampaignsWorker().AddJobsWorker().AddApplicationsWorker(config).AddProfileWorker();
+    .AddCampaignsModule(config).AddJobsModule(config).AddApplicationsModule(config).AddAutomationModule(config).AddIntelligenceModule(config).AddProfileModule(config).AddMaterialsModule(config).AddMailModule(config)
+    .AddMailWorker().AddCampaignsWorker().AddJobsWorker().AddApplicationsWorker(config).AddProfileWorker();
 builder.Services.AddSingleton<IMessageBus, LocalBus>();
 builder.Services.Configure<HostOptions>(o => o.ShutdownTimeout = TimeSpan.FromSeconds(30));
 
@@ -28,4 +29,5 @@ await host.Services.MigrateAutomationAsync();
 await host.Services.MigrateIntelligenceAsync();
 await host.Services.MigrateProfileAsync(config);
 await host.Services.MigrateMaterialsAsync();
+await host.Services.MigrateMailAsync();
 host.Run();

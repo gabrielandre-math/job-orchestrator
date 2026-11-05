@@ -111,6 +111,14 @@ internal sealed class JobsApi(IReadDb<JobsDbContext> db) : IJobsApi
         "select id, title, company, location, description, source, seniority, modality, contract, english, salary_currency from jobs.postings where id = @jobId",
         new { jobId }, ct);
 
+    public Task<IReadOnlyList<EmailTarget>> EmailTargetsAsync(CancellationToken ct) => db.ListAsync<EmailTarget>(
+        """
+        select id, company, title, location, apply_email, apply_url, company_domain, coalesce(score, 0) as score, first_seen_at
+        from jobs.postings
+        where status = 'Shortlisted' and duplicate_of is null and apply_email is not null and apply_email <> ''
+        order by score desc nulls last, first_seen_at desc limit 200
+        """, null, ct);
+
     public Task<IReadOnlyList<SourceCount>> SourcesAsync(CancellationToken ct) => db.ListAsync<SourceCount>(
         "select source, count(*)::int as postings, count(*) filter (where status = 'Shortlisted')::int as shortlisted from jobs.postings group by source order by source",
         null, ct);

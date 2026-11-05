@@ -11,6 +11,7 @@ export const routes: Routes = [
   { path: 'vagas', title: 'Vagas', loadComponent: () => import('./features/jobs/jobs.page').then((m) => m.JobsPage) },
   { path: 'candidaturas', title: 'Candidaturas', loadComponent: () => import('./features/applications/applications.page').then((m) => m.ApplicationsPage) },
   { path: 'candidaturas/:id', title: 'Candidatura', loadComponent: () => import('./features/applications/application.page').then((m) => m.ApplicationPage) },
+  { path: 'email', title: 'E-mail', loadComponent: () => import('./features/mail/mail.page').then((m) => m.MailPage) },
   { path: 'fontes', title: 'Fontes', loadComponent: () => import('./features/sources/sources.page').then((m) => m.SourcesPage) },
   { path: 'fontes/varredura', title: 'Varredura da internet', loadComponent: () => import('./features/sweep/sweep.page').then((m) => m.SweepPage) },
   { path: 'fontes/adapters', title: 'Conectores', loadComponent: () => import('./features/adapters/adapters.page').then((m) => m.AdaptersPage) },

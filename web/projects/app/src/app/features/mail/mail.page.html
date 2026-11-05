@@ -1,0 +1,139 @@
+<section class="page">
+  <jo-page-hero title="E-mail" [scene]="['send', 'inbox', 'guardian']" [stats]="stats()"
+    lead="Para as vagas que pedem currículo por e-mail. A IA escreve a partir dos fatos do seu currículo, o Conferente tira o que não tem fonte e o Guardião só deixa sair para o endereço que a vaga publica, um por vaga e um lembrete.">
+    @if (accounts.value()) {
+      @if (!connected()) {
+        <button type="button" class="btn primary" (click)="wizard.set(1)"><jo-icon name="envelope-simple" [size]="14" />Conectar e-mail</button>
+      } @else {
+        <button type="button" class="btn primary" (click)="wizard.set(4)"><jo-icon name="sliders-horizontal" [size]="14" />Como os e-mails saem</button>
+        <button type="button" class="btn" (click)="check()" [disabled]="checking.running()"><jo-icon name="arrows-clockwise" [size]="14" />{{ checking.running() ? 'Lendo a caixa…' : 'Ler a caixa agora' }}</button>
+      }
+    }
+  </jo-page-hero>
+
+  @if (connected()) {
+    <div class="mode panel" [class.auto]="settings.value()?.mode === 'Auto'">
+      <jo-iso [name]="settings.value()?.mode === 'Auto' ? 'send' : 'gate'" [size]="44" />
+      <div class="what">
+        <strong>{{ modeText() }}</strong>
+        @for (a of accounts.value() ?? []; track a.id) {
+          <span class="faint small">Conta {{ a.address }} · leitura {{ a.checkedAt ? ago(a.checkedAt) : 'ainda não' }}@if (a.lastError) { <span class="warn"> · {{ a.lastError }}</span> }
+            <button type="button" class="link" (click)="removing.run(a.id).then(refresh.bind(this))">desconectar</button></span>
+        }
+      </div>
+    </div>
+  } @else if (accounts.value()) {
+    <section class="empty panel">
+      <jo-iso name="inbox" [size]="96" />
+      <div>
+        <h2>Conecte o seu e-mail em um minuto</h2>
+        <p class="muted">Gmail, Outlook, iCloud, Zoho ou qualquer SMTP, com uma senha de app criada só para isto. Sem conectar, os rascunhos continuam prontos para você copiar.</p>
+        <button type="button" class="btn primary" (click)="wizard.set(1)"><jo-icon name="envelope-simple" [size]="14" />Conectar e-mail</button>
+      </div>
+    </section>
+  }
+
+  <div class="chips" role="tablist" aria-label="Seções">
+    @for (t of tabs(); track t.key) { <button type="button" class="chip" role="tab" [attr.aria-pressed]="tab() === t.key" (click)="tab.set(t.key)">{{ t.label }}@if (t.n !== null) { <span class="n">{{ t.n }}</span> }</button> }
+  </div>
+
+  @switch (tab()) {
+    @case ('targets') {
+      <section class="panel">
+        <header><h2>Vagas que pedem e-mail</h2><span class="faint small">só as da fila que publicam um endereço para candidatura</span></header>
+        <ul class="rows">
+          @for (t of toWrite(); track t.jobId) {
+            <li>
+              <jo-company [name]="t.company" [domain]="t.companyDomain" [size]="30" />
+              <span class="what"><strong>{{ t.title }}</strong><span class="faint small">{{ t.company }} · <span class="mono">{{ t.applyEmail }}</span></span></span>
+              <span class="score num">{{ t.score }}</span>
+              <button type="button" class="btn" (click)="draft(t)" [disabled]="drafting.running()">
+                @if (drafting.running()) { <span class="spinner sm" aria-hidden="true"></span>Escrevendo } @else { <jo-icon name="pen-nib" [size]="14" />Escrever com IA }
+              </button>
+            </li>
+          } @empty { <li class="calm"><jo-iso name="checker" [size]="56" /><span class="muted">Nenhuma vaga nova pedindo e-mail. Quando a busca achar uma que publica o endereço de candidatura, ela aparece aqui.</span></li> }
+        </ul>
+      </section>
+    }
+    @case ('review') {
+      @for (m of toReview(); track m.id) {
+        <article class="panel draft" [class.scheduled]="m.status === 'Scheduled'">
+          <header>
+            <jo-company [name]="m.company" [size]="30" />
+            <span class="what"><strong>{{ m.kind === 'first' ? 'Candidatura' : 'Lembrete' }} para {{ m.company }}</strong><span class="faint small">{{ m.jobTitle }} · para <span class="mono">{{ m.to }}</span></span></span>
+            <span [class]="'pill ' + status(m.status).tone">{{ status(m.status).label }}</span>
+          </header>
+          <div class="compose">
+            <label class="field">Assunto<input [value]="edit(m).subject" (input)="setEdit(m, 'subject', $any($event.target).value)" [disabled]="m.status === 'Scheduled'" /></label>
+            <label class="field">Texto<textarea rows="10" [value]="edit(m).body" (input)="setEdit(m, 'body', $any($event.target).value)" [disabled]="m.status === 'Scheduled'"></textarea></label>
+            <div class="meta">
+              @if (m.attachmentName) { <span class="tag"><jo-icon name="paperclip" [size]="12" />{{ m.attachmentName }}</span> }
+              <span class="tag">{{ m.draftedBy === 'modelo' ? 'preenchido pelo modelo, sem IA' : 'escrito por ' + m.draftedBy }}</span>
+              @if (m.status === 'Scheduled' && m.error) { <span class="tag manual">{{ m.error }}</span> }
+            </div>
+            @if (notes(m).length > 0) {
+              <details class="removed"><summary>O Conferente tirou {{ notes(m).length }} {{ notes(m).length === 1 ? 'frase' : 'frases' }} sem fonte</summary><ul>@for (n of notes(m); track n) { <li>{{ n }}</li> }</ul></details>
+            }
+          </div>
+          <footer>
+            <button type="button" class="btn ghost" (click)="cancel(m)" [disabled]="cancelling.running()">Cancelar</button>
+            @if (m.status !== 'Scheduled') {
+              @if (changed(m)) { <button type="button" class="btn" (click)="saveEdit(m)" [disabled]="editing.running()">Salvar edição</button> }
+              @if (settings.value()?.mode !== 'Draft' && connected()) {
+                <button type="button" class="btn primary confirm" [class.armed]="confirming() === m.id" (click)="approve(m)" [disabled]="approving.running()">
+                  @if (confirming() === m.id) { <span class="ring" aria-hidden="true"></span>Confirmar envio } @else { <jo-icon name="paper-plane-right" [size]="14" />Aprovar envio }
+                </button>
+              }
+            }
+          </footer>
+        </article>
+      } @empty { <section class="panel calm"><jo-iso name="gate" [size]="56" /><span class="muted">Nada para aprovar. Os rascunhos aparecem aqui, com o texto inteiro, o anexo e o que o Conferente tirou.</span></section> }
+    }
+    @case ('sent') {
+      <section class="panel">
+        <ul class="rows">
+          @for (m of done(); track m.id) {
+            <li>
+              <jo-company [name]="m.company" [size]="28" />
+              <span class="what"><strong>{{ m.subject }}</strong><span class="faint small">{{ m.company }} · {{ m.to }} · {{ m.sentAt ? ago(m.sentAt) : ago(m.createdAt) }}@if (m.error && m.status === 'Failed') { <span class="warn"> · {{ m.error }}</span> }</span></span>
+              <span [class]="'pill ' + status(m.status).tone">{{ m.replyClass ? classLabel[m.replyClass] ?? status(m.status).label : status(m.status).label }}</span>
+            </li>
+          } @empty { <li class="calm"><span class="muted">Nada enviado ainda.</span></li> }
+        </ul>
+      </section>
+    }
+    @case ('inbox') {
+      <section class="panel">
+        <header><h2>Respostas</h2><span class="faint small">classificadas no modelo local; o texto não sai da máquina</span></header>
+        <ul class="rows">
+          @for (i of inbox.value() ?? []; track i.id) {
+            <li [class.act]="i.actionNeeded">
+              <jo-iso [name]="i.class === 'interview_invite' ? 'you' : i.class === 'rejection' ? 'receipt' : i.class === 'assessment' ? 'form' : 'inbox'" [size]="34" />
+              <span class="what"><strong>{{ i.subject }}</strong><span class="faint small">{{ i.from }} · {{ ago(i.date) }}</span><span class="muted small snippet">{{ i.snippet }}</span></span>
+              <span [class]="'pill ' + (i.class === 'rejection' ? 'muted' : i.class === 'interview_invite' || i.class === 'offer' || i.class === 'assessment' ? 'ok' : 'accent')">{{ classLabel[i.class ?? 'other'] ?? 'outro' }}@if (i.actionNeeded) { · responder }</span>
+            </li>
+          } @empty { <li class="calm"><span class="muted">Nenhuma resposta ainda. A caixa é lida a cada 10 minutos, só para o que é da busca.</span></li> }
+        </ul>
+      </section>
+    }
+    @case ('template') {
+      <div class="tpls">
+        @for (t of templates.value() ?? []; track t.id) {
+          <section class="panel tpl">
+            <header><h2>{{ tplLabel(t) }}</h2>@if (tplEdits()[t.id]) { <button type="button" class="btn primary" (click)="saveTpl(t)" [disabled]="savingTpl.running()">Salvar</button> }</header>
+            <div class="compose">
+              <label class="field">Assunto<input [value]="tpl(t).subject" (input)="setTpl(t, 'subject', $any($event.target).value)" /></label>
+              <label class="field">Esqueleto<textarea #area rows="9" [value]="tpl(t).body" (input)="setTpl(t, 'body', $any($event.target).value)"></textarea></label>
+              <div class="chips">@for (k of markers; track k) { <button type="button" class="chip mono" (click)="insert(t, k, area)">{{ k }}</button> }</div>
+              <pre class="preview">{{ preview(t) }}</pre>
+            </div>
+          </section>
+        }
+      </div>
+    }
+  }
+</section>
+
+@if (wizard(); as start) {
+  <app-mail-connect [start]="start" [settings]="settings.value() ?? null" (close)="wizard.set(null); refresh()" (changed)="refresh()" />
+}

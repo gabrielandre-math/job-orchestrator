@@ -8,5 +8,6 @@
     <ProjectReference Include="../../Modules/Intelligence/JobOrchestrator.Intelligence/JobOrchestrator.Intelligence.csproj" />
     <ProjectReference Include="../../Modules/Profile/JobOrchestrator.Profile/JobOrchestrator.Profile.csproj" />
     <ProjectReference Include="../../Modules/Materials/JobOrchestrator.Materials/JobOrchestrator.Materials.csproj" />
+    <ProjectReference Include="../../Modules/Mail/JobOrchestrator.Mail/JobOrchestrator.Mail.csproj" />
   </ItemGroup>
 </Project>

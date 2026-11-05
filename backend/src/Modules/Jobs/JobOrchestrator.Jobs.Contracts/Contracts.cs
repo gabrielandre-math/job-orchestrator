@@ -37,10 +37,25 @@ public sealed record JobText
     public string? SalaryCurrency { get; init; }
 }
 
+/// <summary>Vaga na fila que publica um e-mail para candidatura: o único destino que o módulo de e-mail aceita.</summary>
+public sealed record EmailTarget
+{
+    public Guid Id { get; init; }
+    public string Company { get; init; } = "";
+    public string Title { get; init; } = "";
+    public string Location { get; init; } = "";
+    public string ApplyEmail { get; init; } = "";
+    public string ApplyUrl { get; init; } = "";
+    public string? CompanyDomain { get; init; }
+    public int Score { get; init; }
+    public DateTime FirstSeenAt { get; init; }
+}
+
 /// <summary>Contrato público do módulo Jobs.</summary>
 public interface IJobsApi
 {
     Task<JobCounts> CountsAsync(CancellationToken ct);
     Task<IReadOnlyList<SourceCount>> SourcesAsync(CancellationToken ct);
     Task<JobText?> TextAsync(Guid jobId, CancellationToken ct);
+    Task<IReadOnlyList<EmailTarget>> EmailTargetsAsync(CancellationToken ct);
 }

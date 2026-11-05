@@ -50,6 +50,7 @@ export class App {
       { path: '/perfil', label: 'Perfil', icon: 'identification-card' },
       { path: '/vagas', label: 'Vagas', icon: 'briefcase' },
       { path: '/candidaturas', label: 'Candidaturas', icon: 'paper-plane-tilt' },
+      { path: '/email', label: 'E-mail', icon: 'envelope-simple' },
     ] },
     { group: 'Sistema', items: [
       { path: '/fontes', label: 'Fontes', icon: 'plugs-connected' },
