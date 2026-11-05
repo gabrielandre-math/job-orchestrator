@@ -185,12 +185,35 @@ internal sealed class CodexCli(string id, string name, string? home, IConfigurat
             var json = File.Exists(output) ? CliRunner.JsonOf(await File.ReadAllTextAsync(output, ct)) : null;
             if (json is not null) return new LlmResult(true, json, Id, used, effort, null, seconds);
             var all = run.Stdout + run.Stderr;
-            return new LlmResult(false, null, Id, used, effort, CliRunner.LooksLikeQuota(all) ? "quota" : ClaudeCli.Trim(all), seconds);
+            return new LlmResult(false, null, Id, used, effort, CliRunner.LooksLikeQuota(all) ? "quota" : Failure(all, $"{r.System}\n\n{r.Prompt}"), seconds);
         }
         finally
         {
             try { Directory.Delete(dir, recursive: true); } catch (IOException) { }
         }
+    }
+
+    /// <summary>
+    /// O motivo da falha sem o que o codex exec ecoa: o cabeçalho (versão, workdir, modelo, sandbox, sessão) e o prompt inteiro, que é
+    /// interno e não pode aparecer na tela. Fica a linha de erro do CLI; sem ela, as últimas linhas que sobraram.
+    /// </summary>
+    internal static string Failure(string output, string prompt)
+    {
+        var text = output.Replace(prompt, "", StringComparison.Ordinal).Replace("\r", "", StringComparison.Ordinal);
+        var lines = text.Split('\n').Select(l => l.Trim()).ToList();
+        // Cabeçalho: da linha "OpenAI Codex v..." até o segundo separador "--------", e a linha "user" que abre o eco do prompt.
+        var start = lines.FindIndex(l => l.StartsWith("OpenAI Codex", StringComparison.Ordinal));
+        if (start >= 0)
+        {
+            var close = lines.FindIndex(start + 1, l => l.StartsWith("--------", StringComparison.Ordinal));
+            close = close < 0 ? -1 : lines.FindIndex(close + 1, l => l.StartsWith("--------", StringComparison.Ordinal));
+            lines.RemoveRange(start, (close < 0 ? lines.Count - 1 : close) - start + 1);
+        }
+        lines = [.. lines.Where(l => l.Length > 0 && l is not "user" and not "codex" and not "thinking")];
+        var errors = lines.Where(l => l.StartsWith("ERROR", StringComparison.OrdinalIgnoreCase) || l.StartsWith("error:", StringComparison.OrdinalIgnoreCase) || l.Contains("stream error", StringComparison.OrdinalIgnoreCase)).ToList();
+        var picked = errors.Count > 0 ? errors.TakeLast(2) : lines.TakeLast(2);
+        var reason = string.Join(" ", picked);
+        return reason.Length == 0 ? "O Codex terminou sem resposta e sem mensagem de erro." : ClaudeCli.Trim(reason);
     }
 
     /// <summary>Uso real nos eventos rate_limits do arquivo de sessão mais recente do Codex (só leitura).</summary>

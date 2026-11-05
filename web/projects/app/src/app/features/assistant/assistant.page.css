@@ -18,9 +18,14 @@
 .suggest { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 8px; width: 100%; margin-top: 10px; }
 .suggest button { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px; border-radius: 6px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--text-2); font: inherit; text-align: left; cursor: pointer; }
 .suggest button:hover { border-color: var(--accent); color: var(--text); background: var(--accent-weak); }
-.thread { max-width: 860px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(380px, 100%), 1fr)); gap: 14px; }
-.msg, .route, .thinking { grid-column: 1 / -1; animation: rise 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
-.msg.side { grid-column: auto; }
+.thread { max-width: 860px; margin: 0 auto; display: grid; gap: 14px; transition: max-width 260ms ease; }
+.thread.wide { max-width: 1320px; }
+.msg, .route, .thinking, .side-row { animation: rise 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+/* Comparar: uma coluna por modelo, todas na mesma linha e com a mesma altura; em tela estreita, uma embaixo da outra. */
+.side-row { display: grid; grid-template-columns: repeat(var(--cols, 2), minmax(0, 1fr)); gap: 12px; align-items: stretch; }
+.side-row .msg.bot { display: flex; flex-direction: column; }
+.msg.bot.failed { border-color: color-mix(in oklch, var(--warn) 35%, var(--line)); }
+.fail { display: flex; gap: 8px; align-items: flex-start; margin: 0; color: var(--warn); line-height: 1.5; }
 .msg.user { justify-self: end; max-width: 78%; padding: 10px 14px; border-radius: 8px 8px 2px 8px; background: var(--surface-3); }
 .msg.user p { margin: 0; white-space: pre-wrap; line-height: 1.5; }
 .msg.bad { display: flex; gap: 8px; align-items: center; padding: 10px 14px; border-radius: 6px; background: var(--warn-weak); color: var(--warn); }
@@ -65,4 +70,6 @@
 .cmp { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-2); cursor: pointer; }
 @keyframes rise { from { opacity: 0; transform: translateY(6px); } }
 @keyframes dot { 0%, 100% { opacity: 0.3; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-3px); } }
+.scroll { container-type: inline-size; }
+@container (max-width: 720px) { .side-row { grid-template-columns: 1fr; } }
 @media (max-width: 860px) { .chat { grid-template-columns: 1fr; } .history { display: none; } .scroll { padding: 16px 14px 8px; } .composer { padding: 8px 12px 14px; } .msg.user { max-width: 92%; } }

@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { Router } from '@angular/router';
 import { Icon } from '@jo/ui/icon';
 import { Iso } from '@jo/ui/iso';
@@ -12,6 +13,8 @@ import { query } from '../../core/query';
 import { describeSource } from '../../core/sources';
 
 interface Bubble { id: string; role: 'user' | 'assistant' | 'route' | 'error'; text: string; html: string; actions: AssistantAction[]; model: string | null; provider: string | null; rung: string | null; escalatedFrom: string | null; seconds: number | null; compare: boolean }
+/** Linha da conversa: uma fala sozinha ou as respostas da mesma pergunta em modelos diferentes, uma ao lado da outra. */
+type Row = { kind: 'one'; bubble: Bubble } | { kind: 'side'; id: string; bubbles: Bubble[] };
 
 const RUNGS = [
   { key: null, label: 'Automático' }, { key: 'Local', label: 'Local' }, { key: 'Light', label: 'Leve' }, { key: 'Medium', label: 'Médio' }, { key: 'Strong', label: 'Forte' },
@@ -31,7 +34,7 @@ const SUGGESTIONS = [
  */
 @Component({
   selector: 'app-assistant',
-  imports: [Icon, Iso, Mark],
+  imports: [Icon, Iso, Mark, NgTemplateOutlet],
   templateUrl: './assistant.page.html',
   styleUrl: './assistant.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -53,6 +56,19 @@ export class AssistantPage {
   protected readonly ago = ago;
   protected readonly asking = command((body: object) => send<AskResponse>('POST', '/assistant/ask', body));
   protected readonly applying = command((a: AssistantAction) => this.apply(a));
+
+  /** Respostas seguidas do modo comparar (acertos e falhas) viram uma linha só, com uma coluna por modelo. */
+  protected readonly rows = computed<Row[]>(() => {
+    const rows: Row[] = [];
+    for (const b of this.bubbles()) {
+      const last = rows.at(-1);
+      if (b.compare && last?.kind === 'side') last.bubbles.push(b);
+      else if (b.compare) rows.push({ kind: 'side', id: b.id, bubbles: [b] });
+      else rows.push({ kind: 'one', bubble: b });
+    }
+    return rows;
+  });
+  protected readonly wide = computed(() => this.rows().some((r) => r.kind === 'side'));
 
   /** Quem está trabalhando nesta conversa agora (roteador classificando, modelo escrevendo). */
   protected readonly working = computed(() => {
@@ -90,7 +106,7 @@ export class AssistantPage {
     this.current.set(r.conversationId);
     const answers = r.answers.map((a): Bubble => a.ok
       ? { id: crypto.randomUUID(), role: 'assistant', text: a.reply, html: markdown(a.reply), actions: a.actions, model: a.model, provider: a.providerId, rung: a.rung, escalatedFrom: a.escalatedFrom, seconds: a.seconds, compare: r.answers.length > 1 }
-      : { id: crypto.randomUUID(), role: 'error', text: a.error ?? 'Nenhum modelo respondeu.', html: '', actions: [], model: a.model, provider: a.providerId, rung: a.rung, escalatedFrom: null, seconds: null, compare: false });
+      : { id: crypto.randomUUID(), role: 'error', text: a.error ?? 'Nenhum modelo respondeu.', html: '', actions: [], model: a.model, provider: a.providerId, rung: a.rung, escalatedFrom: null, seconds: null, compare: r.answers.length > 1 });
     this.bubbles.update((b) => [...b, ...answers]);
     this.scroll();
     if (fresh) await this.conversations.reload();

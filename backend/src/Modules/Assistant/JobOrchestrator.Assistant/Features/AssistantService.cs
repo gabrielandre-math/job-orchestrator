@@ -138,7 +138,7 @@ internal sealed partial class AssistantService(IIntelligenceApi ai, IServiceScop
         {
             using var doc = JsonDocument.Parse(res.Json);
             var root = doc.RootElement;
-            var reply = root.TryGetProperty("reply", out var t) ? t.GetString() ?? "" : "";
+            var reply = Unescape(root.TryGetProperty("reply", out var t) ? t.GetString() ?? "" : "");
             var confidence = root.TryGetProperty("confidence", out var c) && c.ValueKind == JsonValueKind.Number ? c.GetDouble() : 0.7;
             var escalate = root.TryGetProperty("escalate", out var e) && e.ValueKind == JsonValueKind.True;
             var actions = root.TryGetProperty("actions", out var a) && a.ValueKind == JsonValueKind.Array ? Actions(a) : [];
@@ -304,6 +304,17 @@ internal sealed partial class AssistantService(IIntelligenceApi ai, IServiceScop
     [GeneratedRegex(@"\b(de|com|para|você|nossa|vaga)\b")] private static partial Regex PtWords();
     [GeneratedRegex(@"(?<=[.!?])\s+")] private static partial Regex SentenceEnd();
     [GeneratedRegex(@"\n{3,}")] private static partial Regex Gaps();
+
+    /// <summary>
+    /// Alguns modelos, presos ao JSON da resposta, escapam duas vezes: o texto chega com "\n" literal em vez da quebra de linha, e o
+    /// Markdown vira uma linha só na tela. Sem nenhuma quebra de verdade e com sequências literais, desfaz o escape extra.
+    /// </summary>
+    internal static string Unescape(string text)
+    {
+        if (text.Contains('\n') || !text.Contains("\\n", StringComparison.Ordinal)) return text;
+        return text.Replace("\\r\\n", "\n", StringComparison.Ordinal).Replace("\\n", "\n", StringComparison.Ordinal).Replace("\\t", "\t", StringComparison.Ordinal)
+            .Replace("\\\"", "\"", StringComparison.Ordinal).Trim();
+    }
 
     /// <summary>Primeiro contato: lê o perfil verificado e propõe a campanha inteira (área, cargos, palavras, locais, fontes). Sem IA, monta pelo próprio perfil.</summary>
     public async Task<SetupProposal> SetupAsync(CancellationToken ct)

@@ -18,37 +18,45 @@
           <div class="suggest">@for (s of suggestions; track s) { <button type="button" (click)="ask(s)">{{ s }}<jo-icon name="arrow-right" [size]="13" /></button> }</div>
         </div>
       }
-      <div class="thread">
-        @for (b of bubbles(); track b.id; let bi = $index) {
-          @switch (b.role) {
-            @case ('user') { <div class="msg user"><p>{{ b.text }}</p></div> }
-            @case ('route') { <div class="route"><jo-icon name="arrow-up" [size]="12" />{{ b.text }}</div> }
-            @case ('error') { <div class="msg bad"><jo-icon name="warning" [size]="14" />{{ b.text }}</div> }
-            @default {
-              <article class="msg bot" [class.side]="b.compare">
-                <header>
-                  @if (logo(b.provider); as l) { <img class="plogo" [class.mono]="l === 'openai' || l === 'ollama'" [src]="'/logos/' + l + '.svg'" alt="" /> } @else { <jo-iso name="router" [size]="22" /> }
-                  <span class="who">{{ b.model || b.provider }}</span>
-                  @if (b.rung) { <span class="rung">{{ rungLabel(b.rung) }}</span> }
-                  @if (b.escalatedFrom) { <span class="up" title="A pergunta subiu de degrau"><jo-icon name="arrow-up" [size]="11" />de {{ rungLabel(b.escalatedFrom) }}</span> }
-                  @if (b.seconds) { <span class="faint small">{{ b.seconds.toLocaleString('pt-BR') }} s</span> }
-                </header>
-                <div class="md" [innerHTML]="b.html"></div>
-                @if (b.actions.length > 0) {
-                  <div class="actions">
-                    @for (a of b.actions; track $index; let ai = $index) {
-                      <div class="action" [class.done]="applied().has(b.id + ':' + ai)">
-                        <span class="what"><strong>{{ a.title }}</strong><span class="faint small">{{ actionText(a) }}</span></span>
-                        @if (applied().has(b.id + ':' + ai)) { <span class="ok"><jo-icon name="check" [size]="14" />{{ a.type === 'navigate' ? 'aberto' : 'aplicado' }}</span> }
-                        @else { <button type="button" class="btn" (click)="run(b, a, ai)" [disabled]="applying.running()">{{ actionVerb(a) }}</button> }
-                      </div>
-                    }
-                  </div>
-                }
-              </article>
+      <div class="thread" [class.wide]="wide()">
+        @for (row of rows(); track row.kind === 'one' ? row.bubble.id : row.id) {
+          @if (row.kind === 'side') {
+            <div class="side-row" [style.--cols]="row.bubbles.length" role="group" aria-label="Respostas lado a lado">
+              @for (b of row.bubbles; track b.id) { <ng-container [ngTemplateOutlet]="bot" [ngTemplateOutletContext]="{ $implicit: b }" /> }
+            </div>
+          } @else {
+            @switch (row.bubble.role) {
+              @case ('user') { <div class="msg user"><p>{{ row.bubble.text }}</p></div> }
+              @case ('route') { <div class="route"><jo-icon name="arrow-up" [size]="12" />{{ row.bubble.text }}</div> }
+              @case ('error') { <div class="msg bad"><jo-icon name="warning" [size]="14" />{{ row.bubble.text }}</div> }
+              @default { <ng-container [ngTemplateOutlet]="bot" [ngTemplateOutletContext]="{ $implicit: row.bubble }" /> }
             }
           }
         }
+        <ng-template #bot let-b>
+          <article class="msg bot" [class.failed]="b.role === 'error'">
+            <header>
+              @if (logo(b.provider); as l) { <img class="plogo" [class.mono]="l === 'openai' || l === 'ollama'" [src]="'/logos/' + l + '.svg'" alt="" /> } @else { <jo-iso name="router" [size]="22" /> }
+              <span class="who">{{ b.model || b.provider }}</span>
+              @if (b.rung) { <span class="rung">{{ rungLabel(b.rung) }}</span> }
+              @if (b.escalatedFrom) { <span class="up" title="A pergunta subiu de degrau"><jo-icon name="arrow-up" [size]="11" />de {{ rungLabel(b.escalatedFrom) }}</span> }
+              @if (b.seconds) { <span class="faint small">{{ b.seconds.toLocaleString('pt-BR') }} s</span> }
+            </header>
+            @if (b.role === 'error') { <p class="fail"><jo-icon name="warning" [size]="14" />{{ b.text }}</p> }
+            @else { <div class="md" [innerHTML]="b.html"></div> }
+            @if (b.actions.length > 0) {
+              <div class="actions">
+                @for (a of b.actions; track $index; let ai = $index) {
+                  <div class="action" [class.done]="applied().has(b.id + ':' + ai)">
+                    <span class="what"><strong>{{ a.title }}</strong><span class="faint small">{{ actionText(a) }}</span></span>
+                    @if (applied().has(b.id + ':' + ai)) { <span class="ok"><jo-icon name="check" [size]="14" />{{ a.type === 'navigate' ? 'aberto' : 'aplicado' }}</span> }
+                    @else { <button type="button" class="btn" (click)="run(b, a, ai)" [disabled]="applying.running()">{{ actionVerb(a) }}</button> }
+                  </div>
+                }
+              </div>
+            }
+          </article>
+        </ng-template>
         @if (working(); as w) {
           <div class="thinking"><jo-iso [name]="w.agent === 'Roteador' ? 'router' : 'writer'" [size]="30" /><span><strong>{{ w.agent }}</strong> {{ w.text }}</span><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span></div>
         }
