@@ -76,6 +76,15 @@ internal static class Server
             _ = Task.Delay(300).ContinueWith(_ => life.StopApplication(), TaskScheduler.Default);
             return Results.Accepted();
         }).ExcludeFromDescription();
+        // O botão Sair do painel: para o servidor, o Worker e o Postgres próprio. O cabeçalho próprio só sai do painel (outra origem
+        // precisaria de preflight de CORS, que este servidor não libera), então um site aberto em outra aba não consegue pedir.
+        app.MapPost("/api/app/quit", (HttpRequest req, IHostApplicationLifetime life) =>
+        {
+            if (req.Headers["X-Jo-App"] != "quit") return Results.StatusCode(403);
+            life.ApplicationStopped.Register(() => { if (PortablePostgres.Installed) PortablePostgres.StopAsync(CancellationToken.None).GetAwaiter().GetResult(); });
+            _ = Task.Delay(400).ContinueWith(_ => life.StopApplication(), TaskScheduler.Default);
+            return Results.Accepted();
+        }).ExcludeFromDescription();
         app.MapCarter();
         app.MapFallback("/api/{**rest}", () => Results.NotFound());
         Panel(app, config["Web:Root"] is { Length: > 0 } root ? root : Path.Combine(AppPaths.Resources, "wwwroot"));

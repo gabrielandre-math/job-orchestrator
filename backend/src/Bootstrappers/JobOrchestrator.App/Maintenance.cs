@@ -32,6 +32,42 @@ internal static class Maintenance
         return Launcher.Print($"Desinstalado. Os seus dados ficaram em {AppPaths.Data} e {AppPaths.Config}; com --purge, saem também.");
     }
 
+    /// <summary>Backup agora, com o banco no ar: a cópia física do Postgres próprio em &lt;dados&gt;/backups (a mesma das 7h55).</summary>
+    public static async Task<int> BackupAsync()
+    {
+        if (!PortablePostgres.Installed) return Launcher.Print("O backup por aqui vale para o Postgres próprio; com o Docker, use scripts/backup.sh.") + 1;
+        var started = !await Launcher.PortOpenAsync(5462) && await PortablePostgres.StartAsync(Console.WriteLine, CancellationToken.None);
+        var cs = new Microsoft.Extensions.Configuration.ConfigurationBuilder().SetBasePath(AppPaths.Resources).AddJsonFile("appsettings.json", optional: true)
+            .AddJsonFile(Path.Combine(AppPaths.Config, "settings.json"), optional: true).Build().GetConnectionString("Default") ?? "";
+        var file = await PortablePostgres.BackupAsync(cs, AppPaths.In(AppPaths.Data, "backups"), CancellationToken.None);
+        if (started) await PortablePostgres.StopAsync(CancellationToken.None);
+        return Launcher.Print($"Backup em {file} ({new FileInfo(file).Length / 1_000_000.0:0.0} MB).");
+    }
+
+    /// <summary>
+    /// Conferência rápida do que depende do sistema, sem mexer em nada seu: grava, lê e apaga um segredo de teste no chaveiro, acha o
+    /// navegador e mostra as pastas. Serve para validar um sistema novo (e o Wine) antes de instalar.
+    /// </summary>
+    public static async Task<int> SelfTestAsync()
+    {
+        var fails = 0;
+        void Line(string name, bool ok, string detail) { Console.WriteLine($"{(ok ? "ok  " : "FALHA")} {name}: {detail}"); if (!ok) fails++; }
+        Line("sistema", true, $"{Platform.Describe()} ({System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier})");
+        Line("pastas", true, $"dados {AppPaths.Data}; configuração {AppPaths.Config}; arquivos do app {AppPaths.Resources}");
+        var secret = $"teste-{Guid.NewGuid():N}";
+        var stored = await Secrets.StoreAsync("selftest", secret, CancellationToken.None);
+        var read = await Secrets.GetAsync("selftest", CancellationToken.None);
+        await Secrets.ClearAsync("selftest", CancellationToken.None);
+        var gone = await Secrets.GetAsync("selftest", CancellationToken.None) is null;
+        Line("chaveiro", stored && read == secret && gone, $"{Secrets.StoreName}: gravar {(stored ? "ok" : "falhou")}, ler {(read == secret ? "ok" : "falhou")}, apagar {(gone ? "ok" : "falhou")}");
+        Line("navegador", Platform.Browser() is not null, Platform.Browser() ?? "nenhum Chrome, Edge, Chromium ou Brave");
+        var (cpu, total, free) = Machine.Describe();
+        Line("máquina", total > 0, $"{cpu}, {total / 1024.0:0.0} GB de RAM, {free / 1024.0:0.0} GB livres");
+        Line("postgres portátil", PortablePostgres.Platform() is not null, PortablePostgres.Platform() ?? "sem pacote para este sistema");
+        Line("uv", Uv.Asset() is not null, Uv.Asset() ?? "sem pacote para este sistema");
+        return fails;
+    }
+
     /// <summary>Troca o banco pelo de um backup (o zip do backup da noite) com tudo parado; o banco de antes fica ao lado.</summary>
     public static async Task<int> RestoreAsync(string zip)
     {

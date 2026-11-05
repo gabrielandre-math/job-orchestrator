@@ -19,7 +19,8 @@ internal static class Desktop
 
     /// <summary>Onde o app fica instalado: ~/.local/opt no Linux, ~/Applications/Job Orchestrator.app no macOS, %LOCALAPPDATA%\Programs no Windows.</summary>
     public static string Target =>
-        OperatingSystem.IsMacOS() ? Path.Combine(Home, "Applications", "Job Orchestrator.app")
+        // Pacote arrastado para /Applications (o jeito de costume no Mac) já é a instalação; aberto do .dmg ou de Downloads, vai para ~/Applications.
+        OperatingSystem.IsMacOS() ? (Bundle is { } b && b.StartsWith("/Applications/", StringComparison.Ordinal) ? b : Path.Combine(Home, "Applications", "Job Orchestrator.app"))
         : OperatingSystem.IsWindows() ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "JobOrchestrator")
         : Path.Combine(Home, ".local", "opt", "job-orchestrator");
 

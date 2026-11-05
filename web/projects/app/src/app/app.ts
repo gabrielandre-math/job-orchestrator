@@ -11,13 +11,14 @@ import { Live } from './core/live';
 import { Toasts } from './core/toast';
 import { SearchRun } from './core/search';
 import { Welcome } from './features/welcome/welcome';
+import { Quit } from './features/quit/quit';
 
 interface NavItem { path: string; label: string; icon: string; exact?: boolean; count?: 'review' | 'attention'; }
 
 /** Shell: barra lateral recolhível (lembrada neste navegador), contadores reais e o estado da API. */
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icon, Mark, Welcome],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icon, Mark, Welcome, Quit],
   templateUrl: './app.html',
   styleUrl: './app.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -38,6 +39,7 @@ export class App {
   /** O instalador ocupa a tela inteira: sem barra lateral, sem consultas ao app (que ainda não está instalado). */
   protected readonly bare = typeof location !== 'undefined' && location.pathname.startsWith('/instalar');
   protected readonly overview = query<Overview>(() => (this.bare ? null : '/overview'), 5000);
+  protected readonly quitting = signal(false);
   protected readonly online = computed(() => this.overview.problem() === null && this.overview.value() !== undefined);
   protected readonly mode = computed(() => modeLabel(this.overview.value()?.campaign?.mode ?? ''));
   protected readonly nav: { group: string; items: NavItem[] }[] = [

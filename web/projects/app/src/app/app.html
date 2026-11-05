@@ -41,6 +41,10 @@
       <jo-icon [name]="theme.mode() === 'dark' ? 'sun' : 'moon'" [size]="18" />
       <span class="label">{{ theme.mode() === 'dark' ? 'Tema claro' : 'Tema escuro' }}</span>
     </button>
+    <button class="theme" type="button" (click)="quitting.set(true)" title="Sair do app">
+      <jo-icon name="power" [size]="18" />
+      <span class="label">Sair</span>
+    </button>
   </footer>
 </aside>
 <main>
@@ -48,6 +52,7 @@
 </main>
 
 @if (welcome()) { <app-welcome (close)="closeWelcome()" /> }
+@if (quitting()) { <app-quit (close)="quitting.set(false)" /> }
 
 <div class="toasts" aria-live="polite">
   @for (t of toasts.list(); track t.id) {

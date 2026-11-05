@@ -17,6 +17,8 @@ return args.FirstOrDefault() switch
     "--status" => await Launcher.StatusAsync(),
     "--uninstall" => await Maintenance.UninstallAsync(args.Contains("--purge")),
     "--restore" when args.Length > 1 => await Maintenance.RestoreAsync(args[1]),
+    "--backup" => await Maintenance.BackupAsync(),
+    "--selftest" => await Maintenance.SelfTestAsync(),
     "--version" => Launcher.Print($"Job Orchestrator {Launcher.Version} ({RuntimeInformation.RuntimeIdentifier})"),
     "--help" or "-h" => Launcher.Print("""
         job-orchestrator                 abre o app (sobe os serviços se preciso; na primeira vez, o instalador)
@@ -24,6 +26,7 @@ return args.FirstOrDefault() switch
         job-orchestrator --setup         abre o instalador
         job-orchestrator --status        mostra se está no ar
         job-orchestrator --stop          para os serviços
+        job-orchestrator --backup        copia o banco agora (com o app no ar)
         job-orchestrator --restore ZIP   restaura o banco de um backup
         job-orchestrator --uninstall     tira o app (os seus dados ficam; com --purge, saem também)
         """),
@@ -40,5 +43,9 @@ internal static class WindowsConsole
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool AttachConsole(int processId);
 
-    public static void Attach() => AttachConsole(-1);
+    public static void Attach()
+    {
+        // Saída em UTF-8: os acentos do português chegam certos no Terminal do Windows e em arquivo redirecionado.
+        if (AttachConsole(-1)) Console.OutputEncoding = System.Text.Encoding.UTF8;
+    }
 }

@@ -69,15 +69,25 @@ public static class Secrets
         catch (System.ComponentModel.Win32Exception) { return (-1, ""); }
         using (p)
         {
-            if (stdin is not null) await p.StandardInput.WriteAsync(stdin.AsMemory(), ct);
-            p.StandardInput.Close();
-            var stderr = p.StandardError.ReadToEndAsync(ct);
-            var output = await p.StandardOutput.ReadToEndAsync(ct);
+            // Chaveiro trancado (sessão sem tela, como por SSH no Mac) faz o sistema pedir a senha numa janela e o comando esperar:
+            // 20 segundos e o processo sai, sem segredo e sem travar o app.
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
             timeout.CancelAfter(TimeSpan.FromSeconds(20));
-            await p.WaitForExitAsync(timeout.Token);
-            await stderr;
-            return (p.ExitCode, output);
+            try
+            {
+                if (stdin is not null) await p.StandardInput.WriteAsync(stdin.AsMemory(), timeout.Token);
+                p.StandardInput.Close();
+                var stderr = p.StandardError.ReadToEndAsync(timeout.Token);
+                var output = await p.StandardOutput.ReadToEndAsync(timeout.Token);
+                await p.WaitForExitAsync(timeout.Token);
+                await stderr;
+                return (p.ExitCode, output);
+            }
+            catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+            {
+                try { p.Kill(entireProcessTree: true); } catch (InvalidOperationException) { }
+                return (-1, "");
+            }
         }
     }
 }
