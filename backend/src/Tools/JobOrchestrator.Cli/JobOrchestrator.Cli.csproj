@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>jo</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../Modules/Intelligence/JobOrchestrator.Intelligence.Contracts/JobOrchestrator.Intelligence.Contracts.csproj" />
+    <ProjectReference Include="../../Modules/Profile/JobOrchestrator.Profile.Contracts/JobOrchestrator.Profile.Contracts.csproj" />
+    <None Include="bench/fixtures.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

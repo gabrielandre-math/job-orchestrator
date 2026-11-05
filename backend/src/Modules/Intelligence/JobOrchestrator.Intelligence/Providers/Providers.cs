@@ -52,7 +52,7 @@ internal sealed class ClaudeCli(string id, string name, string? configDir, IConf
     {
         var (model, effort) = r.Rung switch
         {
-            Rung.Light => ("haiku", "low"),
+            Rung.Local or Rung.LocalStrong or Rung.Light => ("haiku", "low"),
             Rung.Medium => ("sonnet", "medium"),
             Rung.Strong => ("sonnet", "high"),
             _ => ("opus", "high")
@@ -160,7 +160,7 @@ internal sealed class CodexCli(IConfiguration config) : IProvider
 
     public async Task<LlmResult> RunAsync(LlmRequest r, CancellationToken ct)
     {
-        var effort = r.Rung switch { Rung.Light => "low", Rung.Medium => "medium", Rung.Strong => "high", _ => "xhigh" };
+        var effort = r.Rung switch { Rung.Local or Rung.LocalStrong or Rung.Light => "low", Rung.Medium => "medium", Rung.Strong => "high", _ => "xhigh" };
         var model = config[$"Llm:Codex:Models:{r.Rung}"];
         var dir = Path.Combine(CliRunner.Sandbox, Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
@@ -235,65 +235,10 @@ internal sealed class CodexCli(IConfiguration config) : IProvider
     }
 }
 
-/// <summary>Gemini CLI com o login Google (AI Pro). O CLI não expõe esforço: degrau leve e médio usam o modelo rápido, se configurado.</summary>
-internal sealed class GeminiCli(IConfiguration config) : IProvider
-{
-    public string Id => "gemini";
-    public string Name => "Gemini";
-    public string Family => "google";
-
-    public async Task<ProviderView> ProbeAsync(int order, LlmResult? lastTest, CancellationToken ct)
-    {
-        var bin = CliRunner.Find("gemini");
-        if (bin is null) return new(Id, Name, Family, order, false, null, "CLI não instalado", null, [], false, "missing", "Instale o Gemini CLI.", lastTest);
-        var version = (await CliRunner.RunAsync(bin, ["--version"], null, TimeSpan.FromSeconds(15), null, ct)).Stdout.Trim();
-        var settings = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".gemini", "settings.json");
-        string? auth = null;
-        try
-        {
-            using var doc = JsonDocument.Parse(File.ReadAllText(settings));
-            var r = doc.RootElement;
-            auth = r.TryGetProperty("security", out var s) && s.TryGetProperty("auth", out var a) && a.TryGetProperty("selectedType", out var t) ? t.GetString()
-                : r.TryGetProperty("selectedAuthType", out var t2) ? t2.GetString() : null;
-        }
-        catch (Exception ex) when (ex is IOException or JsonException) { }
-        var google = auth == "oauth-personal";
-        var apiKey = auth is not null && auth.Contains("api", StringComparison.OrdinalIgnoreCase);
-        if (apiKey) return new(Id, Name, Family, order, true, version, "API key", null, [], false, "blocked", "Login por API key detectado: bloqueado para não gerar cobrança.", lastTest);
-        // O Google recusa o cliente no plano individual (UNSUPPORTED_CLIENT): fica fora da rota até isso mudar.
-        if (lastTest?.Error is { } err && (err.Contains("UNSUPPORTED_CLIENT", StringComparison.Ordinal) || err.Contains("no longer supported", StringComparison.OrdinalIgnoreCase)))
-            return new(Id, Name, Family, order, true, version, "conta Google", "individual (free-tier)", [], false, "blocked",
-                "O Google não aceita mais o Gemini CLI no plano individual e pede migrar para o Antigravity. Fica fora da ordem de gasto.", lastTest);
-        return new(Id, Name, Family, order, true, version, google ? "conta Google" : "sem login", null, [], google, google ? "ready" : "no-login",
-            google ? "Pronto para uso. A política de dados do plano Google deve ser conferida antes de mandar perfil." : "Conecte rodando: gemini", lastTest);
-    }
-
-    public async Task<LlmResult> RunAsync(LlmRequest r, CancellationToken ct)
-    {
-        var model = config[$"Llm:Gemini:Models:{r.Rung}"];
-        List<string> args = ["-o", "json", "-p", $"{r.System}\n\nResponda só com JSON neste schema: {r.JsonSchema}\n\n{r.Prompt}"];
-        if (model is { Length: > 0 }) args.InsertRange(0, ["-m", model]);
-        var clock = Stopwatch.StartNew();
-        var run = await CliRunner.RunAsync(CliRunner.Find("gemini") ?? "gemini", args, null, TimeSpan.FromSeconds(r.TimeoutSeconds), null, ct);
-        var seconds = clock.Elapsed.TotalSeconds;
-        var used = model ?? "padrão do CLI";
-        if (run.TimedOut) return new LlmResult(false, null, Id, used, "padrão", "tempo esgotado", seconds);
-        try
-        {
-            using var doc = JsonDocument.Parse(run.Stdout);
-            var text = doc.RootElement.TryGetProperty("response", out var resp) ? resp.GetString() ?? "" : "";
-            var json = CliRunner.JsonOf(text);
-            return new LlmResult(json is not null, json, Id, used, "padrão", json is null ? "resposta fora do formato" : null, seconds);
-        }
-        catch (JsonException)
-        {
-            var all = run.Stdout + run.Stderr;
-            return new LlmResult(false, null, Id, used, "padrão", CliRunner.LooksLikeQuota(all) ? "quota" : ClaudeCli.Trim(all), seconds);
-        }
-    }
-}
-
-/// <summary>Ollama local na RTX. Enquanto não estiver instalado, aparece assim, sem fingir.</summary>
+/// <summary>
+/// Ollama local na RTX, com duas vagas: o modelo rápido (degrau Local) e o forte (LocalStrong), trocados pela configuração
+/// Llm:Ollama:Models. Um modelo por vez na VRAM; a troca custa alguns segundos de carga.
+/// </summary>
 internal sealed class OllamaLocal(IHttpClientFactory http, IConfiguration config) : IProvider
 {
     public string Id => "ollama";
@@ -301,37 +246,79 @@ internal sealed class OllamaLocal(IHttpClientFactory http, IConfiguration config
     public string Family => "local";
     private string Url => config["Llm:Ollama:Url"] ?? "http://127.0.0.1:11434";
 
+    public string ModelFor(Rung rung) =>
+        rung == Rung.LocalStrong && config["Llm:Ollama:Models:LocalStrong"] is { Length: > 0 } strong ? strong : config["Llm:Ollama:Models:Local"] ?? "gemma4:e4b";
+
     public async Task<ProviderView> ProbeAsync(int order, LlmResult? lastTest, CancellationToken ct)
     {
         var installed = CliRunner.Find("ollama") is not null;
         try
         {
-            using var doc = JsonDocument.Parse(await http.CreateClient("ollama").GetStringAsync($"{Url}/api/version", ct));
-            return new(Id, Name, Family, order, true, doc.RootElement.GetProperty("version").GetString(), "local", null, [], true, "ready", "Serviço no ar.", lastTest);
+            var client = http.CreateClient("ollama");
+            using var version = JsonDocument.Parse(await client.GetStringAsync($"{Url}/api/version", ct));
+            var models = await TagsAsync(ct);
+            var wanted = new[] { ModelFor(Rung.Local), ModelFor(Rung.LocalStrong) }.Distinct().ToList();
+            var missing = wanted.Where(m => !models.Any(x => x.Name == m)).ToList();
+            var detail = missing.Count > 0 ? $"Serviço no ar, mas falta baixar: {string.Join(", ", missing)}." : $"Rápido: {wanted[0]}. Forte: {wanted[^1]}.";
+            return new(Id, Name, Family, order, true, version.RootElement.GetProperty("version").GetString(), "local", null, [], missing.Count < wanted.Count, missing.Count > 0 ? "partial" : "ready", detail, lastTest);
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
         {
             return new(Id, Name, Family, order, installed, null, "local", null, [], false, installed ? "stopped" : "missing",
-                installed ? "Instalado, mas o serviço não está no ar." : "Não instalado. Precisa de: sudo pacman -S ollama-cuda", lastTest);
+                installed ? "Instalado, mas o serviço não está no ar." : "Não instalado.", lastTest);
         }
+    }
+
+    /// <summary>Modelos baixados (/api/tags) e os que estão na VRAM agora (/api/ps).</summary>
+    public async Task<IReadOnlyList<LocalModelView>> TagsAsync(CancellationToken ct)
+    {
+        var client = http.CreateClient("ollama");
+        using var tags = JsonDocument.Parse(await client.GetStringAsync($"{Url}/api/tags", ct));
+        using var ps = JsonDocument.Parse(await client.GetStringAsync($"{Url}/api/ps", ct));
+        var loaded = ps.RootElement.GetProperty("models").EnumerateArray()
+            .ToDictionary(m => m.GetProperty("name").GetString()!, m => m.GetProperty("size").GetInt64() is > 0 and var size ? (int)Math.Round(100.0 * m.GetProperty("size_vram").GetInt64() / size) : 0);
+        string? Slot(string name) => name == ModelFor(Rung.Local) ? (name == ModelFor(Rung.LocalStrong) ? "rápido e forte" : "rápido") : name == ModelFor(Rung.LocalStrong) ? "forte" : null;
+        return [.. tags.RootElement.GetProperty("models").EnumerateArray().Select(m =>
+        {
+            var name = m.GetProperty("name").GetString()!;
+            return new LocalModelView(name, Math.Round(m.GetProperty("size").GetInt64() / 1e9, 1), Slot(name), loaded.ContainsKey(name), loaded.TryGetValue(name, out var gpu) ? gpu : null);
+        }).OrderBy(m => m.Slot is null).ThenBy(m => m.Name)];
     }
 
     public async Task<LlmResult> RunAsync(LlmRequest r, CancellationToken ct)
     {
-        var model = config["Llm:Ollama:Model"] ?? "qwen3:4b";
+        var model = ModelFor(r.Rung);
         var clock = Stopwatch.StartNew();
+        using var limit = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        limit.CancelAfter(TimeSpan.FromSeconds(r.TimeoutSeconds));
         try
         {
-            // think = false: sem o raciocínio longo do modelo, só a resposta no schema.
-            var body = JsonSerializer.Serialize(new { model, stream = false, think = false, format = JsonDocument.Parse(r.JsonSchema).RootElement, messages = new[] { new { role = "system", content = r.System }, new { role = "user", content = r.Prompt } } });
-            using var response = await http.CreateClient("ollama").PostAsync($"{Url}/api/chat", new StringContent(body, System.Text.Encoding.UTF8, "application/json"), ct);
-            using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
-            var json = CliRunner.JsonOf(doc.RootElement.GetProperty("message").GetProperty("content").GetString() ?? "");
+            var (content, error) = await ChatAsync(model, r, think: false, limit.Token);
+            // Modelos sem modo de raciocínio recusam o campo think: repete sem ele.
+            if (error is not null && error.Contains("think", StringComparison.OrdinalIgnoreCase)) (content, error) = await ChatAsync(model, r, think: null, limit.Token);
+            if (error is not null) return new LlmResult(false, null, Id, model, "local", ClaudeCli.Trim(error), clock.Elapsed.TotalSeconds);
+            var json = CliRunner.JsonOf(content ?? "");
             return new LlmResult(json is not null, json, Id, model, "local", json is null ? "resposta fora do formato" : null, clock.Elapsed.TotalSeconds);
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or KeyNotFoundException)
         {
-            return new LlmResult(false, null, Id, model, "local", "Ollama indisponível", clock.Elapsed.TotalSeconds);
+            return new LlmResult(false, null, Id, model, "local", limit.IsCancellationRequested ? "tempo esgotado" : "Ollama indisponível", clock.Elapsed.TotalSeconds);
         }
+    }
+
+    /// <summary>Uma chamada a /api/chat com o schema como formato e temperatura zero (extração, não criatividade).</summary>
+    private async Task<(string? Content, string? Error)> ChatAsync(string model, LlmRequest r, bool? think, CancellationToken ct)
+    {
+        var body = new Dictionary<string, object>
+        {
+            ["model"] = model, ["stream"] = false, ["format"] = JsonDocument.Parse(r.JsonSchema).RootElement,
+            ["options"] = new { temperature = 0 },
+            ["messages"] = new[] { new { role = "system", content = r.System }, new { role = "user", content = r.Prompt } }
+        };
+        if (think is { } t) body["think"] = t;
+        using var response = await http.CreateClient("ollama").PostAsync($"{Url}/api/chat", new StringContent(JsonSerializer.Serialize(body), System.Text.Encoding.UTF8, "application/json"), ct);
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
+        if (doc.RootElement.TryGetProperty("error", out var e)) return (null, e.GetString() ?? "erro do Ollama");
+        return (doc.RootElement.GetProperty("message").GetProperty("content").GetString(), null);
     }
 }
