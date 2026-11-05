@@ -23,7 +23,7 @@ Parar o Worker no meio de um envio é seguro. A intenção é gravada antes do c
 
 ## Docker
 
-`scripts/docker.sh up | down | logs | build | ps`. API e Worker usam a mesma base, com Chromium do Playwright, poppler, Scrapy, as CLIs do Claude e do Codex e o login de assinatura montado do host (`~/.claude`, `~/.claude.json`, `~/.codex`, `~/.config/job-orchestrator/accounts`). O gnome-keyring chega pelo D-Bus do usuário. O Firecrawl é opcional: rode `scripts/firecrawl.sh` e defina `JO_FIRECRAWL_URL=http://127.0.0.1:3002`.
+`scripts/docker.sh up | down | logs | build | ps`. API e Worker usam a mesma base, com Chromium do Playwright, poppler, Scrapy, as CLIs do Claude e do Codex e o login de assinatura montado do host (`~/.claude`, `~/.claude.json`, `~/.codex`, `~/.config/job-orchestrator/accounts`). O gnome-keyring chega pelo D-Bus do usuário. O Firecrawl é opcional: rode `scripts/firecrawl.sh` e defina `JO_FIRECRAWL_URL=http://127.0.0.1:3002`. Os sensores da GPU no contêiner precisam do NVIDIA Container Toolkit (`nvidia-container-toolkit` e `sudo nvidia-ctk runtime configure --runtime=docker`); com ele, `JO_GPU=1 scripts/docker.sh up`.
 
 ## Backup e restauração
 

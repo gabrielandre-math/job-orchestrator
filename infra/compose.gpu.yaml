@@ -1,0 +1,7 @@
+# Opcional: a placa NVIDIA visível na API e no Worker (sensores da GPU e Ollama em contêiner). Precisa do NVIDIA Container Toolkit
+# no host (pacote nvidia-container-toolkit e "sudo nvidia-ctk runtime configure --runtime=docker"). Uso: JO_GPU=1 scripts/docker.sh up
+services:
+  api:
+    deploy: { resources: { reservations: { devices: [{ driver: nvidia, count: all, capabilities: [gpu, utility] }] } } }
+  worker:
+    deploy: { resources: { reservations: { devices: [{ driver: nvidia, count: all, capabilities: [gpu, utility] }] } } }
