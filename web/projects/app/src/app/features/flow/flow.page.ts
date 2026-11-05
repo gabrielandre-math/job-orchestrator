@@ -29,18 +29,32 @@ const ROW_C = 720;
 const BUS_X = X0 - 64;
 const ROW_D = ROW_C + 340;
 const ROW_E = ROW_D + 250;
+const ROW_F = ROW_E + 250;
+const ROW_G = ROW_F + 250;
 const STATION = 96;
 const SCOL = 232;
 
-/** As estações dos agentes de IA: a esteira do currículo da vaga e a da leitura do seu CV. Quem usa modelo mostra qual. */
-interface Station { id: string; agent: string; kind: 'resume' | 'profile'; x: number; y: number; sub: string; llm: boolean; }
+/**
+ * As estações dos agentes, uma esteira por trabalho: o currículo da vaga, a leitura do seu CV, a varredura da internet e o e-mail
+ * para o recrutador. Quem usa modelo mostra qual.
+ */
+interface Station { id: string; agent: string; kind: 'resume' | 'profile' | 'crawl' | 'mail'; x: number; y: number; sub: string; llm: boolean; }
 const STATIONS: Station[] = [
   ...([['Seletor', 'fatos da vaga'], ['Redator', 'escreve'], ['Conferente', 'fato a fato'], ['Revisor', 'outra família'], ['Renderizador', 'PDF'],
     ['Inspetor ATS', 'leitura de ATS'], ['Guardião', 'antes do envio']] as const)
     .map(([agent, sub], i) => ({ id: `resume-${i}`, agent, kind: 'resume' as const, x: X0 + i * SCOL, y: ROW_D, sub, llm: agent === 'Redator' || agent === 'Revisor' })),
   ...([['Leitor', 'tira dados pessoais'], ['Extrator', 'lê o currículo'], ['Conferente', 'trecho no documento']] as const)
     .map(([agent, sub], i) => ({ id: `profile-${i}`, agent, kind: 'profile' as const, x: X0 + i * SCOL, y: ROW_E, sub, llm: agent === 'Extrator' })),
+  ...([['Semeador', 'sites da rodada'], ['Robots', 'robots.txt'], ['Coletor', 'Scrapy'], ['Extrator', 'vaga na página'], ['Conferente', 'trecho na página']] as const)
+    .map(([agent, sub], i) => ({ id: `crawl-${i}`, agent, kind: 'crawl' as const, x: X0 + i * SCOL, y: ROW_F, sub, llm: agent === 'Extrator' })),
+  ...([['Seletor', 'vaga com e-mail'], ['Redator', 'escreve o e-mail'], ['Conferente', 'fato a fato'], ['Guardião', 'limites do envio']] as const)
+    .map(([agent, sub], i) => ({ id: `mail-${i}`, agent, kind: 'mail' as const, x: X0 + i * SCOL, y: ROW_G, sub, llm: agent === 'Redator' })),
 ];
+/** O nome de cada esteira e a tela onde ela mora. */
+export const BELTS: Record<Station['kind'], { title: string; path: string }> = {
+  resume: { title: 'Currículo da vaga', path: '/vagas' }, profile: { title: 'Leitura do seu currículo', path: '/perfil' },
+  crawl: { title: 'Varredura da internet', path: '/fontes/varredura' }, mail: { title: 'E-mail para o recrutador', path: '/email' },
+};
 interface StationView extends Station { icon: string; status: 'working' | 'spoke' | 'done' | 'idle'; bubble: string | null; provider: { file: string; mono: boolean } | null; model: string | null; thread: string | null; }
 interface AiEdge { id: string; d: string; lx: number; ly: number; text: string; hot: boolean; }
 
@@ -89,17 +103,17 @@ const TEXT: Record<string, (n: number) => string> = {
 
 /** O que cada agente faz e como roda nesta fase. O que é planejado aparece como planejado. */
 const ABOUT: Record<string, { does: string; runs: string; link?: { label: string; path: string; params?: Record<string, string> } }> = {
-  scout: { does: 'Busca vagas nas fontes permitidas e guarda uma cópia do que veio.', runs: 'APIs públicas de vagas e do GitHub, sem IA.', link: { label: 'Ver vagas', path: '/vagas' } },
+  scout: { does: 'Busca vagas nas fontes permitidas e guarda uma cópia do que veio.', runs: 'Quadros oficiais (Gupy, Greenhouse, Lever, Ashby e outros), APIs públicas e o coletor, sem IA.', link: { label: 'Ver vagas', path: '/vagas' } },
   normalizer: { does: 'Calcula a identidade canônica e marca como duplicada a mesma vaga vinda de outra fonte.', runs: 'Regra determinística.', link: { label: 'Ver duplicadas', path: '/vagas', params: { status: 'Duplicate' } } },
-  judge: { does: 'Aplica os filtros eliminatórios antes da nota: local, país, stack essencial e vaga encerrada.', runs: 'Regra determinística.', link: { label: 'Ver cortadas', path: '/vagas', params: { status: 'Rejected' } } },
-  analyst: { does: 'Dá a nota de 0 a 100 com fatores e explicação. Acima do corte, a vaga entra na fila.', runs: 'Pesos explícitos, sem IA nesta fase.', link: { label: 'Ver fila', path: '/vagas', params: { status: 'Shortlisted' } } },
-  writer: { does: 'Gera o currículo em PDF só com fatos do perfil, reordenados para a vaga.', runs: 'Template e Chromium. Claude entra na fase 3.' },
-  reviewer: { does: 'Confere se cada linha do currículo tem fonte no perfil, com um modelo de outra família.', runs: 'Planejado para a fase 3.' },
+  judge: { does: 'Aplica os filtros eliminatórios antes da nota: golpe, local, país, palavras essenciais e vaga encerrada.', runs: 'Regra determinística.', link: { label: 'Ver cortadas', path: '/vagas', params: { status: 'Rejected' } } },
+  analyst: { does: 'Dá a nota de 0 a 100 com fatores e explicação (palavras, cargo-alvo, senioridade, modalidade). Acima do corte, a vaga entra na fila.', runs: 'Pesos explícitos, sem IA.', link: { label: 'Ver fila', path: '/vagas', params: { status: 'Shortlisted' } } },
+  writer: { does: 'Gera o currículo em PDF só com fatos do perfil, reordenados e escritos para a vaga.', runs: 'IA da sua conta, Conferente fato a fato e Inspetor ATS.', link: { label: 'Ver vagas', path: '/vagas' } },
+  reviewer: { does: 'Confere se cada linha do currículo tem fonte no perfil, com um modelo de outra família.', runs: 'Modelo de outra família, nunca o mesmo que escreveu.' },
   preparer: { does: 'Preenche o formulário por rótulo e confere o que ficou. Nunca envia.', runs: 'Playwright com contexto isolado e roteador com fallback.', link: { label: 'Ver candidaturas', path: '/candidaturas' } },
-  guard: { does: 'Decide se pode enviar: modo da campanha, aprovação do formulário exato, limite diário e pendências.', runs: 'Regra determinística, sem IA.', link: { label: 'Abrir revisão', path: '/revisao' } },
+  guard: { does: 'Decide se pode enviar: modo da campanha, autorização ativa, aprovação do formulário exato, teto do dia, uma empresa por dia e pendências.', runs: 'Regra determinística, sem IA.', link: { label: 'Abrir revisão', path: '/revisao' } },
   sender: { does: 'Clica em enviar só com o token do Guardião, depois de gravar a intenção.', runs: 'Playwright, um envio por vez.' },
   verifier: { does: 'Exige página de confirmação ou recibo. Envio incerto vai para reconciliação, só lendo.', runs: 'Leitura da página e do portal do ATS.', link: { label: 'Ver confirmadas', path: '/candidaturas', params: { state: 'SubmittedConfirmed' } } },
-  tracker: { does: 'Lê os e-mails de ATS e move o funil, inclusive candidaturas feitas por você.', runs: 'Planejado para a fase 4.' },
+  tracker: { does: 'Lê a caixa (IMAP) só no que é da busca, liga a resposta ao envio e para o lembrete quando a empresa responde.', runs: 'Classificação no modelo local; o texto não sai da máquina.', link: { label: 'Abrir e-mail', path: '/email' } },
   attention: { does: 'Tudo que só você resolve: aprovações, CAPTCHA, login, perguntas novas e envios incertos.', runs: 'Fila humana.', link: { label: 'Abrir atenção', path: '/atencao' } },
 };
 
@@ -568,13 +582,19 @@ export class FlowPage implements AfterViewInit {
     this.ty.set(this.size().h / 2 - ((e.clientY - r.top) / m.s + b.y) * this.k());
   }
 
+  /** Rótulo de cada esteira, à esquerda da primeira estação, com o atalho para a tela dela. */
+  protected readonly belts = (Object.keys(BELTS) as Station['kind'][]).map((k) => {
+    const first = STATIONS.find((st) => st.kind === k)!;
+    return { kind: k, ...BELTS[k], x: first.x - 4, y: first.y - 34 };
+  });
+
   protected toggle(id: string) { this.selected.update((s) => (s === id ? null : id)); }
 
   /** O último fio de cada esteira, para as estações mostrarem o que fizeram antes desta tela abrir. */
   private async loadBaseline() {
     try {
-      const threads = await get<AgentThread[]>('/agents/threads?limit=12');
-      const picks = ['resume', 'profile'].map((k) => threads.find((t) => t.kind === k)).filter((t): t is AgentThread => !!t);
+      const threads = await get<AgentThread[]>('/agents/threads?limit=40');
+      const picks = ['resume', 'profile', 'crawl', 'mail'].map((k) => threads.find((t) => t.kind === k)).filter((t): t is AgentThread => !!t);
       const lists = await Promise.all(picks.map(async (t) => (await get<AgentMessage[]>(`/agents/threads/${t.id}`)).map((m) => ({ threadId: t.id, kind: t.kind, subject: t.subject, message: m }))));
       this.baseline.set(lists.flat());
     } catch { /* sem conversas ainda */ }

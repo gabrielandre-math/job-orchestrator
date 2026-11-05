@@ -54,7 +54,7 @@ internal sealed record GetFlowQuery : IQuery<FlowView>;
 /// <summary>O fluxo dos agentes para o canvas. A topologia é fixa: o Guardião sempre fica no caminho do envio.</summary>
 internal sealed class GetFlowHandler(IReadDb<ApplicationsDbContext> db, IJobsApi jobs, TimeProvider time) : IQueryHandler<GetFlowQuery, FlowView>
 {
-    private sealed record Extra(int Materials, int Prepared, int Intents, int Tasks);
+    private sealed record Extra(int Materials, int Prepared, int Intents, int Tasks, int Reviewed, int Replies);
 
     public async Task<Result<FlowView>> Handle(GetFlowQuery q, CancellationToken ct)
     {
@@ -65,7 +65,9 @@ internal sealed class GetFlowHandler(IReadDb<ApplicationsDbContext> db, IJobsApi
             select (select count(*) from applications.applications where resume_hash is not null)::int as materials,
                    (select count(*) from applications.applications where payload_hash is not null)::int as prepared,
                    (select count(*) from applications.submission_intents)::int as intents,
-                   (select count(*) from applications.human_tasks where resolved_at is null)::int as tasks
+                   (select count(*) from applications.human_tasks where resolved_at is null)::int as tasks,
+                   (select count(*) from materials.resume_versions where reviewed)::int as reviewed,
+                   (select count(*) from mail.incoming)::int as replies
             """, null, ct))!;
         var eligible = j.Total - j.Duplicates - j.Rejected - j.Expired;
         var guarded = a.AwaitingApproval + a.Sending + a.Confirmed + a.Unknown + a.Blocked;
@@ -87,12 +89,12 @@ internal sealed class GetFlowHandler(IReadDb<ApplicationsDbContext> db, IJobsApi
             new("judge", "Juiz", "Filtros eliminatórios", S(eligible), eligible, $"{j.Rejected} cortadas, {j.Expired} encerradas", null),
             new("analyst", "Analista", "Nota explicada", S(j.Shortlisted), j.Shortlisted, "Acima do corte da campanha", null),
             new("writer", "Redator", "Currículo", S(x.Materials), x.Materials, "Só fatos do perfil", null),
-            new("reviewer", "Revisor", "Checagem de fatos", "planned", 0, "Outra família de modelo confere", "Fase 3"),
+            new("reviewer", "Revisor", "Checagem de fatos", S(x.Reviewed), x.Reviewed, "Outra família de modelo confere", null),
             new("preparer", "Preparador", "Formulário", S(x.Prepared), x.Prepared, "Preenche sem enviar", null),
             new("guard", "Guardião", "Política de envio", a.AwaitingApproval > 0 ? "attention" : S(guarded), guarded, $"{a.AwaitingApproval} esperando você", null),
             new("sender", "Remetente", "Envio", S(x.Intents), x.Intents, "Um por vez, com token", null),
             new("verifier", "Verificador", "Confirmação", a.Unknown > 0 ? "attention" : S(a.Confirmed), a.Confirmed, $"{a.Unknown} incertas", null),
-            new("tracker", "Rastreador", "E-mail e funil", "planned", 0, "Lê só e-mails de ATS", "Fase 4"),
+            new("tracker", "Rastreador", "E-mail e funil", S(x.Replies), x.Replies, "Respostas ligadas aos envios", null),
             new("attention", "Atenção", "Fila humana", x.Tasks > 0 ? "attention" : "idle", x.Tasks, "CAPTCHA, login, perguntas", null)
         ]);
         edges.AddRange(
@@ -101,12 +103,12 @@ internal sealed class GetFlowHandler(IReadDb<ApplicationsDbContext> db, IJobsApi
             new("normalizer", "judge", j.Total - j.Duplicates, "flow"),
             new("judge", "analyst", eligible, "flow"),
             new("analyst", "writer", j.Shortlisted, "flow"),
-            new("writer", "reviewer", 0, "planned"),
+            new("writer", "reviewer", x.Reviewed, "flow"),
             new("writer", "preparer", x.Materials, "flow"),
             new("preparer", "guard", x.Prepared, "flow"),
             new("guard", "sender", x.Intents, "flow"),
             new("sender", "verifier", x.Intents, "flow"),
-            new("verifier", "tracker", 0, "planned"),
+            new("verifier", "tracker", x.Replies, "flow"),
             new("preparer", "attention", a.NeedsHuman, "fallback"),
             new("guard", "attention", a.AwaitingApproval, "fallback"),
             new("verifier", "attention", a.Unknown, "fallback")

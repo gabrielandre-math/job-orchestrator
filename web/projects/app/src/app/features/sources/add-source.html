@@ -64,7 +64,7 @@
             </div>
             @if (apiInfo().options; as opts) {
               <label class="field">{{ apiInfo().what }}
-                <select [value]="term()" (change)="term.set($any($event.target).value)">@for (o of opts; track o) { <option [value]="o">{{ o }}</option> }</select>
+                <select (change)="term.set($any($event.target).value)">@for (o of opts; track o) { <option [value]="o" [selected]="o === term()">{{ o }}</option> }</select>
               </label>
             } @else {
               <label class="field">{{ apiInfo().what }}<input [value]="term()" (input)="term.set($any($event.target).value)" (keydown.enter)="test()" [placeholder]="apiInfo().example" /></label>

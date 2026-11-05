@@ -1,7 +1,7 @@
 <section class="page flow-page">
   <header class="page-head">
     <div>
-      <h1>Fluxo</h1>
+      <h1>Mapa ao vivo</h1>
       <p>Os agentes e o que passa entre eles. @if (flow.value(); as f) {<span class="faint">Atualizado às {{ clock(f.at) }}.</span>}</p>
     </div>
     <div class="actions">
@@ -12,7 +12,7 @@
 
   @if (flow.problem(); as p) { <p class="problem">{{ p.detail }}</p> }
 
-  <div #viewport class="canvas" tabindex="0" role="application" aria-label="Fluxo dos agentes. Arraste para mover; pinça, Ctrl ou Option com a roda, ou duplo clique para zoom; setas para andar; 0 para ajustar e 1 para 100%."
+  <div #viewport class="canvas" tabindex="0" role="application" aria-label="Mapa ao vivo dos agentes. Arraste para mover; pinça, Ctrl ou Option com a roda, ou duplo clique para zoom; setas para andar; 0 para ajustar e 1 para 100%."
        [class.live]="live()" [style.background-size]="grid().size" [style.background-position]="grid().pos"
        (wheel)="wheel($event)" (pointerdown)="down($event)" (pointermove)="move($event)" (pointerup)="up($event)" (pointercancel)="up($event)" (lostpointercapture)="up($event)" (keydown)="key($event)">
     <div class="world" [style.transform]="transform()">
@@ -21,6 +21,10 @@
           <span class="frame-title"><jo-icon [name]="f.icon" [size]="16" />{{ f.title }}</span>
           @if (f.id === 'ai') { <button type="button" class="frame-action" (click)="talk()">Ver conversa ao vivo</button> }
         </div>
+      }
+
+      @for (b of belts; track b.kind) {
+        <a class="belt-label" [routerLink]="b.path" [style.left.px]="b.x" [style.top.px]="b.y" (pointerdown)="$event.stopPropagation()">{{ b.title }}<jo-icon name="arrow-right" [size]="12" /></a>
       }
 
       <svg class="edges" width="1" height="1" overflow="visible" aria-hidden="true">

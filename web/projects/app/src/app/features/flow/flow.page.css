@@ -200,3 +200,9 @@ dd { margin: 0; color: var(--text-2); }
 @keyframes dot { 0%, 80%, 100% { opacity: 0.25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-2px); } }
 :host-context([data-theme="light"]) .packet { fill: oklch(59% 0.161 5); filter: none; }
 @media (max-width: 760px) { .feed { left: 12px; right: 12px; width: auto; top: auto; bottom: 60px; max-height: 40%; } }
+
+.belt-label { position: absolute; display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 4px; background: var(--surface-2); border: 1px solid var(--line);
+  color: var(--text-2); font: 600 11.5px var(--font-ui); text-decoration: none; letter-spacing: 0.01em; white-space: nowrap; transition: color 160ms ease, border-color 160ms ease; z-index: 2; }
+.belt-label:hover { color: var(--accent); border-color: color-mix(in oklch, var(--accent) 45%, var(--line)); }
+.belt-label jo-icon { transition: transform 200ms ease; }
+.belt-label:hover jo-icon { transform: translateX(2px); }
