@@ -18,6 +18,34 @@ public sealed class ScoringTests
         Assert.All(e.Factors, f => Assert.False(string.IsNullOrWhiteSpace(f.Note)));
     }
 
+    /// <summary>Qualquer área: enfermagem, com cargos-alvo e palavras da área, sem nenhuma tecnologia.</summary>
+    private static readonly CampaignSettings Nursing = new(Guid.NewGuid(), "Enfermagem", true, SubmissionMode.PrepareOnly, 70, 15,
+        ["enfermagem", "UTI", "COREN", "plantão"], ["São Paulo", "Remoto"], [], "America/Sao_Paulo", null, ["Enfermeira", "Enfermeiro de UTI", "Técnica de enfermagem"]);
+
+    [Fact]
+    public void Vaga_de_enfermagem_tem_nota_alta_com_cargo_alvo()
+    {
+        var e = Scoring.Evaluate(Nursing, "Enfermeira de UTI", "Hospital busca enfermeira com COREN ativo para plantão na UTI adulto. Experiência em enfermagem intensiva.", "São Paulo, SP", "Presencial");
+        Assert.Null(e.Rejection);
+        Assert.Equal(1, e.Factors.First(f => f.Name == "Cargo").Points / 25.0, 2);
+        Assert.True(e.Score >= 70, $"nota {e.Score}");
+    }
+
+    [Fact]
+    public void Cargo_de_outra_area_pesa_menos_que_cargo_alvo()
+    {
+        var alvo = Scoring.Evaluate(Nursing, "Enfermeira", "Enfermagem hospitalar com COREN.", "São Paulo");
+        var outro = Scoring.Evaluate(Nursing, "Recepcionista", "Atendimento na recepção de clínica de enfermagem.", "São Paulo");
+        Assert.True(alvo.Score > outro.Score, $"{alvo.Score} > {outro.Score}");
+    }
+
+    [Theory]
+    [InlineData("Auxiliar administrativo", "Para começar é preciso pagar a taxa de inscrição de R$ 50 via Pix.")]
+    [InlineData("Digitador home office", "Renda extra garantida! Contato só pelo WhatsApp.")]
+    [InlineData("Data entry clerk", "A small application fee is required before the interview.")]
+    public void Sentinela_corta_vaga_que_cobra_ou_so_fala_por_mensageiro(string title, string description) =>
+        Assert.Contains("Suspeita de golpe", Scoring.Evaluate(Campaign with { Technologies = [] }, title, description, "Remoto").Rejection);
+
     [Fact] public void Restrita_a_outro_pais_e_cortada() => Assert.NotNull(Scoring.Evaluate(Campaign, "Senior .NET Engineer", "C# .NET. US only.", "Remote (US only)").Rejection);
     [Fact] public void Sem_stack_essencial_e_cortada() => Assert.Contains("Stack essencial", Scoring.Evaluate(Campaign, "Go Engineer", "Go and Kubernetes", "Remote").Rejection);
     [Fact] public void Local_brazil_casa_com_brasil() => Assert.Null(Scoring.Evaluate(Campaign, "Backend Developer .NET", "C# .NET", "São Paulo, Brazil").Rejection);

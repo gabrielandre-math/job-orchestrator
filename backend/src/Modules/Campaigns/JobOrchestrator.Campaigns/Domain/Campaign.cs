@@ -11,6 +11,8 @@ internal sealed class Campaign : AggregateRoot
     public int MinFitScore { get; private set; }
     public int MaxSubmissionsPerDay { get; private set; }
     public List<string> Technologies { get; private set; } = [];
+    /// <summary>Cargos-alvo (de qualquer área), comparados com o título da vaga na nota.</summary>
+    public List<string> Titles { get; private set; } = [];
     public List<string> Locations { get; private set; } = [];
     public List<string> Sources { get; private set; } = [];
     public string TimeZone { get; private set; } = "America/Sao_Paulo";
@@ -35,7 +37,23 @@ internal sealed class Campaign : AggregateRoot
         UpdatedAt = now
     };
 
-    /// <summary>Envio automático não se liga por aqui: só por autorização dada no painel (fase 6).</summary>
+    /// <summary>Liga o envio automático: só com uma autorização ativa, criada na tela (nunca por configuração).</summary>
+    public void EnableAuto(SubmitAuthorization authorization, DateTime now)
+    {
+        if (authorization.CampaignId != Id || !authorization.Active(now)) throw new DomainRuleException("A autorização não vale para esta campanha agora.");
+        Mode = SubmissionMode.AutoSubmit;
+        UpdatedAt = now;
+    }
+
+    /// <summary>Revogada ou vencida: volta para a revisão sua, que nunca envia sem o seu ok.</summary>
+    public void DisableAuto(DateTime now)
+    {
+        if (Mode != SubmissionMode.AutoSubmit) return;
+        Mode = SubmissionMode.ReviewRequired;
+        UpdatedAt = now;
+    }
+
+    /// <summary>Envio automático não se liga por aqui: só por autorização dada no painel.</summary>
     public void Configure(SubmissionMode mode, int minFitScore, int maxSubmissionsPerDay, IEnumerable<string> technologies, IEnumerable<string> locations, IEnumerable<string> sources, DateTime now)
     {
         if (mode == SubmissionMode.AutoSubmit) throw new DomainRuleException("O envio automático exige uma autorização dada no painel.");
@@ -45,6 +63,12 @@ internal sealed class Campaign : AggregateRoot
         Technologies = [.. technologies.Select(t => t.Trim()).Where(t => t.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase)];
         Locations = [.. locations.Select(t => t.Trim()).Where(t => t.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase)];
         Sources = [.. sources.Select(t => t.Trim()).Where(t => t.Length > 0).Distinct(StringComparer.Ordinal)];
+        UpdatedAt = now;
+    }
+
+    public void Target(IEnumerable<string> titles, DateTime now)
+    {
+        Titles = [.. titles.Select(t => t.Trim()).Where(t => t.Length > 1).Distinct(StringComparer.OrdinalIgnoreCase).Take(8)];
         UpdatedAt = now;
     }
 
@@ -74,4 +98,19 @@ internal sealed class CampaignRun
 
     internal static CampaignRun Create(Guid campaignId, string trigger, DateTime now) =>
         new() { Id = Guid.CreateVersion7(), CampaignId = campaignId, Trigger = trigger, RequestedAt = now };
+}
+
+/// <summary>Autorização de envio automático: escopo (campanha e adapters), limites (por dia, nota mínima), validade e revogação.</summary>
+internal sealed class SubmitAuthorization
+{
+    public Guid Id { get; init; } = Guid.CreateVersion7();
+    public Guid CampaignId { get; init; }
+    public DateTime GrantedAt { get; init; }
+    public DateTime ExpiresAt { get; init; }
+    public int MaxPerDay { get; init; }
+    public int MinScore { get; init; }
+    public List<string> Adapters { get; init; } = [];
+    public string Text { get; init; } = "";
+    public DateTime? RevokedAt { get; set; }
+    public bool Active(DateTime now) => RevokedAt is null && now < ExpiresAt;
 }

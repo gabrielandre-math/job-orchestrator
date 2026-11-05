@@ -75,6 +75,13 @@ internal sealed class JobApplication : AggregateRoot
         Move(ApplicationState.FormValidated, $"Formulário preenchido e conferido por {form.AdapterId}. Nada foi enviado.", "Preparador", now, new { form.PayloadHash, route });
     }
 
+    /// <summary>Automático: a autorização ativa aprova o payload exato que o adapter acabou de preparar.</summary>
+    public void AutoApprove(Guid authorizationId, DateTime now)
+    {
+        if (PayloadHash is null) throw new DomainRuleException("Sem formulário preparado não há o que aprovar.");
+        Move(ApplicationState.ReadyToSubmit, "Aprovada pela autorização de envio automático.", "Guardião", now, new { authorizationId, PayloadHash });
+    }
+
     /// <summary>Aprovação vale só para o payload exato que você viu.</summary>
     public void Approve(string payloadHash, DateTime now)
     {
@@ -186,4 +193,7 @@ internal sealed class ApprovalDecision
     public string PayloadHash { get; set; } = "";
     public bool Approved { get; set; }
     public DateTime At { get; set; }
+    /// <summary>Aprovação feita pela autorização de envio automático, não por você neste formulário.</summary>
+    public bool ByAuthorization { get; set; }
+    public Guid? AuthorizationId { get; set; }
 }

@@ -140,8 +140,15 @@ internal sealed class PrepareStep(StepKit k) : IStep
         {
             case AdapterResultKind.Completed:
                 app.Prepared(outcome.Value!, outcome.Route, now);
-                var (next, reason) = SubmissionGuard.AfterPrepare(campaign.Mode);
-                if (next != ApplicationState.FormValidated) app.Move(next, reason, "Guardião", now);
+                var (next, reason) = SubmissionGuard.AfterPrepare(campaign.Mode, campaign.Authorization, now, app.Score, outcome.Value!.AdapterId);
+                if (next == ApplicationState.ReadyToSubmit)
+                {
+                    // Automático autorizado: a aprovação fica registrada como da autorização, para o payload exato preparado agora.
+                    k.Db.Approvals.Add(new ApprovalDecision { Id = Guid.CreateVersion7(), ApplicationId = app.Id, PayloadHash = app.PayloadHash!, Approved = true, At = now, ByAuthorization = true, AuthorizationId = campaign.Authorization!.Id });
+                    app.AutoApprove(campaign.Authorization.Id, now);
+                    k.Enqueue(app.Id, WorkStep.Submit, TimeSpan.Zero);
+                }
+                else if (next != ApplicationState.FormValidated) app.Move(next, reason, "Guardião", now);
                 if (next == ApplicationState.AwaitingApproval) k.Db.AddTask(app.Id, HumanTaskKind.Approval, "Aprovar envio", $"{app.Title}, {app.Company}", now);
                 break;
             case AdapterResultKind.NeedsHuman or AdapterResultKind.Unsupported:
@@ -199,7 +206,9 @@ internal sealed class SubmitStep(StepKit k, TokenIssuer tokens) : IStep
             await db.Applications.CountAsync(a => a.CampaignId == app.CampaignId && a.State == ApplicationState.SubmittedConfirmed && a.UpdatedAt >= today, ct),
             campaign.MaxSubmissionsPerDay,
             await db.Intents.AnyAsync(i => i.ApplicationId == app.Id && (i.State == IntentState.Open || i.State == IntentState.SentUnverified), ct),
-            await db.Tasks.CountAsync(t => t.ApplicationId == app.Id && t.ResolvedAt == null, ct));
+            await db.Tasks.CountAsync(t => t.ApplicationId == app.Id && t.ResolvedAt == null, ct),
+            campaign.Authorization, k.Now, app.Score, app.PreparedBy,
+            await db.Applications.CountAsync(a => a.Id != app.Id && a.Company == app.Company && a.State == ApplicationState.SubmittedConfirmed && a.UpdatedAt >= k.Now.AddDays(-1), ct));
         var decision = SubmissionGuard.CanSubmit(input);
         if (!decision.Allowed)
         {

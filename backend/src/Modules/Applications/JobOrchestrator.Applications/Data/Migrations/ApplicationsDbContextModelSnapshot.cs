@@ -95,6 +95,14 @@ namespace JobOrchestrator.Applications.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("at");
 
+                    b.Property<Guid?>("AuthorizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("authorization_id");
+
+                    b.Property<bool>("ByAuthorization")
+                        .HasColumnType("boolean")
+                        .HasColumnName("by_authorization");
+
                     b.Property<string>("PayloadHash")
                         .IsRequired()
                         .HasMaxLength(64)

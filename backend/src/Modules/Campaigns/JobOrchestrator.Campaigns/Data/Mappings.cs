@@ -4,6 +4,7 @@ internal sealed partial class CampaignsDbContext
 {
     public DbSet<Campaign> Campaigns => Set<Campaign>();
     public DbSet<CampaignRun> Runs => Set<CampaignRun>();
+    public DbSet<SubmitAuthorization> Authorizations => Set<SubmitAuthorization>();
 
     partial void MapEntities(ModelBuilder b)
     {
@@ -23,6 +24,12 @@ internal sealed partial class CampaignsDbContext
             e.HasKey(x => x.Id);
             e.Property(x => x.Trigger).HasMaxLength(30);
             e.HasIndex(x => new { x.CampaignId, x.RequestedAt });
+        });
+        b.Entity<SubmitAuthorization>(e =>
+        {
+            e.ToTable("authorizations");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.CampaignId, x.GrantedAt });
         });
     }
 }

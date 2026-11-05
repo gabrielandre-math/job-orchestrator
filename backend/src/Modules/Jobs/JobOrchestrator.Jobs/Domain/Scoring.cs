@@ -28,7 +28,9 @@ internal static partial class Scoring
         var text = $" {Fingerprint.Normalize(title)} {Fingerprint.Normalize(description)} ";
         var factors = new List<Factor>();
 
-        // Eliminatórios
+        // Eliminatórios. Sentinela de golpe primeiro: vaga que cobra para entrar ou só conversa por mensageiro não vira candidatura.
+        if (Scam().Match(text) is { Success: true } scam)
+            return Reject(factors, $"Suspeita de golpe: a vaga fala em \"{scam.Value.Trim()}\". Vaga séria não cobra para você se candidatar.");
         var where = Fingerprint.Normalize(location);
         if (Restricted().IsMatch(where) || Restricted().IsMatch(text))
             return Reject(factors, "Restrita a residentes de outro país.");
@@ -50,8 +52,20 @@ internal static partial class Scoring
         factors.Add(F("Stack", 45, stack, $"Pede {string.Join(", ", essentialFound.Concat(othersFound))}" + (others.Count > othersFound.Count ? $"; não cita {string.Join(", ", others.Except(othersFound))}." : "."), false));
 
         var t = Fingerprint.Normalize(title);
-        var role = BackendRole().IsMatch(t) ? 1.0 : OtherRole().IsMatch(t) ? 0.2 : 0.5;
-        factors.Add(F("Cargo", 25, role, role == 1 ? "Cargo de backend ou engenharia de software." : role < 0.5 ? "Cargo de outra área." : "Cargo genérico.", role == 0.5));
+        if (c.Titles is { Count: > 0 } targets)
+        {
+            // Qualquer área: o título da vaga contra os cargos-alvo da campanha, por palavras em comum.
+            var words = Words(t);
+            var best = targets.Select(x => Words(Fingerprint.Normalize(x))).Where(w => w.Count > 0).Select(w => (double)w.Count(words.Contains) / w.Count).DefaultIfEmpty(0).Max();
+            var named = c.Technologies.Any(k => Mentions($" {t} ", k));
+            var fit = best >= 0.6 ? 1.0 : best >= 0.3 || named ? 0.6 : 0.3;
+            factors.Add(F("Cargo", 25, fit, fit == 1 ? "Cargo igual a um dos seus cargos-alvo." : fit == 0.6 ? "Cargo próximo dos seus cargos-alvo." : "Cargo diferente dos seus cargos-alvo.", false));
+        }
+        else
+        {
+            var role = BackendRole().IsMatch(t) ? 1.0 : OtherRole().IsMatch(t) ? 0.2 : 0.5;
+            factors.Add(F("Cargo", 25, role, role == 1 ? "Cargo de backend ou engenharia de software." : role < 0.5 ? "Cargo de outra área." : "Cargo genérico.", role == 0.5));
+        }
 
         var seniority = TooSenior().IsMatch(t) ? 0.3 : TooJunior().IsMatch(t) ? 0.2 : 0.8;
         factors.Add(F("Senioridade", 15, seniority, seniority == 0.8 ? "Nível compatível (estimado pelo título; o perfil ainda não define o seu)." : "Nível provavelmente distante do seu.", true));
@@ -91,6 +105,10 @@ internal static partial class Scoring
 
     private static Evaluation Reject(List<Factor> factors, string reason) => new(0, 1, factors, reason);
 
+    private static HashSet<string> Words(string normalized) =>
+        [.. normalized.Split(' ', StringSplitOptions.RemoveEmptyEntries).Where(w => w.Length >= 3 && w is not ("para" or "com" or "and" or "the" or "with" or "dos" or "das"))];
+
+    [GeneratedRegex(@"\b(taxa de (inscricao|cadastro|adesao|matricula)|pague (uma|a) taxa|pagamento antecipado|deposito (inicial|antecipado)|investimento inicial|compra do kit|kit de trabalho|renda extra garantida|registration fee|application fee|pay (a|the) fee|upfront (payment|fee)|western union|gift cards?|(so|somente|apenas) (pelo|por|no) (whatsapp|telegram)|only (via|on|through) (whatsapp|telegram))\b")] private static partial Regex Scam();
     [GeneratedRegex(@"\b(us only|usa only|united states only|eu only|uk only|must reside in the us|us based only)\b")] private static partial Regex Restricted();
     [GeneratedRegex(@"\b(remote|remoto|anywhere|worldwide|latam|home office|100 remoto)\b")] private static partial Regex Remote();
     [GeneratedRegex(@"\b(hybrid|hibrido)\b")] private static partial Regex Hybrid();

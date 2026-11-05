@@ -145,6 +145,11 @@ namespace JobOrchestrator.Campaigns.Data.Migrations
                         .HasColumnType("character varying(60)")
                         .HasColumnName("time_zone");
 
+                    b.PrimitiveCollection<List<string>>("Titles")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("titles");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
@@ -195,6 +200,56 @@ namespace JobOrchestrator.Campaigns.Data.Migrations
                         .HasDatabaseName("ix_runs_campaign_id_requested_at");
 
                     b.ToTable("runs", "campaigns");
+                });
+
+            modelBuilder.Entity("JobOrchestrator.Campaigns.Domain.SubmitAuthorization", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.PrimitiveCollection<List<string>>("Adapters")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("adapters");
+
+                    b.Property<Guid>("CampaignId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("campaign_id");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<DateTime>("GrantedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("granted_at");
+
+                    b.Property<int>("MaxPerDay")
+                        .HasColumnType("integer")
+                        .HasColumnName("max_per_day");
+
+                    b.Property<int>("MinScore")
+                        .HasColumnType("integer")
+                        .HasColumnName("min_score");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("text");
+
+                    b.HasKey("Id")
+                        .HasName("pk_authorizations");
+
+                    b.HasIndex("CampaignId", "GrantedAt")
+                        .HasDatabaseName("ix_authorizations_campaign_id_granted_at");
+
+                    b.ToTable("authorizations", "campaigns");
                 });
 #pragma warning restore 612, 618
         }

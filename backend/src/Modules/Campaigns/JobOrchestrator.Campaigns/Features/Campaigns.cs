@@ -10,6 +10,7 @@ internal sealed record CampaignView
     public int MinFitScore { get; init; }
     public int MaxSubmissionsPerDay { get; init; }
     public string[] Technologies { get; init; } = [];
+    public string[] Titles { get; init; } = [];
     public string[] Locations { get; init; } = [];
     public string[] Sources { get; init; } = [];
     public string TimeZone { get; init; } = "";
@@ -23,7 +24,7 @@ internal sealed record ListCampaignsQuery : IQuery<IReadOnlyList<CampaignView>>;
 internal sealed class ListCampaignsHandler(IReadDb<CampaignsDbContext> db) : IQueryHandler<ListCampaignsQuery, IReadOnlyList<CampaignView>>
 {
     internal const string Sql = """
-        select c.id, c.name, c.enabled, c.mode, c.min_fit_score, c.max_submissions_per_day, c.technologies, c.locations, c.sources,
+        select c.id, c.name, c.enabled, c.mode, c.min_fit_score, c.max_submissions_per_day, c.technologies, c.titles, c.locations, c.sources,
                c.time_zone, c.window, (select max(r.requested_at) from campaigns.runs r where r.campaign_id = c.id) as last_run_at
         from campaigns.campaigns c order by c.created_at
         """;
@@ -33,7 +34,7 @@ internal sealed class ListCampaignsHandler(IReadDb<CampaignsDbContext> db) : IQu
 }
 
 /// <summary>Comando: muda critérios, limites e modo da campanha.</summary>
-internal sealed record ConfigureCampaignCommand(Guid Id, string Mode, int MinFitScore, int MaxSubmissionsPerDay, string[] Technologies, string[] Locations, string[] Sources, string? Name = null)
+internal sealed record ConfigureCampaignCommand(Guid Id, string Mode, int MinFitScore, int MaxSubmissionsPerDay, string[] Technologies, string[] Locations, string[] Sources, string? Name = null, string[]? Titles = null)
     : ICommand<Done>, ICampaignsCommand;
 
 internal sealed class ConfigureCampaignValidator : AbstractValidator<ConfigureCampaignCommand>
@@ -57,6 +58,7 @@ internal sealed class ConfigureCampaignHandler(CampaignsDbContext db, TimeProvid
             return Error.Forbidden("consent-required", "O envio automático só liga com uma autorização criada na tela de autorizações.");
         campaign.Configure(mode, c.MinFitScore, c.MaxSubmissionsPerDay, c.Technologies, c.Locations, c.Sources, time.GetUtcNow().UtcDateTime);
         if (c.Name is { Length: > 0 } name) campaign.Rename(name);
+        if (c.Titles is { } titles) campaign.Target(titles, time.GetUtcNow().UtcDateTime);
         return new Done();
     }
 }
