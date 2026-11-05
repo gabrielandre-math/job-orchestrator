@@ -238,3 +238,52 @@ internal sealed class GetOnBoardSource(IHttpClientFactory http) : PublicSource(h
     /// <summary>Número do JSON ou nada: salário e datas vêm null quando a empresa não informa.</summary>
     private static long? Num(JsonElement e, string name) => e.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Number && v.TryGetInt64(out var n) ? n : null;
 }
+
+/// <summary>
+/// Workable (workable:conta): o mesmo endereço que o widget oficial de vagas usa nos sites das empresas, com a descrição. O robots.txt
+/// de apply.workable.com libera tudo.
+/// </summary>
+internal sealed class WorkableSource(IHttpClientFactory http) : PublicSource(http, "workable", "apply.workable.com")
+{
+    public override string Id => "workable-widget";
+    public override string Name => "Workable";
+
+    public override async Task<IReadOnlyList<DiscoveredPosting>> DiscoverAsync(string source, CancellationToken ct)
+    {
+        var account = Key(source);
+        using var doc = await Json.GetAsync(Client, $"https://apply.workable.com/api/v1/widget/accounts/{Uri.EscapeDataString(account)}?details=true", ct);
+        var company = doc.RootElement.Str("name") is { Length: > 0 } n ? n : Json.Company(account);
+        return [.. doc.RootElement.GetProperty("jobs").EnumerateArray().Select(j =>
+        {
+            var place = string.Join(", ", new[] { j.Str("city"), j.Str("state"), j.Str("country") }.Where(x => x.Length > 0));
+            var remote = j.TryGetProperty("telecommuting", out var t) && (t.ValueKind == JsonValueKind.True || (t.ValueKind == JsonValueKind.String && t.GetString() == "true"));
+            return new DiscoveredPosting(source, j.Str("shortcode"), company, j.Str("title"), place.Length > 0 ? place : remote ? "Remoto" : "", j.Str("url"),
+                Json.Plain($"{j.Str("department")}\n{j.Str("experience")}\n{j.Str("description")}"), j.Date("published_on") ?? j.Date("created_at"), j.GetRawText(),
+                Workplace: remote ? "remote" : null, Employment: j.Str("employment_type") is { Length: > 0 } e ? e : null, ListedAsOpen: true);
+        })];
+    }
+}
+
+/// <summary>Teamtailor (teamtailor:subdominio): o feed RSS oficial das vagas do site de carreira; o robots.txt só fecha as áreas internas.</summary>
+internal sealed class TeamtailorSource(IHttpClientFactory http) : PublicSource(http, "teamtailor", "teamtailor.com")
+{
+    public override string Id => "teamtailor-rss";
+    public override string Name => "Teamtailor";
+
+    public override async Task<IReadOnlyList<DiscoveredPosting>> DiscoverAsync(string source, CancellationToken ct)
+    {
+        var site = Key(source);
+        var xml = XDocument.Parse(await Client.GetStringAsync($"https://{site}.teamtailor.com/jobs.rss", ct));
+        XNamespace tt = "https://teamtailor.com/locations";
+        var company = (string?)xml.Root?.Element("channel")?.Element("title") is { Length: > 0 } c ? c : Json.Company(site.Split('.')[0]);
+        return [.. xml.Descendants("item").Select(i =>
+        {
+            var link = (string?)i.Element("link") ?? "";
+            var place = string.Join(", ", (i.Element(tt + "locations")?.Descendants() ?? []).Where(e => !e.HasElements).Select(e => e.Value.Trim()).Where(v => v.Length > 0).Distinct());
+            var remote = (string?)i.Element("remoteStatus");
+            return new DiscoveredPosting(source, (string?)i.Element("guid") ?? link, company, (string?)i.Element("title") ?? "", place.Length > 0 ? place : remote == "fully" ? "Remoto" : "", link,
+                Json.Plain($"{(string?)i.Element(tt + "department")}\n{(string?)i.Element("description")}"), DateTime.TryParse((string?)i.Element("pubDate"), out var d) ? d.ToUniversalTime() : null, link,
+                Workplace: remote switch { "fully" => "remote", "hybrid" => "hybrid", _ => null }, ListedAsOpen: true);
+        })];
+    }
+}

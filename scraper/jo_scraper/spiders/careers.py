@@ -29,6 +29,7 @@ BOARDS = [
     (re.compile(r"apply\.workable\.com/([\w-]+)", re.I), "workable"),
     (re.compile(r"([\w-]+)\.bamboohr\.com/careers", re.I), "bamboohr"),
     (re.compile(r"https?://([\w-]+)\.gupy\.io", re.I), "gupy"),
+    (re.compile(r"https?://([\w-]+(?:\.[a-z]{2})?)\.teamtailor\.com", re.I), "teamtailor"),
 ]
 PATHS = ["", "/careers", "/carreiras", "/vagas", "/jobs", "/trabalhe-conosco", "/work-with-us", "/join-us"]
 
@@ -86,7 +87,7 @@ class CareersSpider(scrapy.Spider):
         for pattern, kind in BOARDS:
             for m in pattern.finditer(html):
                 token = m.group(1).lower()
-                if token in ("www", "app", "api", "jobs", "careers", "embed", "portal", "login", "static", "cdn", "blog", "help", "suporte-candidatos"):
+                if token in ("www", "app", "api", "jobs", "careers", "embed", "portal", "login", "static", "cdn", "blog", "help", "suporte-candidatos", "j", "apply", "resources", "support", "docs"):
                     continue
                 source = f"{kind}:{token}"
                 if source not in self.seen_boards:

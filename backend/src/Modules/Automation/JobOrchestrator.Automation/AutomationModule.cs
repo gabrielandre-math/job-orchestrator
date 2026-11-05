@@ -38,6 +38,8 @@ public static class AutomationModule
         s.AddScoped<ISourceConnector, GupySource>();
         s.AddScoped<ISourceConnector, GetOnBoardSource>();
         s.AddScoped<ISourceConnector, PersonioSource>();
+        s.AddScoped<ISourceConnector, WorkableSource>();
+        s.AddScoped<ISourceConnector, TeamtailorSource>();
         s.AddSingleton<ScraperEnv>();
         s.AddScoped<ScrapyRunner>();
         s.AddScoped<Leads>();

@@ -15,6 +15,7 @@ const ATS = [
   { key: 'gupy', hint: '', after: '.gupy.io' }, { key: 'greenhouse', hint: 'boards.greenhouse.io/', after: '' }, { key: 'lever', hint: 'jobs.lever.co/', after: '' },
   { key: 'ashby', hint: 'jobs.ashbyhq.com/', after: '' }, { key: 'smartrecruiters', hint: 'jobs.smartrecruiters.com/', after: '' },
   { key: 'recruitee', hint: '', after: '.recruitee.com' }, { key: 'breezy', hint: '', after: '.breezy.hr' }, { key: 'personio', hint: '', after: '.jobs.personio.de' },
+  { key: 'workable', hint: 'apply.workable.com/', after: '' }, { key: 'teamtailor', hint: '', after: '.teamtailor.com' },
 ];
 /** APIs públicas com o que cada uma espera depois dos dois pontos. */
 const APIS = [
@@ -31,6 +32,7 @@ const DETECT: [RegExp, string][] = [
   [/jobs\.ashbyhq\.com\/([^/?#]+)/i, 'ashby'], [/(?:jobs|careers)\.smartrecruiters\.com\/([^/?#]+)/i, 'smartrecruiters'],
   [/([a-z0-9-]+)\.recruitee\.com/i, 'recruitee'], [/([a-z0-9-]+)\.breezy\.hr/i, 'breezy'], [/([a-z0-9-]+)\.jobs\.personio\.(?:de|com)/i, 'personio'],
   [/([a-z0-9-]+)\.gupy\.io/i, 'gupy'], [/github\.com\/([^/?#]+\/[^/?#]+)/i, 'github'],
+  [/apply\.workable\.com\/(?!j\/)([^/?#]+)/i, 'workable'], [/([a-z0-9-]+)\.workable\.com/i, 'workable'], [/([a-z0-9-]+(?:\.[a-z]{2})?)\.teamtailor\.com/i, 'teamtailor'],
 ];
 
 /** Reconhece a fonte a partir de qualquer link de vagas: quadro de ATS, repositório ou, se nada bater, o site da empresa. */
