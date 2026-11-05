@@ -35,6 +35,7 @@ public static class AutomationModule
         s.AddScoped<ISourceConnector, WeWorkRemotelySource>();
         s.AddScoped<ISourceConnector, RecruiteeSource>();
         s.AddScoped<ISourceConnector, BreezySource>();
+        s.AddScoped<ISourceConnector, GupySource>();
         s.AddScoped<ISourceConnector, PersonioSource>();
         s.AddSingleton<ScraperEnv>();
         s.AddScoped<ScrapyRunner>();

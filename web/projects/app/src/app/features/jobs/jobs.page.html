@@ -5,7 +5,7 @@
       <p>Tudo que as fontes trouxeram. A nota mede aderência à campanha, não chance de contratação.</p>
     </div>
     <div class="actions">
-      <input type="search" placeholder="Buscar empresa, cargo ou tecnologia" [value]="search()" (input)="search.set($any($event.target).value)" aria-label="Buscar" />
+      <input type="search" placeholder="Buscar empresa, cargo ou palavra" [value]="search()" (input)="search.set($any($event.target).value)" aria-label="Buscar" />
     </div>
   </header>
   @if (all.problem(); as p) { <p class="problem">{{ p.detail }}</p> }
@@ -29,7 +29,7 @@
         <jo-area class="body" [data]="days()" />
       </article>
       <article class="panel chart wide">
-        <header><h2>Stack mais pedida</h2>@if (profile.value()?.facts?.length) { <span class="faint small">verde: você tem</span> }</header>
+        <header><h2>Ferramentas mais pedidas</h2>@if (profile.value()?.facts?.length) { <span class="faint small">verde: você tem</span> }</header>
         <ul class="stack">
           @for (t of stack(); track t.key) {
             <li [class.have]="t.have === true" [class.missing]="t.have === false">
@@ -172,9 +172,16 @@
             </dl>
           </section>
 
+          @if (matched().length > 0) {
+            <section class="d-sec">
+              <h3>Palavras da sua busca nesta vaga</h3>
+              <div class="chips">@for (k of matched(); track k) { <span class="tag key">{{ k }}</span> }</div>
+            </section>
+          }
+
           @if (d.job.stack.length > 0) {
             <section class="d-sec">
-              <h3>Stack</h3>
+              <h3>Ferramentas e tecnologias</h3>
               <div class="d-stack">@for (t of d.job.stack; track t) { <jo-tech [name]="t" [have]="has(t)" /> }</div>
               @if (profile.value()?.facts?.length) { <p class="faint small">Verde: está no seu perfil. Tracejado: não está, e não entra no currículo.</p> }
             </section>

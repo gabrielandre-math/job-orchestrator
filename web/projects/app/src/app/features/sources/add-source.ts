@@ -12,7 +12,7 @@ interface TestResult { ok: boolean; count: number; seconds: number; sample: { ti
 
 /** Plataformas de ATS com o formato do endereço público, para a pessoa achar o nome da empresa. */
 const ATS = [
-  { key: 'greenhouse', hint: 'boards.greenhouse.io/', after: '' }, { key: 'lever', hint: 'jobs.lever.co/', after: '' },
+  { key: 'gupy', hint: '', after: '.gupy.io' }, { key: 'greenhouse', hint: 'boards.greenhouse.io/', after: '' }, { key: 'lever', hint: 'jobs.lever.co/', after: '' },
   { key: 'ashby', hint: 'jobs.ashbyhq.com/', after: '' }, { key: 'smartrecruiters', hint: 'jobs.smartrecruiters.com/', after: '' },
   { key: 'recruitee', hint: '', after: '.recruitee.com' }, { key: 'breezy', hint: '', after: '.breezy.hr' }, { key: 'personio', hint: '', after: '.jobs.personio.de' },
 ];
@@ -30,7 +30,7 @@ const DETECT: [RegExp, string][] = [
   [/(?:job-)?boards(?:\.eu)?\.greenhouse\.io\/(?:embed\/job_board\?for=)?([^/?#&]+)/i, 'greenhouse'], [/jobs\.lever\.co\/([^/?#]+)/i, 'lever'],
   [/jobs\.ashbyhq\.com\/([^/?#]+)/i, 'ashby'], [/(?:jobs|careers)\.smartrecruiters\.com\/([^/?#]+)/i, 'smartrecruiters'],
   [/([a-z0-9-]+)\.recruitee\.com/i, 'recruitee'], [/([a-z0-9-]+)\.breezy\.hr/i, 'breezy'], [/([a-z0-9-]+)\.jobs\.personio\.(?:de|com)/i, 'personio'],
-  [/github\.com\/([^/?#]+\/[^/?#]+)/i, 'github'],
+  [/([a-z0-9-]+)\.gupy\.io/i, 'gupy'], [/github\.com\/([^/?#]+\/[^/?#]+)/i, 'github'],
 ];
 
 /** Reconhece a fonte a partir de qualquer link de vagas: quadro de ATS, repositório ou, se nada bater, o site da empresa. */

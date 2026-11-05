@@ -42,7 +42,7 @@ internal sealed partial class AssistantService(IIntelligenceApi ai, IServiceScop
 
     private const string SourceFormats = """
         Fontes no formato plataforma:alvo. Empresas em sistema de vagas (alvo = nome da empresa como aparece no endereço): greenhouse, lever, ashby,
-        smartrecruiters, recruitee, breezy, personio. APIs públicas: remotive, arbeitnow e himalayas (alvo = palavra de busca), jobicy e remoteok (alvo = tag
+        smartrecruiters, recruitee, breezy, personio e gupy (gupy cobre empresas brasileiras de todas as áreas: gupy:ambev, gupy:natura e afins). APIs públicas: remotive, arbeitnow e himalayas (alvo = palavra de busca), jobicy e remoteok (alvo = tag
         em inglês), themuse (alvo = categoria em inglês, como Healthcare, Sales, Marketing, Education, Software Engineering, Design and UX, Accounting and Finance,
         Customer Service, Human Resources and Recruitment, Project Management, Administration and Office, Law, Retail), wwr (alvo = categoria, como
         remote-sales-and-marketing-jobs, remote-design-jobs, remote-customer-support-jobs, remote-programming-jobs, all-other-remote-jobs). Comunidades: github
@@ -322,7 +322,7 @@ internal sealed partial class AssistantService(IIntelligenceApi ai, IServiceScop
         return line.Length > 90 ? line[..90] + "…" : line;
     }
 
-    [GeneratedRegex(@"^(greenhouse|lever|ashby|smartrecruiters|recruitee|breezy|personio|remotive|arbeitnow|himalayas|jobicy|themuse|remoteok|wwr|github|hn|web):[^\s]{2,120}$")]
+    [GeneratedRegex(@"^(greenhouse|lever|ashby|smartrecruiters|recruitee|breezy|personio|gupy|remotive|arbeitnow|himalayas|jobicy|themuse|remoteok|wwr|github|hn|web):[^\s]{2,120}$")]
     private static partial Regex SourceFormat();
 
     [GeneratedRegex(@"analis|compar|estrat|plano|revis|melhor|por que|porque|como (posso|devo|fa[çc]o)|carta|curr[ií]culo|entrevista|negoci|sal[aá]ri|transi[çc][aã]o|carreira", RegexOptions.IgnoreCase)]

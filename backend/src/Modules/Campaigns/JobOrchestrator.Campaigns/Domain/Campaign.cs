@@ -48,6 +48,9 @@ internal sealed class Campaign : AggregateRoot
         UpdatedAt = now;
     }
 
+    /// <summary>O nome que a pessoa vê (a área da busca, quando vem do primeiro contato).</summary>
+    public void Rename(string name) => Name = name.Trim().Length > 80 ? name.Trim()[..80] : name.Trim();
+
     public CampaignRun RequestRun(string trigger, DateTime now) => CampaignRun.Create(Id, trigger, now);
 
     /// <summary>A lista de empresas cresce sozinha: um link salvo de ATS adiciona o board. Devolve false se já era vigiado.</summary>

@@ -33,7 +33,7 @@ internal sealed class ListCampaignsHandler(IReadDb<CampaignsDbContext> db) : IQu
 }
 
 /// <summary>Comando: muda critérios, limites e modo da campanha.</summary>
-internal sealed record ConfigureCampaignCommand(Guid Id, string Mode, int MinFitScore, int MaxSubmissionsPerDay, string[] Technologies, string[] Locations, string[] Sources)
+internal sealed record ConfigureCampaignCommand(Guid Id, string Mode, int MinFitScore, int MaxSubmissionsPerDay, string[] Technologies, string[] Locations, string[] Sources, string? Name = null)
     : ICommand<Done>, ICampaignsCommand;
 
 internal sealed class ConfigureCampaignValidator : AbstractValidator<ConfigureCampaignCommand>
@@ -56,6 +56,7 @@ internal sealed class ConfigureCampaignHandler(CampaignsDbContext db, TimeProvid
         if (mode == SubmissionMode.AutoSubmit)
             return Error.Forbidden("consent-required", "O envio automático só liga com uma autorização criada na tela de autorizações.");
         campaign.Configure(mode, c.MinFitScore, c.MaxSubmissionsPerDay, c.Technologies, c.Locations, c.Sources, time.GetUtcNow().UtcDateTime);
+        if (c.Name is { Length: > 0 } name) campaign.Rename(name);
         return new Done();
     }
 }

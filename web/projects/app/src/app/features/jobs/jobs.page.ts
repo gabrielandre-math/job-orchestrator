@@ -9,7 +9,7 @@ import { Iso } from '@jo/ui/iso';
 import { Area, ChartRow, Columns, HBars } from '@jo/ui/charts';
 import { Score } from '@jo/ui/score';
 import { Tech } from '@jo/ui/tech';
-import { JobDetail, JobRow, Profile, send } from '../../core/api';
+import { Campaign, JobDetail, JobRow, Profile, send } from '../../core/api';
 import { command } from '../../core/command';
 import { ago, jobLabel, jobTone } from '../../core/format';
 import { AGENT_ICON, Live } from '../../core/live';
@@ -47,6 +47,15 @@ export class JobsPage {
   protected readonly all = query<JobRow[]>(() => '/jobs', 8000);
   protected readonly stats = query<JobStats>(() => '/jobs/stats', 15000);
   protected readonly profile = query<Profile>(() => '/profile', 0);
+  protected readonly campaigns = query<Campaign[]>(() => '/campaigns', 0);
+  /** Universal: as palavras-chave da campanha (de qualquer área) que aparecem no título ou na descrição da vaga aberta. */
+  protected readonly matched = computed(() => {
+    const d = this.detail.value();
+    const words = this.campaigns.value()?.[0]?.technologies ?? [];
+    if (!d || words.length === 0) return [];
+    const text = ` ${fold(d.job.title)} ${fold(d.description ?? '')} `;
+    return words.filter((w) => fold(w).length > 1 && text.includes(fold(w)));
+  });
   protected readonly detail = query<JobDetail>(() => (this.open() ? `/jobs/${this.open()}` : null));
   protected readonly resumes = query<Resume[]>(() => (this.open() ? `/materials/resumes?applicationId=${this.open()}` : null), 0);
   protected readonly composing = command((id: string) => send<Compose>('POST', `/materials/preview/${id}`), 'Currículo pronto. O PDF está na lista desta vaga.');

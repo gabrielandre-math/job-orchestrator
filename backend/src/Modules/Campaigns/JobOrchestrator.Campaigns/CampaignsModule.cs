@@ -30,7 +30,8 @@ public static class CampaignsModule
         if (await db.Campaigns.AnyAsync()) return;
         var now = scope.ServiceProvider.GetRequiredService<TimeProvider>().GetUtcNow().UtcDateTime;
         var sources = config.GetSection("Seed:Sources").Get<string[]>() ?? [];
-        db.Campaigns.Add(Campaign.Create("Backend .NET", ["C#", ".NET", "ASP.NET Core", "AWS", "PostgreSQL"], ["Brasil", "Remoto"], sources, now));
+        // Campanha neutra, de qualquer área: o primeiro contato preenche cargos, palavras e fontes a partir do currículo.
+        db.Campaigns.Add(Campaign.Create("Minha busca", [], ["Brasil", "Remoto"], sources, now));
         await db.SaveChangesAsync();
     }
 }
