@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-05T23:52:17.8240072Z",
+  "generated_at": "2026-11-05T23:54:53.7128346Z",
   "generated_by": "jo sources probe",
   "experimental_on": true,
   "catalog": {
@@ -79,7 +79,7 @@
       "public_employment_agency": 79,
       "public_labor_market_statistics": 2
     },
-    "matchedToConnectors": 35
+    "matchedToConnectors": 36
   },
   "sources": [
     {
@@ -111,9 +111,9 @@
         "ok": true,
         "count": 33,
         "http": 200,
-        "seconds": 1.3,
+        "seconds": 0.5,
         "error": null,
-        "at": "2026-11-05T23:51:42.2501624Z"
+        "at": "2026-11-05T23:54:16.2279769Z"
       }
     },
     {
@@ -145,9 +145,9 @@
         "ok": true,
         "count": 86,
         "http": 200,
-        "seconds": 2,
+        "seconds": 4.7,
         "error": null,
-        "at": "2026-11-05T23:51:42.9500866Z"
+        "at": "2026-11-05T23:54:20.5143349Z"
       }
     },
     {
@@ -179,9 +179,9 @@
         "ok": true,
         "count": 170,
         "http": 200,
-        "seconds": 0.4,
+        "seconds": 0.3,
         "error": null,
-        "at": "2026-11-05T23:51:41.3207147Z"
+        "at": "2026-11-05T23:54:16.0831544Z"
       }
     },
     {
@@ -213,9 +213,9 @@
         "ok": true,
         "count": 40,
         "http": 200,
-        "seconds": 36.8,
+        "seconds": 36.4,
         "error": null,
-        "at": "2026-11-05T23:52:17.808129Z"
+        "at": "2026-11-05T23:54:52.1789194Z"
       }
     },
     {
@@ -249,7 +249,7 @@
         "http": null,
         "seconds": 0,
         "error": "sem amostra pública segura",
-        "at": "2026-11-05T23:51:40.9617007Z"
+        "at": "2026-11-05T23:54:15.7797309Z"
       }
     },
     {
@@ -281,9 +281,9 @@
         "ok": true,
         "count": 12,
         "http": 200,
-        "seconds": 1.5,
+        "seconds": 1.4,
         "error": null,
-        "at": "2026-11-05T23:51:42.8503901Z"
+        "at": "2026-11-05T23:54:17.4995821Z"
       }
     },
     {
@@ -315,9 +315,9 @@
         "ok": true,
         "count": 0,
         "http": 200,
-        "seconds": 1.1,
+        "seconds": 0.8,
         "error": "A fonte respondeu, mas não tem vaga aberta agora. Pode salvar: ela entra nas próximas rodadas.",
-        "at": "2026-11-05T23:51:43.3100744Z"
+        "at": "2026-11-05T23:54:17.0461441Z"
       }
     },
     {
@@ -351,7 +351,7 @@
         "http": 200,
         "seconds": 0.3,
         "error": null,
-        "at": "2026-11-05T23:51:43.1735645Z"
+        "at": "2026-11-05T23:54:17.3256552Z"
       }
     },
     {
@@ -385,7 +385,7 @@
         "http": 200,
         "seconds": 1.3,
         "error": null,
-        "at": "2026-11-05T23:51:44.248755Z"
+        "at": "2026-11-05T23:54:18.6348301Z"
       }
     },
     {
@@ -417,9 +417,9 @@
         "ok": true,
         "count": 6,
         "http": 200,
-        "seconds": 0.4,
+        "seconds": 0.2,
         "error": null,
-        "at": "2026-11-05T23:51:43.5657284Z"
+        "at": "2026-11-05T23:54:17.6864382Z"
       }
     },
     {
@@ -453,7 +453,7 @@
         "http": 200,
         "seconds": 4.8,
         "error": null,
-        "at": "2026-11-05T23:51:48.124574Z"
+        "at": "2026-11-05T23:54:22.493109Z"
       }
     },
     {
@@ -485,9 +485,9 @@
         "ok": true,
         "count": 20,
         "http": 200,
-        "seconds": 15.1,
+        "seconds": 14.8,
         "error": null,
-        "at": "2026-11-05T23:51:58.6727953Z"
+        "at": "2026-11-05T23:54:33.4133593Z"
       }
     },
     {
@@ -519,9 +519,9 @@
         "ok": true,
         "count": 3,
         "http": 200,
-        "seconds": 1.6,
+        "seconds": 1.8,
         "error": null,
-        "at": "2026-11-05T23:51:45.8393143Z"
+        "at": "2026-11-05T23:54:22.3404626Z"
       }
     },
     {
@@ -551,9 +551,9 @@
         "ok": true,
         "count": 20,
         "http": 200,
-        "seconds": 17.1,
+        "seconds": 17,
         "error": null,
-        "at": "2026-11-05T23:52:02.8906623Z"
+        "at": "2026-11-05T23:54:39.3334397Z"
       }
     },
     {
@@ -585,7 +585,7 @@
         "http": null,
         "seconds": 0,
         "error": "sem amostra pública segura",
-        "at": "2026-11-05T23:51:40.9618803Z"
+        "at": "2026-11-05T23:54:15.7805134Z"
       }
     },
     {
@@ -617,9 +617,9 @@
         "ok": true,
         "count": 5,
         "http": 200,
-        "seconds": 3.4,
+        "seconds": 2.9,
         "error": null,
-        "at": "2026-11-05T23:51:51.5117328Z"
+        "at": "2026-11-05T23:54:25.3789664Z"
       }
     },
     {
@@ -649,9 +649,9 @@
         "ok": true,
         "count": 18,
         "http": 200,
-        "seconds": 0.9,
+        "seconds": 1,
         "error": null,
-        "at": "2026-11-05T23:51:52.4600305Z"
+        "at": "2026-11-05T23:54:26.3830094Z"
       }
     },
     {
@@ -683,7 +683,7 @@
         "http": 200,
         "seconds": 0.2,
         "error": null,
-        "at": "2026-11-05T23:51:52.670483Z"
+        "at": "2026-11-05T23:54:26.5909642Z"
       }
     },
     {
@@ -714,9 +714,9 @@
         "ok": true,
         "count": 3,
         "http": 200,
-        "seconds": 2.8,
+        "seconds": 2.7,
         "error": null,
-        "at": "2026-11-05T23:51:55.5104736Z"
+        "at": "2026-11-05T23:54:29.3295073Z"
       }
     },
     {
@@ -750,7 +750,7 @@
         "http": 200,
         "seconds": 0.1,
         "error": null,
-        "at": "2026-11-05T23:51:55.594505Z"
+        "at": "2026-11-05T23:54:29.4112944Z"
       }
     },
     {
@@ -782,9 +782,9 @@
         "ok": true,
         "count": 99,
         "http": 200,
-        "seconds": 1.2,
+        "seconds": 1.3,
         "error": null,
-        "at": "2026-11-05T23:51:56.804314Z"
+        "at": "2026-11-05T23:54:30.6653264Z"
       }
     },
     {
@@ -816,9 +816,9 @@
         "ok": true,
         "count": 13,
         "http": 200,
-        "seconds": 0.7,
+        "seconds": 0.4,
         "error": null,
-        "at": "2026-11-05T23:51:57.5285275Z"
+        "at": "2026-11-05T23:54:31.0398928Z"
       }
     },
     {
@@ -850,9 +850,9 @@
         "ok": true,
         "count": 10,
         "http": 200,
-        "seconds": 0.2,
+        "seconds": 0.1,
         "error": null,
-        "at": "2026-11-05T23:51:57.6937119Z"
+        "at": "2026-11-05T23:54:31.1301349Z"
       }
     },
     {
@@ -884,9 +884,9 @@
         "ok": true,
         "count": 50,
         "http": 200,
-        "seconds": 1.6,
+        "seconds": 1.4,
         "error": null,
-        "at": "2026-11-05T23:51:59.2460423Z"
+        "at": "2026-11-05T23:54:32.4993954Z"
       }
     },
     {
@@ -920,7 +920,7 @@
         "http": 200,
         "seconds": 3.1,
         "error": null,
-        "at": "2026-11-05T23:52:01.7873274Z"
+        "at": "2026-11-05T23:54:35.5523358Z"
       }
     },
     {
@@ -952,9 +952,9 @@
         "ok": true,
         "count": 0,
         "http": 200,
-        "seconds": 0.3,
+        "seconds": 0.1,
         "error": "A fonte respondeu, mas não tem vaga aberta agora. Pode salvar: ela entra nas próximas rodadas.",
-        "at": "2026-11-05T23:51:59.5143412Z"
+        "at": "2026-11-05T23:54:33.5257004Z"
       }
     },
     {
@@ -986,9 +986,9 @@
         "ok": true,
         "count": 20,
         "http": 200,
-        "seconds": 1,
+        "seconds": 1.1,
         "error": null,
-        "at": "2026-11-05T23:52:00.5346116Z"
+        "at": "2026-11-05T23:54:34.592395Z"
       }
     },
     {
@@ -1020,9 +1020,43 @@
         "ok": true,
         "count": 200,
         "http": 200,
-        "seconds": 10.5,
+        "seconds": 10.4,
         "error": null,
-        "at": "2026-11-05T23:52:11.0352411Z"
+        "at": "2026-11-05T23:54:44.9919176Z"
+      }
+    },
+    {
+      "id": "joblinks",
+      "name": "JobTech JobAd Links (Suécia)",
+      "category": "gov",
+      "integration_method": "OFFICIAL_PUBLIC",
+      "state": "ACTIVE",
+      "country_codes": [
+        "SE"
+      ],
+      "api_doc_url": "https://links.api.jobtechdev.se/",
+      "terms_url": "https://jobtechdev.se/",
+      "attribution": "Dados da JobTech/Arbetsförmedlingen; o crédito vai ao site que publicou cada anúncio.",
+      "update_frequency": "3 h",
+      "catalog_ids": [
+        "sweden-jobtech-jobad-links"
+      ],
+      "notes": "Anúncios de muitos sites suecos com o link para o original; sem chave.",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": true,
+      "ingestion_enabled": true,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "joblinks",
+        "source": "joblinks:developer",
+        "ok": true,
+        "count": 300,
+        "http": 200,
+        "seconds": 2.8,
+        "error": null,
+        "at": "2026-11-05T23:54:38.3399711Z"
       }
     },
     {
@@ -1055,9 +1089,9 @@
         "ok": true,
         "count": 14,
         "http": 200,
-        "seconds": 15.2,
+        "seconds": 15.3,
         "error": "Também declarou 15 anúncios encerrados, que fecham as vagas que já estiverem aqui.",
-        "at": "2026-11-05T23:52:17.0044551Z"
+        "at": "2026-11-05T23:54:53.6796152Z"
       }
     },
     {
@@ -1089,9 +1123,9 @@
         "ok": true,
         "count": 200,
         "http": 200,
-        "seconds": 1.4,
+        "seconds": 1.5,
         "error": null,
-        "at": "2026-11-05T23:52:04.3310919Z"
+        "at": "2026-11-05T23:54:40.8245582Z"
       }
     },
     {
@@ -1123,9 +1157,9 @@
         "ok": true,
         "count": 718,
         "http": 200,
-        "seconds": 10.2,
+        "seconds": 10.1,
         "error": null,
-        "at": "2026-11-05T23:52:14.5566751Z"
+        "at": "2026-11-05T23:54:50.9091741Z"
       }
     },
     {
@@ -1155,9 +1189,9 @@
         "ok": true,
         "count": 59,
         "http": 200,
-        "seconds": 2.9,
+        "seconds": 2.7,
         "error": null,
-        "at": "2026-11-05T23:52:13.9353648Z"
+        "at": "2026-11-05T23:54:47.7083363Z"
       }
     },
     {
@@ -1187,9 +1221,9 @@
         "ok": true,
         "count": 23,
         "http": 200,
-        "seconds": 1,
+        "seconds": 1.1,
         "error": null,
-        "at": "2026-11-05T23:52:14.9770288Z"
+        "at": "2026-11-05T23:54:48.7973173Z"
       }
     },
     {
@@ -1221,9 +1255,9 @@
         "ok": true,
         "count": 3,
         "http": 200,
-        "seconds": 1.2,
+        "seconds": 1.3,
         "error": null,
-        "at": "2026-11-05T23:52:15.7563047Z"
+        "at": "2026-11-05T23:54:50.1231482Z"
       }
     },
     {
@@ -1253,9 +1287,9 @@
         "ok": true,
         "count": 44,
         "http": 200,
-        "seconds": 0.7,
+        "seconds": 0.8,
         "error": null,
-        "at": "2026-11-05T23:52:15.6993378Z"
+        "at": "2026-11-05T23:54:50.8814199Z"
       }
     },
     {
@@ -1287,7 +1321,7 @@
         "http": null,
         "seconds": 0,
         "error": "sem amostra pública segura",
-        "at": "2026-11-05T23:51:40.9619006Z"
+        "at": "2026-11-05T23:54:15.780608Z"
       }
     },
     {
@@ -1321,7 +1355,7 @@
         "http": null,
         "seconds": 0,
         "error": "sem amostra pública segura",
-        "at": "2026-11-05T23:51:40.9619013Z"
+        "at": "2026-11-05T23:54:15.7806107Z"
       }
     },
     {
@@ -1353,7 +1387,7 @@
         "http": null,
         "seconds": 0,
         "error": "sem amostra pública segura",
-        "at": "2026-11-05T23:51:40.9619019Z"
+        "at": "2026-11-05T23:54:15.7806132Z"
       }
     },
     {
@@ -1387,7 +1421,7 @@
         "http": null,
         "seconds": 0,
         "error": "A consulta falhou: Conecte a chave da Adzuna em Fontes › Chaves de API.",
-        "at": "2026-11-05T23:52:15.7128442Z"
+        "at": "2026-11-05T23:54:50.8951915Z"
       }
     },
     {
@@ -1421,7 +1455,7 @@
         "http": null,
         "seconds": 0,
         "error": "A consulta falhou: Conecte a chave do Jooble em Fontes › Chaves de API.",
-        "at": "2026-11-05T23:52:15.7197786Z"
+        "at": "2026-11-05T23:54:50.9031812Z"
       }
     },
     {
@@ -1456,7 +1490,7 @@
         "http": null,
         "seconds": 0,
         "error": "A consulta falhou: CREDENTIALS_REQUIRED: conecte a chave do USAJOBS em Fontes › Chaves de API.",
-        "at": "2026-11-05T23:52:15.7321224Z"
+        "at": "2026-11-05T23:54:50.9200726Z"
       }
     },
     {
@@ -1490,7 +1524,7 @@
         "http": null,
         "seconds": 0,
         "error": "A consulta falhou: CREDENTIALS_REQUIRED: conecte o appname aprovado da ReliefWeb em Fontes › Chaves de API.",
-        "at": "2026-11-05T23:52:15.7389827Z"
+        "at": "2026-11-05T23:54:50.9164498Z"
       }
     },
     {
@@ -1522,7 +1556,7 @@
         "http": null,
         "seconds": 0,
         "error": "não sondada: BLOCKED",
-        "at": "2026-11-05T23:51:40.9619077Z"
+        "at": "2026-11-05T23:54:15.7806688Z"
       }
     },
     {
@@ -1556,7 +1590,7 @@
         "http": null,
         "seconds": 0,
         "error": "não sondada: BLOCKED",
-        "at": "2026-11-05T23:51:40.9619078Z"
+        "at": "2026-11-05T23:54:15.7806699Z"
       }
     },
     {
@@ -1590,7 +1624,7 @@
         "http": null,
         "seconds": 0,
         "error": "não sondada: PARTNER_ONLY",
-        "at": "2026-11-05T23:51:40.9619079Z"
+        "at": "2026-11-05T23:54:15.7806707Z"
       }
     }
   ]

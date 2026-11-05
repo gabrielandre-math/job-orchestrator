@@ -81,6 +81,9 @@ public static class SourceRegistry
             null, "6 h", ["the-muse-jobs-api"], "Registro do app recomendado; sem chave funciona com cota menor."),
         new("jobtech", "JobTech JobSearch (Suécia)", "gov", "OFFICIAL_PUBLIC", "ACTIVE", ["SE"], "https://jobsearch.api.jobtechdev.se/", "https://data.arbetsformedlingen.se/dataset/job-ads/",
             "Dados CC0 da Arbetsförmedlingen.", "3 h", ["sweden-jobtech-jobsearch-api"], "Serviço público de emprego da Suécia."),
+        new("joblinks", "JobTech JobAd Links (Suécia)", "gov", "OFFICIAL_PUBLIC", "ACTIVE", ["SE"], "https://links.api.jobtechdev.se/", "https://jobtechdev.se/",
+            "Dados da JobTech/Arbetsförmedlingen; o crédito vai ao site que publicou cada anúncio.", "3 h", ["sweden-jobtech-jobad-links"],
+            "Anúncios de muitos sites suecos com o link para o original; sem chave."),
         new("nav", "NAV pam-stilling-feed (Noruega)", "gov", "OFFICIAL_PUBLIC", "ACTIVE", ["NO"], "https://navikt.github.io/pam-stilling-feed/", "https://arbeidsplassen.nav.no/vilkar-api",
             "Dados abertos da NAV.", "3 h", ["norway-nav-stilling-feed", "norway-nav-feed-openapi"],
             "Token público rotativo (/api/publicToken); anúncio INACTIVE fecha a vaga, como os termos pedem; contatos pessoais não são guardados; a API antiga pam-public-feed saiu em maio de 2025."),
@@ -133,7 +136,7 @@ public static class SourceRegistry
         ["recruitee"] = "recruitee:bunq", ["solides"] = "solides:solides", ["pandape"] = "pandape:infojobs", ["oracle"] = "oracle:eeho.fa.us2.oraclecloud.com/CX_1",
         ["4dayweek"] = "4dayweek:engineering", ["workingnomads"] = "workingnomads:development", ["freehire"] = "freehire:developer", ["personio"] = "personio:personio",
         // Com chave da pessoa: a sondagem mostra "pede credencial" até a chave existir.
-        ["rippling"] = "rippling:aaca", ["usajobs"] = "usajobs:developer", ["reliefweb"] = "reliefweb:officer", ["adzuna"] = "adzuna:developer", ["jooble"] = "jooble:developer",
+        ["rippling"] = "rippling:aaca", ["joblinks"] = "joblinks:developer", ["usajobs"] = "usajobs:developer", ["reliefweb"] = "reliefweb:officer", ["adzuna"] = "adzuna:developer", ["jooble"] = "jooble:developer",
     };
 
     public static SourceProfile? Find(string source)

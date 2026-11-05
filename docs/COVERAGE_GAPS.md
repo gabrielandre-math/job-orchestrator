@@ -1,6 +1,6 @@
 # Lacunas de cobertura
 
-Gerado por `jo sources coverage` em 05/11/2026 23:52 UTC, contra a API local. O universo é a auditoria dos 249 países e territórios ISO 3166-1
+Gerado por `jo sources coverage` em 05/11/2026 23:54 UTC, contra a API local. O universo é a auditoria dos 249 países e territórios ISO 3166-1
 (`data/catalog/auditoria-249-paises-v2.csv`, do usuário). O estado de cada país sai só do que existe: conector do país sondado com vaga, fonte do país
 no registro ainda sem conector, vaga aberta vista com local nele, ou o estado da auditoria. **Isto não é cobertura mundial completa.**
 
@@ -8,10 +8,10 @@ no registro ainda sem conector, vaga aberta vista com local nele, ou o estado da
 
 | | Quantas |
 |---|---|
-| Fontes configuradas (plataformas no registro) | 45 |
-| Com conector no app | 42 |
-| Autorizadas (portão aberto) | 38 |
-| Funcionando (última sondagem com vaga) | 31 |
+| Fontes configuradas (plataformas no registro) | 46 |
+| Com conector no app | 43 |
+| Autorizadas (portão aberto) | 39 |
+| Funcionando (última sondagem com vaga) | 32 |
 | Quadros de empresa na campanha | 25 |
 | Empresas com vaga aberta | 88 |
 | Vagas únicas abertas | 143 |
@@ -127,7 +127,7 @@ Não pesquisados (31): Anguilla, Antigua and Barbuda, Aruba, Bahamas, Barbados, 
 | País | Estado | Conectores do país | Pendentes | Vagas abertas | Brasil (confirmadas/possíveis) | Pistas da auditoria |
 |---|---|---|---|---|---|---|
 | Norway (NO) | integrado | `nav` | - | 0 | 0/0 | 3 portais, 2 APIs candidatas, 1 agências WAPES |
-| Sweden (SE) | integrado | `jobtech` | - | 0 | 0/0 | 1 portais, 0 APIs candidatas, 1 agências WAPES |
+| Sweden (SE) | integrado | `jobtech`, `joblinks` | - | 0 | 0/0 | 1 portais, 0 APIs candidatas, 1 agências WAPES |
 | Albania (AL) | vagas vistas por fonte global | - | - | 1 | 0/1 | 0 portais, 0 APIs candidatas, 1 agências WAPES |
 | France (FR) | vagas vistas por fonte global | - | - | 2 | 0/1 | 1 portais, 0 APIs candidatas, 1 agências WAPES |
 | Greece (GR) | vagas vistas por fonte global | - | - | 1 | 0/1 | 0 portais, 0 APIs candidatas, 1 agências WAPES |

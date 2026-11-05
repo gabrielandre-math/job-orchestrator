@@ -44,5 +44,20 @@ public sealed class GovSourcesTests
     }
 
     [Fact]
+    public void JobTech_Links_aponta_para_o_anuncio_original_e_ignora_sem_link()
+    {
+        using var doc = JsonDocument.Parse("""
+            [{"id":"a1","headline":"Developer","brief":"Backend role.","employer":{"name":"Empresa AB"},"publication_date":"2026-10-22T00:00:00",
+              "workplace_addresses":[{"municipality":"Stockholm","region":"Stockholms län"}],"source_links":[{"label":"arbetsformedlingen.se","url":"https://arbetsformedlingen.se/platsbanken/annonser/1"}]},
+             {"id":"a2","headline":"Sem link","source_links":[]}]
+            """);
+        var items = doc.RootElement.EnumerateArray().Select(h => JobLinksSource.Parse("joblinks:developer", h)).ToList();
+        Assert.Null(items[1]);
+        Assert.Equal("https://arbetsformedlingen.se/platsbanken/annonser/1", items[0]!.ApplyUrl);
+        Assert.Equal("Stockholm, Stockholms län, Sweden", items[0]!.Location);
+        Assert.Equal(["SE"], SourceCatalog.MatchCountries(items[0]!.Location));
+    }
+
+    [Fact]
     public void Termo_da_NAV_ignora_acento_e_caixa() => Assert.Equal("sjafor og montor", NavSource.Fold("Sjåfør og Montør"));
 }

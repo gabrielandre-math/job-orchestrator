@@ -247,3 +247,36 @@ internal sealed class ReliefWebSource(IHttpClientFactory http) : PublicSource(ht
         })];
     }
 }
+
+/// <summary>
+/// JobTech JobAd Links (joblinks:termo, Suécia): a API aberta que junta os anúncios de muitos sites suecos e aponta para o original (source_links),
+/// sem chave. Complementa o JobSearch (só Platsbanken): a candidatura é sempre no link do site que publicou.
+/// </summary>
+internal sealed class JobLinksSource(IHttpClientFactory http) : PublicSource(http, "joblinks", "links.api.jobtechdev.se")
+{
+    public override string Id => "jobtech-joblinks";
+    public override string Name => "JobTech JobAd Links";
+
+    public override async Task<IReadOnlyList<DiscoveredPosting>> DiscoverAsync(string source, CancellationToken ct)
+    {
+        var list = new List<DiscoveredPosting>();
+        for (var offset = 0; offset < 300; offset += 100)
+        {
+            using var doc = await Json.GetAsync(Client, $"https://links.api.jobtechdev.se/joblinks?q={Uri.EscapeDataString(Key(source))}&limit=100&offset={offset}", ct);
+            var hits = doc.RootElement.GetProperty("hits");
+            list.AddRange(hits.EnumerateArray().Select(h => Parse(source, h)).OfType<DiscoveredPosting>());
+            if (hits.GetArrayLength() < 100) break;
+        }
+        return list;
+    }
+
+    internal static DiscoveredPosting? Parse(string source, JsonElement h)
+    {
+        var link = h.TryGetProperty("source_links", out var s) && s.ValueKind == JsonValueKind.Array && s.GetArrayLength() > 0 ? s[0].Str("url") : "";
+        if (link.Length == 0) return null;
+        var where = h.TryGetProperty("workplace_addresses", out var w) && w.ValueKind == JsonValueKind.Array
+            ? string.Join("; ", w.EnumerateArray().Select(a => string.Join(", ", new[] { a.Str("municipality"), a.Str("region") }.Where(x => x.Length > 0))).Where(x => x.Length > 0).Distinct()) : "";
+        return new DiscoveredPosting(source, h.Str("id"), h.Obj("employer").Str("name"), h.Str("headline"), $"{(where.Length > 0 ? where : "Sverige")}, Sweden", link,
+            h.Str("brief"), h.Date("publication_date"), h.GetRawText(), ListedAsOpen: true);
+    }
+}

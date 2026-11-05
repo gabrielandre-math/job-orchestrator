@@ -11,6 +11,8 @@ switch (command)
         return await Sources.ProbeAsync(Option("api") ?? "http://127.0.0.1:7410", Option("json") ?? "data/source-registry.json", Option("md") ?? "docs/SOURCE_AUDIT.md");
     case "sources boards":
         return await Boards.ImportAsync(Option("api") ?? "http://127.0.0.1:7410", Option("out") ?? "data/ats-board-catalog.json", int.TryParse(Option("sample"), out var n) ? n : 60);
+    case "sources next":
+        return await NextSources.WriteAsync(Option("catalog") ?? "data/catalog/catalogo-fontes-v2-2026.json", Option("registry") ?? "data/source-registry.json", Option("md") ?? "docs/NEXT_SOURCES.md");
     case "sources coverage":
         return await CoverageReport.WriteAsync(Option("api") ?? "http://127.0.0.1:7410", Option("md") ?? "docs/COVERAGE_GAPS.md");
     default:
@@ -18,6 +20,8 @@ switch (command)
             uso:
               jo sources boards [--api http://127.0.0.1:7410] [--out data/ats-board-catalog.json] [--sample 60]
                 importa os catálogos públicos de quadros de ATS, deduplica, guarda a licença e valida uma amostra de verdade
+              jo sources next [--catalog ...] [--registry data/source-registry.json] [--md docs/NEXT_SOURCES.md]
+                o inventário priorizado do que falta no catálogo V2, com o caminho para cada tipo de acesso
               jo sources coverage [--api http://127.0.0.1:7410] [--md docs/COVERAGE_GAPS.md]
                 a cobertura dos 249 países, por continente e país, com o que existe e o que falta
               jo sources probe [--api http://127.0.0.1:7410] [--json data/source-registry.json] [--md docs/SOURCE_AUDIT.md]
