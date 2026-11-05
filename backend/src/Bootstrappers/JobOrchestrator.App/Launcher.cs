@@ -125,7 +125,11 @@ internal static class Launcher
         foreach (var b in new[] { "chromium", "google-chrome-stable", "google-chrome", "brave", "brave-browser", "microsoft-edge-stable", "vivaldi-stable" })
             if (Which(b) is { } path)
             {
-                Detach(path, [$"--app={url}", "--class=JobOrchestrator", "--name=JobOrchestrator", $"--user-data-dir={profile}", "--no-first-run", "--no-default-browser-check", "--window-size=1440,920"], null);
+                var args = new List<string> { $"--app={url}", "--class=JobOrchestrator", "--name=JobOrchestrator", $"--user-data-dir={profile}", "--no-first-run", "--no-default-browser-check", "--window-size=1440,920" };
+                // A extensão do copiloto já vem ligada na janela do app: a vaga aberta daqui tem o botão de preencher, sem instalar nada.
+                var extension = Path.Combine(Home, "extension");
+                if (File.Exists(Path.Combine(extension, "manifest.json"))) args.AddRange([$"--load-extension={extension}", "--disable-features=DisableLoadExtensionCommandLineSwitch"]);
+                Detach(path, [.. args], null);
                 return;
             }
         Detach("xdg-open", [url], null);

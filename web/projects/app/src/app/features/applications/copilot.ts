@@ -67,7 +67,7 @@ const LABEL: Record<string, string> = {
           </li>
           <li class="wide">
             <jo-iso name="form" [size]="44" />
-            <div><strong>Ou deixe a extensão preencher</strong><p class="muted small">Com a extensão do copiloto no Chromium, um clique na página da vaga preenche os campos vazios com estas respostas e anexa o currículo; você confere e envia. Ela não roda no LinkedIn. Para ligar: chrome://extensions, modo de desenvolvedor, "Carregar sem compactação" e a pasta <span class="mono">~/.local/opt/job-orchestrator/extension</span>.</p></div>
+            <div><strong>Ou deixe a extensão preencher</strong><p class="muted small">Com a extensão do copiloto no Chromium, um clique na página da vaga preenche os campos vazios com estas respostas e anexa o currículo; você confere e envia. Ela não roda no LinkedIn. Na janela do app ela já vem ligada: abra a vaga por aqui e clique no ícone dela. No seu navegador de sempre: chrome://extensions, modo de desenvolvedor, "Carregar sem compactação" e a pasta <span class="mono">~/.local/opt/job-orchestrator/extension</span>.</p></div>
             <button type="button" class="btn ghost" (click)="copy('ext', 'chrome://extensions')"><jo-icon [name]="copied() === 'ext' ? 'check' : 'copy'" [size]="14" />Copiar endereço</button>
           </li>
           <li>
