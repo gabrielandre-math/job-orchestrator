@@ -9,15 +9,20 @@ namespace JobOrchestrator.Automation.Adapters;
 /// </summary>
 internal abstract class Aggregator(IHttpClientFactory http, TimeProvider time, string prefix, string domain) : PublicSource(http, prefix, domain)
 {
-    private static readonly ConcurrentDictionary<string, DateTime> LastCall = new();
+    private static readonly ConcurrentDictionary<string, (DateTime At, IReadOnlyList<DiscoveredPosting> Items)> LastCall = new();
     protected virtual TimeSpan MinInterval => TimeSpan.FromHours(6);
 
+    /// <summary>
+    /// Dentro do intervalo mínimo, devolve a resposta da última chamada em vez de chamar de novo: o teste do Explorador e a rodada que
+    /// vem logo depois dele enxergam as mesmas vagas, e a API não recebe a mesma pergunta duas vezes.
+    /// </summary>
     public sealed override async Task<IReadOnlyList<DiscoveredPosting>> DiscoverAsync(string source, CancellationToken ct)
     {
         var now = time.GetUtcNow().UtcDateTime;
-        if (LastCall.TryGetValue(source, out var last) && now - last < MinInterval) return [];
-        LastCall[source] = now;
-        return await FetchAsync(source, Key(source), ct);
+        if (LastCall.TryGetValue(source, out var last) && now - last.At < MinInterval) return last.Items;
+        var items = await FetchAsync(source, Key(source), ct);
+        LastCall[source] = (now, items);
+        return items;
     }
 
     protected abstract Task<IReadOnlyList<DiscoveredPosting>> FetchAsync(string source, string key, CancellationToken ct);
@@ -99,6 +104,49 @@ internal sealed class TheMuseSource(IHttpClientFactory http, TimeProvider time) 
             return new DiscoveredPosting(source, j.GetProperty("id").ToString(), j.Obj("company").Str("name"), j.Str("name"), locations, j.Obj("refs").Str("landing_page"),
                 Json.Plain(j.Str("contents")), j.Date("publication_date"), j.GetRawText(), Workplace: locations.Contains("Remote", StringComparison.OrdinalIgnoreCase) ? "remote" : null, ListedAsOpen: true);
         })];
+    }
+}
+
+/// <summary>
+/// Busca global do Workable (workable-search:termo): a busca pública do jobs.workable.com, que cobre todas as empresas que usam o
+/// Workable. Duas consultas por termo, no Brasil e remota, até três páginas cada; o robots.txt libera e a vaga guarda o link dela lá.
+/// </summary>
+internal sealed class WorkableSearchSource(IHttpClientFactory http, TimeProvider time) : Aggregator(http, time, "workable-search", "jobs.workable.com")
+{
+    public override string Id => "workable-search-api";
+    public override string Name => "Workable (todas as empresas)";
+    protected override TimeSpan MinInterval => TimeSpan.FromHours(1);
+
+    protected override async Task<IReadOnlyList<DiscoveredPosting>> FetchAsync(string source, string key, CancellationToken ct)
+    {
+        var list = new List<DiscoveredPosting>();
+        var ids = new HashSet<string>();
+        foreach (var filter in new[] { "&location=Brazil", "&workplace=remote" })
+        {
+            string? token = null;
+            for (var page = 0; page < 3; page++)
+            {
+                var url = $"https://jobs.workable.com/api/v1/jobs?query={Uri.EscapeDataString(key)}{filter}{(token is null ? "" : $"&pageToken={Uri.EscapeDataString(token)}")}";
+                using var doc = await Json.GetAsync(Client, url, ct);
+                var added = 0;
+                if (!doc.RootElement.TryGetProperty("jobs", out var jobs) || jobs.ValueKind != JsonValueKind.Array) break;
+                foreach (var j in jobs.EnumerateArray())
+                {
+                    if (!ids.Add(j.Str("id"))) continue;
+                    added++;
+                    var l = j.Obj("location");
+                    var place = string.Join(", ", new[] { l.Str("city"), l.Str("subregion"), l.Str("countryName") }.Where(v => v.Length > 0));
+                    var remote = j.TryGetProperty("locations", out var ls) && ls.ValueKind == JsonValueKind.Array && ls.EnumerateArray().Any(x => x.GetString() == "TELECOMMUTE");
+                    list.Add(new DiscoveredPosting(source, j.Str("id"), j.Obj("company").Str("title"), j.Str("title"), remote ? (place.Length > 0 ? $"Remoto ({place})" : "Remoto") : place, j.Str("url"),
+                        Json.Plain($"{j.Str("description")}\n{j.Str("requirementsSection")}\n{j.Str("benefitsSection")}"), j.Date("created"), j.GetRawText(),
+                        Workplace: remote ? "remote" : null, ListedAsOpen: true));
+                }
+                token = doc.RootElement.Str("nextPageToken");
+                if (token.Length == 0 || added == 0) break;
+                await Task.Delay(700, ct);
+            }
+        }
+        return list;
     }
 }
 

@@ -59,12 +59,27 @@ internal sealed partial class GupySource(IHttpClientFactory http) : PublicSource
         return list;
     }
 
-    /// <summary>Busca do portal (portal.gupy.io, robots.txt libera tudo): os subdomínios das empresas que aparecem na primeira página do termo.</summary>
+    /// <summary>
+    /// Busca do portal (portal.gupy.io, robots.txt libera tudo): os subdomínios das empresas que aparecem no termo, página por página
+    /// (12 vagas por página, até cinco páginas), com um segundo entre elas.
+    /// </summary>
     public async Task<IReadOnlyList<string>> SearchAsync(string term, CancellationToken ct)
     {
-        var html = await Client.GetStringAsync($"https://portal.gupy.io/job-search/term={Uri.EscapeDataString(term)}", ct);
-        return [.. Company().Matches(html).Select(m => m.Groups[1].Value.ToLowerInvariant()).Where(c => !Reserved.Contains(c)).Distinct()];
+        var companies = new List<string>();
+        var pages = 1;
+        for (var page = 1; page <= pages; page++)
+        {
+            var html = await Client.GetStringAsync($"https://portal.gupy.io/job-search/term={Uri.EscapeDataString(term)}{(page > 1 ? $"&page={page}" : "")}", ct);
+            var found = Company().Matches(html).Select(m => m.Groups[1].Value.ToLowerInvariant()).Where(c => !Reserved.Contains(c)).Distinct().ToList();
+            companies.AddRange(found);
+            if (page == 1 && Total().Match(html) is { Success: true } t && int.TryParse(t.Groups[1].Value, out var total)) pages = Math.Clamp((total + 11) / 12, 1, 5);
+            if (found.Count == 0) break;
+            if (page < pages) await Task.Delay(1000, ct);
+        }
+        return [.. companies.Distinct()];
     }
+
+    [GeneratedRegex(@"""total"":(\d+)")] private static partial Regex Total();
 
     private static readonly HashSet<string> Reserved = ["attachments", "suporte-candidatos", "www", "login", "portal", "help", "blog", "static", "cdn", "assets", "api", "employability-portal", "app"];
     private static string Fold(string s) => new string(s.ToLowerInvariant().Normalize(System.Text.NormalizationForm.FormD).Where(c => System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c) != System.Globalization.UnicodeCategory.NonSpacingMark).ToArray());

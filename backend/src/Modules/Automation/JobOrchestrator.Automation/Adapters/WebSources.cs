@@ -10,18 +10,20 @@ namespace JobOrchestrator.Automation.Adapters;
 internal sealed class RemotiveSource(IHttpClientFactory http, TimeProvider time) : PublicSource(http, "remotive", "remotive.com")
 {
     private static readonly TimeSpan MinInterval = TimeSpan.FromHours(6);
-    private static readonly ConcurrentDictionary<string, DateTime> LastCall = new();
+    private static readonly ConcurrentDictionary<string, (DateTime At, IReadOnlyList<DiscoveredPosting> Items)> LastCall = new();
     public override string Id => "remotive-api";
     public override string Name => "Remotive API";
 
+    /// <summary>A Remotive pede poucas chamadas: dentro de 6 horas, a mesma busca devolve a última resposta, sem chamar de novo.</summary>
     public override async Task<IReadOnlyList<DiscoveredPosting>> DiscoverAsync(string source, CancellationToken ct)
     {
         var search = Key(source);
         var now = time.GetUtcNow().UtcDateTime;
-        if (LastCall.TryGetValue(search, out var last) && now - last < MinInterval) return [];
-        LastCall[search] = now;
+        if (LastCall.TryGetValue(search, out var last) && now - last.At < MinInterval) return last.Items;
         using var doc = await Json.GetAsync(Client, $"https://remotive.com/api/remote-jobs?search={Uri.EscapeDataString(search)}&limit=100", ct);
-        return [.. doc.RootElement.GetProperty("jobs").EnumerateArray().Select(j => Parse(source, j))];
+        IReadOnlyList<DiscoveredPosting> items = [.. doc.RootElement.GetProperty("jobs").EnumerateArray().Select(j => Parse(source, j))];
+        LastCall[search] = (now, items);
+        return items;
     }
 
     public override Task<PostingStatus> CheckOpenAsync(string applyUrl, CancellationToken ct) => Task.FromResult(new PostingStatus(true, "Listada agora pelo Remotive."));

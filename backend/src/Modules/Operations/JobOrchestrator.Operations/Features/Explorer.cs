@@ -44,7 +44,14 @@ internal sealed class Explorer(IServiceScopeFactory scopes, [FromKeyedServices("
 
     /// <summary>APIs públicas que buscam por texto: cada palavra (e cargo, onde a busca entende frase) vira uma fonte candidata. A Remotive pede
     /// poucas chamadas por dia: entra só com as duas primeiras palavras e só se a campanha ainda não tiver uma busca nela.</summary>
-    private static readonly (string Api, bool Titles)[] SearchApis = [("getonbrd", true), ("himalayas", true), ("remotive", false)];
+    private static readonly (string Api, bool Titles)[] SearchApis = [("getonbrd", true), ("himalayas", true), ("workable-search", true), ("remotive", false), ("jobicy", false), ("remoteok", false)];
+
+    /// <summary>Repositórios brasileiros de vagas em issues, por comunidade (backend, front, mobile, QA, PHP, Java): qualquer área testa os seus.</summary>
+    internal static readonly string[] JobRepos =
+    [
+        "github:backend-br/vagas", "github:frontendbr/vagas", "github:react-brasil/vagas", "github:androiddevbr/vagas", "github:CocoaHeadsBrasil/vagas",
+        "github:phpdevbr/vagas", "github:qa-brasil/vagas", "github:soujava/vagas-java", "github:vuejs-br/vagas", "github:datascience-br/vagas",
+    ];
 
     public async Task<ExploreSummary> CycleAsync(CancellationToken ct)
     {
@@ -111,8 +118,9 @@ internal sealed class Explorer(IServiceScopeFactory scopes, [FromKeyedServices("
             try { foreach (var l in await automation.WebSearchAsync(q[turn % q.Count], ct)) Lead(l.Source, l.Origin, "busca na web"); }
             catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException or JsonException) { log.LogInformation("Web search skipped: {Error}", ex.Message); }
         }
-        // 3. Busca da Gupy: duas palavras por ciclo.
-        foreach (var term in Rotate(terms, turn, 2))
+        // 3. Busca da Gupy: todas as palavras e cargos da campanha, cinco por ciclo, cada uma com as páginas dela.
+        var gupyTerms = campaign.Technologies.Concat(campaign.Titles ?? []).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        foreach (var term in Rotate(gupyTerms, turn, config.GetValue("Explorer:GupyTermsPerCycle", 5)))
         {
             try { foreach (var c in await automation.SearchGupyAsync(term, ct)) Lead($"gupy:{c}", $"busca da Gupy por \"{term}\"", "busca da Gupy"); }
             catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException) { log.LogInformation("Gupy search skipped for {Term}: {Error}", term, ex.Message); }
@@ -145,8 +153,9 @@ internal sealed class Explorer(IServiceScopeFactory scopes, [FromKeyedServices("
             }
             catch (InvalidOperationException) { /* sem módulo de e-mail neste processo */ }
         }
-        // 5b. Quadros de vagas conhecidos, testados para a área de quem mandou o currículo.
+        // 5b. Quadros de vagas conhecidos e repositórios de vagas das comunidades, testados para a área de quem mandou o currículo.
         foreach (var b in Boards) Lead(b, "quadro de vagas", "quadros de vagas");
+        foreach (var r in JobRepos) Lead(r, "repositório de vagas da comunidade", "repositórios do GitHub");
         // 6. Sites das empresas das vagas.
         foreach (var d in await jobs.CompanyDomainsAsync(60, ct)) Lead($"web:{d}", "site da empresa de uma vaga", "sites de empresa");
         foreach (var k in frontier.Keys.Where(k => !Fresh(k)).ToList()) frontier.Remove(k);
@@ -154,9 +163,10 @@ internal sealed class Explorer(IServiceScopeFactory scopes, [FromKeyedServices("
         Write(FrontierFile, frontier.Take(5000).ToDictionary());
         Write(ListsFile, lists);
 
-        var batch = frontier.Where(f => Kind(f.Key) == "board").OrderBy(f => Priority(f.Value)).Take(config.GetValue("Explorer:BoardsPerCycle", 10))
-            .Concat(frontier.Where(f => Kind(f.Key) == "github").Take(config.GetValue("Explorer:ReposPerCycle", keys.Contains("github") ? 10 : 3)))
-            .Concat(frontier.Where(f => Kind(f.Key) == "gupy").Take(config.GetValue("Explorer:GupyPerCycle", 4)))
+        // Teste de quadro é barato (uma chamada à API pública; o Llama só entra quando as palavras batem): 30 quadros e 15 da Gupy por ciclo.
+        var batch = frontier.Where(f => Kind(f.Key) == "board").OrderBy(f => Priority(f.Value)).Take(config.GetValue("Explorer:BoardsPerCycle", 30))
+            .Concat(frontier.Where(f => Kind(f.Key) == "github").Take(config.GetValue("Explorer:ReposPerCycle", keys.Contains("github") ? 10 : 4)))
+            .Concat(frontier.Where(f => Kind(f.Key) == "gupy").Take(config.GetValue("Explorer:GupyPerCycle", 15)))
             .Select(f => (Source: f.Key, Origin: f.Value)).ToList();
         var sites = frontier.Where(f => Kind(f.Key) == "web").OrderBy(f => Priority(f.Value)).Take(config.GetValue("Explorer:SitesPerCycle", 6))
             .Select(f => (Source: f.Key, Origin: f.Value)).ToList();
