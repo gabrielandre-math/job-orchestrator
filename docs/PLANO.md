@@ -1,168 +1,463 @@
-# Plano
+# Plano mestre do Job Orchestrator
 
-Data: 05/11/2026. Base: spec original do usuário (SUPER_PROMPT_JOB_ORCHESTRATOR_OMARCHY.md), `docs/research/HOST_AUDIT.md` e `docs/research/REPO_AUDIT.md`.
+Data: 05/11/2026. Escopo: a spec original completa (SUPER_PROMPT_JOB_ORCHESTRATOR_OMARCHY.md), ajustada pelo que a pesquisa provou (`docs/research/`). Detalhe técnico em `docs/architecture.md`, ameaças em `docs/threat-model.md`, decisões em `docs/adr/`.
 
-## 1. A ideia
+## 1. Missão e definição de sucesso
 
-De madrugada o PC procura e prepara vagas. Durante o dia, o sistema se atualiza sozinho pelo seu e-mail. Você só entra para aprovar, para responder o que só você sabe e para ir às entrevistas. Tudo roda local: Postgres, Ollama, Playwright e os CLIs `claude` e `codex` com as suas assinaturas.
+O PC trabalha enquanto você dorme:
+- procura vagas compatíveis em fontes permitidas;
+- classifica cada vaga e explica a nota;
+- prepara currículo e respostas específicos, só com fatos verdadeiros;
+- preenche os formulários;
+- envia quando, e somente quando, existe autorização válida e nada bloqueia;
+- trata falhas trocando apenas a etapa que falhou;
+- acompanha o que acontece depois de cada candidatura.
 
-Sugestão principal: começar pelo **acompanhamento** (o mini sistema), e não pelo robô de envio. Ele resolve o problema de hoje, que é controlar o que você aplicou à mão no LinkedIn, na Gupy e em outros sites. Faz isso lendo os e-mails de confirmação e de retorno, e vira a base onde o resto se encaixa.
+De manhã há um relatório confiável e uma fila curta de decisões.
 
-## 2. O que é automático
+Sucesso medido por:
 
-| Etapa | Automático | Fica com você |
+| Métrica | Alvo |
+|---|---|
+| Envio duplicado ou sem autorização | zero, provado por teste de caos |
+| Confirmadas | só com evidência forte (página de confirmação, recibo ou e-mail casado) |
+| Tempo seu por candidatura revisada | menos de 1 minuto nos fluxos de um toque |
+| Noites sem intervenção técnica | todas, salvo quebra de fonte ou cota |
+| Custo incremental | zero; nenhuma API paga chamada |
+| Fatos inventados em currículo ou resposta | zero, bloqueado pela checagem de proveniência |
+
+"Formulário preenchido", "candidatura enviada" e "candidatura confirmada" são estados diferentes, e o painel nunca os mistura.
+
+## 2. O que o sistema inteiro faz
+
+| Módulo | Função |
+|---|---|
+| Host/Worker | bootstrap, DI, execução persistente, agendador, health, desligamento limpo |
+| CandidateProfile | fatos verificados com evidência, preferências, respostas aprovadas, autorizações |
+| JobDiscovery | conectores de fontes permitidas, sync incremental, rate limit, snapshots, fingerprint |
+| EligibilityEngine | filtros eliminatórios (local, autorização de trabalho, modalidade, salário conhecido, stack essencial, vaga encerrada) |
+| FitEngine | nota 0–100 explicável, com fatores, incerteza e dados desconhecidos |
+| ResumeComposer | CV, carta, respostas e guia de entrevista PT/EN, com proveniência por linha e PDF validado |
+| CapabilityRegistry | o que cada adapter declara e o que passou em teste, por ATS, operação e versão |
+| ApplicationRouter | escolhe o adapter de cada etapa e calcula o fallback |
+| WorkflowEngine | máquina de estados persistente, fila com leases, checkpoints, outbox, DLQ |
+| BrowserAutomation | Playwright isolado, locators semânticos, snapshots redigidos |
+| SubmissionGuard | único portão de envio: consentimento, checklist, idempotência, recibo |
+| LLMRouter | decide se a etapa precisa de IA e qual provedor (regras, Ollama, Claude, Codex) |
+| Tracking (CRM) | funil das candidaturas, e-mail, entrevistas, follow-ups, contatos, métricas |
+| NotificationDigest | resumo da manhã, notificações locais, widget da barra |
+| WebConsole | painel local com todas as telas da spec e do CRM |
+| Observability | eventos de negócio, logs técnicos redigidos, traces, métricas, histórico de execuções |
+
+## 3. Níveis de autonomia
+
+| Nível | Modo | Faz sozinho | Precisa de você |
+|---|---|---|---|
+| L0 | `DISCOVERY_ONLY` | encontra, deduplica, classifica | nada |
+| L1 | `PREPARE_ONLY` (padrão) | tudo até o formulário validado | enviar |
+| L2 | `REVIEW_REQUIRED` | tudo, e espera aprovação do pacote exato | um toque por candidatura, ou aprovação em lote |
+| L3 | `AUTHORIZED_ROUTINE_AUTO_SUBMIT` | envia sozinho o que está dentro da autorização | nada, salvo o que cai em atenção |
+
+Como funciona a autorização do L3:
+- É criada só pelo painel, com escopo (ATS, empresas, tipos de vaga, limite diário, janela, validade).
+- É revogável na hora.
+- Arquivo de configuração não consegue ampliar a autorização.
+
+O que fica sempre com você, em qualquer nível:
+- CAPTCHA, login e MFA;
+- declaração legal e documento oficial;
+- pergunta nova sensível e consentimento novo;
+- qualquer resultado incerto.
+
+Para que isso custe poucos minutos:
+- **Sessão assistida da manhã.** As candidaturas paradas em CAPTCHA ou login abrem uma por vez num navegador dedicado, já preenchidas até o ponto do bloqueio. Você resolve, clica em Enviar, o sistema detecta a confirmação e passa para a próxima.
+- **Copiloto para LinkedIn, Gupy e sites com login.** Os termos proíbem automação ou exigem conta nesses sites. Um painel lateral mostra o kit pronto (PDF, respostas com botão de copiar, carta). Você aplica no seu navegador, e o e-mail de confirmação move o card sozinho.
+
+## 4. Os agentes
+
+Cada agente é um papel dentro do motor de fluxo, com entradas mínimas, saída validada por schema e sem poder sobre políticas.
+
+| Agente | Faz | Como | Provedor (padrão → fallback) | Efeito externo |
+|---|---|---|---|---|
+| Supervisor | conduz o fluxo, leases, orçamentos, janela | determinístico | não usa IA | não |
+| Batedor | descoberta nas fontes | conectores HTTP | Ollama para texto livre → regras | leitura HTTP |
+| Normalizador | canonicaliza, fingerprint, snapshot, dedup | determinístico | Ollama para extrair campos → regex | não |
+| Sentinela | fraude, prompt injection, domínio suspeito | regras + classificador | Ollama → regras | não |
+| Juiz | filtros eliminatórios | determinístico | não usa IA | não |
+| Analista | nota explicável | pesos + embeddings | Ollama → Claude Haiku (só explicação) | não |
+| Redator | CV, carta, respostas novas | geração com fatos selecionados | Claude Sonnet → Codex → Ollama (marcado como rascunho) | não |
+| Revisor | confere proveniência linha a linha | regra + segundo modelo | Codex → Claude Haiku | não |
+| Preparador | inspeciona e preenche formulário | adapters de ATS; IA só para mapear campo novo | Claude Haiku → Codex → Ollama | navegação, sem envio |
+| Guardião | autoriza ou bloqueia envio | determinístico, sem IA | não usa IA | emite o token de envio |
+| Remetente | clique final, sob lease e token | adapter | não usa IA | **único que envia** |
+| Verificador | recibo, confirmação, reconciliação | padrões por ATS | Ollama para ler página → regras | leitura |
+| Rastreador | e-mail, convites, status, follow-up | ingestão + classificação | Ollama (nunca nuvem para e-mail bruto) | leitura do Gmail |
+| Coach | guia de entrevista | geração | Claude Sonnet → Codex | não |
+| Mensageiro | resumo da manhã, notificações, barra | determinístico | Ollama para o texto do resumo | notificação local |
+
+Regras dos agentes:
+- Nenhum agente altera permissão, limite, modo ou consentimento.
+- Texto vindo de vaga, página, e-mail ou ferramenta é dado, nunca instrução.
+- Só o Remetente chama envio, e só com token válido emitido pelo Guardião para aquela intenção e aquele payload.
+
+## 5. Roteamento inteligente
+
+São dois roteadores independentes.
+
+**Capability routing (qual adapter faz a etapa):**
+1. Primeiro são eliminados os adapters que não servem:
+   - a capability não foi testada naquele domínio e versão;
+   - o circuito está aberto ou o adapter está em quarentena;
+   - a política proíbe;
+   - a etapa exige navegador visível e não há sessão gráfica.
+2. Entre os que sobram, vence a maior nota:
+   `0,35·S + 0,15·C + 0,15·(1−R) + 0,15·H − 0,10·L − 0,10·Q`
+   - **S:** taxa de sucesso confirmado por domínio, capability e versão, suavizada: (confirmados+1)/(tentativas+2).
+   - **C:** compatibilidade com o ATS.
+   - **R:** risco.
+   - **H:** saúde nas últimas 24 h.
+   - **L:** latência.
+   - **Q:** consumo de cota.
+
+Os pesos ficam na configuração. Cada decisão grava todos os candidatos, os fatores e o motivo (`RoutingDecision.why`).
+
+**LLM routing (se precisa de IA e qual):**
+- Cada tarefa tem perfil de privacidade, qualidade, contexto e orçamento, com uma cadeia de provedores (catálogo em `architecture.md` §7).
+- E-mail bruto e dados pessoais só vão para modelo local.
+- O CV final não aceita rebaixamento silencioso: sem Claude e sem Codex, vira rascunho marcado ou `PAUSED_PROVIDER`.
+
+**Fallback por etapa:**
+
+| Falha | Ação |
+|---|---|
+| `Unsupported` ou campo não suportado | próximo adapter com `PrepareForm` testado no domínio, retomando do checkpoint semântico; nunca reexecuta envio |
+| DOM mudou | nova leitura da página e mapeamento semântico (IA) com validação. Continua só em preparo. O mapeamento aprendido só vira rotina depois de uma aprovação sua |
+| Provedor de IA fora ou sem cota | próximo provedor compatível; sem nenhum, `PAUSED_PROVIDER` e reagenda para depois do reset |
+| Login, MFA, CAPTCHA, termos, consentimento | `NEEDS_HUMAN` (sessão assistida) ou `BLOCKED_BY_POLICY`; nunca troca de bot para contornar |
+| Envio incerto | `SUBMISSION_UNKNOWN`: só reconciliação por leitura (página, portal, e-mail); nunca outro adapter |
+| Rede ou leitura falhou | retry com backoff exponencial e jitter até o limite, depois `RETRY_SCHEDULED` ou `DEAD_LETTER` |
+
+Circuit breaker por adapter + ATS + capability. Quarentena automática quando o canário falha.
+
+## 6. Vida de uma candidatura
+
+1. **Descoberta.** O Batedor acha a vaga numa fonte permitida e grava o snapshot (`DISCOVERED`).
+2. **Normalização.** O Normalizador extrai os campos e resolve a identidade canônica. Duplicada vira `DUPLICATE` com link para a original (`NORMALIZED`).
+3. **Abertura.** O sistema confere na fonte oficial se a vaga segue aberta. Encerrada vira `EXPIRED`.
+4. **Elegibilidade.** O Juiz aplica os filtros eliminatórios (`ELIGIBILITY_CHECKED`). Se reprovar, vira `REJECTED` com motivo.
+5. **Nota.** O Analista dá a nota com fatores (`SCORED`). Acima do corte e dentro dos limites da campanha, vira `SHORTLISTED`.
+6. **Materiais.** O Redator gera CV, carta e respostas. O Revisor confere a proveniência. O PDF é validado (`MATERIALS_READY`).
+7. **Formulário.** O Preparador preenche e o sistema valida, com checkpoint semântico a cada passo (`FORM_PREPARING` → `FORM_VALIDATED`).
+8. **Política.** O Guardião aplica o checklist:
+   - `PREPARE_ONLY`: a candidatura para preparada;
+   - `REVIEW_REQUIRED`: vai para `AWAITING_APPROVAL`;
+   - `AUTO` com autorização válida: vai para `READY_TO_SUBMIT`.
+9. **Envio.** A intenção e o lease são gravados antes do clique (`SUBMITTING`).
+10. **Confirmação.** O Verificador exige evidência forte (`SUBMITTED_CONFIRMED`). Sem ela, vira `SUBMISSION_UNKNOWN` e entra em reconciliação.
+11. **Acompanhamento.** O Rastreador move o resultado pelo e-mail: vista, em processo, teste, entrevista, oferta, contratado, recusada, sem resposta.
+
+## 7. Acompanhamento (CRM das candidaturas)
+
+- **Funil.** Encontrada, Preparada, Enviada, Confirmada, Em processo, Entrevista, Oferta, Contratado, mais Recusada, Sem resposta e Desisti. O e-mail move os cards; arrastar corrige, e a correção vira regra.
+- **Candidatura.** Linha do tempo com descoberta, nota, rota escolhida, adapters tentados, versão do CV com PDF, respostas, evidências, e-mails, entrevistas e notas suas. Também mostra contatos, próximo passo e lembretes.
+- **E-mail.** Gmail `gmail.readonly` com consulta filtrada no servidor (remetentes de ATS e plataformas). O Ollama classifica e extrai, e o e-mail é casado com a candidatura. Sem par, vira "importada do e-mail"; é assim que entram as que você fez à mão. Confirmação casada vale como evidência L5.
+- **Entrevistas.** Convite `.ics` vira evento com lembrete e guia do Coach.
+- **Follow-up.** Rascunho na data certa. Envio só com consentimento separado, desligado por padrão.
+- **Regras de tempo.** "Sem resposta" depois de 21 dias. Vaga sumida vira encerrada. Reabertura é detectada.
+- **Métricas.** Taxa de resposta por fonte, ATS, versão de CV e senioridade, com tamanho da amostra e sem afirmação de causa. Também: tempo até a primeira resposta e funil por campanha.
+
+## 8. Fontes
+
+| Tier | Fontes | Uso |
 |---|---|---|
-| Achar vagas nas fontes permitidas | toda noite | adicionar empresas ou colar links |
-| Tirar duplicadas e conferir se a vaga segue aberta | sim | |
-| Filtros eliminatórios e nota explicada | sim | ajustar pesos |
-| Currículo PT/EN por vaga, com a fonte de cada linha | sim | conferir na primeira semana |
-| Respostas de triagem | sim, a partir das respostas que você já aprovou | perguntas novas, uma vez |
-| Preencher formulário Greenhouse, Lever, Ashby | sim | |
-| Enviar | só no modo autorizado, por ATS e empresa, com limite diário | aprovar com um toque no modo padrão |
-| CAPTCHA, login, MFA, declaração legal, dado sensível | nunca | sempre |
-| LinkedIn, Gupy e sites com login | prepara o kit (PDF, respostas, carta) e abre a página | enviar |
-| Status das candidaturas | sim, pelo e-mail, inclusive as feitas à mão | corrigir quando errar |
-| Entrevista marcada | evento no painel e guia de preparação | ir |
-| Follow-up | rascunho na data certa | enviar |
+| 1 | APIs públicas de vagas: Greenhouse, Lever, Ashby, SmartRecruiters | descoberta e conferência de abertura |
+| 1 | GitHub `backend-br/vagas` e `frontendbr/vagas` | vagas BR via API do GitHub |
+| 1 | HN "Who is hiring" (Algolia) | remoto internacional |
+| 2 | Remotive, RemoteOK, Himalayas, We Work Remotely | depois de conferir termos (atribuição, limite) |
+| Copiloto | LinkedIn, Indeed, Glassdoor, Gupy, Vagas.com, Catho, InfoJobs | você cola o link ou usa o botão "Salvar vaga"; nenhum robô navega nesses sites |
+| Proibido | scraping com login, anti-bot, solver de CAPTCHA, proxy para fugir de limite | nunca |
 
-## 3. O mini sistema
+A lista de empresas cresce sozinha:
+- uma lista inicial curada;
+- todo link salvo, e-mail ou vaga de agregador que aponta para um board Greenhouse, Lever ou Ashby adiciona aquela empresa à vigilância;
+- você vê e remove pela tela de fontes.
 
-Painel local em `127.0.0.1:7410`:
+## 9. Autopiloto e autocura
 
-1. **Hoje:** o que chegou de madrugada, o que precisa de você, as entrevistas do dia e as contagens reais da noite.
-2. **Funil:** quadro com Encontrada, Preparada, Enviada, Em processo, Entrevista e Oferta, mais Recusada, Sem resposta e Desisti. O e-mail move os cards sozinho, e arrastar corrige à mão.
-3. **Candidatura:** linha do tempo com descoberta, nota, versão do CV enviada (com o PDF), respostas, e-mails, entrevistas e suas notas. Também mostra contatos e próximo passo.
-4. **Revisão:** o pacote exato que vai ser enviado. Dá para aprovar, recusar ou aprovar em lote.
-5. **Vagas:** tabela com filtros, nota explicada, motivo do corte e link original.
-6. **Perfil verdadeiro:** fatos com evidência, respostas padrão e autorizações dadas.
-7. **Demais telas:**
-   - Campanhas e fontes.
-   - Provedores de IA: status, uso da noite e limite observado.
-   - Execuções: log e diagnóstico.
-   - Configurações: modo de envio, limites, horário, revogar, exportar e apagar.
+- **Canários antes de cada noite.** O Fake ATS roda contra cada adapter, e sondas só de leitura passam nos ATS reais. A saúde é atualizada e adapter que quebrou entra em quarentena sozinho.
+- **Mapeamento de formulário que aprende.** Campo novo é mapeado por IA e validado. Depois de uma aprovação sua, vira regra versionada daquele domínio.
+- **Banco de respostas.** Cresce com suas aprovações. Pergunta parecida (por embedding) reutiliza a resposta. Categoria sensível só com resposta permanente aprovada por você.
+- **Cota por prioridade.** Vagas de maior nota recebem Claude primeiro; o resto espera a próxima janela. Quando o CLI acusa limite, pausa e retoma depois do reset.
+- **Cache.** Material gerado é guardado por vaga + versão do perfil; nada é gerado duas vezes.
+- **Reconciliação automática.** Candidatura em `SUBMISSION_UNKNOWN` é conferida sozinha pela página e pelo e-mail antes de virar tarefa sua.
+- **Diário do piloto.** Narrativa do que foi feito em cada noite, com links para as evidências.
+- **Resumo da manhã com decisões em lote.** Por exemplo: "aprovar 8, responder 2 perguntas novas, sessão assistida de 3 CAPTCHAs".
+
+## 10. Interface
+
+Painel em `127.0.0.1:7410`, React + Vite, sóbrio, claro e escuro, sem número simulado.
+
+1. **Visão geral:** a última noite com contagens provadas, campanha, ações pendentes, cota.
+2. **Campanhas:** criar, pausar, editar; fontes, cargos, modalidade, remuneração por moeda e vínculo, idiomas, senioridade, limites, janela, autonomia.
+3. **Vagas:** tabela com filtros, nota explicada, motivo de corte, link original, status de abertura, duplicadas.
+4. **Candidatura:** linha do tempo, versões de CV, respostas, adapters tentados, capturas redigidas, comprovantes.
+5. **Funil (CRM):** quadro, contatos, entrevistas, follow-ups, métricas de resposta.
+6. **Revisão:** o que vai ser enviado, destino, dados, respostas, risco; aprovar ou recusar com confirmação explícita; lote.
+7. **Atenção:** CAPTCHA, login, perguntas novas, reconciliações; botão de sessão assistida.
+8. **Adapters:** capacidades declaradas e testadas, saúde, histórico de sucesso, fallbacks executados, quarentena.
+9. **Provedores de IA:** Ollama, Claude e Codex; autenticação sem segredo exposto, status, uso por noite, limite observado (`unknown` quando não houver dado), política de custo.
+10. **Perfil verdadeiro:** fatos, evidências, autorização de trabalho, respostas padrão, consentimentos.
+11. **Configurações e segurança:** modo privado (tudo local), retenção, janela, limites, backups, revogar autorizações, exportar e apagar dados.
+12. **Execuções:** histórico, diagnósticos, replay seguro das fases reversíveis.
 
 Fora do painel:
+- widget na barra do omarchy-shell;
+- notificação de manhã;
+- bookmarklet "Salvar vaga";
+- copiloto lateral;
+- painel no celular pelo Tailscale, opcional e desligado por padrão.
 
-- **Widget na barra do omarchy-shell**, no mesmo formato do plugin `whoami.leds`. Mostra pendências e entrevistas do dia; o clique abre o painel.
-- **Notificação de manhã** via `notify-send`, com o resumo da noite.
-- **Botão "Salvar vaga" no navegador** (bookmarklet). Manda para o painel o link e o texto da página que você está vendo. Nenhum robô navega no LinkedIn.
-- **Painel no celular pelo Tailscale**, opcional e só se você ligar.
+## 11. Fases de entrega
 
-Números do painel:
-- taxa de resposta por fonte, por versão de CV e por senioridade;
-- tempo até a primeira resposta;
-- quantas candidaturas ficaram sem resposta.
+Cada fase fecha com testes verdes, commit local e `docs/PROGRESS.md` atualizado.
 
-## 4. Acompanhamento pelo e-mail
+### Fase 0: auditoria (concluída)
+Host, cinco repos, fontes, provedores. Resultado: núcleo próprio, os cinco como referência (`docs/research/`).
 
-1. **Acesso.** Leitura do Gmail com escopo `gmail.readonly`, por OAuth de app desktop num projeto pessoal do Google Cloud, sem custo. Plano B: IMAP com senha de app. O token fica no gnome-keyring.
-2. **Filtro.** A consulta já chega filtrada pelo servidor:
-   - remetentes de ATS e plataformas: greenhouse, lever, ashby, gupy, linkedin, smartrecruiters, workable, indeed;
-   - palavras como "candidatura" e "application".
-   O resto da caixa nunca é lido.
-3. **Classificação.** O Ollama local classifica cada e-mail como confirmação, visualizada, rejeição, convite, teste ou case, oferta, contato de recrutador ou outro. Também extrai empresa, cargo e datas, com saída em JSON validada.
-4. **Casamento.** O e-mail é ligado à candidatura por empresa, cargo, domínio e link da vaga. Se não houver par, cria a candidatura como "importada do e-mail". É assim que entram as que você fez à mão.
-5. **Convites.** Um convite `.ics` vira evento no painel e notificação, com data, hora e link. Google Calendar fica para depois.
-6. **Regras de tempo.** A candidatura vira "Sem resposta" depois de 21 dias (configurável). Vaga que sumiu do ATS vira "encerrada".
-7. **Privacidade.** O e-mail não sai do PC. Para Claude ou Codex vai só o mínimo necessário, como cargo e empresa para o guia de entrevista, nunca o e-mail inteiro.
+### Fase 1: núcleo e fatia vertical no Fake ATS
 
-A confirmar na implementação:
-- modo de publicação do app OAuth (em modo Testing, o refresh token expira em 7 dias);
-- remetentes exatos de cada plataforma, calibrados com a sua caixa real.
+**Entregas:**
+1. **Base do projeto:**
+   - solution .NET 10 com os projetos de `architecture.md` §2, central package management e nullable com warnings como erro;
+   - `infra/compose.yml` com Postgres 17 em `127.0.0.1:5462`;
+   - `jo doctor` e `scripts/doctor.sh`.
+2. **Banco e motor de fluxo:**
+   - schema e migrations (núcleo, fluxo, auditoria append-only, outbox, fila, DLQ);
+   - máquina de estados com o grafo de transições como dado e testes de todas as arestas;
+   - fila com leases (`SKIP LOCKED`), retries só em etapas seguras, checkpoints, recuperação de crash (`SUBMITTING` sem recibo vira `SUBMISSION_UNKNOWN`) e desligamento limpo.
+3. **Roteamento e envio:**
+   - CapabilityRegistry e ApplicationRouter v0 com o "why" gravado;
+   - SubmissionGuard v0 com token de envio;
+   - fila de revisão e verificação de recibo v0.
+4. **Adapters e Fake ATS:**
+   - adapters fake com os seis resultados de falha;
+   - NativeBrowser v0 (Playwright .NET);
+   - Fake ATS com o cenário Greenhouse e contador de envios no servidor.
+5. **Painel v0:** visão geral, vagas, candidatura, revisão. Health checks e logs JSON redigidos.
 
-## 5. Fontes de vagas
+**Aceite:**
+- A fatia completa funciona: descoberta fake, nota, material, formulário, bloqueio em `PREPARE_ONLY`, aprovação, envio, recibo e `SUBMITTED_CONFIRMED` no painel.
+- `kill -9` em três pontos não duplica (o contador do Fake ATS fica em 1).
 
-| Tier | Fontes | Observação |
-|---|---|---|
-| 1, integrar primeiro | Greenhouse `boards-api.greenhouse.io/v1/boards/{empresa}/jobs`, Lever `api.lever.co/v0/postings/{empresa}`, Ashby `api.ashbyhq.com/posting-api/job-board/{empresa}`, SmartRecruiters `api.smartrecruiters.com/v1/companies/{empresa}/postings` | APIs públicas de vagas. Precisam de lista de empresas: começa com uma lista curada de quem contrata remoto LATAM/Brasil, e o sistema descobre o slug a partir de qualquer link de carreiras salvo |
-| 1 | `backend-br/vagas` (44 abertas, push em 03/11) e `frontendbr/vagas` no GitHub | issues via API do GitHub; vagas BR com stack e modelo de contratação |
-| 1 | HN "Who is hiring" (API do Algolia) | mensal, muito remoto internacional |
-| 2, depois | Remotive, RemoteOK, Himalayas, We Work Remotely (RSS) | conferir termos antes (atribuição, limite de chamadas); filtrar "LATAM" e "worldwide" |
-| Só link manual | LinkedIn, Indeed, Glassdoor, Gupy, Vagas.com, Catho, InfoJobs | os termos proíbem automação ou a candidatura exige login. Gupy: os dois endpoints públicos de busca conhecidos deram 404 em 05/11 |
-| Proibido | scraping com login, contornar anti-bot, solver de CAPTCHA, proxy para fugir de limite | |
+**Precisa de você:** nada.
 
-## 6. IA: quem faz o quê
+### Fase 2: descoberta, normalização e matching
 
-| Tarefa | Quem |
+**Entregas:**
+1. **Conectores:**
+   - Greenhouse, Lever, Ashby, SmartRecruiters, GitHub e HN;
+   - rate limit por fonte e sync incremental;
+   - vigilância de empresas com descoberta de slug.
+2. **Normalização:**
+   - cargo, senioridade e stack (taxonomia .NET/C#/AWS/React);
+   - modalidade, país, fuso, salário com moeda e vínculo (CLT, PJ, contractor), sponsor e autorização, idiomas;
+   - versão do parser.
+3. **Identidade e abertura:** identidade canônica, dedup entre fontes, reabertura, conferência de abertura com validade.
+4. **Avaliação:** EligibilityEngine e FitEngine com pesos, desconhecidos e confiança; embeddings opcionais.
+5. **Interface:** tela de vagas completa, bookmarklet "Salvar vaga" e endpoint de entrada com token.
+
+**Aceite:**
+- Dois anúncios equivalentes de fontes diferentes viram uma entrada canônica.
+- Os filtros duros são respeitados.
+- Cada nota tem explicação por fator.
+- Funciona com dados públicos reais (só leitura).
+
+**Precisa de você:** nada (opcional: empresas que você quer vigiar).
+
+### Fase 3: perfil verdadeiro, inteligência e currículos
+
+**Entregas:**
+1. **Onboarding:**
+   - importa CV (PDF, DOCX) ou export do LinkedIn e gera fatos candidatos;
+   - você confirma cada fato, que vira `VerifiedFact` com evidência;
+   - autorização de trabalho, preferências e pisos por moeda e vínculo, respostas padrão;
+   - nenhum consentimento ligado.
+2. **Ollama:**
+   - instalação com seu ok;
+   - `jo llm bench` com os candidatos (JSON válido, acerto em 50 fixtures, latência, VRAM) e escolha dos padrões.
+3. **Provedores na nuvem:**
+   - provedores Claude CLI e Codex CLI: diretório isolado, ambiente limpo, schema, timeout, detecção de cota, orçamento por noite, registro de cada chamada;
+   - provedor de API paga existe só como stub desligado.
+4. **LLMRouter:** catálogo de tarefas, níveis de privacidade, cadeias, cache.
+5. **ResumeComposer:**
+   - seleção de fatos, rascunho, checagem de proveniência, revisão cruzada;
+   - template HTML ATS-friendly PT/EN;
+   - PDF pelo Chromium, validado com `pdftotext` e `pdfinfo` (texto, páginas, overflow);
+   - `ResumeVersion` com hash.
+6. **Outros materiais:** carta, respostas e guia de entrevista.
+7. **Proteção de PII:** dados pessoais entram por placeholder (`{{NOME}}`, `{{EMAIL}}`) só na renderização, então nenhum modelo vê.
+8. **Interface:** telas Perfil verdadeiro e Provedores.
+
+**Aceite:**
+- Cada bullet do CV aponta para um fato.
+- Um fato plantado na saída do modelo é rejeitado.
+- Claude indisponível cai para o Codex; os dois indisponíveis geram rascunho marcado ou pausa.
+- Nenhuma chamada paga.
+
+**Precisa de você:** ok para instalar o Ollama (sudo) e baixar os modelos; seu CV ou export do LinkedIn; confirmar os fatos.
+
+### Fase 4: acompanhamento (CRM)
+
+**Entregas:**
+1. **E-mail:**
+   - Gmail read-only, com o token no gnome-keyring; IMAP como alternativa;
+   - idempotência por Message-ID;
+   - classificação e extração com Ollama, casamento com candidatura, importação das candidaturas manuais, evidência L5.
+2. **Agenda:**
+   - `.ics` vira entrevista com lembretes;
+   - regras de follow-up com rascunhos e envio desligado.
+3. **Interface:** funil, linha do tempo, contatos, notas, métricas; widget da barra (plugin do omarchy-shell); notificação da manhã.
+
+**Aceite:**
+- As candidaturas reais dos últimos 60 dias aparecem sozinhas.
+- Você revisa uma amostra de 30 e-mails.
+- Cada correção vira regra e é reaplicada.
+
+**Precisa de você:** criar o app OAuth no Google Cloud (eu guio) ou gerar uma senha de app.
+
+### Fase 5: adapters de formulário, navegador e fallback
+
+**Entregas:**
+1. **Adapters por ATS:**
+   - Greenhouse, Lever e Ashby com inspeção, preparo, validação, envio, verificação e reconciliação;
+   - SmartRecruiters e Workable entram se aparecerem nas vagas.
+2. **Agente genérico de formulário:**
+   - lê a árvore de acessibilidade redigida;
+   - o modelo devolve o mapeamento de campos em JSON;
+   - o preenchimento é determinístico e validado;
+   - passos limitados e mapeamentos aprendidos com aprovação.
+3. **Robustez:**
+   - os 10 cenários do Fake ATS;
+   - testes de contrato (o que o adapter declara contra o que ele passa);
+   - canários diários;
+   - circuit breaker e quarentena;
+   - métricas por adapter e tela de Adapters.
+4. **Plugins externos:** host de plugin por processo, com manifesto, JSON por stdio, timeout, ambiente limpo, `HOME` próprio e sem AWS. Fica pronto para plugins de terceiros no futuro.
+5. **ATS reais:** só em `PREPARE_ONLY`, com perfil de navegador dedicado. Abre apenas páginas públicas de candidatura; nada é enviado.
+
+**Aceite:**
+- O cenário do seletor que muda se recupera.
+- CAPTCHA e MFA pausam.
+- Fallback depois de campo não suportado sem reexecutar envio.
+- O circuito abre depois de N falhas.
+- Adapter quebrado não derruba o host.
+
+**Precisa de você:** nada.
+
+### Fase 6: envio controlado e resiliência
+
+**Entregas:**
+1. **Autorizações:**
+   - modelo de consentimento com escopo, limites, validade e revogação;
+   - concessão só pela tela, nunca pelo arquivo de configuração.
+2. **Guardião e envio:**
+   - checklist completo da spec §9, limite diário, espaçamento por empresa e ATS, lock por fingerprint;
+   - intenção, token e lease;
+   - níveis de evidência;
+   - reconciliação de `SUBMISSION_UNKNOWN` com tela de resolução.
+3. **Proteções:** Sentinela de fraude e defesa contra prompt injection (cenário 9).
+4. **Fluxos com você:** sessão assistida e copiloto.
+5. **Primeiro envio real:** só com a sua autorização para uma vaga específica, com domínio e fluxo documentados.
+
+**Aceite:**
+- Teste de propriedade: `PREPARE_ONLY` nunca envia.
+- `AUTO` sem autorização válida nunca envia.
+- Cenários 6, 7 e 10 passam.
+- O painel separa preparadas, tentadas, confirmadas, desconhecidas e bloqueadas.
+
+**Precisa de você:** autorizar o primeiro envio real e as autorizações de rotina que quiser.
+
+### Fase 7: operação noturna e UX completa
+
+**Entregas:**
+1. **systemd:**
+   - units de usuário, `jobs.slice` e timers (arquivos no repo; instalação só com seu ok);
+   - Ollama como serviço de usuário;
+   - backup e retenção.
+2. **Noite:**
+   - pipeline com canários, descoberta, avaliação, materiais, preparo, envio espaçado, verificação e resumo;
+   - encerramento limpo no fim da janela.
+3. **Relatórios:** resumo em Markdown e JSON, notificações, widget final.
+4. **Interface:** Execuções com replay seguro; Configurações e segurança (modo privado, retenção, exportar, apagar tudo, revogar).
+5. **Documentação e testes:**
+   - runbook e guia de uso;
+   - `scripts/night-sim.sh` com relógio acelerado;
+   - teste de reboot e de queda de energia.
+
+**Aceite:**
+- Checklist da spec §20 inteiro verde.
+- Uma noite simulada gera o resumo certo.
+- `systemctl --user` start, stop, status e journal testados.
+
+**Precisa de você:** ok para instalar as units de usuário e ligar o timer.
+
+### Fase 8: otimização contínua
+- Métricas de resposta descritivas, com amostra.
+- Pesos do roteador ajustados por resultado confirmado, dentro de limites.
+- Diagnóstico de fontes: rendimento, duplicadas, taxa de encerramento.
+- Benchmark de custo e latência por provedor.
+- Guia "como criar um adapter".
+- Fontes do tier 2.
+
+## 12. Estratégia de testes
+
+| Camada | O que prova |
 |---|---|
-| Parsing, dedup, filtros, nota base | código, sem IA |
-| Extrair campos da vaga, classificar e-mail, embeddings de afinidade | Ollama local |
-| Respostas curtas de triagem | Claude Haiku |
-| Currículo e carta por vaga, guia de entrevista | Claude Sonnet |
-| Checagem cruzada do currículo (cada linha tem fonte no perfil?) e plano B quando o Claude bater limite | Codex |
-| API paga | desligada |
+| Unidade | grafo de estados, invariantes, política do Guardião, fórmula do roteador, fingerprint, nota |
+| Integração | Postgres real via Testcontainers: leases, outbox, constraints UNIQUE, recuperação de crash |
+| Contrato | cada adapter: declarado contra testado, resultados tipados, timeouts |
+| E2E Fake ATS | os 10 cenários da spec, com o estado final esperado de cada um |
+| Caos | `kill -9` antes do envio, depois do clique e antes da confirmação, e durante a reconciliação; reboot; disco cheio |
+| Segurança | segredo-canário plantado nunca aparece em log, artefato ou prompt; fixtures de prompt injection; SSRF bloqueado |
+| Recursos | noite simulada dentro do teto de RAM e VRAM |
+| Aceite | checklist da spec §20, item a item, com o comando que prova cada um |
 
-**Claude.** Chamado com `claude -p` e as flags `--tools ""`, `--json-schema`, `--no-session-persistence`, `--strict-mcp-config`, `--system-prompt` e `--model`. Roda num diretório vazio, sem `ANTHROPIC_API_KEY` e sem variáveis de Bedrock/Vertex no ambiente. Nunca usa `--bare`: pelo help da 2.1.281, esse modo aceita só API key e ignora o login da assinatura.
+Cenários do Fake ATS:
+1. Greenhouse simples.
+2. Ashby com campos extras.
+3. Lever com upload e pergunta condicional.
+4. Seletor que muda entre tentativas.
+5. CAPTCHA e MFA simulados.
+6. Timeout depois de registrar a candidatura.
+7. Duplicidade bloqueada.
+8. Vaga encerrada e vaga duplicada em duas fontes.
+9. Prompt injection na descrição.
+10. Kill do processo nas três fases.
 
-**Codex.** Chamado com `codex exec --sandbox read-only --skip-git-repo-check --ephemeral --output-schema <arquivo> -o <saída>` (versão 0.162.1).
+Envio real fica desligado em toda a suíte.
 
-**Cota.** A cota é a mesma que você usa de dia no Hub e na DR-Meddie. Por isso:
-- teto por noite para cada provedor;
-- pausa quando o CLI acusar limite (status `PAUSED_PROVIDER`);
-- cache por vaga e versão do perfil;
-- nenhum laço de autoavaliação.
+## 13. Riscos
 
-**Ollama.** Roda como serviço de usuário e só sobe na janela da noite e na leitura de e-mail. Há cerca de 4,6 GB de VRAM livres. Candidatos: qwen3 4B, gemma3 4B, phi-4-mini e llama3.2 3B, mais um modelo de embedding (qwen3-embedding 0.6B ou embeddinggemma). A escolha sai de benchmark com vagas e e-mails reais.
+| Risco | Mitigação |
+|---|---|
+| CAPTCHA frequente | sessão assistida; métrica de % bloqueada por ATS |
+| ATS muda o DOM | reconhecedores por ATS, remapeamento validado, canário diário, quarentena |
+| Cota insuficiente | prioridade por nota, cache, Ollama para rascunho, pausa e retomada |
+| E-mail classificado errado | correção na tela vira regra; amostra revisada |
+| Termos de fonte mudam | `tos_checked_at` por fonte, revisão trimestral, desligar a fonte |
+| PC pesado à noite | `jobs.slice` com teto, Ollama descarrega modelo ocioso, 1 navegador de envio |
+| Envio indevido ou duplicado | invariantes no banco, token do Guardião, testes de caos |
+| Vazamento de dado | minimização, placeholders de PII, e-mail só local, logs redigidos |
+| Escopo grande | fatia vertical primeiro, aceite por fase, retomada pelo PROGRESS |
 
-## 7. Envio e travas
+## 14. O que destrava cada fase
 
-**Modos:**
-- `PREPARE_ONLY`: padrão na instalação.
-- `REVIEW_REQUIRED`: um toque por candidatura.
-- `AUTO`: só para Greenhouse, Lever e Ashby, nas empresas e tipos que você liberar, com limite diário e sem pergunta nova no formulário.
-
-**Envio:**
-- O `SubmissionGuard` é o único que libera um envio, e a intenção é gravada antes do clique.
-- `SUBMISSION_UNKNOWN` nunca reenvia. O sistema reconcilia lendo a página ou o e-mail e, se não fechar, a candidatura vai para você.
-- Uma candidatura só conta como confirmada com página de confirmação, recibo ou e-mail de confirmação casado.
-
-**Duplicidade:** fingerprint de empresa + cargo + link canônico + campanha, com constraint UNIQUE no banco.
-
-**Navegador:** Playwright .NET com o Chromium do próprio Playwright, perfil isolado por execução e headless. Headed só quando você for terminar algo à mão.
-
-**Adapters de terceiros**, se algum dia entrarem: processo externo com ambiente limpo (sem `AWS_*`, sem `~/.aws`), `HOME` próprio e timeout.
-
-## 8. Arquitetura
-
-- **Processo:** um processo .NET 10 (SDK 10.0.401 já instalado) com a API (Carter + vertical slices), os workers (`BackgroundService`) e o agendador.
-- **Banco:** Postgres em Docker em `127.0.0.1:5462`, sem Redis.
-- **Motor de fluxo:** máquina de estados própria em Postgres, com leases (`FOR UPDATE SKIP LOCKED`), outbox e histórico append-only. Sem Temporal, porque para um nó só é complexidade sem ganho. O contrato permite trocar depois.
-- **Projetos:**
-  - `Host`;
-  - `Core` (domínio e slices);
-  - `Adapters` (Greenhouse, Lever, Ashby, navegador próprio, Fake);
-  - `Llm` (roteador e provedores);
-  - `Tests`;
-  - `fake-ats`;
-  - `dashboard` (React + Vite, servido pela própria API).
-- **Execução:** `job-orchestrator.service` (`systemd --user`) num `jobs.slice` com teto de 4 GB e peso baixo de CPU e IO, mais um timer da janela da noite. Linger desligado. Logs no journal.
-- **Dados:** perfil, CVs e evidências em `~/.local/share/job-orchestrator`; configuração em `~/.config/job-orchestrator`; segredos no gnome-keyring. O `pg_dump` diário entra no restic.
-- **Repo:** CLAUDE.md e AGENTS.md ficam fora do git. Commits locais, sem push.
-
-## 9. Fases
-
-| Fase | Entrega | Pronto quando |
+| Item seu | Fase | Sem ele |
 |---|---|---|
-| 1. Núcleo + acompanhamento | Host, Postgres, estados, painel (Hoje, Funil, Candidatura), leitura do Gmail, classificação com Ollama, widget na barra, resumo da manhã | suas candidaturas reais dos últimos 60 dias aparecem sozinhas no funil |
-| 2. Descoberta + nota | Greenhouse, Lever, Ashby, SmartRecruiters, backend-br, HN; dedup; filtros; nota explicada; "Salvar vaga" | duas vagas iguais de fontes diferentes viram uma; o corte vem explicado |
-| 3. Perfil + currículo | onboarding a partir do seu CV, CV PT/EN com fonte por linha, PDF pelo Chromium checado com `pdftotext`, Claude/Codex com teto | o CV sai sem nenhum fato fora do perfil |
-| 4. Formulários | Fake ATS com os 10 cenários do prompt, adapters Greenhouse/Lever/Ashby em `PREPARE_ONLY`, fallback por etapa, circuit breaker | todos os cenários do Fake ATS passam |
-| 5. Envio controlado | fila de revisão, `SubmissionGuard`, recibo, `SUBMISSION_UNKNOWN`, reconciliação; primeiro só no Fake ATS, depois real com a sua autorização | matar o processo no meio do envio não duplica |
-| 6. Noite | systemd, janela, Ollama só na janela, teste de reinício com relógio acelerado | uma noite simulada gera o resumo certo |
-| 7. Ajuste fino | pesos da nota pelas respostas reais, novas fontes, desempenho por adapter | |
-
-## 10. Decisões do usuário
-
-1. Conta de e-mail das candidaturas e método de leitura. Padrão: Gmail API read-only.
-2. Instalar o Ollama (`ollama-cuda` 0.33.3 do repo oficial, precisa de sudo) e baixar dois modelos pequenos (alguns GB).
-3. Seu CV ou export do LinkedIn, autorização de trabalho, nível de inglês e piso por vínculo (CLT, PJ, USD). Sem isso, o resto roda com dados de teste.
-4. Liberar envio automático, e para quais ATS e empresas. Padrão: nada automático até o fim da fase 5.
-5. Painel no celular pelo Tailscale. Padrão: desligado.
-
-## 11. Limites honestos
-
-- Muitos formulários têm CAPTCHA. Esses vão para a fila humana, sem exceção.
-- Vaga .NET remota internacional que aceita Brasil é minoria, e os ATS públicos dependem de uma boa lista de empresas.
-- A cota do Claude e do Codex é a mesma do seu dia de trabalho.
-- A classificação de e-mail vai errar às vezes. O painel deixa corrigir, e a correção vira regra.
-- RAM: com os containers atuais sobram cerca de 14 GiB, e o orquestrador fica sob teto de 4 GB.
+| Ok para instalar Ollama (sudo) e baixar modelos | 3 | regras e Claude/Codex apenas |
+| CV ou export do LinkedIn, confirmação de fatos | 3 | dados de teste |
+| Autorização de trabalho, inglês, pisos por moeda e vínculo | 3 | filtros ficam como "desconhecido" |
+| App OAuth do Gmail ou senha de app | 4 | CRM só manual |
+| Primeiro envio real e autorizações de rotina | 6 | tudo para em preparada ou revisão |
+| Instalar units de usuário e ligar o timer | 7 | execução manual |
+| Celular pelo Tailscale | qualquer | desligado |
