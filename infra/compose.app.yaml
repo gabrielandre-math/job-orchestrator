@@ -16,6 +16,8 @@ services:
     volumes: &volumes
       - ${HOME}/.local/share/job-orchestrator:/data
       - ${HOME}/.config/job-orchestrator:/config
+      # Contas com pasta própria (dois Claudes, por exemplo) ficam em ~/.config/job-orchestrator/accounts.
+      - ${HOME}/.config/job-orchestrator:/home/jo/.config/job-orchestrator
       - /run/user/${JO_UID:-1000}/bus:/run/user/${JO_UID:-1000}/bus
       # As assinaturas (Claude Pro/Max, ChatGPT pelo Codex) usam o login que já existe no host.
       - ${HOME}/.claude:/home/jo/.claude

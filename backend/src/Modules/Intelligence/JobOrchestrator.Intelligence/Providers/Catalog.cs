@@ -26,10 +26,18 @@ internal sealed class ProviderCatalog(IConfiguration config, IHttpClientFactory 
         }
     }
 
+    /// <summary>
+    /// A pasta da conta como foi gravada; se ela não existe aqui (o app roda em contêiner, com outro HOME), a mesma conta na raiz de contas
+    /// deste ambiente. Assim a conta conectada no host funciona no Docker sem reconectar.
+    /// </summary>
+    private static string? Folder(Account a) =>
+        a.ConfigDir is null || Directory.Exists(a.ConfigDir) ? a.ConfigDir
+        : Directory.Exists(Path.Combine(AccountsRoot, a.Id)) ? Path.Combine(AccountsRoot, a.Id) : a.ConfigDir;
+
     private IProvider? Build(Account a) => a.Kind switch
     {
-        "claude-cli" => new ClaudeCli(a.Id, a.Name, a.ConfigDir, config),
-        "codex-cli" => new CodexCli(a.Id, a.Name, a.ConfigDir, config),
+        "claude-cli" => new ClaudeCli(a.Id, a.Name, Folder(a), config),
+        "codex-cli" => new CodexCli(a.Id, a.Name, Folder(a), config),
         "anthropic-api" => new AnthropicApi(a, http),
         _ when ApiDefaults.Compatible.Contains(a.Kind) => new OpenAiCompatible(a, http),
         _ => null
