@@ -37,6 +37,8 @@ internal static class Template
         if (d.Headline is not null) sb.Append($"""<p class="headline">{E(d.Headline.Text)}</p>""");
         sb.Append("""<p class="contact">{{CONTATO}}</p>""");
         if (d.Summary is not null) sb.Append($"<h2>{T("Resumo", "Summary")}</h2><p>{E(d.Summary.Text)}</p>");
+        // Competências logo depois do resumo: é onde o recrutador e o ATS procuram as palavras da vaga primeiro.
+        if (d.Skills.Length > 0) sb.Append($"<h2>{T("Competências", "Skills")}</h2><p>{E(string.Join(", ", d.Skills))}</p>");
         if (d.Experiences.Length > 0) sb.Append($"<h2>{T("Experiência", "Experience")}</h2>");
         foreach (var e in d.Experiences)
         {
@@ -50,7 +52,6 @@ internal static class Template
         var certs = s.Of("certification").ToList();
         if (certs.Count > 0) sb.Append($"<h2>{T("Certificações", "Certifications")}</h2><ul>{string.Concat(certs.Select(c => $"<li>{E(c.Fact.Statement)}</li>"))}</ul>");
         if (d.Languages.Length > 0) sb.Append($"<h2>{T("Idiomas", "Languages")}</h2><p>{E(string.Join(", ", d.Languages.Select(x => x.Text)))}</p>");
-        if (d.Skills.Length > 0) sb.Append($"<h2>{T("Competências", "Skills")}</h2><p>{E(string.Join(", ", d.Skills))}</p>");
         sb.Append("</body></html>");
         return sb.ToString();
 
@@ -64,7 +65,14 @@ internal static class Template
         var contact = string.Join(" | ", new[] { id.Location, id.Email, id.Phone, Short(id.LinkedIn), Short(id.GitHub), Short(id.Website) }.Where(x => !string.IsNullOrWhiteSpace(x)).Select(E));
         return html.Replace("{{NOME}}", E(id.FullName)).Replace("{{CONTATO}}", contact);
 
-        static string? Short(string? url) => url?.Replace("https://", "").Replace("http://", "").Replace("www.", "").TrimEnd('/');
+        // Endereço sem o perfil (linkedin.com/in sem o nome, github.com sozinho) não entra: no papel parece erro.
+        static string? Short(string? url)
+        {
+            var s = url?.Replace("https://", "").Replace("http://", "").Replace("www.", "").TrimEnd('/');
+            if (string.IsNullOrWhiteSpace(s)) return null;
+            var profile = s.StartsWith("linkedin.com", StringComparison.OrdinalIgnoreCase) || s.StartsWith("github.com", StringComparison.OrdinalIgnoreCase);
+            return profile && (!s.Contains('/') || s.EndsWith("/in", StringComparison.OrdinalIgnoreCase)) ? null : s;
+        }
     }
 
     private static string Month(string? ym, bool en)

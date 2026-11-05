@@ -54,7 +54,7 @@ internal sealed class ResumeComposer(IProfileApi profiles, IJobsApi jobs, IIntel
         }
 
         var checkedDraft = Conferente.Check(draft, s);
-        draft = checkedDraft.Draft;
+        draft = Tailor.Finish(checkedDraft.Draft, s);
         var claimCount = draft.Claims().Count();
         await ai.NoteAsync(thread, "Conferente",
             checkedDraft.Removed.Count == 0 ? $"Todas as {claimCount} afirmações citam fatos que as sustentam" : $"{claimCount} afirmações com fato; {checkedDraft.Removed.Count} {(checkedDraft.Removed.Count == 1 ? "saiu" : "saíram")}",
@@ -70,7 +70,7 @@ internal sealed class ResumeComposer(IProfileApi profiles, IJobsApi jobs, IIntel
             if (review.Ok && Prompts.ParseVerdicts(review.Json!) is { } verdicts)
             {
                 var applied = Conferente.Apply(draft, s, verdicts);
-                draft = applied.Draft;
+                draft = Tailor.Finish(applied.Draft, s);
                 reviewed = true;
                 reviewer = $"{review.ProviderId} · {review.Model}";
                 await ai.NoteAsync(thread, "Conferente",
@@ -161,12 +161,28 @@ internal sealed record PdfCheck(int Pages, int Expected, int Found, List<string>
 
     public static async Task<PdfCheck> RunAsync(string path, Identity id, Draft d, Selection s, string language, int maxPages, CancellationToken ct)
     {
-        var text = await Run("pdftotext", ["-enc", "UTF-8", path, "-"], ct);
-        var layout = await Run("pdftotext", ["-enc", "UTF-8", "-layout", path, "-"], ct);
-        var info = await Run("pdfinfo", [path], ct);
-        var fonts = await Run("pdffonts", [path], ct);
-        string Info(string key) => info.Split('\n').Where(l => l.StartsWith(key + ":", StringComparison.Ordinal)).Select(l => l[(key.Length + 1)..].Trim()).FirstOrDefault() ?? "";
-        var pages = int.TryParse(Info("Pages"), out var n) ? n : 0;
+        // Com o poppler (Linux, em geral): pdftotext, pdfinfo e pdffonts. Sem ele (macOS e Windows): o PdfPig lê o mesmo PDF por dentro do app.
+        var poppler = Platform.Which("pdftotext") is not null && Platform.Which("pdfinfo") is not null;
+        string text, layout, title, fonts = "";
+        int pages;
+        if (poppler)
+        {
+            text = await Run("pdftotext", ["-enc", "UTF-8", path, "-"], ct);
+            layout = await Run("pdftotext", ["-enc", "UTF-8", "-layout", path, "-"], ct);
+            var info = await Run("pdfinfo", [path], ct);
+            if (Platform.Which("pdffonts") is not null) fonts = await Run("pdffonts", [path], ct);
+            string Info(string key) => info.Split('\n').Where(l => l.StartsWith(key + ":", StringComparison.Ordinal)).Select(l => l[(key.Length + 1)..].Trim()).FirstOrDefault() ?? "";
+            pages = int.TryParse(Info("Pages"), out var n) ? n : 0;
+            title = Info("Title");
+        }
+        else
+        {
+            using var doc = UglyToad.PdfPig.PdfDocument.Open(path);
+            pages = doc.NumberOfPages;
+            title = doc.Information.Title ?? "";
+            text = string.Join("\n", doc.GetPages().Select(p => UglyToad.PdfPig.DocumentLayoutAnalysis.TextExtractor.ContentOrderTextExtractor.GetText(p)));
+            layout = text;
+        }
         var flat = Flat(text);
         var claims = d.Claims().Select(c => c.Claim.Text).ToList();
         var found = claims.Count(c => flat.Contains(Flat(c), StringComparison.Ordinal));
@@ -180,7 +196,7 @@ internal sealed record PdfCheck(int Pages, int Expected, int Found, List<string>
         var contact = new[] { id.Email, id.Phone }.Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
         Item("Contato no corpo do PDF", contact.Count > 0 && contact.All(c => flat.Contains(Flat(c!), StringComparison.Ordinal)),
             contact.Count == 0 ? "sem e-mail nem telefone no perfil" : "e-mail e telefone no texto, fora de cabeçalho e rodapé", critical: true);
-        string[] headings = en ? ["SUMMARY", "EXPERIENCE", "EDUCATION", "SKILLS"] : ["RESUMO", "EXPERIENCIA", "FORMACAO", "COMPETENCIAS"];
+        string[] headings = en ? ["SUMMARY", "SKILLS", "EXPERIENCE", "EDUCATION"] : ["RESUMO", "COMPETENCIAS", "EXPERIENCIA", "FORMACAO"];
         var upper = Claims.Fold(text).ToUpperInvariant();
         var positions = headings.Select(h => upper.IndexOf(h, StringComparison.Ordinal)).ToList();
         var present = positions.Count(p => p >= 0);
@@ -192,13 +208,16 @@ internal sealed record PdfCheck(int Pages, int Expected, int Found, List<string>
         var keywords = s.Matched.Where(k => !string.IsNullOrWhiteSpace(k)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         var covered = keywords.Count(k => Claims.Fold(text).Contains(Claims.Fold(k), StringComparison.Ordinal));
         Item("Palavras-chave da vaga que você tem", covered == keywords.Count, keywords.Count == 0 ? "a vaga não cita tecnologia do seu perfil" : $"{covered} de {keywords.Count}: {string.Join(", ", keywords)}");
-        var embedded = fonts.Split('\n').Skip(2).Where(l => l.Trim().Length > 0).ToList();
-        var notEmbedded = embedded.Count(l => l.Split(' ', StringSplitOptions.RemoveEmptyEntries) is var cols && cols.Length >= 5 && cols[^5] == "no");
-        Item("Fontes embutidas", embedded.Count > 0 && notEmbedded == 0, $"{embedded.Count} fonte(s), {notEmbedded} sem embutir");
+        if (fonts.Length > 0)
+        {
+            var embedded = fonts.Split('\n').Skip(2).Where(l => l.Trim().Length > 0).ToList();
+            var notEmbedded = embedded.Count(l => l.Split(' ', StringSplitOptions.RemoveEmptyEntries) is var cols && cols.Length >= 5 && cols[^5] == "no");
+            Item("Fontes embutidas", embedded.Count > 0 && notEmbedded == 0, $"{embedded.Count} fonte(s), {notEmbedded} sem embutir");
+        }
         var odd = text.Where(c => char.IsSurrogate(c) || (c >= '\uE000' && c <= '\uF8FF') || c == '\uFFFD').Count();
         Item("Sem caractere estranho (ícone, emoji, glifo privado)", odd == 0, odd == 0 ? "nenhum" : $"{odd} caractere(s)");
         Item($"Até {maxPages} páginas", pages is > 0 && pages <= maxPages, $"{pages} página(s)", critical: pages == 0);
-        Item("Título do PDF preenchido", Info("Title").Length > 0 && Flat(Info("Title")).Contains(Flat(id.FullName), StringComparison.Ordinal), $"título: {Info("Title")}");
+        Item("Título do PDF preenchido", title.Length > 0 && Flat(title).Contains(Flat(id.FullName), StringComparison.Ordinal), $"título: {title}");
         Item("Afirmações presentes no texto", found == claims.Count, $"{found} de {claims.Count}", critical: true);
         Item("Sem placeholder sobrando", !text.Contains("{{", StringComparison.Ordinal), "nenhum {{...}}", critical: true);
 
@@ -216,11 +235,49 @@ internal sealed record PdfCheck(int Pages, int Expected, int Found, List<string>
 
     private static async Task<string> Run(string file, string[] args, CancellationToken ct)
     {
-        var info = new ProcessStartInfo(file) { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };
+        var info = new ProcessStartInfo(file) { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
         foreach (var a in args) info.ArgumentList.Add(a);
         using var p = Process.Start(info)!;
+        var errors = p.StandardError.ReadToEndAsync(ct);
         var output = await p.StandardOutput.ReadToEndAsync(ct);
+        await errors;
         await p.WaitForExitAsync(ct);
         return output;
+    }
+}
+
+/// <summary>
+/// O acabamento sem IA, depois do Conferente: as palavras da vaga que você tem vão primeiro nas competências (todas, na grafia do perfil,
+/// que é a mesma que a vaga usa), o título do topo cabe numa linha, e experiência que ficou sem nenhum tópico ganha o próprio fato como
+/// tópico, se ele estiver no idioma do currículo. Nada entra sem fato.
+/// </summary>
+internal static class Tailor
+{
+    public static Draft Finish(Draft d, Selection s)
+    {
+        var skills = s.Matched.Concat(d.Skills).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase).Take(18).ToArray();
+        var headline = d.Headline is { } h ? h with { Text = Fit(h.Text, 64) } : null;
+        var experiences = d.Experiences.Select(e =>
+        {
+            if (e.Bullets.Length > 0 || s.Get(e.Fact) is not { } parent) return e;
+            var own = s.Children(e.Fact).Prepend(parent).Where(p => p.Fact.Statement.Length > 30 && Languages.Detect(p.Fact.Statement) == s.Language).Take(2);
+            return e with { Bullets = [.. own.Select(p => new Claim(p.Fact.Statement, [p.Label]))] };
+        }).ToArray();
+        return d with { Skills = skills, Headline = headline, Experiences = experiences };
+    }
+
+    /// <summary>Título comprido corta no último " | " que cabe (um título que quebra em duas linhas parece improvisado e o ATS lê pela metade).</summary>
+    internal static string Fit(string text, int max)
+    {
+        var t = text.Trim();
+        if (t.Length <= max) return t;
+        var parts = t.Split(" | ");
+        var kept = new List<string>();
+        foreach (var p in parts)
+        {
+            if (string.Join(" | ", kept.Append(p)).Length > max) break;
+            kept.Add(p);
+        }
+        return kept.Count > 0 ? string.Join(" | ", kept) : t[..max].TrimEnd();
     }
 }
