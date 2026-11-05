@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { Icon } from '@jo/ui/icon';
+import { Mark } from '@jo/ui/mark';
 import { Overview } from './core/api';
 import { query } from './core/query';
 import { modeLabel } from './core/format';
@@ -11,7 +12,7 @@ interface NavItem { path: string; label: string; icon: string; exact?: boolean; 
 /** Shell: barra lateral recolhível (lembrada neste navegador), contadores reais e o estado da API. */
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icon],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icon, Mark],
   templateUrl: './app.html',
   styleUrl: './app.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

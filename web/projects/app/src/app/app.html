@@ -1,7 +1,7 @@
 <aside class="side">
   <div class="head">
     <a class="brand" routerLink="/" [attr.aria-label]="'Job Orchestrator, ' + (mode() || 'sem campanha')">
-      <span class="mark">JO</span>
+      <jo-mark class="mark" [size]="24" />
       <span class="words"><span class="name">Job Orchestrator</span><span class="sub">{{ mode() || 'sem campanha' }}</span></span>
     </a>
     <button type="button" class="collapse" (click)="toggle()" [attr.aria-label]="collapsed() ? 'Abrir barra lateral' : 'Recolher barra lateral'" [attr.title]="collapsed() ? 'Abrir barra lateral' : 'Recolher barra lateral'">
