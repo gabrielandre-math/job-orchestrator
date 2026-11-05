@@ -35,7 +35,9 @@ export class App {
   protected readonly collapsed = signal(read('jo.sidebar') === 'collapsed');
   /** No celular a barra lateral é uma gaveta: abre pelo menu e fecha ao navegar. */
   protected readonly drawer = signal(false);
-  protected readonly overview = query<Overview>(() => '/overview', 5000);
+  /** O instalador ocupa a tela inteira: sem barra lateral, sem consultas ao app (que ainda não está instalado). */
+  protected readonly bare = typeof location !== 'undefined' && location.pathname.startsWith('/instalar');
+  protected readonly overview = query<Overview>(() => (this.bare ? null : '/overview'), 5000);
   protected readonly online = computed(() => this.overview.problem() === null && this.overview.value() !== undefined);
   protected readonly mode = computed(() => modeLabel(this.overview.value()?.campaign?.mode ?? ''));
   protected readonly nav: { group: string; items: NavItem[] }[] = [
@@ -65,7 +67,7 @@ export class App {
   protected readonly welcome = this.hub.open;
 
   constructor() {
-    void this.hub.refresh().then((o) => { if (o && !o.done && sessionStorageGet('jo.welcome') !== 'later') this.welcome.set(true); });
+    if (!this.bare) void this.hub.refresh().then((o) => { if (o && !o.done && sessionStorageGet('jo.welcome') !== 'later') this.welcome.set(true); });
     const destroy = inject(DestroyRef);
     const sub = this.router.events.subscribe((e) => { if (e instanceof NavigationEnd) requestAnimationFrame(() => this.measure()); });
     const resize = () => this.measure();

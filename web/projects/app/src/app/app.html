@@ -1,3 +1,6 @@
+@if (bare) {
+  <router-outlet />
+} @else {
 <header class="topbar">
   <button type="button" class="menu" (click)="drawer.set(!drawer())" [attr.aria-expanded]="drawer()" aria-label="Abrir menu"><jo-icon name="sidebar-simple" [size]="20" /></button>
   <a class="brand" routerLink="/" aria-label="Job Orchestrator"><jo-mark class="mark" [size]="22" [animated]="true" [active]="live.busy()" /><span class="name">Job Orchestrator</span></a>
@@ -54,3 +57,4 @@
     </div>
   }
 </div>
+}

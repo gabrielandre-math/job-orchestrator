@@ -32,7 +32,8 @@ public static class WebRegistration
     public static IServiceCollection AddJoWeb(this IServiceCollection s, params Assembly[] assemblies)
     {
         var modules = assemblies.SelectMany(a => a.GetTypes()).Where(t => !t.IsAbstract && typeof(ICarterModule).IsAssignableFrom(t)).ToArray();
-        s.AddCarter(configurator: c => c.WithModules(modules));
+        // Catálogo explícito: o binário de arquivo único não tem .deps.json, e a procura padrão do Carter depende dele.
+        s.AddCarter(new DependencyContextAssemblyCatalog(assemblies), c => c.WithModules(modules));
         return s;
     }
 }

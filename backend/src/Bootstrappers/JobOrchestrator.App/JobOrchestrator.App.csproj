@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <AssemblyName>job-orchestrator</AssemblyName>
+    <RootNamespace>JobOrchestrator.App</RootNamespace>
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" />
+    <ProjectReference Include="../../Modules/Campaigns/JobOrchestrator.Campaigns/JobOrchestrator.Campaigns.csproj" />
+    <ProjectReference Include="../../Modules/Jobs/JobOrchestrator.Jobs/JobOrchestrator.Jobs.csproj" />
+    <ProjectReference Include="../../Modules/Applications/JobOrchestrator.Applications/JobOrchestrator.Applications.csproj" />
+    <ProjectReference Include="../../Modules/Automation/JobOrchestrator.Automation/JobOrchestrator.Automation.csproj" />
+    <ProjectReference Include="../../Modules/Intelligence/JobOrchestrator.Intelligence/JobOrchestrator.Intelligence.csproj" />
+    <ProjectReference Include="../../Modules/Profile/JobOrchestrator.Profile/JobOrchestrator.Profile.csproj" />
+    <ProjectReference Include="../../Modules/Materials/JobOrchestrator.Materials/JobOrchestrator.Materials.csproj" />
+    <ProjectReference Include="../../Modules/Mail/JobOrchestrator.Mail/JobOrchestrator.Mail.csproj" />
+    <ProjectReference Include="../../Modules/Operations/JobOrchestrator.Operations/JobOrchestrator.Operations.csproj" />
+    <ProjectReference Include="../../Modules/Assistant/JobOrchestrator.Assistant/JobOrchestrator.Assistant.csproj" />
+  </ItemGroup>
+</Project>

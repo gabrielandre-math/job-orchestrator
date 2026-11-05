@@ -3,6 +3,7 @@
   <Folder Name="/src/Bootstrappers/">
     <Project Path="src/Bootstrappers/JobOrchestrator.Api/JobOrchestrator.Api.csproj" />
     <Project Path="src/Bootstrappers/JobOrchestrator.Worker/JobOrchestrator.Worker.csproj" />
+    <Project Path="src/Bootstrappers/JobOrchestrator.App/JobOrchestrator.App.csproj" />
   </Folder>
   <Folder Name="/src/BuildingBlocks/">
     <Project Path="src/BuildingBlocks/JobOrchestrator.BuildingBlocks.Data/JobOrchestrator.BuildingBlocks.Data.csproj" />

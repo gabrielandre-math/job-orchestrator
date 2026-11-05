@@ -52,6 +52,10 @@ import { Icon } from '@jo/ui/icon';
     .wz-foot .end { display: flex; gap: 8px; margin-left: auto; }
 
     jo-wizard .intro { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 18px; align-items: center; }
+    /* A figura de cada passo flutua com um brilho leve da cor do app: o assistente parece vivo, sem pular na cara. */
+    jo-wizard .intro > jo-iso { animation: wz-bob 2.8s ease-in-out infinite, wz-glow 2.8s ease-in-out infinite; }
+    jo-wizard .promise jo-iso { animation: wz-bob 2.6s ease-in-out infinite; }
+    jo-wizard .promise li:nth-child(2) jo-iso { animation-delay: -0.8s; } jo-wizard .promise li:nth-child(3) jo-iso { animation-delay: -1.6s; }
     jo-wizard .intro h2 { font-size: 17px; margin-bottom: 4px; }
     jo-wizard .intro p { margin: 0; line-height: 1.5; max-width: 64ch; }
     jo-wizard .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(190px, 100%), 1fr)); gap: 10px; }
@@ -111,6 +115,9 @@ import { Icon } from '@jo/ui/icon';
     jo-wizard .spinner.sm, .spinner.sm { width: 12px; height: 12px; border-width: 2px; vertical-align: -1px; margin-right: 6px; }
 
     @keyframes wz-fade { from { opacity: 0; } }
+    @keyframes wz-bob { 50% { transform: translateY(-5px); } }
+    @media (prefers-reduced-motion: reduce) { jo-wizard .intro > jo-iso, jo-wizard .promise jo-iso { animation: none; } }
+    @keyframes wz-glow { 50% { filter: drop-shadow(0 12px 14px color-mix(in oklch, var(--accent) 22%, transparent)); } }
     @keyframes wz-rise { from { opacity: 0; transform: translateY(10px) scale(0.99); } }
     @keyframes wz-step { from { opacity: 0; transform: translateX(var(--wz-dx)); } }
     @keyframes wz-pop { 40% { transform: scale(1.18); } }

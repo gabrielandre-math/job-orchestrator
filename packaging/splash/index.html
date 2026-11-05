@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Job Orchestrator</title>
+<style>
+  :root { --bg: #f6f5f4; --surface: #ffffff; --text: #1c1c1c; --text-2: #5c5c5c; --line: #e6e4e1; --accent: #d9577a; --top: #ffffff; --left: #ece9e6; --right: #dcd8d4; --glow: rgba(217, 87, 122, .22); }
+  @media (prefers-color-scheme: dark) { :root { --bg: #101010; --surface: #161616; --text: #f1f1f1; --text-2: #a3a3a3; --line: #262626; --accent: #ff90ac; --top: #2a2a2a; --left: #1d1d1d; --right: #151515; --glow: rgba(255, 144, 172, .22); } }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 14px/1.5 "Inter", "Segoe UI", system-ui, sans-serif; }
+  main { height: 100%; display: grid; place-items: center; }
+  .card { display: grid; justify-items: center; gap: 22px; text-align: center; }
+  .scene { width: 360px; height: 210px; position: relative; }
+  .block { position: absolute; animation: bob 2.4s ease-in-out infinite; }
+  .block.b2 { animation-delay: -.8s; } .block.b3 { animation-delay: -1.6s; }
+  .block .t { fill: var(--top); stroke: var(--line); } .block .l { fill: var(--left); stroke: var(--line); } .block .r { fill: var(--right); stroke: var(--line); }
+  .block .a { fill: var(--accent); } .block.on .t { fill: color-mix(in srgb, var(--accent) 22%, var(--top)); }
+  .halo { position: absolute; inset: auto 0 6px 0; margin: auto; width: 260px; height: 40px; border-radius: 50%; background: radial-gradient(closest-side, var(--glow), transparent); }
+  .belt { position: absolute; height: 2px; top: 132px; background: repeating-linear-gradient(90deg, var(--accent) 0 8px, transparent 8px 16px); background-size: 32px 2px; animation: flow 1.2s linear infinite; opacity: .7; }
+  h1 { font-size: 20px; margin: 0; letter-spacing: -.01em; }
+  p { margin: 0; color: var(--text-2); }
+  ol { list-style: none; display: flex; gap: 18px; padding: 0; margin: 0; font-size: 12.5px; color: var(--text-2); }
+  ol li { display: inline-flex; align-items: center; gap: 7px; transition: color .3s ease; }
+  ol li::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--line); transition: background-color .3s ease, box-shadow .3s ease; }
+  ol li.on { color: var(--text); } ol li.on::before { background: var(--accent); box-shadow: 0 0 0 4px var(--glow); }
+  .late { display: none; max-width: 46ch; font-size: 12.5px; } .late code { font-family: ui-monospace, "JetBrains Mono", monospace; background: var(--surface); border: 1px solid var(--line); padding: 2px 6px; border-radius: 4px; }
+  @keyframes bob { 50% { transform: translateY(-8px); } }
+  @keyframes flow { to { background-position: 32px 0; } }
+  @media (prefers-reduced-motion: reduce) { .block, .belt { animation: none; } }
+</style>
+</head>
+<body>
+<main>
+  <div class="card">
+    <div class="scene" aria-hidden="true">
+      <div class="halo"></div>
+      <div class="belt" style="left: 92px; width: 70px"></div>
+      <div class="belt" style="left: 212px; width: 70px"></div>
+      <svg class="block b1 on" style="left: 14px; top: 70px" width="96" height="96" viewBox="0 0 96 96"><path class="t" d="M48 14 L86 34 L48 54 L10 34 Z"/><path class="l" d="M10 34 L48 54 L48 88 L10 68 Z"/><path class="r" d="M86 34 L48 54 L48 88 L86 68 Z"/><circle class="a" cx="48" cy="34" r="6"/></svg>
+      <svg class="block b2" style="left: 132px; top: 46px" width="96" height="96" viewBox="0 0 96 96"><path class="t" d="M48 14 L86 34 L48 54 L10 34 Z"/><path class="l" d="M10 34 L48 54 L48 88 L10 68 Z"/><path class="r" d="M86 34 L48 54 L48 88 L86 68 Z"/><path class="a" d="M36 30 L60 30 L60 36 L36 36 Z" transform="skewY(14) translate(0 -8)"/></svg>
+      <svg class="block b3" style="left: 250px; top: 70px" width="96" height="96" viewBox="0 0 96 96"><path class="t" d="M48 14 L86 34 L48 54 L10 34 Z"/><path class="l" d="M10 34 L48 54 L48 88 L10 68 Z"/><path class="r" d="M86 34 L48 54 L48 88 L86 68 Z"/><path class="a" d="M44 24 L58 31 L44 38 Z"/></svg>
+    </div>
+    <div>
+      <h1>Abrindo o Job Orchestrator</h1>
+      <p>Subindo o banco, os agentes e o painel. A busca continua mesmo com a janela fechada.</p>
+    </div>
+    <ol><li id="s1" class="on">Banco</li><li id="s2">Serviços</li><li id="s3">Painel</li></ol>
+    <p class="late" id="late">Está demorando mais que o normal. No terminal, <code>job-orchestrator --status</code> diz o que está acontecendo, e <code>job-orchestrator --serve</code> mostra o motivo.</p>
+  </div>
+</main>
+<script>
+  // O painel responde em 127.0.0.1:7410: uma imagem de lá carregando é o sinal de que está no ar (página local não pode ler a resposta, mas vê a imagem).
+  const started = Date.now();
+  const steps = [document.getElementById('s1'), document.getElementById('s2'), document.getElementById('s3')];
+  const blocks = document.querySelectorAll('.block');
+  let tick = 0;
+  function ping() {
+    const img = new Image();
+    img.onload = () => { steps.forEach((s) => s.classList.add('on')); setTimeout(() => location.replace('http://127.0.0.1:7410/'), 250); };
+    img.onerror = () => {
+      tick++;
+      const phase = Math.min(2, Math.floor((Date.now() - started) / 5000));
+      steps.forEach((s, i) => s.classList.toggle('on', i <= phase));
+      blocks.forEach((b, i) => b.classList.toggle('on', i === tick % 3));
+      if (Date.now() - started > 120000) document.getElementById('late').style.display = 'block';
+      setTimeout(ping, 700);
+    };
+    img.src = 'http://127.0.0.1:7410/favicon.svg?t=' + Date.now();
+  }
+  ping();
+</script>
+</body>
+</html>

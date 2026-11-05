@@ -1,0 +1,125 @@
+<div class="setup">
+  <div class="scene" aria-hidden="true">
+    <span class="float a"><jo-iso name="radar" [size]="150" /></span>
+    <span class="float b"><jo-iso name="writer" [size]="120" /></span>
+    <span class="float c"><jo-iso name="send" [size]="110" /></span>
+    <span class="float d"><jo-iso name="guardian" [size]="96" /></span>
+  </div>
+
+  <jo-wizard [steps]="steps" [step]="step()" label="Instalar o Job Orchestrator" [wide]="true" (close)="quit()">
+    @switch (step()) {
+      @case (1) {
+        <div class="wz-step">
+          <div class="hero">
+            <jo-mark [size]="64" [animated]="true" [active]="true" />
+            <div>
+              <h2>Job Orchestrator</h2>
+              <p class="muted">Procura vagas de qualquer área, monta o currículo certo para cada uma e cuida das candidaturas. Tudo roda na sua máquina, e nada sai com o seu nome sem o seu ok.</p>
+              @if (info(); as i) { <p class="faint small">Versão {{ i.version }}{{ i.installed ? ', já instalada antes: esta instalação atualiza sem apagar nada' : '' }}.</p> }
+            </div>
+          </div>
+          <div class="features">
+            <div class="feature"><span class="art bob"><jo-iso name="radar" [size]="72" /></span><strong>Busca sem parar</strong><span class="muted small">Gupy, quadros das empresas, APIs públicas e sites de carreira, pelas palavras do seu currículo.</span></div>
+            <div class="feature"><span class="art bob d1"><jo-iso name="writer" [size]="72" /></span><strong>Currículo certo</strong><span class="muted small">Um por vaga, perfeito para ATS e só com fatos que estão no seu currículo.</span></div>
+            <div class="feature"><span class="art bob d2"><jo-iso name="guardian" [size]="72" /></span><strong>Você no controle</strong><span class="muted small">Envia só com o seu ok ou dentro de limites que você escolhe. CAPTCHA e login param para você.</span></div>
+          </div>
+          <p class="never small"><jo-icon name="lock-simple" [size]="14" />Nunca usa robô no LinkedIn, nunca contorna bloqueio de site, nunca inventa fato sobre você.</p>
+        </div>
+      }
+      @case (2) {
+        <div class="wz-step">
+          <div class="intro">
+            <jo-iso name="router" [size]="96" />
+            <div><h2>Sua máquina</h2><p class="muted">Confiro o que o app usa. O que faltar vem com o comando para resolver; aviso não impede a instalação.</p></div>
+          </div>
+          @if (checks(); as list) {
+            <ul class="checks">
+              @for (c of list; track c.id; let i = $index) {
+                <li [class]="'is-' + c.state" [style.animation-delay.ms]="i * 70">
+                  <span class="art"><jo-iso [name]="c.icon" [size]="40" /></span>
+                  <span class="what"><strong>{{ c.label }}</strong><span class="muted small">{{ c.detail }}</span>
+                    @if (c.fix) { <span class="fix"><code class="mono">{{ c.fix }}</code><button type="button" class="btn ghost" (click)="copy(c.fix)"><jo-icon [name]="copied() === c.fix ? 'check' : 'copy'" [size]="13" />{{ copied() === c.fix ? 'Copiado' : 'Copiar' }}</button></span> }
+                  </span>
+                  <span class="pill" [class]="'pill ' + c.state">{{ stateLabel(c.state) }}</span>
+                </li>
+              }
+            </ul>
+          } @else {
+            <div class="scan"><span class="bob"><jo-iso name="radar" [size]="64" /></span><p class="muted">Conferindo Docker, navegador, Python, modelo local, placa de vídeo e disco…</p></div>
+          }
+        </div>
+      }
+      @case (3) {
+        <div class="wz-step">
+          <div class="intro">
+            <jo-iso name="gate" [size]="96" />
+            <div><h2>Como instalar</h2><p class="muted">O app vai para a sua pasta, sem pedir senha de administrador. Dá para mudar tudo depois rodando o instalador de novo.</p></div>
+          </div>
+          <div class="where"><jo-icon name="house" [size]="15" /><span class="mono">{{ info()?.target ?? '~/.local/opt/job-orchestrator' }}</span></div>
+          <div class="opts">
+            <label class="opt"><input type="checkbox" class="switch" [checked]="menu()" (change)="menu.set($any($event.target).checked)" /><span><strong>Atalho no menu de aplicativos</strong><span class="muted small">Com o ícone do app; no terminal, o comando job-orchestrator.</span></span></label>
+            <label class="opt"><input type="checkbox" class="switch" [checked]="autostart()" (change)="autostart.set($any($event.target).checked)" /><span><strong>Abrir junto com o computador</strong><span class="muted small">A busca roda sozinha mesmo com a janela fechada. Os serviços ficam na fatia jobs.slice, com teto de memória.</span></span></label>
+            @if (info()?.devData) {
+              <label class="opt"><input type="checkbox" class="switch" [checked]="migrate()" (change)="migrate.set($any($event.target).checked)" /><span><strong>Trazer o que você já tem</strong><span class="muted small">Perfil, campanha, configurações e o que o Explorador já achou. O banco é o mesmo; nada é apagado.</span></span></label>
+            }
+          </div>
+        </div>
+      }
+      @case (4) {
+        <div class="wz-step">
+          <div class="intro">
+            <span class="bob"><jo-iso [name]="current()?.icon ?? 'router'" [size]="96" /></span>
+            <div><h2>{{ state()?.error ? 'A instalação parou' : 'Instalando' }}</h2><p class="muted">{{ state()?.error ?? current()?.detail ?? 'Começando…' }}</p></div>
+          </div>
+          <div class="bar" aria-hidden="true"><span [style.width.%]="progress() * 100"></span></div>
+          <ol class="pipe">
+            @for (s of state()?.steps ?? []; track s.id) {
+              <li class="station" [class.idle]="s.state === 'waiting'" [class.working]="s.state === 'working'" [class.done]="s.state === 'done'" [class.bad]="s.state === 'failed'">
+                <span class="art" [class.bob]="s.state === 'working'"><jo-iso [name]="s.icon" [size]="46" /></span>
+                <strong>{{ s.label }}</strong>
+                <span>@if (s.state === 'done') { <jo-icon name="check" [size]="11" /> }{{ s.detail }}</span>
+              </li>
+            }
+          </ol>
+          @if (state()?.log?.length) { <pre class="log mono">@for (l of state()!.log; track $index) {{{ l }}
+}</pre> }
+        </div>
+      }
+      @case (5) {
+        <div class="wz-step">
+          <div class="hero done">
+            <span class="bob"><jo-iso name="send" [size]="110" /></span>
+            <div>
+              <h2>Tudo pronto</h2>
+              <p class="muted">O Job Orchestrator está instalado e no ar. Na primeira vez, o primeiro contato guia: conectar a sua IA, mandar o currículo e montar a busca.</p>
+            </div>
+          </div>
+          <ul class="summary">
+            @for (s of state()?.steps ?? []; track s.id) { <li><span class="mark" aria-hidden="true"><jo-icon name="check" [size]="12" /></span><strong>{{ s.label }}</strong><span class="muted">{{ s.detail }}</span></li> }
+          </ul>
+          <div class="done-actions">
+            <button type="button" class="btn primary big" (click)="open()" [disabled]="opening()">
+              @if (opening()) { <span class="spinner sm" aria-hidden="true"></span>Abrindo } @else { <jo-icon name="rocket-launch" [size]="16" />Abrir o Job Orchestrator }
+            </button>
+          </div>
+        </div>
+      }
+    }
+    @if (step() < 5) {
+      <footer class="wz-foot" wz-foot>
+        @if (step() > 1 && step() < 4) { <button type="button" class="btn ghost" (click)="step.set(step() - 1)"><jo-icon name="arrow-left" [size]="14" />Voltar</button> } @else { <span></span> }
+        <span class="end">
+          @switch (step()) {
+            @case (1) { <button type="button" class="btn primary" (click)="next()">Começar<jo-icon name="arrow-right" [size]="14" /></button> }
+            @case (2) {
+              <button type="button" class="btn" (click)="check()" [disabled]="checking()"><jo-icon name="arrows-clockwise" [size]="14" />Conferir de novo</button>
+              <button type="button" class="btn primary" (click)="next()" [disabled]="!checks() || blocked()">{{ blocked() ? 'Resolva o que falta' : warnings() ? 'Continuar mesmo assim' : 'Continuar' }}<jo-icon name="arrow-right" [size]="14" /></button>
+            }
+            @case (3) { <button type="button" class="btn primary" (click)="next()"><jo-icon name="download-simple" [size]="14" />Instalar</button> }
+            @case (4) { @if (state()?.error) { <button type="button" class="btn primary" (click)="install()"><jo-icon name="arrows-clockwise" [size]="14" />Tentar de novo</button> } }
+          }
+        </span>
+      </footer>
+    }
+  </jo-wizard>
+</div>

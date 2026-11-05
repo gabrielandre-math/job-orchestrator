@@ -21,5 +21,6 @@ export const routes: Routes = [
   { path: 'provedores', title: 'Provedores de IA', loadComponent: () => import('./features/providers/providers.page').then((m) => m.ProvidersPage) },
   { path: 'configuracoes', title: 'Configurações', loadComponent: () => import('./features/settings/settings.page').then((m) => m.SettingsPage) },
   { path: 'campanha', title: 'Campanha', loadComponent: () => import('./features/campaign/campaign.page').then((m) => m.CampaignPage) },
+  { path: 'instalar', title: 'Instalar', loadComponent: () => import('./features/install/install.page').then((m) => m.InstallPage) },
   { path: '**', redirectTo: '' },
 ];

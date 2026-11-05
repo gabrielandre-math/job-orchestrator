@@ -21,3 +21,6 @@ web/.angular/
 # Python
 __pycache__/
 *.pyc
+
+# executável gerado por scripts/package.sh
+dist/
