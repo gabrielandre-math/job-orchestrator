@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, effect, inject, signal } from '@angular/core';
+import { HeroStat, PageHero } from '@jo/ui/page-hero';
 import { DomSanitizer } from '@angular/platform-browser';
 import { Campaign, send } from '../../core/api';
 import { command } from '../../core/command';
@@ -8,6 +9,7 @@ import { ago } from '../../core/format';
 /** Campanha: critérios, limites e até onde o sistema pode ir sozinho. Envio automático só com autorização (fase 6). */
 @Component({
   selector: 'app-campaign',
+  imports: [PageHero],
   templateUrl: './campaign.page.html',
   styleUrl: './campaign.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -22,6 +24,14 @@ export class CampaignPage {
   protected readonly save = command((c: Campaign) => send('PUT', `/campaigns/${c.id}`, this.payload()));
   protected readonly run = command((c: Campaign) => send('POST', `/campaigns/${c.id}/runs`));
   protected readonly ago = ago;
+  protected heroStats(c: Campaign): HeroStat[] {
+    return [
+      { label: 'Fontes', value: c.sources.length },
+      { label: 'Tecnologias', value: c.technologies.length },
+      { label: 'Nota de corte', value: c.minFitScore, tone: 'accent' },
+      { label: 'Envios por dia', value: c.maxSubmissionsPerDay },
+    ];
+  }
   protected readonly modes = [
     { key: 'DiscoveryOnly', label: 'Só descobrir', hint: 'Busca e dá nota. Não prepara nada.' },
     { key: 'PrepareOnly', label: 'Só preparar', hint: 'Prepara currículo e formulário. Nunca envia.' },

@@ -1,12 +1,9 @@
 <section class="page">
   @if (list.value()?.[0]; as c) {
-    <header class="page-head">
-      <div><h1>Campanha</h1><p>{{ c.name }}. Última rodada {{ ago(c.lastRunAt) }}. Fuso {{ c.timeZone }}, janela {{ c.window }}.</p></div>
-      <div class="actions">
+    <jo-page-hero title="Campanha" [lead]="c.name + '. Última rodada ' + ago(c.lastRunAt) + '. Fuso ' + c.timeZone + ', janela ' + c.window + '.'" [scene]="['radar', 'gate', 'chart']" [stats]="heroStats(c)">
         <button class="btn" type="button" [disabled]="run.running()" (click)="run.run(c)">Rodar agora</button>
         <button class="btn primary" type="button" [disabled]="save.running()" (click)="submit(c)">{{ saved() ? 'Salvo' : 'Salvar' }}</button>
-      </div>
-    </header>
+      </jo-page-hero>
     @if (save.problem(); as p) { <p class="problem">{{ p.detail }}</p> }
     @if (run.problem(); as p) { <p class="problem">{{ p.detail }}</p> }
 

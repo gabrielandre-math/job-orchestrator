@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 import { Badge } from '@jo/ui/badge';
 import { Icon } from '@jo/ui/icon';
 import { Iso } from '@jo/ui/iso';
+import { HeroStat, PageHero } from '@jo/ui/page-hero';
 import { Confirmations, Identity, Profile, ProfileFact, get, send, upload } from '../../core/api';
 import { command } from '../../core/command';
 import { query } from '../../core/query';
@@ -18,7 +19,7 @@ const COUNTRIES: [string, string][] = [['BR', 'Brasil'], ['US', 'Estados Unidos'
  */
 @Component({
   selector: 'app-profile',
-  imports: [RouterLink, Badge, Icon, Iso],
+  imports: [RouterLink, Badge, Icon, Iso, PageHero],
   templateUrl: './profile.page.html',
   styleUrl: './profile.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -51,6 +52,16 @@ export class ProfilePage {
   protected readonly inferred = computed(() => (this.profile.value()?.facts ?? []).filter((f) => f.status === 'Inferred'));
   protected readonly reading = computed(() => (this.profile.value()?.documents ?? []).some((d) => d.status === 'Extracting' || d.status === 'Stored'));
   protected readonly undecided = computed(() => this.inferred().filter((f) => !(f.id in this.decisions())).length);
+  protected readonly heroStats = computed<HeroStat[]>(() => {
+    const facts = this.profile.value()?.facts ?? [];
+    const usable = facts.filter((f) => f.status === 'Verified' || f.status === 'Confirmed');
+    return [
+      { label: 'Fatos com evidência', value: usable.length, tone: 'ok' },
+      { label: 'Para confirmar', value: facts.filter((f) => f.status === 'Inferred').length, tone: facts.some((f) => f.status === 'Inferred') ? 'warn' : undefined },
+      { label: 'Experiências', value: usable.filter((f) => f.kind === 'experience').length },
+      { label: 'Competências', value: usable.filter((f) => f.kind === 'skill').length },
+    ];
+  });
   protected readonly answerRows = computed(() => Object.entries(this.answers.value() ?? {}).filter(([k]) => !['first_name', 'last_name'].includes(k)));
 
   constructor() {

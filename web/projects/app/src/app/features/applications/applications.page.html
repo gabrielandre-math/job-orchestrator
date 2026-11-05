@@ -1,7 +1,5 @@
 <section class="page">
-  <header class="page-head">
-    <div><h1>Candidaturas</h1><p>Cada vaga que entrou na fila, com o estado atual e a prova de envio.</p></div>
-  </header>
+  <jo-page-hero title="Candidaturas" lead="Cada vaga que entrou na fila, com o estado atual, quem mexeu por último e a prova de envio." [scene]="['form', 'guardian', 'send']" [stats]="heroStats()" />
   <div class="chips" role="group" aria-label="Filtrar por estado">
     @for (f of filters; track f.label) {
       <button type="button" class="chip" [attr.aria-pressed]="state() === f.key" (click)="filter(f.key)">{{ f.label }}<span class="n">{{ count(f.key) }}</span></button>
@@ -17,7 +15,7 @@
         <tbody>
           @for (a of rows(); track a.id) {
             <tr class="row" [routerLink]="['/candidaturas', a.id]">
-              <td><span class="title">{{ a.company }}</span><span class="company">{{ a.title }}</span></td>
+              <td><span class="who"><jo-company [name]="a.company" [size]="34" /><span><span class="title">{{ a.title }}</span><span class="company">{{ a.company }}</span></span></span></td>
               <td><jo-badge [label]="label(a.state)" [tone]="tone(a.state)" /></td>
               <td><jo-score [value]="a.score" /></td>
               <td><span class="muted">{{ evidence(a.evidenceLevel) }}</span>@if (a.receiptId) {<span class="mono faint receipt">{{ a.receiptId }}</span>}</td>

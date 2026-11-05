@@ -1,17 +1,11 @@
 <section class="page">
-  <header class="page-head">
-    <div>
-      <h1>Perfil</h1>
-      <p>Tudo o que entra no currículo e nos formulários sai daqui. Cada fato mostra o trecho do documento de onde veio.</p>
-    </div>
+  <jo-page-hero title="Perfil" lead="Tudo o que entra no currículo e nos formulários sai daqui. Cada fato mostra o trecho do documento de onde veio." [scene]="['reader', 'identity', 'checker']" [stats]="heroStats()">
     @if (profile.value(); as p) {
-      <div class="actions">
-        @if (p.synthetic) { <jo-badge label="Perfil de teste" tone="warn" /> }
-        <jo-badge [label]="statusLabel(p.status)" [tone]="statusTone(p.status)" />
-        @if (p.version > 0) { <span class="faint mono">versão {{ p.version }}</span> }
-      </div>
+      @if (p.synthetic) { <jo-badge label="Perfil de teste" tone="warn" /> }
+      <jo-badge [label]="statusLabel(p.status)" [tone]="statusTone(p.status)" />
+      @if (p.version > 0) { <span class="faint mono">versão {{ p.version }}</span> }
     }
-  </header>
+  </jo-page-hero>
   @if (profile.problem(); as e) { <p class="problem">{{ e.detail }}</p> }
   @if (sending.problem(); as e) { <p class="problem">{{ e.detail }}</p> }
 
