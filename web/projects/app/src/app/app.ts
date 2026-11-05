@@ -36,6 +36,7 @@ export class App {
     ] },
     { group: 'Sistema', items: [
       { path: '/adapters', label: 'Adapters', icon: 'plugs-connected' },
+      { path: '/provedores', label: 'Provedores de IA', icon: 'cpu' },
       { path: '/campanha', label: 'Campanha', icon: 'sliders-horizontal' },
     ] },
   ];

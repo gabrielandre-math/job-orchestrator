@@ -7,7 +7,7 @@ const phosphor = [
   'house', 'flow-arrow', 'bell-simple', 'check-square-offset', 'briefcase', 'paper-plane-tilt', 'plugs-connected', 'sliders-horizontal',
   'sidebar-simple', 'sun', 'moon', 'bookmark-simple', 'arrow-square-out', 'x', 'plus', 'minus', 'corners-out', 'play', 'globe',
   'binoculars', 'fingerprint', 'gavel', 'chart-line-up', 'pen-nib', 'seal-check', 'clipboard-text', 'shield-check', 'paper-plane-right',
-  'receipt', 'envelope-simple-open', 'hand-palm', 'magnifying-glass', 'user', 'briefcase-metal', 'files', 'warning', 'check', 'clock',
+  'receipt', 'envelope-simple-open', 'hand-palm', 'magnifying-glass', 'user', 'briefcase-metal', 'files', 'warning', 'check', 'clock', 'cpu', 'chat-circle-text', 'arrows-clockwise',
 ];
 const missing = [];
 for (const name of phosphor) {
@@ -15,7 +15,7 @@ for (const name of phosphor) {
   if (existsSync(from)) copyFileSync(from, `projects/app/public/icons/${name}.svg`); else missing.push(name);
 }
 
-const brands = { greenhouse: 'siGreenhouse', github: 'siGithub', hackernews: 'siYcombinator', postgresql: 'siPostgresql', claude: 'siClaude', ollama: 'siOllama', gmail: 'siGmail', dotnet: 'siDotnet', chrome: 'siGooglechrome' };
+const brands = { greenhouse: 'siGreenhouse', github: 'siGithub', hackernews: 'siYcombinator', postgresql: 'siPostgresql', claude: 'siClaude', ollama: 'siOllama', gmail: 'siGmail', dotnet: 'siDotnet', chrome: 'siGooglechrome', gemini: 'siGooglegemini' };
 for (const [file, key] of Object.entries(brands)) {
   const icon = si[key];
   writeFileSync(`projects/app/public/logos/${file}.svg`, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img"><title>${icon.title}</title><path fill="#${icon.hex}" d="${icon.path}"/></svg>\n`);

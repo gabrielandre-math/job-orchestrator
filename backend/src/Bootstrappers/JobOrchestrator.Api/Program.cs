@@ -5,15 +5,16 @@ using JobOrchestrator.Automation;
 using JobOrchestrator.BuildingBlocks;
 using JobOrchestrator.BuildingBlocks.Web;
 using JobOrchestrator.Campaigns;
+using JobOrchestrator.Intelligence;
 using JobOrchestrator.Jobs;
 using Microsoft.Extensions.FileProviders;
 
 // API e painel. Só escuta em 127.0.0.1; o trabalho pesado fica no Worker.
 var builder = WebApplication.CreateBuilder(args);
 var config = builder.Configuration;
-var modules = new[] { CampaignsModule.Assembly, JobsModule.Assembly, ApplicationsModule.Assembly, AutomationModule.Assembly };
+var modules = new[] { CampaignsModule.Assembly, JobsModule.Assembly, ApplicationsModule.Assembly, AutomationModule.Assembly, IntelligenceModule.Assembly };
 builder.Services.AddJoBlocks(modules).AddJoWeb(modules)
-    .AddCampaignsModule(config).AddJobsModule(config).AddApplicationsModule(config).AddAutomationModule(config);
+    .AddCampaignsModule(config).AddJobsModule(config).AddApplicationsModule(config).AddAutomationModule(config).AddIntelligenceModule(config);
 builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
 builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));

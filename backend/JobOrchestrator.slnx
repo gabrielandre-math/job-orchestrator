@@ -22,6 +22,10 @@
     <Project Path="src/Modules/Campaigns/JobOrchestrator.Campaigns.Contracts/JobOrchestrator.Campaigns.Contracts.csproj" />
     <Project Path="src/Modules/Campaigns/JobOrchestrator.Campaigns/JobOrchestrator.Campaigns.csproj" />
   </Folder>
+  <Folder Name="/src/Modules/Intelligence/">
+    <Project Path="src/Modules/Intelligence/JobOrchestrator.Intelligence.Contracts/JobOrchestrator.Intelligence.Contracts.csproj" />
+    <Project Path="src/Modules/Intelligence/JobOrchestrator.Intelligence/JobOrchestrator.Intelligence.csproj" />
+  </Folder>
   <Folder Name="/src/Modules/Jobs/">
     <Project Path="src/Modules/Jobs/JobOrchestrator.Jobs.Contracts/JobOrchestrator.Jobs.Contracts.csproj" />
     <Project Path="src/Modules/Jobs/JobOrchestrator.Jobs/JobOrchestrator.Jobs.csproj" />

@@ -123,7 +123,8 @@ internal sealed class GetFlowHandler(IReadDb<ApplicationsDbContext> db, IJobsApi
         "smartrecruiters" => ("smartrecruiters", "SmartRecruiters", 3),
         "github" => ("github", "GitHub", 4),
         "hn" => ("hackernews", "Hacker News", 5),
-        "manual" => ("manual", "Salvas por você", 6),
+        "remotive" => ("remotive", "Remotive", 6),
+        "manual" => ("manual", "Salvas por você", 7),
         var other => (other, other, 9)
     };
 }

@@ -50,3 +50,6 @@ export interface EvidenceRow { level: number; kind: string; detail: string; at: 
 export interface TaskRow { id: string; applicationId: string; kind: string; title: string; detail: string; createdAt: string; resolvedAt: string | null; resolution: string | null; }
 export interface ApplicationDetail { application: ApplicationRow; applyUrl: string; payloadHash: string | null; fields: Field[]; hasResume: boolean; history: HistoryRow[]; evidence: EvidenceRow[]; tasks: TaskRow[]; }
 export interface Campaign { id: string; name: string; enabled: boolean; mode: string; minFitScore: number; maxSubmissionsPerDay: number; technologies: string[]; locations: string[]; sources: string[]; timeZone: string; window: string; lastRunAt: string | null; }
+export interface UsageWindow { name: string; usedPercent: number | null; resetsAt: string | null; }
+export interface LlmResult { ok: boolean; json: string | null; providerId: string; model: string; effort: string; error: string | null; seconds: number; }
+export interface Provider { id: string; name: string; family: string; order: number; installed: boolean; version: string | null; login: string; plan: string | null; usage: UsageWindow[]; available: boolean; status: string; detail: string; lastTest: LlmResult | null; }

@@ -22,7 +22,7 @@ internal sealed class CaptureJobValidator : AbstractValidator<CaptureJobCommand>
     }
 }
 
-internal sealed partial class CaptureJobHandler(JobsDbContext db, ICampaignsApi campaigns, TimeProvider time) : ICommandHandler<CaptureJobCommand, CaptureResult>
+internal sealed partial class CaptureJobHandler(JobsDbContext db, ICampaignsApi campaigns, IAutomationApi automation, TimeProvider time) : ICommandHandler<CaptureJobCommand, CaptureResult>
 {
     public async Task<Result<CaptureResult>> Handle(CaptureJobCommand c, CancellationToken ct)
     {
@@ -38,6 +38,16 @@ internal sealed partial class CaptureJobHandler(JobsDbContext db, ICampaignsApi 
             return new CaptureResult("watch", null, source, known
                 ? "A empresa já é vigiada. A vaga entra na próxima rodada com os dados oficiais."
                 : "A empresa entrou na vigilância da campanha. A rodada começa agora e traz a vaga com os dados oficiais.");
+        }
+
+        // Página de carreira de empresa (sem ATS conhecido e fora dos sites com login): procura os boards citados nela.
+        if (Normalizer.Channel(c.Url, null) == "link" && string.IsNullOrWhiteSpace(c.Text))
+        {
+            var (boards, detail) = await automation.FindBoardsAsync(c.Url, ct);
+            foreach (var board in boards) db.Publish(SourceDiscoveredV1.EventType, new SourceDiscoveredV1(campaign.Id, board, now), now);
+            if (boards.Count > 0)
+                return new CaptureResult("watch", null, string.Join(", ", boards), $"Achei {string.Join(", ", boards)} na página. A campanha passa a vigiar e roda agora.");
+            if (detail.StartsWith("O robots.txt", StringComparison.Ordinal)) return new CaptureResult("blocked", null, null, detail);
         }
 
         var (company, role) = FromTitle(c.Title ?? "");

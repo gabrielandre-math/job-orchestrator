@@ -1,0 +1,57 @@
+<section class="page">
+  <header class="page-head">
+    <div>
+      <h1>Provedores de IA</h1>
+      <p>Só os CLIs oficiais das suas assinaturas e o Llama local. Nenhuma API paga. A ordem abaixo é a ordem de gasto; cada conta pausa sozinha na reserva.</p>
+    </div>
+  </header>
+  @if (list.problem(); as p) { <p class="problem">{{ p.detail }}</p> }
+  @if (test.problem(); as p) { <p class="problem">{{ p.detail }}</p> }
+
+  <div class="grid">
+    @for (p of list.value() ?? []; track p.id) {
+      <article class="panel card" [class.dim]="!p.available">
+        <header>
+          <span class="mark">
+            @if (logos[p.id]) { <span class="logo" [style.--logo]="'url(/logos/' + logos[p.id] + '.svg)'"></span> }
+            @else { <jo-icon name="chat-circle-text" [size]="22" /> }
+          </span>
+          <div class="title">
+            <h2>{{ p.name }}</h2>
+            <p class="mono faint">{{ p.order === 0 ? 'local, tarefas leves' : p.order + 'º na ordem de gasto' }}</p>
+          </div>
+          <jo-badge [label]="statusLabel(p.status)" [tone]="statusTone(p.status)" />
+        </header>
+        <dl class="facts">
+          <dt>Versão</dt><dd class="mono">{{ p.version ?? 'não instalado' }}</dd>
+          <dt>Login</dt><dd>{{ p.login }}</dd>
+          <dt>Plano</dt><dd>{{ p.plan ?? 'sem dado' }}</dd>
+        </dl>
+        @if (p.usage.length > 0) {
+          <div class="usage">
+            @for (u of p.usage; track u.name) {
+              <div class="meter">
+                <span class="m-name">{{ u.name }}</span>
+                <span class="bar"><span [style.width.%]="u.usedPercent ?? 0" [class.high]="(u.usedPercent ?? 0) >= 60"></span></span>
+                <span class="m-value num">{{ u.usedPercent === null ? 'sem dado' : u.usedPercent + '%' }}</span>
+                @if (u.usedPercent !== null && u.resetsAt) { <span class="m-reset faint">{{ reset(u.resetsAt) }}</span> }
+              </div>
+            }
+          </div>
+        }
+        <p class="detail">{{ p.detail }}</p>
+        <footer>
+          @if (p.lastTest; as t) {
+            <span class="last" [class.bad]="!t.ok">
+              <jo-icon [name]="t.ok ? 'check' : 'warning'" [size]="14" />
+              {{ t.ok ? 'Respondeu em ' + t.seconds.toFixed(1) + ' s com ' + t.model + ', esforço ' + t.effort : (t.error ?? 'falhou') }}
+            </span>
+          } @else { <span class="faint">Teste usa uma resposta curta, no degrau mais leve.</span> }
+          <button type="button" class="btn" [disabled]="testing() !== null || !p.installed" (click)="run(p.id)">
+            <jo-icon name="arrows-clockwise" [size]="14" />{{ testing() === p.id ? 'Testando…' : 'Testar' }}
+          </button>
+        </footer>
+      </article>
+    }
+  </div>
+</section>

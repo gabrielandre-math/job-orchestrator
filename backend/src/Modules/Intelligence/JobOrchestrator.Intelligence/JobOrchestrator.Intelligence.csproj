@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <ProjectReference Include="../../../BuildingBlocks/JobOrchestrator.BuildingBlocks/JobOrchestrator.BuildingBlocks.csproj" />
+    <ProjectReference Include="../../../BuildingBlocks/JobOrchestrator.BuildingBlocks.Web/JobOrchestrator.BuildingBlocks.Web.csproj" />
+    <ProjectReference Include="../JobOrchestrator.Intelligence.Contracts/JobOrchestrator.Intelligence.Contracts.csproj" />
+  </ItemGroup>
+</Project>

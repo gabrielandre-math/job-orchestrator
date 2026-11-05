@@ -109,6 +109,12 @@ internal sealed class JobPosting : AggregateRoot
 
     public void Verified(PostingStatus status, DateTime now)
     {
+        // Reabertura: vaga encerrada que volta a aparecer aberta é avaliada de novo (a candidatura antiga, se houver, continua única).
+        if (status.Open && Status == JobStatus.Expired)
+        {
+            Status = JobStatus.Discovered;
+            Reason = "Reaberta: voltou a aparecer aberta na fonte.";
+        }
         Open = status.Open;
         LastVerifiedAt = now;
         if (!status.Open && Status is not JobStatus.Duplicate)

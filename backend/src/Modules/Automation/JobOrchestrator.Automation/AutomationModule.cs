@@ -26,6 +26,8 @@ public static class AutomationModule
         s.AddScoped<ISourceConnector, SmartRecruitersSource>();
         s.AddScoped<ISourceConnector, GitHubIssuesSource>();
         s.AddScoped<ISourceConnector, HackerNewsSource>();
+        s.AddScoped<ISourceConnector, RemotiveSource>();
+        s.AddScoped<CareerPageReader>();
         s.AddScoped<IFormAdapter, GreenhouseLikeForm>();
         s.AddScoped<Router>();
         s.AddScoped<IAutomationApi, Features.AutomationApi>();

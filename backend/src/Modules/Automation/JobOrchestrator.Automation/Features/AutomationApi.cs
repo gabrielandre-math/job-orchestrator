@@ -5,7 +5,7 @@ namespace JobOrchestrator.Automation.Features;
 /// <summary>A porta do módulo para os outros: fontes, formulários pelo roteador, PDF e o registro de adapters.</summary>
 internal sealed class AutomationApi(
     IEnumerable<ISourceConnector> sources, IEnumerable<IFormAdapter> forms, Router router, BrowserPool browsers,
-    IReadDb<AutomationDbContext> read) : IAutomationApi
+    IReadDb<AutomationDbContext> read, CareerPageReader careers) : IAutomationApi
 {
     public Task<IReadOnlyList<DiscoveredPosting>> DiscoverAsync(string source, CancellationToken ct) =>
         (sources.FirstOrDefault(s => s.Accepts(source)) ?? throw new InvalidOperationException($"Fonte desconhecida: {source}")).DiscoverAsync(source, ct);
@@ -34,6 +34,8 @@ internal sealed class AutomationApi(
         await page.SetContentAsync(html);
         await page.PdfAsync(new PagePdfOptions { Path = path, Format = "A4", PrintBackground = true, Margin = new Margin { Top = "14mm", Bottom = "14mm", Left = "14mm", Right = "14mm" } });
     }
+
+    public Task<(IReadOnlyList<string> Boards, string Detail)> FindBoardsAsync(string pageUrl, CancellationToken ct) => careers.FindBoardsAsync(new Uri(pageUrl), ct);
 
     public async Task<IReadOnlyList<AdapterView>> ListAdaptersAsync(CancellationToken ct)
     {

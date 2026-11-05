@@ -117,4 +117,37 @@ public sealed class SourceTests
         Assert.Equal(("Atlas Saúde", "Senior .NET Engineer"), CaptureJobHandler.FromTitle("(3) Atlas Saúde hiring Senior .NET Engineer in Brazil | LinkedIn"));
         Assert.Equal(("Norte", "Backend Engineer"), CaptureJobHandler.FromTitle("Backend Engineer at Norte"));
     }
+
+    [Fact]
+    public void Remotive_aponta_para_o_link_do_remotive_e_e_remoto()
+    {
+        var p = RemotiveSource.Parse("remotive:.net", J("""
+            {"id":7,"url":"https://remotive.com/remote-jobs/software-dev/net-engineer-7","title":".NET Engineer","company_name":"Kuiper","job_type":"full_time",
+             "publication_date":"2026-11-03T10:00:00","candidate_required_location":"LATAM","salary":"$4k - $6k","description":"<p>C# and .NET</p>"}
+            """));
+        Assert.Equal("https://remotive.com/remote-jobs/software-dev/net-engineer-7", p.ApplyUrl);
+        Assert.Equal("LATAM", p.Location);
+        Assert.Equal("remote", p.Workplace);
+        Assert.True(p.ListedAsOpen);
+    }
+
+    [Theory]
+    [InlineData("User-agent: *\nDisallow: /", "/carreiras", false)]
+    [InlineData("User-agent: *\nDisallow: /admin", "/carreiras", true)]
+    [InlineData("User-agent: *\nDisallow: /carreiras\nAllow: /carreiras/vagas", "/carreiras/vagas", true)]
+    [InlineData("User-agent: Googlebot\nDisallow: /\n\nUser-agent: *\nAllow: /", "/carreiras", true)]
+    [InlineData("", "/qualquer", true)]
+    public void Robots_txt_e_respeitado(string robots, string path, bool allowed) =>
+        Assert.Equal(allowed, CareerPageReader.Allowed(robots.Replace("\\n", "\n"), path));
+
+    [Fact]
+    public void Pagina_de_carreira_revela_os_boards_de_ats()
+    {
+        var html = """
+            <a href="https://boards.greenhouse.io/acme/jobs/1">Vaga</a>
+            <iframe src="https://boards.greenhouse.io/embed/job_board?for=acme"></iframe>
+            <a href="https://jobs.lever.co/norte">Lever</a> <a href="https://jobs.ashbyhq.com/lume/abc">Ashby</a>
+            """;
+        Assert.Equal(["greenhouse:acme", "lever:norte", "ashby:lume"], CareerPageReader.Boards(html));
+    }
 }

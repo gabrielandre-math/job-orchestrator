@@ -78,4 +78,6 @@ public interface IAutomationApi
     Task<AutomationOutcome<ReconcileResult>> ReconcileAsync(ApplyTarget target, MaterialBundle materials, string adapterId, CancellationToken ct);
     Task RenderPdfAsync(string html, string path, CancellationToken ct);
     Task<IReadOnlyList<AdapterView>> ListAdaptersAsync(CancellationToken ct);
+    /// <summary>Boards de ATS citados numa página de carreira (respeita o robots.txt).</summary>
+    Task<(IReadOnlyList<string> Boards, string Detail)> FindBoardsAsync(string pageUrl, CancellationToken ct);
 }
