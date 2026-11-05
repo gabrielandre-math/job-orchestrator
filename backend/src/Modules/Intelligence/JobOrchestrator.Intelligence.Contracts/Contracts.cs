@@ -60,8 +60,9 @@ public static class LlmTasks
     public static readonly LlmTask CoverWrite = new("cover.write", Rung.Medium, true, 10, "perfil minimizado + vaga");
     public static readonly LlmTask QuestionDraft = new("question.draft", Rung.Light, true, 30, "perfil minimizado + pergunta");
     public static readonly LlmTask InterviewPrep = new("interview.prep", Rung.Medium, false, 5, "perfil minimizado + vaga");
+    public static readonly LlmTask PageJobs = new("page.jobs", Rung.Local, false, 0, "página pública de carreira");
 
-    public static IReadOnlyList<LlmTask> All { get; } = [JobExtract, QuestionMap, EmailClassify, ProfileExtract, ResumeTailor, ResumeFactcheck, CoverWrite, QuestionDraft, InterviewPrep];
+    public static IReadOnlyList<LlmTask> All { get; } = [JobExtract, QuestionMap, EmailClassify, ProfileExtract, ResumeTailor, ResumeFactcheck, CoverWrite, QuestionDraft, InterviewPrep, PageJobs];
 
     public static LlmTask? Find(string name) => All.FirstOrDefault(t => t.Name == name);
 }

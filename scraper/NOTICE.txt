@@ -1,0 +1,2 @@
+O coletor usa o Scrapy (https://github.com/scrapy/scrapy), BSD-3-Clause, instalado como dependência pelo pip.
+Os spiders desta pasta são do Job Orchestrator. Nenhum código do Scrapy foi copiado para cá.

@@ -25,7 +25,7 @@
 
   <div class="strip" role="list">
     @for (c of cells(); track c.label; let i = $index) {
-      <div class="panel cell" role="listitem" [class]="'panel cell ' + c.tone" [style.animation-delay.ms]="i * 40">
+      <div class="panel cell" role="listitem" [class]="'panel cell ' + c.tone">
         <span class="value num"><jo-count [value]="c.value" /></span>
         <span class="label">{{ c.label }}</span>
         <span class="note">{{ c.note }}</span>

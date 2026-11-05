@@ -5,7 +5,7 @@ R="$(cd "$(dirname "$0")/.." && pwd)"
 D="$R/.dev"; mkdir -p "$D/logs" "$D/data" "$D/config" "$D/pids"
 export DOTNET_ENVIRONMENT=Development ASPNETCORE_ENVIRONMENT=Development DOTNET_SYSTEM_NET_DISABLEIPV6=1
 export JO_DATA_DIR="$D/data" JO_CONFIG_DIR="$D/config"
-export Profile__Seed="$R/config/profile.example.json" Web__Root="$R/web/dist/app/browser"
+export Scraper__Project="$R/scraper" Profile__Seed="$R/config/profile.example.json" Web__Root="$R/web/dist/app/browser"
 export FAKEATS_STATE="$D/data/fake-ats.json"
 
 docker compose -f "$R/infra/compose.yaml" up -d --wait >/dev/null

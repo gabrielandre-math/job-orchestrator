@@ -1,0 +1,11 @@
+NOTICE.txt
+pyproject.toml
+jo_scraper/__init__.py
+jo_scraper/settings.py
+jo_scraper.egg-info/PKG-INFO
+jo_scraper.egg-info/SOURCES.txt
+jo_scraper.egg-info/dependency_links.txt
+jo_scraper.egg-info/requires.txt
+jo_scraper.egg-info/top_level.txt
+jo_scraper/spiders/__init__.py
+jo_scraper/spiders/careers.py

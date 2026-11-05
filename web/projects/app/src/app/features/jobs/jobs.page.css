@@ -7,13 +7,13 @@
 .stack { list-style: none; margin: 0; padding: 10px 14px 14px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 16px; }
 .stack li { display: grid; grid-template-columns: minmax(0, 150px) minmax(0, 1fr) 28px; gap: 8px; align-items: center; }
 .track { height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
-.fill { display: block; height: 100%; background: color-mix(in oklch, var(--text-3) 70%, transparent); border-radius: 3px; animation: grow 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both; transform-origin: left; }
+.fill { display: block; height: 100%; background: color-mix(in oklch, var(--text-3) 70%, transparent); border-radius: 3px; transition: width 600ms cubic-bezier(0.2, 0.8, 0.2, 1); }
 .stack li.have .fill { background: var(--ok); }
 .stack li.missing .fill { background: color-mix(in oklch, var(--accent) 65%, transparent); }
 .shape { display: grid; gap: 12px; padding: 10px 14px 14px; align-content: start; }
 .seg-group p { margin: 0 0 4px; }
 .seg { display: flex; height: 10px; border-radius: 3px; overflow: hidden; background: var(--surface-3); gap: 2px; }
-.seg span { display: block; height: 100%; animation: grow 0.7s ease-out both; transform-origin: left; }
+.seg span { display: block; height: 100%; transition: width 600ms ease; }
 [data-i="0"] { background: var(--accent); } [data-i="1"] { background: oklch(72% 0.1 205); } [data-i="2"] { background: oklch(72% 0.11 300); }
 [data-i="3"] { background: oklch(78% 0.11 80); } [data-i="4"] { background: var(--text-3); }
 .legend { display: flex; flex-wrap: wrap; gap: 4px 10px; margin: 6px 0 0; color: var(--text-2); }
@@ -21,7 +21,7 @@
 .legend b { font-weight: 600; color: var(--text); margin-left: 2px; }
 .filters { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr)); gap: 12px; }
-.card { display: grid; gap: 10px; padding: 14px; text-align: left; font: inherit; color: var(--text); cursor: pointer; transition: border-color 140ms ease, transform 140ms ease, box-shadow 140ms ease; animation: rise 0.35s ease-out both; }
+.card { display: grid; gap: 10px; padding: 14px; text-align: left; font: inherit; color: var(--text); cursor: pointer; transition: border-color 140ms ease, transform 140ms ease, box-shadow 140ms ease; }
 .card:hover { border-color: color-mix(in oklch, var(--accent) 40%, var(--line-strong)); transform: translateY(-2px); box-shadow: 0 12px 24px -16px oklch(0% 0 0 / 0.6); }
 .card.current { border-color: var(--accent); }
 .card.cut { opacity: 0.72; }

@@ -11,12 +11,15 @@ export class Count {
   readonly value = input(0);
   protected readonly shown = signal(0);
   private frame = 0;
+  private first = true;
 
   constructor() {
     effect(() => {
       const to = this.value();
       const from = this.shown();
       cancelAnimationFrame(this.frame);
+      // O primeiro valor aparece na hora (veio do cache ou acabou de chegar); só mudança depois disso conta.
+      if (this.first) { this.first = false; this.shown.set(to); return; }
       if (typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches) { this.shown.set(to); return; }
       const start = performance.now();
       const step = () => {

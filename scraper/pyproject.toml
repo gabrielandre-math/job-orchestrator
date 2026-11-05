@@ -1,0 +1,13 @@
+[project]
+name = "jo-scraper"
+version = "0.1.0"
+description = "Coletor do Job Orchestrator: spiders próprios sobre o Scrapy (BSD-3-Clause), para páginas de carreira."
+requires-python = ">=3.11"
+dependencies = ["scrapy==2.19.0"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["jo_scraper", "jo_scraper.spiders"]

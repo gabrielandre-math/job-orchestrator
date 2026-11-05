@@ -15,7 +15,7 @@ export interface ChartRow { label: string; value: number; logo?: string | null; 
           }
           <span class="text">{{ r.label }}</span>
         </span>
-        <span class="track"><span class="fill" [class]="'fill ' + (r.tone ?? '')" [style.width.%]="r.pct" [style.animation-delay.ms]="i * 50"></span></span>
+        <span class="track"><span class="fill" [class]="'fill ' + (r.tone ?? '')" [style.width.%]="r.pct" ></span></span>
         <span class="v num">{{ r.value }}</span>
       </div>
     }`,
@@ -27,14 +27,12 @@ export interface ChartRow { label: string; value: number; logo?: string | null; 
     .logo { width: 15px; height: 15px; flex: none; }
     .logo.mono { background: var(--text-2); mask: var(--logo) center / contain no-repeat; -webkit-mask: var(--logo) center / contain no-repeat; }
     .track { height: 8px; border-radius: 2px; background: var(--surface-3); overflow: hidden; }
-    .fill { display: block; height: 100%; border-radius: 2px; background: color-mix(in oklch, var(--text-2) 55%, transparent); transform-origin: left; animation: grow 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+    .fill { display: block; height: 100%; border-radius: 2px; background: color-mix(in oklch, var(--text-2) 55%, transparent); transition: width 600ms cubic-bezier(0.2, 0.8, 0.2, 1); }
     .fill.accent { background: var(--accent); }
     .fill.ok { background: var(--ok); }
     .fill.warn { background: var(--warn); }
     .fill.muted { background: var(--text-3); opacity: 0.6; }
     .v { text-align: right; font: 600 12.5px var(--font-mono); color: var(--text); }
-    @keyframes grow { from { transform: scaleX(0); } }
-    @media (prefers-reduced-motion: reduce) { .fill { animation: none; } }
   `,
 })
 export class HBars {
@@ -55,7 +53,7 @@ export class HBars {
       @for (c of cols(); track c.label; let i = $index) {
         <div class="col" [attr.title]="c.hint ?? (c.label + ': ' + c.value)">
           <span class="v num">{{ c.value || '' }}</span>
-          <span class="bar" [class]="'bar ' + (c.tone ?? '')" [style.height.%]="c.pct" [style.animation-delay.ms]="i * 35"></span>
+          <span class="bar" [class]="'bar ' + (c.tone ?? '')" [style.height.%]="c.pct" ></span>
         </div>
       }
     </div>
@@ -66,15 +64,13 @@ export class HBars {
       background: repeating-linear-gradient(to top, transparent 0, transparent calc(25% - 1px), var(--line) calc(25% - 1px), var(--line) 25%); }
     .col { position: relative; display: grid; grid-template-rows: auto minmax(0, 1fr); justify-items: center; height: 100%; align-items: end; }
     .v { font: 600 11px var(--font-mono); color: var(--text-2); align-self: end; margin-bottom: 3px; }
-    .bar { width: min(100%, 22px); border-radius: 2px 2px 0 0; background: color-mix(in oklch, var(--text-2) 45%, transparent); transform-origin: bottom; animation: rise 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both; align-self: end; min-height: 0; }
+    .bar { width: min(100%, 22px); border-radius: 2px 2px 0 0; background: color-mix(in oklch, var(--text-2) 45%, transparent); transition: height 600ms cubic-bezier(0.2, 0.8, 0.2, 1); align-self: end; min-height: 0; }
     .bar.accent { background: var(--accent); }
     .bar.ok { background: var(--ok); }
     .labels { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 6px; font: 500 10.5px var(--font-mono); color: var(--text-3); text-align: center; }
     .labels span { overflow: hidden; text-overflow: clip; white-space: nowrap; }
     .cut { position: absolute; top: 0; bottom: 0; border-left: 1px dashed color-mix(in oklch, var(--accent) 70%, transparent); z-index: 1; pointer-events: none; }
     .cut-label { position: absolute; top: -2px; left: 4px; font: 500 10.5px var(--font-ui); color: var(--accent); white-space: nowrap; }
-    @keyframes rise { from { transform: scaleY(0); } }
-    @media (prefers-reduced-motion: reduce) { .bar { animation: none; } }
   `,
 })
 export class Columns {
@@ -113,16 +109,11 @@ export class Columns {
     :host { position: relative; display: grid; gap: 6px; }
     svg { width: 100%; height: var(--plot-h, 130px); display: block; overflow: visible; }
     .grid { stroke: var(--line); stroke-width: 1; vector-effect: non-scaling-stroke; }
-    .line { fill: none; stroke: var(--accent); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round;
-      stroke-dasharray: 100; animation: draw 1.1s cubic-bezier(0.65, 0, 0.35, 1) both; }
-    .area { animation: fadein 1.1s ease-out both; }
+    .line { fill: none; stroke: var(--accent); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; }
     .dots { position: absolute; inset: 0 0 18px 0; pointer-events: none; }
     .dot { position: absolute; width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px; border-radius: 50%; background: var(--surface); border: 1.5px solid var(--accent); pointer-events: auto; }
     .dot.last { width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; background: var(--accent); box-shadow: 0 0 0 4px var(--accent-weak); }
     .axis { display: flex; justify-content: space-between; font: 500 10.5px var(--font-mono); color: var(--text-3); }
-    @keyframes draw { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
-    @keyframes fadein { from { opacity: 0; } }
-    @media (prefers-reduced-motion: reduce) { .line, .area { animation: none; } }
   `,
 })
 export class Area {

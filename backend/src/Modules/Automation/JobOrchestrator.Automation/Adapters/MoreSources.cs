@@ -1,0 +1,200 @@
+using System.Collections.Concurrent;
+using System.Xml.Linq;
+
+namespace JobOrchestrator.Automation.Adapters;
+
+/// <summary>
+/// Agregadores com API pública e regra de uso: cada um no intervalo mínimo que pede (6 h por busca), crédito com link para a
+/// vaga original no próprio agregador e nada de raspar página: só o endpoint oficial.
+/// </summary>
+internal abstract class Aggregator(IHttpClientFactory http, TimeProvider time, string prefix, string domain) : PublicSource(http, prefix, domain)
+{
+    private static readonly ConcurrentDictionary<string, DateTime> LastCall = new();
+    protected virtual TimeSpan MinInterval => TimeSpan.FromHours(6);
+
+    public sealed override async Task<IReadOnlyList<DiscoveredPosting>> DiscoverAsync(string source, CancellationToken ct)
+    {
+        var now = time.GetUtcNow().UtcDateTime;
+        if (LastCall.TryGetValue(source, out var last) && now - last < MinInterval) return [];
+        LastCall[source] = now;
+        return await FetchAsync(source, Key(source), ct);
+    }
+
+    protected abstract Task<IReadOnlyList<DiscoveredPosting>> FetchAsync(string source, string key, CancellationToken ct);
+    public override Task<PostingStatus> CheckOpenAsync(string applyUrl, CancellationToken ct) => Task.FromResult(new PostingStatus(true, $"Listada agora em {Name}."));
+}
+
+/// <summary>Arbeitnow: API pública de vagas (Europa e remoto), sem chave.</summary>
+internal sealed class ArbeitnowSource(IHttpClientFactory http, TimeProvider time) : Aggregator(http, time, "arbeitnow", "arbeitnow.com")
+{
+    public override string Id => "arbeitnow-api";
+    public override string Name => "Arbeitnow API";
+
+    protected override async Task<IReadOnlyList<DiscoveredPosting>> FetchAsync(string source, string key, CancellationToken ct)
+    {
+        using var doc = await Json.GetAsync(Client, "https://www.arbeitnow.com/api/job-board-api", ct);
+        return [.. doc.RootElement.GetProperty("data").EnumerateArray()
+            .Where(j => key.Length == 0 || $"{j.Str("title")} {j.Str("description")}".Contains(key, StringComparison.OrdinalIgnoreCase))
+            .Select(j => new DiscoveredPosting(source, j.Str("slug"), j.Str("company_name"), j.Str("title"), j.Str("location"), j.Str("url"), Json.Plain(j.Str("description")),
+                j.TryGetProperty("created_at", out var c) && c.TryGetInt64(out var s) ? DateTimeOffset.FromUnixTimeSeconds(s).UtcDateTime : null, j.GetRawText(),
+                Workplace: j.TryGetProperty("remote", out var r) && r.ValueKind == JsonValueKind.True ? "remote" : null, ListedAsOpen: true))];
+    }
+}
+
+/// <summary>Himalayas: vagas remotas, API pública sem chave (pede link de volta para a vaga deles).</summary>
+internal sealed class HimalayasSource(IHttpClientFactory http, TimeProvider time) : Aggregator(http, time, "himalayas", "himalayas.app")
+{
+    public override string Id => "himalayas-api";
+    public override string Name => "Himalayas API";
+
+    protected override async Task<IReadOnlyList<DiscoveredPosting>> FetchAsync(string source, string key, CancellationToken ct)
+    {
+        var url = key.Length > 0 ? $"https://himalayas.app/jobs/api/search?q={Uri.EscapeDataString(key)}&limit=20" : "https://himalayas.app/jobs/api?limit=20";
+        using var doc = await Json.GetAsync(Client, url, ct);
+        return [.. doc.RootElement.GetProperty("jobs").EnumerateArray().Select(j =>
+        {
+            var salary = j.TryGetProperty("minSalary", out var min) && min.ValueKind == JsonValueKind.Number ? $"{j.Str("currency")} {min.GetDouble():0}-{(j.TryGetProperty("maxSalary", out var max) && max.ValueKind == JsonValueKind.Number ? max.GetDouble().ToString("0") : "")}" : null;
+            var where = j.TryGetProperty("locationRestrictions", out var lr) && lr.ValueKind == JsonValueKind.Array ? string.Join(", ", lr.EnumerateArray().Select(x => x.ValueKind == JsonValueKind.String ? x.GetString() : x.Str("name"))) : "Remoto";
+            return new DiscoveredPosting(source, j.Str("guid") is { Length: > 0 } g ? g : j.Str("applicationLink"), j.Str("companyName"), j.Str("title"), where, j.Str("applicationLink"),
+                Json.Plain(j.Str("description")), j.Date("pubDate"), j.GetRawText(), Workplace: "remote", Compensation: salary, Employment: j.Str("employmentType"), ListedAsOpen: true);
+        })];
+    }
+}
+
+/// <summary>Jobicy: vagas remotas, API pública sem chave (pede crédito e não mais que algumas chamadas por hora).</summary>
+internal sealed class JobicySource(IHttpClientFactory http, TimeProvider time) : Aggregator(http, time, "jobicy", "jobicy.com")
+{
+    public override string Id => "jobicy-api";
+    public override string Name => "Jobicy API";
+
+    protected override async Task<IReadOnlyList<DiscoveredPosting>> FetchAsync(string source, string key, CancellationToken ct)
+    {
+        var tag = key.Length > 0 ? $"&tag={Uri.EscapeDataString(key)}" : "";
+        using var doc = await Json.GetAsync(Client, $"https://jobicy.com/api/v2/remote-jobs?count=50{tag}", ct);
+        return [.. doc.RootElement.GetProperty("jobs").EnumerateArray().Select(j =>
+        {
+            var min = j.TryGetProperty("annualSalaryMin", out var a) && a.ValueKind == JsonValueKind.Number ? a.GetDouble() : (double?)null;
+            var max = j.TryGetProperty("annualSalaryMax", out var b) && b.ValueKind == JsonValueKind.Number ? b.GetDouble() : (double?)null;
+            var geo = j.TryGetProperty("jobGeo", out var g) ? g.ValueKind == JsonValueKind.String ? g.GetString() ?? "" : "" : "";
+            return new DiscoveredPosting(source, j.GetProperty("id").ToString(), j.Str("companyName"), j.Str("jobTitle"), geo, j.Str("url"), Json.Plain(j.Str("jobDescription")),
+                j.Date("pubDate"), j.GetRawText(), Workplace: "remote", Compensation: min is null ? null : $"{j.Str("salaryCurrency")} {min:0}-{max:0} por ano", ListedAsOpen: true);
+        })];
+    }
+}
+
+/// <summary>The Muse: API pública (sem chave, 500 chamadas por hora); a categoria vem da fonte (ex.: themuse:Software Engineering).</summary>
+internal sealed class TheMuseSource(IHttpClientFactory http, TimeProvider time) : Aggregator(http, time, "themuse", "themuse.com")
+{
+    public override string Id => "themuse-api";
+    public override string Name => "The Muse API";
+    protected override TimeSpan MinInterval => TimeSpan.FromHours(3);
+
+    protected override async Task<IReadOnlyList<DiscoveredPosting>> FetchAsync(string source, string key, CancellationToken ct)
+    {
+        var category = key.Length > 0 ? key : "Software Engineering";
+        using var doc = await Json.GetAsync(Client, $"https://www.themuse.com/api/public/jobs?page=1&category={Uri.EscapeDataString(category)}", ct);
+        return [.. doc.RootElement.GetProperty("results").EnumerateArray().Select(j =>
+        {
+            var locations = j.TryGetProperty("locations", out var l) ? string.Join("; ", l.EnumerateArray().Select(x => x.Str("name"))) : "";
+            return new DiscoveredPosting(source, j.GetProperty("id").ToString(), j.Obj("company").Str("name"), j.Str("name"), locations, j.Obj("refs").Str("landing_page"),
+                Json.Plain(j.Str("contents")), j.Date("publication_date"), j.GetRawText(), Workplace: locations.Contains("Remote", StringComparison.OrdinalIgnoreCase) ? "remote" : null, ListedAsOpen: true);
+        })];
+    }
+}
+
+/// <summary>RemoteOK: API pública; a regra deles pede crédito e link para a vaga no RemoteOK, que é o ApplyUrl guardado.</summary>
+internal sealed class RemoteOkSource(IHttpClientFactory http, TimeProvider time) : Aggregator(http, time, "remoteok", "remoteok.com")
+{
+    public override string Id => "remoteok-api";
+    public override string Name => "RemoteOK API";
+
+    protected override async Task<IReadOnlyList<DiscoveredPosting>> FetchAsync(string source, string key, CancellationToken ct)
+    {
+        var url = key.Length > 0 ? $"https://remoteok.com/api?tag={Uri.EscapeDataString(key)}" : "https://remoteok.com/api";
+        using var doc = await Json.GetAsync(Client, url, ct);
+        // O primeiro item é o aviso legal deles, não uma vaga.
+        return [.. doc.RootElement.EnumerateArray().Skip(1).Where(j => j.TryGetProperty("id", out _)).Select(j =>
+        {
+            var min = j.TryGetProperty("salary_min", out var a) && a.ValueKind == JsonValueKind.Number && a.GetDouble() > 0 ? a.GetDouble() : (double?)null;
+            var max = j.TryGetProperty("salary_max", out var b) && b.ValueKind == JsonValueKind.Number ? b.GetDouble() : (double?)null;
+            return new DiscoveredPosting(source, j.GetProperty("id").ToString(), j.Str("company"), j.Str("position"), j.Str("location") is { Length: > 0 } loc ? loc : "Remoto", j.Str("url"),
+                Json.Plain(j.Str("description")), j.Date("date"), j.GetRawText(), Workplace: "remote", Compensation: min is null ? null : $"USD {min:0}-{max:0} por ano", ListedAsOpen: true);
+        })];
+    }
+}
+
+/// <summary>We Work Remotely: feed RSS público por categoria (ex.: wwr:remote-back-end-programming-jobs).</summary>
+internal sealed class WeWorkRemotelySource(IHttpClientFactory http, TimeProvider time) : Aggregator(http, time, "wwr", "weworkremotely.com")
+{
+    public override string Id => "wwr-rss";
+    public override string Name => "We Work Remotely (RSS)";
+
+    protected override async Task<IReadOnlyList<DiscoveredPosting>> FetchAsync(string source, string key, CancellationToken ct)
+    {
+        var category = key.Length > 0 ? key : "remote-back-end-programming-jobs";
+        var xml = XDocument.Parse(await Client.GetStringAsync($"https://weworkremotely.com/categories/{Uri.EscapeDataString(category)}.rss", ct));
+        return [.. xml.Descendants("item").Select(i =>
+        {
+            // Título vem como "Empresa: Cargo".
+            var title = (string?)i.Element("title") ?? "";
+            var parts = title.Split(':', 2, StringSplitOptions.TrimEntries);
+            var link = (string?)i.Element("link") ?? "";
+            return new DiscoveredPosting(source, link, parts.Length == 2 ? parts[0] : "", parts.Length == 2 ? parts[1] : title, (string?)i.Element("region") ?? "Remoto", link,
+                Json.Plain((string?)i.Element("description") ?? ""), DateTime.TryParse((string?)i.Element("pubDate"), out var d) ? d.ToUniversalTime() : null, title, Workplace: "remote", ListedAsOpen: true);
+        })];
+    }
+}
+
+/// <summary>Recruitee: API pública do quadro de cada empresa (recruitee:empresa).</summary>
+internal sealed class RecruiteeSource(IHttpClientFactory http) : PublicSource(http, "recruitee", "recruitee.com")
+{
+    public override string Id => "recruitee-api";
+    public override string Name => "Recruitee";
+
+    public override async Task<IReadOnlyList<DiscoveredPosting>> DiscoverAsync(string source, CancellationToken ct)
+    {
+        var company = Key(source);
+        using var doc = await Json.GetAsync(Client, $"https://{company}.recruitee.com/api/offers/", ct);
+        return [.. doc.RootElement.GetProperty("offers").EnumerateArray().Select(j => new DiscoveredPosting(source, j.GetProperty("id").ToString(),
+            j.Str("company_name") is { Length: > 0 } n ? n : Json.Company(company), j.Str("title"), j.Str("location"), j.Str("careers_url"),
+            Json.Plain(j.Str("description") + "\n" + j.Str("requirements")), j.Date("updated_at"), j.GetRawText(),
+            Workplace: j.TryGetProperty("remote", out var r) && r.ValueKind == JsonValueKind.True ? "remote" : null, Employment: j.Str("employment_type_code"), ListedAsOpen: true))];
+    }
+}
+
+/// <summary>Breezy HR: lista pública de vagas de cada empresa em JSON (breezy:empresa).</summary>
+internal sealed class BreezySource(IHttpClientFactory http) : PublicSource(http, "breezy", "breezy.hr")
+{
+    public override string Id => "breezy-api";
+    public override string Name => "Breezy HR";
+
+    public override async Task<IReadOnlyList<DiscoveredPosting>> DiscoverAsync(string source, CancellationToken ct)
+    {
+        var company = Key(source);
+        using var doc = await Json.GetAsync(Client, $"https://{company}.breezy.hr/json", ct);
+        return [.. doc.RootElement.EnumerateArray().Select(j => new DiscoveredPosting(source, j.Str("id"), j.Obj("company").Str("name") is { Length: > 0 } n ? n : Json.Company(company),
+            j.Str("name"), j.Obj("location").Str("name"), j.Str("url"), j.Str("description"), j.Date("published_date"), j.GetRawText(),
+            Workplace: j.Obj("location").TryGetProperty("is_remote", out var r) && r.ValueKind == JsonValueKind.True ? "remote" : null, Employment: j.Obj("type").Str("name"), ListedAsOpen: true))];
+    }
+}
+
+/// <summary>Personio: feed XML público das vagas de cada empresa (personio:empresa).</summary>
+internal sealed class PersonioSource(IHttpClientFactory http) : PublicSource(http, "personio", "jobs.personio.de", "jobs.personio.com")
+{
+    public override string Id => "personio-xml";
+    public override string Name => "Personio";
+
+    public override async Task<IReadOnlyList<DiscoveredPosting>> DiscoverAsync(string source, CancellationToken ct)
+    {
+        var company = Key(source);
+        var xml = XDocument.Parse(await Client.GetStringAsync($"https://{company}.jobs.personio.de/xml", ct));
+        return [.. xml.Descendants("position").Select(p =>
+        {
+            var id = (string?)p.Element("id") ?? "";
+            var text = string.Join("\n", p.Descendants("jobDescription").Select(d => $"{(string?)d.Element("name")}\n{(string?)d.Element("value")}"));
+            return new DiscoveredPosting(source, id, (string?)p.Element("subcompany") is { Length: > 0 } sub ? sub : Json.Company(company), (string?)p.Element("name") ?? "",
+                (string?)p.Element("office") ?? "", $"https://{company}.jobs.personio.de/job/{id}", Json.Plain(text), DateTime.TryParse((string?)p.Element("createdAt"), out var d) ? d.ToUniversalTime() : null,
+                id, Employment: (string?)p.Element("employmentType"), ListedAsOpen: true);
+        })];
+    }
+}

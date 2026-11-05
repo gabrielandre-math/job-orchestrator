@@ -7,5 +7,6 @@
     <ProjectReference Include="../../../BuildingBlocks/JobOrchestrator.BuildingBlocks.Data/JobOrchestrator.BuildingBlocks.Data.csproj" />
     <ProjectReference Include="../../../BuildingBlocks/JobOrchestrator.BuildingBlocks.Web/JobOrchestrator.BuildingBlocks.Web.csproj" />
     <ProjectReference Include="../JobOrchestrator.Automation.Contracts/JobOrchestrator.Automation.Contracts.csproj" />
+    <ProjectReference Include="../../Intelligence/JobOrchestrator.Intelligence.Contracts/JobOrchestrator.Intelligence.Contracts.csproj" />
   </ItemGroup>
 </Project>
