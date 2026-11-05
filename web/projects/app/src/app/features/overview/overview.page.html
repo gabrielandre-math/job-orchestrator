@@ -1,4 +1,16 @@
 <section class="page">
+  @if (setup(); as steps) {
+    <section class="setup panel">
+      <div class="s-text">
+        <h2>{{ allDone() ? 'Revise a busca que o assistente montou' : 'Falta pouco para a sua busca andar sozinha' }}</h2>
+        <p class="muted">{{ allDone() ? 'Tudo conectado. Falta conferir cargos, palavras e fontes e salvar.' : 'O assistente guia cada passo e monta a busca a partir do seu currículo, para qualquer área.' }}</p>
+      </div>
+      <ol class="checks">
+        @for (s of steps; track s.label) { <li [class.done]="s.done"><span class="mark" aria-hidden="true">@if (s.done) { <jo-icon name="check" [size]="12" /> }</span><span class="what"><strong>{{ s.label }}</strong><span class="faint small">{{ s.hint }}</span></span></li> }
+      </ol>
+      <button type="button" class="btn primary" (click)="hub.open.set(true)"><jo-icon name="sparkle" [size]="14" />Continuar com o assistente</button>
+    </section>
+  }
   <article class="hero panel">
     <div class="hero-text">
       <p class="eyebrow">
@@ -12,10 +24,10 @@
       }
       <div class="hero-actions">
         @if (data.value()?.campaign; as c) {
-          <button class="btn primary" type="button" [disabled]="run.running()" (click)="runNow(c.id)">{{ run.running() ? 'Pedindo…' : 'Rodar agora' }}</button>
+          <button class="btn primary" type="button" [disabled]="search.state()?.running || search.starting()" (click)="search.start()"><jo-icon name="magnifying-glass" [size]="14" />{{ search.state()?.running || search.starting() ? 'Buscando…' : 'Buscar agora' }}</button>
         }
         <a class="btn" routerLink="/vagas">Ver vagas</a>
-        <a class="btn ghost" routerLink="/fluxo">Ver os agentes</a>
+        <a class="btn ghost" routerLink="/fluxo"><jo-icon name="flow-arrow" [size]="14" />Mapa ao vivo</a>
       </div>
     </div>
     <jo-route-hero class="hero-art" [stops]="stops()" [busy]="live.busy()" />
@@ -33,6 +45,20 @@
     }
   </div>
 
+  <a class="panel live-run" routerLink="/busca" [class.running]="search.state()?.running">
+    <header>
+      <h2><span class="pulse" aria-hidden="true"></span>Busca ao vivo</h2>
+      <span class="faint small">@if (search.state(); as st) { {{ st.running ? 'buscando agora' : 'última ' + ago(st.lastAt) }} } @else { nenhuma busca ainda }</span>
+    </header>
+    <ol class="mini-line">
+      @for (st of stages(); track st.label; let last = $last) {
+        <li [class]="st.state"><jo-iso [name]="st.iso" [size]="44" /><strong class="num">{{ st.value }}</strong><span class="faint small">{{ st.label }}</span></li>
+        @if (!last) { <li class="belt" [class.on]="st.state === 'working'" aria-hidden="true"></li> }
+      }
+    </ol>
+    <span class="bar" aria-hidden="true"><span [style.width.%]="search.progress() * 100"></span></span>
+  </a>
+
   <div class="cols">
     <section class="panel">
       <header><h2>Funil</h2><a class="btn ghost" routerLink="/candidaturas">Candidaturas</a></header>
@@ -40,7 +66,7 @@
     </section>
 
     <section class="panel">
-      <header><h2>Agentes agora</h2><a class="btn ghost" routerLink="/fluxo">Abrir o fluxo</a></header>
+      <header><h2>Agentes agora</h2><a class="btn ghost" routerLink="/fluxo">Mapa ao vivo</a></header>
       @if (voices().length === 0) {
         <p class="faint pad small">Quando um agente trabalhar, a fala dele aparece aqui na hora.</p>
       } @else {

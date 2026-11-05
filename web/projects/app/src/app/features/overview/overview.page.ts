@@ -4,6 +4,7 @@ import { Badge } from '@jo/ui/badge';
 import { ChartRow, HBars } from '@jo/ui/charts';
 import { Count } from '@jo/ui/count';
 import { Empty } from '@jo/ui/empty';
+import { Icon } from '@jo/ui/icon';
 import { Iso } from '@jo/ui/iso';
 import { RouteHero, RouteStop } from '@jo/ui/route-hero';
 import { Overview, Profile, send, TaskRow } from '../../core/api';
@@ -11,6 +12,8 @@ import { command } from '../../core/command';
 import { ago, clock, modeLabel, plural, stateLabel, stateTone } from '../../core/format';
 import { AGENT_ICON, Live, PROVIDER_LOGO } from '../../core/live';
 import { query } from '../../core/query';
+import { SearchRun } from '../../core/search';
+import { WelcomeHub } from '../../core/welcome-hub';
 
 /**
  * Início: a marca como cenário (a rota com as estações dos agentes), a frase do dia, os números contando, o funil, os agentes
@@ -18,13 +21,36 @@ import { query } from '../../core/query';
  */
 @Component({
   selector: 'app-overview',
-  imports: [RouterLink, Badge, Count, Empty, HBars, Iso, RouteHero],
+  imports: [RouterLink, Badge, Count, Empty, HBars, Icon, Iso, RouteHero],
   templateUrl: './overview.page.html',
   styleUrl: './overview.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class OverviewPage {
   protected readonly live = inject(Live);
+  protected readonly search = inject(SearchRun);
+  protected readonly hub = inject(WelcomeHub);
+  /** Configuração pendente: o que falta para a busca andar sozinha. */
+  protected readonly setup = computed(() => {
+    const o = this.hub.state();
+    if (!o || o.done) return null;
+    return [
+      { label: 'IA conectada', done: o.aiReady, hint: o.aiReady ? o.accounts.slice(0, 3).join(', ') : 'Claude, ChatGPT, chave de API ou modelo local' },
+      { label: 'Currículo lido', done: o.facts > 0, hint: o.facts > 0 ? `${o.facts} fatos verificados` : 'PDF, DOCX ou o export do LinkedIn' },
+      { label: 'Busca montada', done: o.keywords > 0 && o.sources > 0, hint: o.keywords > 0 ? `${o.keywords} palavras, ${o.sources} fontes` : 'cargos, palavras, locais e fontes' },
+    ];
+  });
+  protected readonly allDone = computed(() => (this.setup() ?? []).every((s) => s.done));
+  protected readonly stages = computed(() => {
+    const s = this.search.state();
+    const n = s?.sources.length ?? 0;
+    const done = s?.sources.filter((x) => x.state === 'done' || x.state === 'failed').length ?? 0;
+    const at = !s ? -1 : !s.running ? 5 : s.scored !== null ? 4 : s.fresh !== null ? 3 : done === n && n > 0 ? 2 : 0;
+    return [
+      { iso: 'radar', label: 'Fontes', value: s ? `${done}/${n}` : '—' }, { iso: 'reader', label: 'Da sua área', value: s ? String(s.kept) : '—' },
+      { iso: 'checker', label: 'Novas', value: s?.fresh ?? '—' }, { iso: 'chart', label: 'Nota', value: s?.above ?? '—' }, { iso: 'queue', label: 'Na fila', value: s && !s.running ? (s.shortlisted ?? 0) : '—' },
+    ].map((x, i) => ({ ...x, state: at < 0 ? 'idle' : i < at ? 'done' : i === at && s?.running ? 'working' : at === 5 ? 'done' : 'idle' }));
+  });
   protected readonly data = query<Overview>(() => '/overview', 4000);
   protected readonly tasks = query<TaskRow[]>(() => '/tasks', 4000);
   protected readonly profile = query<Profile>(() => '/profile', 0);

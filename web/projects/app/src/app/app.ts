@@ -2,7 +2,8 @@ import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, afterNextRe
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { Icon } from '@jo/ui/icon';
 import { Mark } from '@jo/ui/mark';
-import { OnboardingView, Overview, get } from './core/api';
+import { Overview } from './core/api';
+import { WelcomeHub } from './core/welcome-hub';
 import { query } from './core/query';
 import { modeLabel } from './core/format';
 import { Theme } from './core/theme';
@@ -58,11 +59,11 @@ export class App {
   ];
 
   /** Primeiro contato: abre sozinho enquanto o ambiente não foi montado; "Agora não" vale até recarregar a página. */
-  protected readonly welcome = signal(false);
-  openWelcome() { this.welcome.set(true); }
+  protected readonly hub = inject(WelcomeHub);
+  protected readonly welcome = this.hub.open;
 
   constructor() {
-    void get<OnboardingView>('/onboarding').then((o) => { if (!o.done && sessionStorageGet('jo.welcome') !== 'later') this.welcome.set(true); }).catch(() => undefined);
+    void this.hub.refresh().then((o) => { if (o && !o.done && sessionStorageGet('jo.welcome') !== 'later') this.welcome.set(true); });
     const destroy = inject(DestroyRef);
     const sub = this.router.events.subscribe((e) => { if (e instanceof NavigationEnd) requestAnimationFrame(() => this.measure()); });
     const resize = () => this.measure();
@@ -83,7 +84,7 @@ export class App {
     return kind === 'review' ? d.applications.awaitingApproval : d.pendingTasks;
   }
 
-  protected closeWelcome() { this.welcome.set(false); sessionStorageSet('jo.welcome', 'later'); }
+  protected closeWelcome() { this.welcome.set(false); sessionStorageSet('jo.welcome', 'later'); void this.hub.refresh(); }
 
   protected toggle() {
     this.collapsed.update((c) => !c);
