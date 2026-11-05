@@ -257,9 +257,13 @@ internal sealed class GeminiCli(IConfiguration config) : IProvider
                 : r.TryGetProperty("selectedAuthType", out var t2) ? t2.GetString() : null;
         }
         catch (Exception ex) when (ex is IOException or JsonException) { }
-        var google = auth == "oauth-personal" && lastTest?.Error?.Contains("authenticat", StringComparison.OrdinalIgnoreCase) != true;
+        var google = auth == "oauth-personal";
         var apiKey = auth is not null && auth.Contains("api", StringComparison.OrdinalIgnoreCase);
         if (apiKey) return new(Id, Name, Family, order, true, version, "API key", null, [], false, "blocked", "Login por API key detectado: bloqueado para não gerar cobrança.", lastTest);
+        // O Google recusa o cliente no plano individual (UNSUPPORTED_CLIENT): fica fora da rota até isso mudar.
+        if (lastTest?.Error is { } err && (err.Contains("UNSUPPORTED_CLIENT", StringComparison.Ordinal) || err.Contains("no longer supported", StringComparison.OrdinalIgnoreCase)))
+            return new(Id, Name, Family, order, true, version, "conta Google", "individual (free-tier)", [], false, "blocked",
+                "O Google não aceita mais o Gemini CLI no plano individual e pede migrar para o Antigravity. Fica fora da ordem de gasto.", lastTest);
         return new(Id, Name, Family, order, true, version, google ? "conta Google" : "sem login", null, [], google, google ? "ready" : "no-login",
             google ? "Pronto para uso. A política de dados do plano Google deve ser conferida antes de mandar perfil." : "Conecte rodando: gemini", lastTest);
     }
@@ -318,7 +322,8 @@ internal sealed class OllamaLocal(IHttpClientFactory http, IConfiguration config
         var clock = Stopwatch.StartNew();
         try
         {
-            var body = JsonSerializer.Serialize(new { model, stream = false, format = JsonDocument.Parse(r.JsonSchema).RootElement, messages = new[] { new { role = "system", content = r.System }, new { role = "user", content = r.Prompt } } });
+            // think = false: sem o raciocínio longo do modelo, só a resposta no schema.
+            var body = JsonSerializer.Serialize(new { model, stream = false, think = false, format = JsonDocument.Parse(r.JsonSchema).RootElement, messages = new[] { new { role = "system", content = r.System }, new { role = "user", content = r.Prompt } } });
             using var response = await http.CreateClient("ollama").PostAsync($"{Url}/api/chat", new StringContent(body, System.Text.Encoding.UTF8, "application/json"), ct);
             using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
             var json = CliRunner.JsonOf(doc.RootElement.GetProperty("message").GetProperty("content").GetString() ?? "");
