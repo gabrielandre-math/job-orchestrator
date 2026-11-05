@@ -25,7 +25,7 @@ public static class ApplicationsModule
         s.AddSingleton(new WorkQueue(NpgsqlDataSource.Create(config.ConnectionFor("Applications"))));
         s.TryAddSingleton<GuardKey>();
         s.AddSingleton<TokenIssuer>();
-        s.AddScoped<ProfileSource>();
+        s.AddScoped<Bundles>();
         s.AddScoped<StepKit>();
         s.AddScoped<IStep, MaterialsStep>();
         s.AddScoped<IStep, PrepareStep>();

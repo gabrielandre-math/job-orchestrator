@@ -6,5 +6,7 @@
     <ProjectReference Include="../../Modules/Applications/JobOrchestrator.Applications/JobOrchestrator.Applications.csproj" />
     <ProjectReference Include="../../Modules/Automation/JobOrchestrator.Automation/JobOrchestrator.Automation.csproj" />
     <ProjectReference Include="../../Modules/Intelligence/JobOrchestrator.Intelligence/JobOrchestrator.Intelligence.csproj" />
+    <ProjectReference Include="../../Modules/Profile/JobOrchestrator.Profile/JobOrchestrator.Profile.csproj" />
+    <ProjectReference Include="../../Modules/Materials/JobOrchestrator.Materials/JobOrchestrator.Materials.csproj" />
   </ItemGroup>
 </Project>

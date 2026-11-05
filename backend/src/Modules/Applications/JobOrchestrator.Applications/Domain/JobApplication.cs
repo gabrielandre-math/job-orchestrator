@@ -60,11 +60,11 @@ internal sealed class JobApplication : AggregateRoot
         Register(new ApplicationMoved(Id, CampaignId, from, to, now));
     }
 
-    public void MaterialsReady(string resumePath, string resumeHash, DateTime now)
+    public void MaterialsReady(string resumePath, string resumeHash, DateTime now, string reason = "Currículo gerado a partir do perfil.", object? data = null)
     {
         ResumePath = resumePath;
         ResumeHash = resumeHash;
-        Move(ApplicationState.MaterialsReady, "Currículo gerado a partir do perfil.", "Redator", now, new { resumeHash });
+        Move(ApplicationState.MaterialsReady, reason, "Redator", now, data ?? new { resumeHash });
     }
 
     public void Prepared(PreparedForm form, IReadOnlyList<RoutingStep> route, DateTime now)

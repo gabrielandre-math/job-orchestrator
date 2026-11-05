@@ -30,7 +30,16 @@
     <Project Path="src/Modules/Jobs/JobOrchestrator.Jobs.Contracts/JobOrchestrator.Jobs.Contracts.csproj" />
     <Project Path="src/Modules/Jobs/JobOrchestrator.Jobs/JobOrchestrator.Jobs.csproj" />
   </Folder>
+  <Folder Name="/src/Modules/Materials/">
+    <Project Path="src/Modules/Materials/JobOrchestrator.Materials.Contracts/JobOrchestrator.Materials.Contracts.csproj" />
+    <Project Path="src/Modules/Materials/JobOrchestrator.Materials/JobOrchestrator.Materials.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Profile/">
+    <Project Path="src/Modules/Profile/JobOrchestrator.Profile.Contracts/JobOrchestrator.Profile.Contracts.csproj" />
+    <Project Path="src/Modules/Profile/JobOrchestrator.Profile/JobOrchestrator.Profile.csproj" />
+  </Folder>
   <Folder Name="/src/Tools/">
+    <Project Path="src/Tools/JobOrchestrator.Cli/JobOrchestrator.Cli.csproj" />
     <Project Path="src/Tools/JobOrchestrator.FakeAts/JobOrchestrator.FakeAts.csproj" />
   </Folder>
   <Folder Name="/tests/">

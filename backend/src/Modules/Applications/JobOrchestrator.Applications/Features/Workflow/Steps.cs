@@ -10,11 +10,13 @@ internal interface IStep
 }
 
 /// <summary>O que as etapas compartilham: banco, automação, campanha, perfil e relógio.</summary>
-internal sealed class StepKit(ApplicationsDbContext db, IAutomationApi automation, ICampaignsApi campaigns, ProfileSource profiles, TimeProvider time, IConfiguration config)
+internal sealed class StepKit(ApplicationsDbContext db, IAutomationApi automation, ICampaignsApi campaigns, IProfileApi profile, IMaterialsApi materials, Bundles bundles, TimeProvider time, IConfiguration config)
 {
     public ApplicationsDbContext Db => db;
     public IAutomationApi Automation => automation;
-    public ProfileSource Profiles => profiles;
+    public IProfileApi Profile => profile;
+    public IMaterialsApi Materials => materials;
+    public Bundles Bundles => bundles;
     public DateTime Now => time.GetUtcNow().UtcDateTime;
     public TimeSpan ReconcileDelay => TimeSpan.FromSeconds(config.GetValue("Workflow:ReconcileDelaySeconds", 20));
     public TimeSpan ReconcileRetry => TimeSpan.FromSeconds(config.GetValue("Workflow:ReconcileRetrySeconds", 30));
@@ -39,7 +41,10 @@ internal sealed class StepKit(ApplicationsDbContext db, IAutomationApi automatio
     };
 }
 
-/// <summary>Agente Redator (v0, sem IA): currículo em PDF só com fatos do perfil, reordenados para a vaga.</summary>
+/// <summary>
+/// Agente Redator: pede ao módulo Materials o currículo da vaga (Seletor, Redator, Conferente, Revisor, Renderizador e Inspetor ATS).
+/// Sem perfil confirmado, nada sai; perfil sintético só vai para o ATS de teste.
+/// </summary>
 internal sealed class MaterialsStep(StepKit k) : IStep
 {
     public WorkStep Step => WorkStep.Materials;
@@ -47,29 +52,59 @@ internal sealed class MaterialsStep(StepKit k) : IStep
     public async Task RunAsync(Claimed c, CancellationToken ct)
     {
         var (app, item) = await k.LoadAsync(c, ct);
-        if (app.State is not (ApplicationState.Shortlisted or ApplicationState.RetryScheduled))
+        if (app.State is not (ApplicationState.Shortlisted or ApplicationState.RetryScheduled or ApplicationState.PausedProvider))
         {
             item.Complete(k.Now);
             await k.Db.SaveChangesAsync(ct);
             return;
         }
-        var profile = k.Profiles.Load();
-        if (profile.Synthetic && !k.IsTestHost(app.ApplyUrl))
+        var profile = await k.Profile.CurrentAsync(ct);
+        if (profile is null)
         {
-            app.Move(ApplicationState.NeedsHuman, "O perfil carregado é de teste e não vai para vaga real. Importe o seu currículo.", "Guardião", k.Now);
-            k.Db.AddTask(app.Id, HumanTaskKind.Review, "Importar currículo", "O perfil atual é sintético.", k.Now);
+            app.Move(ApplicationState.NeedsHuman, "Sem perfil. Envie o seu currículo na tela Perfil.", "Guardião", k.Now);
+            k.Db.AddTask(app.Id, HumanTaskKind.Review, "Enviar currículo", "O perfil ainda não existe.", k.Now);
+        }
+        else if (profile.Synthetic && !k.IsTestHost(app.ApplyUrl))
+        {
+            app.Move(ApplicationState.NeedsHuman, "O perfil carregado é de teste e não vai para vaga real. Envie o seu currículo.", "Guardião", k.Now);
+            k.Db.AddTask(app.Id, HumanTaskKind.Review, "Enviar currículo", "O perfil atual é sintético.", k.Now);
+        }
+        else if (!profile.Confirmed && !profile.Synthetic)
+        {
+            app.Move(ApplicationState.NeedsHuman, "O perfil ainda não foi confirmado na tela única.", "Guardião", k.Now);
+            k.Db.AddTask(app.Id, HumanTaskKind.Review, "Confirmar o perfil", "Uma vez só: autorização, pisos, modalidade e o que o modelo inferiu.", k.Now);
         }
         else
         {
-            var path = Path.Combine(AppPaths.In(AppPaths.Data, "materials", app.Id.ToString("N")), "curriculo.pdf");
-            await k.Automation.RenderPdfAsync(ResumeTemplate.Render(profile, app), path, ct);
-            app.MaterialsReady(path, Convert.ToHexStringLower(SHA256.HashData(await File.ReadAllBytesAsync(path, ct))), k.Now);
-            if (app.ApplyChannel == "ats") k.Enqueue(app.Id, WorkStep.Prepare, TimeSpan.Zero);
+            var result = await k.Materials.ComposeResumeAsync(new ComposeRequest(app.Id, app.JobId, app.Company, app.Title), ct);
+            if (result.Ok)
+            {
+                var how = result.Mode switch
+                {
+                    "ai" => result.Reviewed ? "escrito pela IA, revisado por outra família e conferido fato a fato" : "escrito pela IA e conferido fato a fato, sem revisão cruzada",
+                    "local" => "rascunho do modelo local, conferido fato a fato",
+                    _ => "só com os fatos do perfil, sem IA"
+                };
+                app.MaterialsReady(result.PdfPath!, result.Hash!, k.Now, $"Currículo pronto: {how}.",
+                    new { resumeHash = result.Hash, result.Mode, result.Reviewed, result.Language, result.VersionId, result.ThreadId });
+                if (app.ApplyChannel == "ats") k.Enqueue(app.Id, WorkStep.Prepare, TimeSpan.Zero);
+                else
+                {
+                    // LinkedIn, Gupy, e-mail ou link: nenhum robô envia; o kit fica pronto para você (copiloto).
+                    app.Move(ApplicationState.ManualHandoff, "A candidatura vai pelo site original. O currículo está pronto para você enviar.", "Supervisor", k.Now, new { app.ApplyChannel });
+                    k.Db.AddTask(app.Id, HumanTaskKind.Review, "Candidatar-se pelo site da vaga", $"{app.Title}, {app.Company}", k.Now);
+                }
+            }
+            else if (result.Paused)
+            {
+                if (app.State != ApplicationState.PausedProvider)
+                    app.Move(ApplicationState.PausedProvider, "Nenhum provedor de IA disponível agora. Tenta de novo em uma hora.", "Redator", k.Now, new { result.ThreadId });
+                k.Enqueue(app.Id, WorkStep.Materials, TimeSpan.FromHours(1));
+            }
             else
             {
-                // LinkedIn, Gupy, e-mail ou link: nenhum robô envia; o kit fica pronto para você (copiloto).
-                app.Move(ApplicationState.ManualHandoff, "A candidatura vai pelo site original. O currículo está pronto para você enviar.", "Supervisor", k.Now, new { app.ApplyChannel });
-                k.Db.AddTask(app.Id, HumanTaskKind.Review, "Candidatar-se pelo site da vaga", $"{app.Title}, {app.Company}", k.Now);
+                app.Move(ApplicationState.NeedsHuman, $"O currículo não ficou pronto: {result.Error}", "Redator", k.Now, new { result.ThreadId });
+                k.Db.AddTask(app.Id, HumanTaskKind.Review, "Currículo não ficou pronto", result.Error ?? "", k.Now);
             }
         }
         item.Complete(k.Now);
@@ -98,7 +133,8 @@ internal sealed class PrepareStep(StepKit k) : IStep
         }
 
         var campaign = await k.CampaignAsync(app.CampaignId, ct);
-        var outcome = await k.Automation.PrepareAsync(new ApplyTarget(app.Id, app.ApplyUrl), k.Profiles.Bundle(k.Profiles.Load(), app.ResumePath!), ct);
+        var bundle = await k.Bundles.ForAsync(app, ct) ?? throw new InvalidOperationException("Perfil sumiu entre as etapas.");
+        var outcome = await k.Automation.PrepareAsync(new ApplyTarget(app.Id, app.ApplyUrl), bundle, ct);
         var now = k.Now;
         switch (outcome.Kind)
         {
@@ -178,7 +214,8 @@ internal sealed class SubmitStep(StepKit k, TokenIssuer tokens) : IStep
         app.Move(ApplicationState.Submitting, "O Guardião liberou. Intenção gravada antes do clique.", "Guardião", k.Now, new { intentId = intent.Id });
         await db.SaveChangesAsync(ct);
 
-        var outcome = await k.Automation.SubmitAsync(new ApplyTarget(app.Id, app.ApplyUrl), k.Profiles.Bundle(k.Profiles.Load(), app.ResumePath!), tokens.Issue(intent), app.PreparedBy!, ct);
+        var bundle = await k.Bundles.ForAsync(app, ct) ?? throw new InvalidOperationException("Perfil sumiu entre as etapas.");
+        var outcome = await k.Automation.SubmitAsync(new ApplyTarget(app.Id, app.ApplyUrl), bundle, tokens.Issue(intent), app.PreparedBy!, ct);
         var now = k.Now;
         switch (outcome.Kind)
         {
@@ -227,7 +264,8 @@ internal sealed class ReconcileStep(StepKit k) : IStep
             return;
         }
         Chaos.Point("during-reconcile");
-        var outcome = await k.Automation.ReconcileAsync(new ApplyTarget(app.Id, app.ApplyUrl), k.Profiles.Bundle(k.Profiles.Load(), app.ResumePath!), app.PreparedBy!, ct);
+        var bundle = await k.Bundles.ForAsync(app, ct) ?? throw new InvalidOperationException("Perfil sumiu entre as etapas.");
+        var outcome = await k.Automation.ReconcileAsync(new ApplyTarget(app.Id, app.ApplyUrl), bundle, app.PreparedBy!, ct);
         var now = k.Now;
         var intent = await k.Db.Intents.FirstOrDefaultAsync(i => i.ApplicationId == app.Id && i.State == IntentState.SentUnverified, ct);
         if (outcome.Kind == AdapterResultKind.Completed && outcome.Value!.Found)

@@ -51,5 +51,9 @@ export interface TaskRow { id: string; applicationId: string; kind: string; titl
 export interface ApplicationDetail { application: ApplicationRow; applyUrl: string; payloadHash: string | null; fields: Field[]; hasResume: boolean; history: HistoryRow[]; evidence: EvidenceRow[]; tasks: TaskRow[]; }
 export interface Campaign { id: string; name: string; enabled: boolean; mode: string; minFitScore: number; maxSubmissionsPerDay: number; technologies: string[]; locations: string[]; sources: string[]; timeZone: string; window: string; lastRunAt: string | null; }
 export interface UsageWindow { name: string; usedPercent: number | null; resetsAt: string | null; }
-export interface LlmResult { ok: boolean; json: string | null; providerId: string; model: string; effort: string; error: string | null; seconds: number; }
+export interface LlmResult { ok: boolean; json: string | null; providerId: string; model: string; effort: string; error: string | null; seconds: number; degraded: boolean; cached: boolean; }
+export interface LocalModel { name: string; sizeGb: number; slot: string | null; loaded: boolean; gpuPercent: number | null; }
+export interface BenchRow { model: string; valid: number; total: number; jobExtract: number; emailClassify: number; questionMap: number; overall: number; p50: number; p95: number; cold: number; gpuPercent: number | null; vramMb: number | null; at: string; }
+export interface TaskUsage { task: string; rung: string; privacy: string; cloud: number; budget: number; local: number; cached: number; failed: number; }
+export interface LlmCall { at: string; task: string; providerId: string; model: string; effort: string; ok: boolean; error: string | null; seconds: number; degraded: boolean; cached: boolean; }
 export interface Provider { id: string; name: string; family: string; order: number; installed: boolean; version: string | null; login: string; plan: string | null; usage: UsageWindow[]; available: boolean; status: string; detail: string; lastTest: LlmResult | null; }

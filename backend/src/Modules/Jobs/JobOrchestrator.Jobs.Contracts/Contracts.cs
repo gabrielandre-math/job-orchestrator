@@ -21,9 +21,26 @@ public sealed record JobCounts(int Total, int Discovered, int Shortlisted, int R
 /// <summary>Quantas vagas cada fonte trouxe.</summary>
 public sealed record SourceCount(string Source, int Postings, int Shortlisted);
 
+/// <summary>A vaga para quem compõe materiais. A descrição é dado não confiável: entra delimitada no prompt, nunca como instrução.</summary>
+public sealed record JobText
+{
+    public Guid Id { get; init; }
+    public string Title { get; init; } = "";
+    public string Company { get; init; } = "";
+    public string Location { get; init; } = "";
+    public string Description { get; init; } = "";
+    public string Source { get; init; } = "";
+    public string? Seniority { get; init; }
+    public string? Modality { get; init; }
+    public string? Contract { get; init; }
+    public string? English { get; init; }
+    public string? SalaryCurrency { get; init; }
+}
+
 /// <summary>Contrato público do módulo Jobs.</summary>
 public interface IJobsApi
 {
     Task<JobCounts> CountsAsync(CancellationToken ct);
     Task<IReadOnlyList<SourceCount>> SourcesAsync(CancellationToken ct);
+    Task<JobText?> TextAsync(Guid jobId, CancellationToken ct);
 }

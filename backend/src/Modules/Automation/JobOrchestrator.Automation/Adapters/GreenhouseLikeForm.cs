@@ -21,16 +21,19 @@ internal sealed partial class GreenhouseLikeForm(BrowserPool browsers, IHttpClie
     public double Fit(Uri url) => Domains.Any(d => d.Equals(url.Authority, StringComparison.OrdinalIgnoreCase)) ? 1 : 0;
 
     /// <summary>Pergunta conhecida: o padrão do rótulo e a chave da resposta aprovada.</summary>
+    // Chaves do banco de respostas (Profile.Contracts.AnswerKeys). Anos com tecnologia: years_experience:{tecnologia}.
     private static readonly (Regex Label, string Answer)[] Questions =
     [
-        (new Regex(@"years.*(c#|csharp|\.net)|anos.*(c#|\.net)", RegexOptions.IgnoreCase), "years_csharp"),
         (new Regex(@"authori[sz]ed to work|autoriza", RegexOptions.IgnoreCase), "work_authorization"),
-        (new Regex(@"sponsorship|visto|patroc", RegexOptions.IgnoreCase), "requires_sponsorship"),
+        (new Regex(@"sponsorship|visto|patroc", RegexOptions.IgnoreCase), "needs_sponsorship"),
         (new Regex(@"salary|pretens", RegexOptions.IgnoreCase), "salary_expectation"),
-        (new Regex(@"notice period|aviso pr", RegexOptions.IgnoreCase), "notice_period"),
+        (new Regex(@"notice period|aviso pr|start date|quando (você )?pode(ria)? começar", RegexOptions.IgnoreCase), "start_date"),
         (new Regex(@"english|ingl", RegexOptions.IgnoreCase), "english_level"),
-        (new Regex(@"hear about|soube da vaga", RegexOptions.IgnoreCase), "referral_source")
+        (new Regex(@"hear about|soube da vaga", RegexOptions.IgnoreCase), "how_heard"),
+        (new Regex(@"relocat|mudan[cç]a", RegexOptions.IgnoreCase), "relocation")
     ];
+
+    private static readonly Regex YearsWith = new(@"(?:years|anos)\b.*?\b(?:with|in|de|com|em)\s+([\w#.+]+(?:\s[\w#.+]+)?)", RegexOptions.IgnoreCase);
 
     public async Task<AdapterResult<PreparedForm>> PrepareAsync(ApplyTarget target, MaterialBundle materials, CancellationToken ct)
     {
@@ -168,8 +171,15 @@ internal sealed partial class GreenhouseLikeForm(BrowserPool browsers, IHttpClie
         if (Email().IsMatch(label)) return (m.Email, "perfil");
         if (Phone().IsMatch(label)) return (m.Phone, "perfil");
         if (LinkedIn().IsMatch(label)) return (m.LinkedIn, "perfil");
+        if (YearsWith.Match(label) is { Success: true } years)
+        {
+            var tech = years.Groups[1].Value.TrimEnd('?', '.', ' ');
+            var key = m.Answers.Keys.FirstOrDefault(k => k.StartsWith("years_experience:", StringComparison.Ordinal)
+                && (string.Equals(k[17..], tech, StringComparison.OrdinalIgnoreCase) || tech.StartsWith(k[17..], StringComparison.OrdinalIgnoreCase)));
+            return key is not null ? (m.Answers[key], "anos pelas datas das experiências") : (null, "");
+        }
         foreach (var (pattern, answer) in Questions)
-            if (pattern.IsMatch(label)) return m.Answers.TryGetValue(answer, out var v) ? (v, "resposta aprovada") : (null, "");
+            if (pattern.IsMatch(label)) return m.Answers.TryGetValue(answer, out var v) ? (v, "banco de respostas") : (null, "");
         return (null, "");
     }
 

@@ -10,6 +10,8 @@ global using JobOrchestrator.BuildingBlocks.Data;
 global using JobOrchestrator.BuildingBlocks.Web;
 global using JobOrchestrator.Campaigns.Contracts;
 global using JobOrchestrator.Jobs.Contracts;
+global using JobOrchestrator.Materials.Contracts;
+global using JobOrchestrator.Profile.Contracts;
 global using MediatR;
 global using Microsoft.AspNetCore.Builder;
 global using Microsoft.AspNetCore.Http;

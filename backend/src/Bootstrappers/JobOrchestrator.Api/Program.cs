@@ -7,14 +7,16 @@ using JobOrchestrator.BuildingBlocks.Web;
 using JobOrchestrator.Campaigns;
 using JobOrchestrator.Intelligence;
 using JobOrchestrator.Jobs;
+using JobOrchestrator.Materials;
+using JobOrchestrator.Profile;
 using Microsoft.Extensions.FileProviders;
 
 // API e painel. Só escuta em 127.0.0.1; o trabalho pesado fica no Worker.
 var builder = WebApplication.CreateBuilder(args);
 var config = builder.Configuration;
-var modules = new[] { CampaignsModule.Assembly, JobsModule.Assembly, ApplicationsModule.Assembly, AutomationModule.Assembly, IntelligenceModule.Assembly };
+var modules = new[] { CampaignsModule.Assembly, JobsModule.Assembly, ApplicationsModule.Assembly, AutomationModule.Assembly, IntelligenceModule.Assembly, ProfileModule.Assembly, MaterialsModule.Assembly };
 builder.Services.AddJoBlocks(modules).AddJoWeb(modules)
-    .AddCampaignsModule(config).AddJobsModule(config).AddApplicationsModule(config).AddAutomationModule(config).AddIntelligenceModule(config);
+    .AddCampaignsModule(config).AddJobsModule(config).AddApplicationsModule(config).AddAutomationModule(config).AddIntelligenceModule(config).AddProfileModule(config).AddMaterialsModule(config);
 builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
 builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
@@ -24,6 +26,9 @@ await app.Services.MigrateCampaignsAsync(config);
 await app.Services.MigrateJobsAsync();
 await app.Services.MigrateApplicationsAsync();
 await app.Services.MigrateAutomationAsync();
+await app.Services.MigrateIntelligenceAsync();
+await app.Services.MigrateProfileAsync(config);
+await app.Services.MigrateMaterialsAsync();
 
 app.UseExceptionHandler();
 app.MapOpenApi("/api/openapi.json");

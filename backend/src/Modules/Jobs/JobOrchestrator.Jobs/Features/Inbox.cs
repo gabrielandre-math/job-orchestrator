@@ -82,6 +82,10 @@ internal sealed class JobsApi(IReadDb<JobsDbContext> db) : IJobsApi
 
     public async Task<JobCounts> CountsAsync(CancellationToken ct) => await db.FirstAsync<JobCounts>(Sql, null, ct) ?? new JobCounts(0, 0, 0, 0, 0, 0);
 
+    public Task<JobText?> TextAsync(Guid jobId, CancellationToken ct) => db.FirstAsync<JobText>(
+        "select id, title, company, location, description, source, seniority, modality, contract, english, salary_currency from jobs.postings where id = @jobId",
+        new { jobId }, ct);
+
     public Task<IReadOnlyList<SourceCount>> SourcesAsync(CancellationToken ct) => db.ListAsync<SourceCount>(
         "select source, count(*)::int as postings, count(*) filter (where status = 'Shortlisted')::int as shortlisted from jobs.postings group by source order by source",
         null, ct);
