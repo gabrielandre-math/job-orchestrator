@@ -1,22 +1,31 @@
 <aside class="side">
-  <a class="brand" routerLink="/">
-    <span class="name">Job Orchestrator</span>
-    <span class="sub">local, {{ mode() || 'sem campanha' }}</span>
-  </a>
+  <div class="head">
+    <a class="brand" routerLink="/" [attr.aria-label]="'Job Orchestrator, ' + (mode() || 'sem campanha')">
+      <span class="mark">JO</span>
+      <span class="words"><span class="name">Job Orchestrator</span><span class="sub">{{ mode() || 'sem campanha' }}</span></span>
+    </a>
+    <button type="button" class="collapse" (click)="toggle()" [attr.aria-label]="collapsed() ? 'Abrir barra lateral' : 'Recolher barra lateral'" [attr.title]="collapsed() ? 'Abrir barra lateral' : 'Recolher barra lateral'">
+      <jo-icon name="sidebar-simple" [size]="18" />
+    </button>
+  </div>
   <nav aria-label="Principal">
     @for (g of nav; track g.group) {
       <p class="group">{{ g.group }}</p>
       @for (i of g.items; track i.path) {
-        <a [routerLink]="i.path" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: !!i.exact }">
-          <span>{{ i.label }}</span>
-          @if (count(i.count) > 0) { <span class="count">{{ count(i.count) }}</span> }
+        <a [routerLink]="i.path" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: !!i.exact }" [attr.title]="collapsed() ? i.label : null">
+          <jo-icon [name]="i.icon" [size]="18" />
+          <span class="label">{{ i.label }}</span>
+          @if (count(i.count) > 0) { <span class="count" [attr.aria-label]="count(i.count) + ' pendentes'">{{ count(i.count) }}</span> }
         </a>
       }
     }
   </nav>
   <footer>
-    <span class="status" [class.on]="online()">{{ online() ? 'API no ar' : 'API fora do ar' }}</span>
-    <button class="btn ghost" type="button" (click)="theme.toggle()">{{ theme.mode() === 'dark' ? 'Tema claro' : 'Tema escuro' }}</button>
+    <span class="status" [class.on]="online()" [attr.title]="online() ? 'API no ar' : 'API fora do ar'"><span class="label">{{ online() ? 'API no ar' : 'API fora do ar' }}</span></span>
+    <button class="theme" type="button" (click)="theme.toggle()" [attr.title]="theme.mode() === 'dark' ? 'Tema claro' : 'Tema escuro'">
+      <jo-icon [name]="theme.mode() === 'dark' ? 'sun' : 'moon'" [size]="18" />
+      <span class="label">{{ theme.mode() === 'dark' ? 'Tema claro' : 'Tema escuro' }}</span>
+    </button>
   </footer>
 </aside>
 <main>

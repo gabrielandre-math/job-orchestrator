@@ -13,6 +13,9 @@ export class Theme {
   }
 
   private initial(): 'dark' | 'light' {
+    // ?theme=light|dark na URL escolhe e guarda o tema (útil para capturas de tela).
+    const asked = new URLSearchParams(location.search).get('theme');
+    if (asked === 'light' || asked === 'dark') { try { localStorage.setItem('jo.theme', asked); } catch { /* armazenamento indisponível */ } }
     let saved: string | null = null;
     try { saved = localStorage.getItem('jo.theme'); } catch { /* armazenamento indisponível */ }
     const mode = saved === 'light' || saved === 'dark' ? saved : matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';

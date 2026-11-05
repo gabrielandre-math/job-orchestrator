@@ -72,12 +72,13 @@ internal sealed class GetFlowHandler(IReadDb<ApplicationsDbContext> db, IJobsApi
         string S(int n) => n > 0 ? "active" : "idle";
         var nodes = new List<FlowNode>();
         var edges = new List<FlowEdge>();
-        for (var i = 0; i < sources.Count; i++)
+        // Uma fonte por plataforma no canvas; o detalhe por board fica na tela de vagas.
+        foreach (var g in sources.GroupBy(x => Platform(x.Source)).OrderBy(g => g.Key.Order))
         {
-            var s = sources[i];
-            var label = s.Source.Contains(':') ? s.Source[(s.Source.IndexOf(':') + 1)..].Replace("http://", "").Replace("https://", "") : s.Source;
-            nodes.Add(new($"source-{i}", label, "Fonte", S(s.Postings), s.Postings, $"{s.Shortlisted} na fila", null));
-            edges.Add(new($"source-{i}", "scout", s.Postings, "flow"));
+            var postings = g.Sum(x => x.Postings);
+            var boards = g.Count();
+            nodes.Add(new($"source-{g.Key.Id}", g.Key.Name, boards == 1 ? "1 fonte" : $"{boards} fontes", S(postings), postings, $"{g.Sum(x => x.Shortlisted)} na fila", null));
+            edges.Add(new($"source-{g.Key.Id}", "scout", postings, "flow"));
         }
         nodes.AddRange(
         [
@@ -107,10 +108,24 @@ internal sealed class GetFlowHandler(IReadDb<ApplicationsDbContext> db, IJobsApi
             new("sender", "verifier", x.Intents, "flow"),
             new("verifier", "tracker", 0, "planned"),
             new("preparer", "attention", a.NeedsHuman, "fallback"),
+            new("guard", "attention", a.AwaitingApproval, "fallback"),
             new("verifier", "attention", a.Unknown, "fallback")
         ]);
         return new FlowView(nodes, edges, time.GetUtcNow().UtcDateTime);
     }
+
+    /// <summary>Plataforma de uma fonte ("greenhouse:acme" vira Greenhouse), com a ordem de exibição.</summary>
+    internal static (string Id, string Name, int Order) Platform(string source) => source.Split(':', 2)[0].ToLowerInvariant() switch
+    {
+        "greenhouse" => ("greenhouse", "Greenhouse", 0),
+        "lever" => ("lever", "Lever", 1),
+        "ashby" => ("ashby", "Ashby", 2),
+        "smartrecruiters" => ("smartrecruiters", "SmartRecruiters", 3),
+        "github" => ("github", "GitHub", 4),
+        "hn" => ("hackernews", "Hacker News", 5),
+        "manual" => ("manual", "Salvas por você", 6),
+        var other => (other, other, 9)
+    };
 }
 
 /// <summary>Rotas HTTP (Carter) da visão geral e do fluxo.</summary>

@@ -208,6 +208,12 @@ namespace JobOrchestrator.Applications.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("ApplyChannel")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("apply_channel");
+
                     b.Property<string>("ApplyUrl")
                         .IsRequired()
                         .HasMaxLength(1000)

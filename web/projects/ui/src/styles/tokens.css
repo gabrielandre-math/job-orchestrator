@@ -1,37 +1,73 @@
-/* Tokens do painel. Escuro por padrão; claro por preferência do sistema ou escolha na barra. */
+/*
+  Tokens do painel. Base inspirada no design system atual do n8n: cinzas neutros (croma 0), bordas por transparência,
+  canvas mais escuro que as superfícies e um acento rosa. Escuro por padrão; claro por preferência ou escolha na barra.
+*/
 :root {
   --font-ui: "Inter Variable", system-ui, sans-serif;
   --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
   --radius: 10px;
-  --radius-sm: 6px;
-  --shadow: 0 1px 0 rgb(0 0 0 / 0.25), 0 8px 24px rgb(0 0 0 / 0.22);
+  --radius-sm: 7px;
   color-scheme: dark;
-  --bg: #0d0f12;
-  --canvas: #0a0c0f;
-  --surface: #13161b;
-  --surface-2: #181c22;
-  --surface-3: #1f242b;
-  --line: #242a32;
-  --line-strong: #313842;
-  --text: #e7e9ed;
-  --text-2: #a4acb9;
-  --text-3: #6c7482;
-  --accent: #8ea2ff;
-  --accent-text: #0d0f12;
-  --accent-weak: rgb(142 162 255 / 0.12);
-  --ok: #4cc38a;
-  --ok-weak: rgb(76 195 138 / 0.12);
-  --warn: #f0b44c;
-  --warn-weak: rgb(240 180 76 / 0.12);
-  --danger: #ef6b6b;
-  --danger-weak: rgb(239 107 107 / 0.12);
-  --info: #6cb6ff;
-  --info-weak: rgb(108 182 255 / 0.12);
-  --grid-dot: #1d2229;
+  --bg: oklch(19% 0 0);
+  --canvas: oklch(16% 0 0);
+  --surface: oklch(22.5% 0 0);
+  --surface-2: oklch(25.5% 0 0);
+  --surface-3: oklch(29% 0 0);
+  --line: oklch(100% 0 0 / 0.08);
+  --line-strong: oklch(100% 0 0 / 0.15);
+  --text: oklch(97% 0 0);
+  --text-2: oklch(77% 0 0);
+  --text-3: oklch(58% 0 0);
+  --accent: oklch(78% 0.136 5);
+  --accent-text: oklch(20% 0.04 5);
+  --accent-weak: oklch(78% 0.136 5 / 0.14);
+  --flow: oklch(68% 0.16 255);
+  --flow-weak: oklch(68% 0.16 255 / 0.16);
+  --ok: oklch(74% 0.15 155);
+  --ok-weak: oklch(74% 0.15 155 / 0.14);
+  --warn: oklch(81% 0.14 80);
+  --warn-weak: oklch(81% 0.14 80 / 0.14);
+  --danger: oklch(69% 0.17 25);
+  --danger-weak: oklch(69% 0.17 25 / 0.14);
+  --info: oklch(73% 0.12 245);
+  --info-weak: oklch(73% 0.12 245 / 0.14);
+  --grid-line: oklch(100% 0 0 / 0.045);
+  --tile: oklch(99% 0 0);
+  --tile-ink: oklch(24% 0 0);
+  --tile-line: oklch(100% 0 0 / 0.22);
+  --label-bg: oklch(16% 0 0 / 0.85);
+  --shadow: 0 1px 2px oklch(0% 0 0 / 0.35), 0 10px 30px oklch(0% 0 0 / 0.28);
 }
 
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) { color-scheme: light; --bg: #f4f5f7; --canvas: #eef0f3; --surface: #ffffff; --surface-2: #f7f8fa; --surface-3: #eef0f3; --line: #e1e4e9; --line-strong: #cfd4db; --text: #15181d; --text-2: #4a515d; --text-3: #7b8391; --accent: #4256d6; --accent-text: #ffffff; --accent-weak: rgb(66 86 214 / 0.09); --ok: #1f9a62; --ok-weak: rgb(31 154 98 / 0.1); --warn: #b7791f; --warn-weak: rgb(183 121 31 / 0.11); --danger: #c93c3c; --danger-weak: rgb(201 60 60 / 0.09); --info: #2b74c7; --info-weak: rgb(43 116 199 / 0.09); --grid-dot: #d5d9df; --shadow: 0 1px 0 rgb(0 0 0 / 0.04), 0 8px 24px rgb(15 20 30 / 0.08); }
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: oklch(97.5% 0 0);
+  --canvas: oklch(95.5% 0 0);
+  --surface: oklch(100% 0 0);
+  --surface-2: oklch(98% 0 0);
+  --surface-3: oklch(95% 0 0);
+  --line: oklch(0% 0 0 / 0.08);
+  --line-strong: oklch(0% 0 0 / 0.14);
+  --text: oklch(22% 0 0);
+  --text-2: oklch(42% 0 0);
+  --text-3: oklch(58% 0 0);
+  --accent: oklch(59% 0.161 5);
+  --accent-text: oklch(100% 0 0);
+  --accent-weak: oklch(59% 0.161 5 / 0.1);
+  --flow: oklch(55% 0.19 258);
+  --flow-weak: oklch(55% 0.19 258 / 0.12);
+  --ok: oklch(55% 0.14 155);
+  --ok-weak: oklch(55% 0.14 155 / 0.11);
+  --warn: oklch(62% 0.14 70);
+  --warn-weak: oklch(62% 0.14 70 / 0.12);
+  --danger: oklch(55% 0.19 25);
+  --danger-weak: oklch(55% 0.19 25 / 0.1);
+  --info: oklch(55% 0.14 245);
+  --info-weak: oklch(55% 0.14 245 / 0.1);
+  --grid-line: oklch(0% 0 0 / 0.05);
+  --tile: oklch(100% 0 0);
+  --tile-ink: oklch(24% 0 0);
+  --tile-line: oklch(0% 0 0 / 0.12);
+  --label-bg: oklch(95.5% 0 0 / 0.9);
+  --shadow: 0 1px 2px oklch(0% 0 0 / 0.06), 0 10px 30px oklch(0% 0 0 / 0.08);
 }
-
-:root[data-theme="light"] { color-scheme: light; --bg: #f4f5f7; --canvas: #eef0f3; --surface: #ffffff; --surface-2: #f7f8fa; --surface-3: #eef0f3; --line: #e1e4e9; --line-strong: #cfd4db; --text: #15181d; --text-2: #4a515d; --text-3: #7b8391; --accent: #4256d6; --accent-text: #ffffff; --accent-weak: rgb(66 86 214 / 0.09); --ok: #1f9a62; --ok-weak: rgb(31 154 98 / 0.1); --warn: #b7791f; --warn-weak: rgb(183 121 31 / 0.11); --danger: #c93c3c; --danger-weak: rgb(201 60 60 / 0.09); --info: #2b74c7; --info-weak: rgb(43 116 199 / 0.09); --grid-dot: #d5d9df; --shadow: 0 1px 0 rgb(0 0 0 / 0.04), 0 8px 24px rgb(15 20 30 / 0.08); }

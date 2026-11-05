@@ -21,6 +21,8 @@ internal sealed class JobApplication : AggregateRoot
     public string Location { get; private set; } = "";
     public string ApplyUrl { get; private set; } = "";
     public int Score { get; private set; }
+    /// <summary>"ats": formulário pelo navegador; "manual", "email" ou "link": vai pelo copiloto, com o kit pronto.</summary>
+    public string ApplyChannel { get; private set; } = "ats";
     public ApplicationState State { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime UpdatedAt { get; private set; }
@@ -41,7 +43,7 @@ internal sealed class JobApplication : AggregateRoot
         {
             Id = Guid.CreateVersion7(), CorrelationId = Guid.CreateVersion7(), CampaignId = job.CampaignId, JobId = job.JobId,
             CanonicalKey = job.CanonicalKey, Company = job.Company, Title = job.Title, Location = job.Location, ApplyUrl = job.ApplyUrl,
-            Score = job.Score, State = ApplicationState.Shortlisted, CreatedAt = now, UpdatedAt = now
+            Score = job.Score, ApplyChannel = job.ApplyChannel, State = ApplicationState.Shortlisted, CreatedAt = now, UpdatedAt = now
         };
         app._history.Add(ApplicationEvent.Create(app.Id, null, ApplicationState.Shortlisted, $"Entrou na fila com nota {job.Score}.", "Analista", null, now));
         return app;

@@ -26,6 +26,15 @@ internal sealed class JobsDbContext(DbContextOptions<JobsDbContext> options) : D
             e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
             e.Property(x => x.Breakdown).HasColumnType("jsonb");
             e.Property(x => x.Reason).HasMaxLength(400);
+            e.Property(x => x.Seniority).HasMaxLength(20);
+            e.Property(x => x.Modality).HasMaxLength(20);
+            e.Property(x => x.SalaryText).HasMaxLength(120);
+            e.Property(x => x.SalaryCurrency).HasMaxLength(3);
+            e.Property(x => x.Contract).HasMaxLength(20);
+            e.Property(x => x.English).HasMaxLength(40);
+            e.Property(x => x.Sponsorship).HasMaxLength(40);
+            e.Property(x => x.ApplyChannel).HasMaxLength(10);
+            e.Property(x => x.ApplyEmail).HasMaxLength(200);
             e.Property(x => x.Version).IsRowVersion();
             e.HasIndex(x => new { x.CampaignId, x.Source, x.ExternalId }).IsUnique();
             e.HasIndex(x => new { x.CampaignId, x.CanonicalKey });
@@ -43,6 +52,12 @@ internal sealed class JobsDbContext(DbContextOptions<JobsDbContext> options) : D
 
     public void Publish<T>(string eventType, T evt, DateTime now) => Outbox.Add(OutboxMessage.Create(eventType, evt, now));
 }
+
+/// <summary>Marca os comandos deste módulo que rodam em transação.</summary>
+internal interface IJobsCommand;
+
+internal sealed class JobsTransaction<TReq, TRes>(JobsDbContext db) : TransactionBehavior<TReq, TRes, JobsDbContext>(db)
+    where TReq : notnull, IJobsCommand where TRes : IResultOf<TRes>;
 
 internal sealed class JobsDbFactory : IDesignTimeDbContextFactory<JobsDbContext>
 {

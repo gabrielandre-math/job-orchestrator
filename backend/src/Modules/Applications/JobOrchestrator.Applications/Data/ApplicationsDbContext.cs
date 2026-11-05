@@ -27,6 +27,7 @@ internal sealed class ApplicationsDbContext(DbContextOptions<ApplicationsDbConte
             e.Property(x => x.Location).HasMaxLength(200);
             e.Property(x => x.ApplyUrl).HasMaxLength(1000);
             e.Property(x => x.State).HasConversion<string>().HasMaxLength(30);
+            e.Property(x => x.ApplyChannel).HasMaxLength(10);
             e.Property(x => x.ResumePath).HasMaxLength(500);
             e.Property(x => x.ResumeHash).HasMaxLength(64);
             e.Property(x => x.PreparedBy).HasMaxLength(80);

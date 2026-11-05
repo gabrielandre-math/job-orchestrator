@@ -119,6 +119,43 @@ Outras regras:
 - Toda resposta aprovada ou editada entra no banco e é reaproveitada em perguntas parecidas, então a revisão diminui com o tempo.
 - Todas as respostas ficam gravadas na linha do tempo da candidatura.
 
+### 3.3 E-mail para recrutadores, LinkedIn e o DevScout
+
+**Comparação com o [DevScout](https://devscout.app/en):** o DevScout coleta vagas com bots (inclusive no LinkedIn) e dispara candidaturas por e-mail com template, em volume. Aqui a aposta é outra: menos candidaturas, cada uma certa e comprovada. Do DevScout vale trazer:
+- fontes que ele cobre e que têm API pública (Greenhouse, Lever, Workable, Remotive);
+- candidatura por e-mail quando a própria vaga pede ("envie o currículo para...");
+- e-mail para recrutador.
+
+O que fica igual ou melhor aqui:
+- currículo por vaga com fonte em cada linha;
+- envio com prova;
+- acompanhamento pelo e-mail;
+- tudo local, sem os seus dados num servidor de terceiros.
+
+**E-mail (fase 4, com a leitura do Gmail):**
+- Você cadastra o seu Gmail uma vez (OAuth, escopos de leitura e de envio). Senha de app fica como alternativa.
+- Envio só de dois tipos:
+  - candidatura por e-mail quando a vaga pede;
+  - mensagem ao recrutador ligado a uma vaga.
+
+  O endereço precisa vir da própria vaga, de um e-mail que o recrutador te mandou ou de você. Nada de raspar LinkedIn nem adivinhar endereço.
+- Texto escrito pelo Redator com os seus fatos, conferido pelo Revisor, curto e específico da vaga.
+- Autorização separada com escopo e limites:
+  - até 5 por dia por padrão;
+  - uma mensagem por vaga e no máximo um follow-up depois de 7 dias.
+
+  Sem autorização, fica tudo em rascunho para você aprovar.
+- Resposta "não tenho interesse" ou pedido para parar bloqueia o contato. Todo envio fica registrado na linha do tempo.
+
+**LinkedIn:**
+- **Sem automação.** O contrato de uso do LinkedIn proíbe bots e automação, e a conta pode ser restringida. Nenhum robô aplica nem navega no LinkedIn.
+- **Salvar vaga.** O botão "Salvar vaga" manda o link e o texto que você selecionou.
+- **Candidatura no site da empresa.** Se a vaga tem "candidatar-se no site da empresa", o link do ATS entra no fluxo automático normal.
+- **Easy Apply.** No Easy Apply você aplica com o copiloto ao lado: currículo e respostas prontos para colar.
+- **Acompanhamento.** O e-mail "Your application was sent" move o card sozinho (fase 4).
+
+**Scrapy e Scrapling:** não entram agora. As fontes usam APIs oficiais em JSON. Para páginas de carreira sem ATS conhecido, um leitor educado em .NET, que respeita o robots.txt, procura links de Greenhouse, Lever e Ashby e põe a empresa na vigilância. O modo "stealth" do Scrapling, que contorna anti-bot, fica fora pelas regras.
+
 ## 4. Os agentes
 
 Cada agente é um papel dentro do motor de fluxo, com entradas mínimas, saída validada por schema e sem poder sobre políticas.
@@ -320,7 +357,21 @@ Host, cinco repos, fontes, provedores. Resultado: núcleo próprio, os cinco com
 
 **Precisa de você:** nada.
 
-### Fase 2: descoberta, normalização e matching
+### Fase 2: descoberta, normalização e matching (núcleo entregue em 05/11)
+
+Entregue em 05/11:
+- **Fontes:** Lever, Ashby, SmartRecruiters, GitHub (issues) e HN, além do Greenhouse.
+- **Descoberta:**
+  - pré-filtro de relevância;
+  - lista oficial dispensa conferência vaga a vaga;
+  - normalização de senioridade, modalidade, salário, vínculo, inglês, visto e canal.
+- **"Salvar vaga":** com vigilância automática de empresas e vaga manual para LinkedIn e Gupy.
+- **Rodada real:** 611 vagas lidas, 585 descartadas por perfil, 26 guardadas e 3 na fila.
+
+Falta da fase 2:
+- Workable e Remotive (conferir termos);
+- leitor de páginas de carreira;
+- reabertura de vaga.
 
 **Entregas:**
 1. **Conectores:**

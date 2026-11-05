@@ -46,5 +46,6 @@ export class JobsPage {
   }
 
   protected count(key: string | undefined) { return key ? (this.counts()[key] ?? 0) : (this.all.value()?.length ?? 0); }
-  protected source(s: string) { return s.replace(/^greenhouse:/, '').replace(/^https?:\/\//, ''); }
+  protected source(s: string) { return s.replace(/^[a-z]+:/, '').replace(/^https?:\/\//, ''); }
+  protected channel(c: string) { return ({ ats: 'Formulário do ATS', manual: 'Pelo site, com você', email: 'Por e-mail', link: 'Pelo link da vaga' } as Record<string, string>)[c] ?? c; }
 }

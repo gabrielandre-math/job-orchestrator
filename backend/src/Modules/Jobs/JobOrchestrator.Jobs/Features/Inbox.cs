@@ -3,7 +3,8 @@ namespace JobOrchestrator.Jobs.Features;
 /// <summary>Uma vaga na caixa de entrada.</summary>
 internal sealed record JobRow(
     Guid Id, string Company, string Title, string Location, string Status, int? Score, double? Confidence, string? Reason,
-    string ApplyUrl, string Source, DateTime FirstSeenAt, DateTime? LastVerifiedAt, bool Open, Guid? DuplicateOf);
+    string ApplyUrl, string Source, DateTime FirstSeenAt, DateTime? LastVerifiedAt, bool Open, Guid? DuplicateOf,
+    string? Seniority, string? Modality, string? SalaryText, string? Contract, string? English, string? Sponsorship, string ApplyChannel, string? ApplyEmail);
 
 /// <summary>Consulta (CQRS): as vagas, com filtro por situação e busca por texto.</summary>
 internal sealed record ListJobsQuery(string? Status, string? Search) : IQuery<IReadOnlyList<JobRow>>;
@@ -11,7 +12,8 @@ internal sealed record ListJobsQuery(string? Status, string? Search) : IQuery<IR
 internal sealed class ListJobsHandler(IReadDb<JobsDbContext> db) : IQueryHandler<ListJobsQuery, IReadOnlyList<JobRow>>
 {
     private const string Sql = """
-        select id, company, title, location, status, score, confidence, reason, apply_url, source, first_seen_at, last_verified_at, open, duplicate_of
+        select id, company, title, location, status, score, confidence, reason, apply_url, source, first_seen_at, last_verified_at, open, duplicate_of,
+               seniority, modality, salary_text, contract, english, sponsorship, apply_channel, apply_email
         from jobs.postings
         where (@Status is null or status = @Status)
           and (@Search is null or company ilike '%' || @Search || '%' or title ilike '%' || @Search || '%')
@@ -31,11 +33,14 @@ internal sealed record GetJobQuery(Guid Id) : IQuery<JobDetail>;
 internal sealed class GetJobHandler(IReadDb<JobsDbContext> db) : IQueryHandler<GetJobQuery, JobDetail>
 {
     private sealed record Row(Guid Id, string Company, string Title, string Location, string Status, int? Score, double? Confidence, string? Reason,
-        string ApplyUrl, string Source, DateTime FirstSeenAt, DateTime? LastVerifiedAt, bool Open, Guid? DuplicateOf, string Breakdown, string Description, int Snapshots);
+        string ApplyUrl, string Source, DateTime FirstSeenAt, DateTime? LastVerifiedAt, bool Open, Guid? DuplicateOf,
+        string? Seniority, string? Modality, string? SalaryText, string? Contract, string? English, string? Sponsorship, string ApplyChannel, string? ApplyEmail,
+        string Breakdown, string Description, int Snapshots);
 
     private const string Sql = """
         select p.id, p.company, p.title, p.location, p.status, p.score, p.confidence, p.reason, p.apply_url, p.source, p.first_seen_at,
-               p.last_verified_at, p.open, p.duplicate_of, p.breakdown::text as breakdown, p.description,
+               p.last_verified_at, p.open, p.duplicate_of, p.seniority, p.modality, p.salary_text, p.contract, p.english, p.sponsorship,
+               p.apply_channel, p.apply_email, p.breakdown::text as breakdown, p.description,
                (select count(*)::int from jobs.snapshots s where s.job_id = p.id) as snapshots
         from jobs.postings p where p.id = @Id
         """;
@@ -44,7 +49,8 @@ internal sealed class GetJobHandler(IReadDb<JobsDbContext> db) : IQueryHandler<G
     {
         var r = await db.FirstAsync<Row>(Sql, new { q.Id }, ct);
         if (r is null) return Error.NotFound("job-not-found", "Vaga não encontrada.");
-        var job = new JobRow(r.Id, r.Company, r.Title, r.Location, r.Status, r.Score, r.Confidence, r.Reason, r.ApplyUrl, r.Source, r.FirstSeenAt, r.LastVerifiedAt, r.Open, r.DuplicateOf);
+        var job = new JobRow(r.Id, r.Company, r.Title, r.Location, r.Status, r.Score, r.Confidence, r.Reason, r.ApplyUrl, r.Source, r.FirstSeenAt, r.LastVerifiedAt, r.Open, r.DuplicateOf,
+            r.Seniority, r.Modality, r.SalaryText, r.Contract, r.English, r.Sponsorship, r.ApplyChannel, r.ApplyEmail);
         var factors = JsonSerializer.Deserialize<List<Factor>>(r.Breakdown, JsonSerializerOptions.Web) ?? [];
         return new JobDetail(job, factors, r.Description.Length > 4000 ? r.Description[..4000] + "…" : r.Description, r.Snapshots);
     }

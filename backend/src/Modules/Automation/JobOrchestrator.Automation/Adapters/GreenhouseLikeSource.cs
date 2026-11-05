@@ -26,7 +26,8 @@ internal sealed partial class GreenhouseLikeSource(IHttpClientFactory http, IOpt
         var baseUrl = board.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? board.TrimEnd('/') : $"https://boards-api.greenhouse.io/v1/boards/{board}";
         var client = http.CreateClient("sources");
         using var doc = JsonDocument.Parse(await client.GetStringAsync($"{baseUrl}/jobs?content=true", ct));
-        var company = await BoardNameAsync(client, baseUrl, ct);
+        // Alguns boards se chamam "Empresa - Linkedin"; o sufixo não é parte do nome.
+        var company = BoardSuffix().Replace(await BoardNameAsync(client, baseUrl, ct), "");
         var result = new List<DiscoveredPosting>();
         foreach (var job in doc.RootElement.GetProperty("jobs").EnumerateArray())
         {
@@ -34,13 +35,15 @@ internal sealed partial class GreenhouseLikeSource(IHttpClientFactory http, IOpt
             result.Add(new DiscoveredPosting(
                 Source: source,
                 ExternalId: job.GetProperty("id").ToString(),
-                Company: job.TryGetProperty("company_name", out var cn) && cn.GetString() is { Length: > 0 } name ? name : company,
+                Company: BoardSuffix().Replace(job.TryGetProperty("company_name", out var cn) && cn.GetString() is { Length: > 0 } name ? name : company, ""),
                 Title: job.GetProperty("title").GetString() ?? "",
                 Location: job.TryGetProperty("location", out var l) && l.TryGetProperty("name", out var ln) ? ln.GetString() ?? "" : "",
                 ApplyUrl: job.GetProperty("absolute_url").GetString() ?? "",
                 Description: Tags().Replace(html, " "),
                 UpdatedAt: job.TryGetProperty("updated_at", out var u) && u.TryGetDateTime(out var at) ? at.ToUniversalTime() : null,
-                RawJson: job.GetRawText()));
+                RawJson: job.GetRawText(),
+                // A API pública só lista vagas abertas; boards por URL (como o ATS de teste) são conferidos um por um.
+                ListedAsOpen: !board.StartsWith("http", StringComparison.OrdinalIgnoreCase)));
         }
         return result;
     }
@@ -71,4 +74,7 @@ internal sealed partial class GreenhouseLikeSource(IHttpClientFactory http, IOpt
 
     [GeneratedRegex("<[^>]+>")]
     private static partial Regex Tags();
+
+    [GeneratedRegex(@"\s*[-|]\s*linked\s*in\s*$", RegexOptions.IgnoreCase)]
+    private static partial Regex BoardSuffix();
 }

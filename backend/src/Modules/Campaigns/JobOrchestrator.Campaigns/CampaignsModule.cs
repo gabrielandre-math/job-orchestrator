@@ -15,8 +15,11 @@ public static class CampaignsModule
         return s;
     }
 
-    public static IServiceCollection AddCampaignsWorker(this IServiceCollection s) =>
-        s.AddHostedService<OutboxPublisher<CampaignsDbContext>>();
+    public static IServiceCollection AddCampaignsWorker(this IServiceCollection s)
+    {
+        s.AddEventConsumer<Features.SourceDiscoveredConsumer>();
+        return s.AddHostedService<OutboxPublisher<CampaignsDbContext>>();
+    }
 
     /// <summary>Migra e, na primeira vez, cria a campanha padrão (só preparando, desligada).</summary>
     public static async Task MigrateCampaignsAsync(this IServiceProvider sp, IConfiguration config)

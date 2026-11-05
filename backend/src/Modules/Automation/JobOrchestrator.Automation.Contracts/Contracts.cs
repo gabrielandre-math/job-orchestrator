@@ -11,8 +11,10 @@ public enum Capability { DiscoverJobs, CheckPostingOpen, PrepareForm, SubmitAppl
 /// <summary>Como uma operação de adapter terminou. O roteador decide o fallback a partir daqui.</summary>
 public enum AdapterResultKind { Completed, Unsupported, RetryableFailure, PermanentFailure, NeedsHuman, BlockedByPolicy, QuotaExceeded, SubmissionUnknown }
 
-/// <summary>Uma vaga como veio da fonte, antes de normalizar.</summary>
-public sealed record DiscoveredPosting(string Source, string ExternalId, string Company, string Title, string Location, string ApplyUrl, string Description, DateTime? UpdatedAt, string RawJson);
+/// <summary>Uma vaga como veio da fonte, antes de normalizar. ListedAsOpen: a API oficial só lista vagas abertas, então não precisa conferir uma por uma.</summary>
+public sealed record DiscoveredPosting(
+    string Source, string ExternalId, string Company, string Title, string Location, string ApplyUrl, string Description, DateTime? UpdatedAt, string RawJson,
+    string? Workplace = null, string? Compensation = null, string? Employment = null, string? ApplyEmail = null, bool ListedAsOpen = false);
 
 /// <summary>Se a vaga segue aberta na fonte oficial.</summary>
 public sealed record PostingStatus(bool Open, string Detail);

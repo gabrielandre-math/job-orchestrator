@@ -49,6 +49,15 @@ internal sealed class Campaign : AggregateRoot
     }
 
     public CampaignRun RequestRun(string trigger, DateTime now) => CampaignRun.Create(Id, trigger, now);
+
+    /// <summary>A lista de empresas cresce sozinha: um link salvo de ATS adiciona o board. Devolve false se já era vigiado.</summary>
+    public bool Watch(string source, DateTime now)
+    {
+        if (Sources.Contains(source, StringComparer.OrdinalIgnoreCase)) return false;
+        Sources = [.. Sources, source];
+        UpdatedAt = now;
+        return true;
+    }
 }
 
 /// <summary>Uma rodada de descoberta pedida para a campanha.</summary>

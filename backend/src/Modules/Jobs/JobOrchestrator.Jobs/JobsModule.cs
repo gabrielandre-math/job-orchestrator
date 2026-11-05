@@ -10,6 +10,7 @@ public static class JobsModule
     public static IServiceCollection AddJobsModule(this IServiceCollection s, IConfiguration config)
     {
         s.AddModuleDatabase<JobsDbContext>(config, "Jobs");
+        s.AddTransient(typeof(IPipelineBehavior<,>), typeof(JobsTransaction<,>));
         s.AddScoped<IJobsApi, Features.JobsApi>();
         return s;
     }

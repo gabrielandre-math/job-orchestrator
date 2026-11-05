@@ -31,7 +31,9 @@ public sealed class FlowTests
         var jobs = (await s.GetAsync("/jobs")).EnumerateArray().GroupBy(j => j.GetProperty("status").GetString()).ToDictionary(g => g.Key!, g => g.Count());
         Assert.Equal(1, jobs["Duplicate"]);
         Assert.Equal(1, jobs["Expired"]);
-        Assert.Equal(2, jobs["Rejected"]);
+        Assert.Equal(1, jobs["Rejected"]);
+        // A vaga de Go nem entra: não cita nenhuma tecnologia essencial da campanha.
+        Assert.DoesNotContain((await s.GetAsync("/jobs")).EnumerateArray(), j => j.GetProperty("title").GetString() == "Go Engineer");
     }
 
     [Fact]

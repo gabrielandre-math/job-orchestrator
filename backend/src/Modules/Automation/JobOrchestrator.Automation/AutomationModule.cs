@@ -21,6 +21,11 @@ public static class AutomationModule
         s.TryAddSingleton<GuardKey>();
         s.AddSingleton<BrowserPool>();
         s.AddScoped<ISourceConnector, GreenhouseLikeSource>();
+        s.AddScoped<ISourceConnector, LeverSource>();
+        s.AddScoped<ISourceConnector, AshbySource>();
+        s.AddScoped<ISourceConnector, SmartRecruitersSource>();
+        s.AddScoped<ISourceConnector, GitHubIssuesSource>();
+        s.AddScoped<ISourceConnector, HackerNewsSource>();
         s.AddScoped<IFormAdapter, GreenhouseLikeForm>();
         s.AddScoped<Router>();
         s.AddScoped<IAutomationApi, Features.AutomationApi>();

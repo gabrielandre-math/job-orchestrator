@@ -3,7 +3,7 @@ namespace JobOrchestrator.Applications.Features;
 /// <summary>Uma candidatura na lista.</summary>
 internal sealed record ApplicationRow(
     Guid Id, Guid JobId, string Company, string Title, string Location, string State, int Score, DateTime CreatedAt, DateTime UpdatedAt,
-    string? PreparedBy, int EvidenceLevel, string? ReceiptId, string? LastReason);
+    string? PreparedBy, int EvidenceLevel, string? ReceiptId, string? LastReason, string ApplyChannel);
 
 internal sealed record HistoryRow(DateTime At, string? From, string To, string Reason, string Actor, string? Detail);
 internal sealed record EvidenceRow(int Level, string Kind, string Detail, DateTime At);
@@ -16,7 +16,7 @@ internal sealed record ApplicationDetail(
 
 internal static class Reads
 {
-    public const string Columns = "id, job_id, company, title, location, state, score, created_at, updated_at, prepared_by, evidence_level, receipt_id, last_reason";
+    public const string Columns = "id, job_id, company, title, location, state, score, created_at, updated_at, prepared_by, evidence_level, receipt_id, last_reason, apply_channel";
 }
 
 /// <summary>Consulta (CQRS): candidaturas, com filtro por estado.</summary>

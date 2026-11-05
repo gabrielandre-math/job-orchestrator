@@ -64,7 +64,13 @@ internal sealed class MaterialsStep(StepKit k) : IStep
             var path = Path.Combine(AppPaths.In(AppPaths.Data, "materials", app.Id.ToString("N")), "curriculo.pdf");
             await k.Automation.RenderPdfAsync(ResumeTemplate.Render(profile, app), path, ct);
             app.MaterialsReady(path, Convert.ToHexStringLower(SHA256.HashData(await File.ReadAllBytesAsync(path, ct))), k.Now);
-            k.Enqueue(app.Id, WorkStep.Prepare, TimeSpan.Zero);
+            if (app.ApplyChannel == "ats") k.Enqueue(app.Id, WorkStep.Prepare, TimeSpan.Zero);
+            else
+            {
+                // LinkedIn, Gupy, e-mail ou link: nenhum robô envia; o kit fica pronto para você (copiloto).
+                app.Move(ApplicationState.ManualHandoff, "A candidatura vai pelo site original. O currículo está pronto para você enviar.", "Supervisor", k.Now, new { app.ApplyChannel });
+                k.Db.AddTask(app.Id, HumanTaskKind.Review, "Candidatar-se pelo site da vaga", $"{app.Title}, {app.Company}", k.Now);
+            }
         }
         item.Complete(k.Now);
         await k.Db.SaveChangesAsync(ct);

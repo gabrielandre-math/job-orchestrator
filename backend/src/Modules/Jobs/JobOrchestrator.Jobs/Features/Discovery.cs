@@ -19,12 +19,17 @@ internal sealed class RunRequestedConsumer(
         if (campaign is null) return;
 
         var found = new List<(DiscoveredPosting Posting, PostingStatus Status)>();
+        var ignored = 0;
         foreach (var source in campaign.Sources)
         {
             try
             {
                 foreach (var p in await automation.DiscoverAsync(source, ct))
-                    found.Add((p, await automation.CheckOpenAsync(p.ApplyUrl, ct)));
+                {
+                    // Sem nenhuma tecnologia essencial da campanha, a vaga nem entra: boards grandes têm centenas de vagas de outras áreas.
+                    if (!Scoring.Relevant(campaign, p.Title, p.Description)) { ignored++; continue; }
+                    found.Add((p, p.ListedAsOpen ? new PostingStatus(true, "Listada agora pela API oficial.") : await automation.CheckOpenAsync(p.ApplyUrl, ct)));
+                }
             }
             catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException or JsonException)
             {
@@ -52,15 +57,15 @@ internal sealed class RunRequestedConsumer(
 
             await SnapshotAsync(posting.Id, p.RawJson, now, ct);
             posting.Verified(status, now);
-            if (posting.Evaluate(Scoring.Evaluate(campaign, posting.Title, posting.Description, posting.Location), campaign.MinFitScore))
+            if (posting.Evaluate(Scoring.Evaluate(campaign, posting.Title, posting.Description, posting.Location, posting.Modality), campaign.MinFitScore))
             {
                 shortlisted++;
-                db.Publish(JobShortlistedV1.EventType, new JobShortlistedV1(posting.Id, campaign.Id, posting.CanonicalKey, posting.Company, posting.Title, posting.Location, posting.ApplyUrl, posting.Score!.Value), now);
+                db.Publish(JobShortlistedV1.EventType, new JobShortlistedV1(posting.Id, campaign.Id, posting.CanonicalKey, posting.Company, posting.Title, posting.Location, posting.ApplyUrl, posting.Score!.Value, posting.ApplyChannel), now);
             }
         }
         await db.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
-        log.LogInformation("Run {Run}: {Found} postings, {Shortlisted} shortlisted", run.RunId, found.Count, shortlisted);
+        log.LogInformation("Run {Run}: {Found} postings, {Ignored} ignored as off-profile, {Shortlisted} shortlisted", run.RunId, found.Count, ignored, shortlisted);
     }
 
     private async Task SnapshotAsync(Guid jobId, string raw, DateTime now, CancellationToken ct)

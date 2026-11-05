@@ -13,3 +13,7 @@ tr.current td { background: var(--surface-2); }
 .desc { margin: 0; color: var(--text-2); white-space: pre-line; max-height: 240px; overflow: auto; }
 .body .btn { justify-self: start; }
 .receipt { display: block; font-size: 12px; }
+.normalized { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 6px 12px; margin: 0; font-size: 12.5px; }
+.normalized dt { color: var(--text-3); }
+.normalized dd { margin: 0; }
+table.grid td:last-child { white-space: nowrap; }

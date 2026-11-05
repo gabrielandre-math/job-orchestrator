@@ -95,6 +95,17 @@ namespace JobOrchestrator.Jobs.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("ApplyChannel")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("apply_channel");
+
+                    b.Property<string>("ApplyEmail")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("apply_email");
+
                     b.Property<string>("ApplyUrl")
                         .IsRequired()
                         .HasMaxLength(1000)
@@ -126,6 +137,11 @@ namespace JobOrchestrator.Jobs.Data.Migrations
                         .HasColumnType("double precision")
                         .HasColumnName("confidence");
 
+                    b.Property<string>("Contract")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("contract");
+
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("text")
@@ -134,6 +150,11 @@ namespace JobOrchestrator.Jobs.Data.Migrations
                     b.Property<Guid?>("DuplicateOf")
                         .HasColumnType("uuid")
                         .HasColumnName("duplicate_of");
+
+                    b.Property<string>("English")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("english");
 
                     b.Property<string>("ExternalId")
                         .IsRequired()
@@ -159,6 +180,11 @@ namespace JobOrchestrator.Jobs.Data.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("location");
 
+                    b.Property<string>("Modality")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("modality");
+
                     b.Property<bool>("Open")
                         .HasColumnType("boolean")
                         .HasColumnName("open");
@@ -168,9 +194,32 @@ namespace JobOrchestrator.Jobs.Data.Migrations
                         .HasColumnType("character varying(400)")
                         .HasColumnName("reason");
 
+                    b.Property<string>("SalaryCurrency")
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("salary_currency");
+
+                    b.Property<decimal?>("SalaryMax")
+                        .HasColumnType("numeric")
+                        .HasColumnName("salary_max");
+
+                    b.Property<decimal?>("SalaryMin")
+                        .HasColumnType("numeric")
+                        .HasColumnName("salary_min");
+
+                    b.Property<string>("SalaryText")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("salary_text");
+
                     b.Property<int?>("Score")
                         .HasColumnType("integer")
                         .HasColumnName("score");
+
+                    b.Property<string>("Seniority")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("seniority");
 
                     b.Property<string>("Source")
                         .IsRequired()
@@ -181,6 +230,11 @@ namespace JobOrchestrator.Jobs.Data.Migrations
                     b.Property<DateTime?>("SourceUpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("source_updated_at");
+
+                    b.Property<string>("Sponsorship")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("sponsorship");
 
                     b.Property<string>("Status")
                         .IsRequired()

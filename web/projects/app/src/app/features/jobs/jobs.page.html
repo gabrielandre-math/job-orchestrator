@@ -26,7 +26,16 @@
             @for (j of rows(); track j.id) {
               <tr class="row" [class.current]="open() === j.id" (click)="open.set(open() === j.id ? null : j.id)">
                 <td><jo-score [value]="j.status === 'Rejected' ? null : j.score" /></td>
-                <td><span class="title">{{ j.title }}</span><span class="company">{{ j.company }}</span></td>
+                <td>
+                  <span class="title">{{ j.title }}</span><span class="company">{{ j.company }}</span>
+                  <span class="tags">
+                    @if (j.modality) { <span class="tag">{{ j.modality }}</span> }
+                    @if (j.seniority) { <span class="tag">{{ j.seniority }}</span> }
+                    @if (j.contract) { <span class="tag">{{ j.contract }}</span> }
+                    @if (j.salaryText) { <span class="tag money">{{ j.salaryText }}</span> }
+                    @if (j.applyChannel !== 'ats') { <span class="tag manual">{{ channel(j.applyChannel) }}</span> }
+                  </span>
+                </td>
                 <td class="muted">{{ j.location || 'não informado' }}</td>
                 <td><jo-badge [label]="label(j.status)" [tone]="tone(j.status)" /></td>
                 <td class="muted reason">{{ j.reason ?? '' }}</td>
@@ -51,6 +60,15 @@
               <span class="muted">Fonte <span class="mono">{{ source(d.job.source) }}</span></span>
               <span class="muted">{{ d.snapshots }} {{ d.snapshots === 1 ? 'cópia guardada' : 'cópias guardadas' }}</span>
             </div>
+            <dl class="normalized">
+              <dt>Modalidade</dt><dd>{{ d.job.modality ?? 'não informada' }}</dd>
+              <dt>Senioridade</dt><dd>{{ d.job.seniority ?? 'não informada' }}</dd>
+              <dt>Vínculo</dt><dd>{{ d.job.contract ?? 'não informado' }}</dd>
+              <dt>Salário</dt><dd>{{ d.job.salaryText ?? 'não informado' }}</dd>
+              <dt>Inglês</dt><dd>{{ d.job.english ?? 'não informado' }}</dd>
+              <dt>Visto</dt><dd>{{ d.job.sponsorship ?? 'não informado' }}</dd>
+              <dt>Candidatura</dt><dd>{{ channel(d.job.applyChannel) }}@if (d.job.applyEmail) {, <span class="mono">{{ d.job.applyEmail }}</span>}</dd>
+            </dl>
             @if (d.job.reason) { <p class="notice">{{ d.job.reason }}</p> }
             @if (d.factors.length > 0) {
               <h3>Como a nota foi formada</h3>

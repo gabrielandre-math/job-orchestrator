@@ -2,7 +2,7 @@
   <header class="page-head">
     <div>
       <h1>Fluxo</h1>
-      <p>Os agentes e quantos itens passaram por cada um. @if (flow.value(); as f) {<span class="faint">Atualizado às {{ clock(f.at) }}.</span>}</p>
+      <p>Os agentes e o que passa entre eles. @if (flow.value(); as f) {<span class="faint">Atualizado às {{ clock(f.at) }}.</span>}</p>
     </div>
     <div class="actions">
       <button class="chip" type="button" [attr.aria-pressed]="live()" (click)="live.set(!live())">Animação {{ live() ? 'ligada' : 'desligada' }}</button>
@@ -15,58 +15,72 @@
        [class.live]="live()" [style.background-size]="grid().size" [style.background-position]="grid().pos"
        (wheel)="wheel($event)" (pointerdown)="down($event)" (pointermove)="move($event)" (pointerup)="up()" (pointercancel)="up()" (keydown)="key($event)">
     <div class="world" [style.transform]="transform()">
-      @for (l of lanes; track l.label) {
-        <span class="lane" [style.top.px]="l.y">{{ l.label }}</span>
+      @for (f of frames(); track f.id) {
+        <div class="frame" [attr.data-lane]="f.lane" [style.left.px]="f.x" [style.top.px]="f.y" [style.width.px]="f.w" [style.height.px]="f.h">
+          <span class="frame-title"><jo-icon [name]="f.icon" [size]="16" />{{ f.title }}</span>
+        </div>
       }
+
       <svg class="edges" width="1" height="1" overflow="visible" aria-hidden="true">
+        <defs>
+          @for (t of ['discovery', 'application', 'you', 'idle', 'fallback', 'planned']; track t) {
+            <marker [attr.id]="'arrow-' + t" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+              <path d="M 0 0.6 L 9.4 5 L 0 9.4 Z" [attr.class]="'head ' + t" />
+            </marker>
+          }
+        </defs>
         @for (e of edges(); track e.id) {
-          <path [attr.d]="e.d" [attr.class]="'edge ' + e.kind + (e.kind === 'flow' && e.count > 0 ? ' hot' : '')" />
-          @if (e.kind === 'flow' && e.count > 0) { <path [attr.d]="e.d" class="pulse" /> }
+          <path [attr.d]="e.d" [attr.class]="'edge ' + e.tone + (e.tone === 'flow' ? ' ' + e.lane : '')" [attr.marker-end]="'url(#arrow-' + (e.tone === 'flow' ? e.lane : e.tone) + ')'" />
+          @if (e.tone === 'flow') { <path [attr.d]="e.d" [attr.class]="'pulse ' + e.lane" /> }
         }
       </svg>
+
       @for (e of edges(); track e.id) {
-        @if (e.kind !== 'planned' && e.count > 0) {
-          <span class="edge-count" [class.fallback]="e.kind === 'fallback'" [style.left.px]="e.mx" [style.top.px]="e.my">{{ e.count }}</span>
+        @if (e.text && (e.count > 0 || e.tone === 'planned')) {
+          <span class="edge-label" [class]="'edge-label ' + e.tone + (e.tone === 'flow' ? ' ' + e.lane : '')" [class.vertical]="e.vertical" [style.left.px]="e.lx" [style.top.px]="e.ly">{{ e.text }}</span>
         }
       }
+
       @for (n of nodes(); track n.id) {
-        <button type="button" class="node" [class]="'node ' + n.status" [class.source]="n.id.startsWith('source-')" [class.selected]="selected() === n.id"
-                [style.left.px]="n.x" [style.top.px]="n.y" [style.width.px]="n.w" [style.height.px]="n.h" (click)="toggle(n.id)"
-                [attr.aria-pressed]="selected() === n.id">
-          <span class="port in"></span><span class="port out"></span>
-          <span class="top">
-            <span class="dot"></span>
-            <span class="name">{{ n.label }}</span>
+        <button type="button" class="node" [class]="'node ' + n.status" [attr.data-lane]="n.lane" [class.selected]="selected() === n.id" [class.source]="n.size < 100"
+                [style.left.px]="n.x" [style.top.px]="n.y" [style.width.px]="n.size" (click)="toggle(n.id)" [attr.aria-pressed]="selected() === n.id"
+                [attr.aria-label]="n.label + ', ' + n.sub + (n.phase ? ', ' + n.phase : ', ' + n.count)">
+          <span class="tile" [style.width.px]="n.size" [style.height.px]="n.size">
+            @if (n.logo) { <span class="logo" [style.--logo]="'url(/logos/' + n.logo + '.svg)'" [style.background]="theme.mode() === 'dark' ? n.logoColor : n.logoBrand" [style.width.px]="n.size * 0.48" [style.height.px]="n.size * 0.48"></span> }
+            @else { <jo-icon [name]="n.icon" [size]="n.size * 0.42" /> }
             @if (n.phase) { <span class="phase">{{ n.phase }}</span> } @else { <span class="count">{{ n.count }}</span> }
           </span>
-          <span class="role">{{ n.role }}</span>
-          @if (!n.id.startsWith('source-')) { <span class="detail">{{ n.detail }}</span> }
+          <span class="name">{{ n.label }}</span>
+          <span class="sub">{{ n.sub }}</span>
         </button>
       }
     </div>
 
     <div class="controls">
-      <button type="button" class="btn" (click)="zoom(1 / 1.2)" aria-label="Diminuir zoom">−</button>
+      <button type="button" class="btn" (click)="zoom(1 / 1.2)" aria-label="Diminuir zoom"><jo-icon name="minus" [size]="14" /></button>
       <span class="zoom num">{{ (k() * 100).toFixed(0) }}%</span>
-      <button type="button" class="btn" (click)="zoom(1.2)" aria-label="Aumentar zoom">+</button>
-      <button type="button" class="btn" (click)="fit()">Ajustar</button>
+      <button type="button" class="btn" (click)="zoom(1.2)" aria-label="Aumentar zoom"><jo-icon name="plus" [size]="14" /></button>
+      <button type="button" class="btn" (click)="fit()"><jo-icon name="corners-out" [size]="14" />Ajustar</button>
     </div>
 
     <svg class="mini" [attr.width]="mini().w" [attr.height]="mini().h" (click)="jump($event)" role="img" aria-label="Minimapa">
       @for (m of mini().nodes; track m.id) {
-        <rect [attr.x]="m.x" [attr.y]="m.y" [attr.width]="m.w" [attr.height]="m.h" rx="2" [attr.class]="m.status" />
+        <rect [attr.x]="m.x" [attr.y]="m.y" [attr.width]="m.w" [attr.height]="m.w" rx="2" [attr.class]="m.status" />
       }
-      <rect class="view" [attr.x]="mini().view.x" [attr.y]="mini().view.y" [attr.width]="mini().view.w" [attr.height]="mini().view.h" rx="2" />
+      <rect class="view" [attr.x]="mini().view.x" [attr.y]="mini().view.y" [attr.width]="mini().view.w" [attr.height]="mini().view.h" rx="3" />
     </svg>
 
     @if (current(); as n) {
       <aside class="drawer" aria-label="Detalhes do agente">
         <header>
-          <div>
+          <span class="drawer-tile" [attr.data-lane]="n.lane">
+            @if (n.logo) { <span class="logo" [style.--logo]="'url(/logos/' + n.logo + '.svg)'" [style.background]="theme.mode() === 'dark' ? n.logoColor : n.logoBrand" style="width:24px;height:24px"></span> } @else { <jo-icon [name]="n.icon" [size]="24" /> }
+          </span>
+          <div class="drawer-title">
             <h2>{{ n.label }}</h2>
-            <p class="muted">{{ n.role }}</p>
+            <p class="mono faint">{{ n.sub }}</p>
           </div>
-          <button type="button" class="btn ghost" (click)="selected.set(null)">Fechar</button>
+          <button type="button" class="btn ghost" (click)="selected.set(null)" aria-label="Fechar"><jo-icon name="x" [size]="16" /></button>
         </header>
         <div class="figure">
           <span class="num big">{{ n.phase ? '–' : n.count }}</span>
@@ -78,7 +92,7 @@
             <dt>O que faz</dt><dd>{{ a.does }}</dd>
             <dt>Como roda agora</dt><dd>{{ a.runs }}</dd>
           </dl>
-          @if (a.link) { <a class="btn" [routerLink]="a.link.path" [queryParams]="a.link.params ?? {}">{{ a.link.label }}</a> }
+          @if (a.link) { <a class="btn" [routerLink]="a.link.path" [queryParams]="a.link.params ?? {}">{{ a.link.label }}<jo-icon name="arrow-square-out" [size]="14" /></a> }
         }
       </aside>
     }

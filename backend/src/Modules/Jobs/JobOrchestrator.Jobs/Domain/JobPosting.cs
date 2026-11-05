@@ -33,31 +33,70 @@ internal sealed class JobPosting : AggregateRoot
     public string Breakdown { get; private set; } = "[]";
     public string? Reason { get; private set; }
     public Guid? DuplicateOf { get; private set; }
+    public string? Seniority { get; private set; }
+    public string? Modality { get; private set; }
+    public string? SalaryText { get; private set; }
+    public decimal? SalaryMin { get; private set; }
+    public decimal? SalaryMax { get; private set; }
+    public string? SalaryCurrency { get; private set; }
+    public string? Contract { get; private set; }
+    public string? English { get; private set; }
+    public string? Sponsorship { get; private set; }
+    public string ApplyChannel { get; private set; } = "ats";
+    public string? ApplyEmail { get; private set; }
     public uint Version { get; private set; }
 
-    public static JobPosting Discover(Guid campaignId, DiscoveredPosting p, DateTime now) => new()
+    public static JobPosting Discover(Guid campaignId, DiscoveredPosting p, DateTime now)
     {
-        Id = Guid.CreateVersion7(),
+        var job = new JobPosting
+        {
+            Id = Guid.CreateVersion7(),
         CampaignId = campaignId,
-        Source = p.Source,
-        ExternalId = p.ExternalId,
+        Source = Cut(p.Source, 300),
+        ExternalId = Cut(p.ExternalId, 120),
         CanonicalKey = Fingerprint.For(p.Company, p.Title, p.Location, p.ApplyUrl),
-        Company = p.Company.Trim(),
-        Title = p.Title.Trim(),
-        Location = p.Location.Trim(),
-        ApplyUrl = p.ApplyUrl.Trim(),
+        Company = Cut(p.Company.Trim(), 200),
+        Title = Cut(p.Title.Trim(), 300),
+        Location = Cut(p.Location.Trim(), 200),
+        ApplyUrl = Cut(p.ApplyUrl.Trim(), 1000),
         Description = p.Description.Length > 20_000 ? p.Description[..20_000] : p.Description,
         SourceUpdatedAt = p.UpdatedAt,
         FirstSeenAt = now,
         LastSeenAt = now,
         Status = JobStatus.Discovered
-    };
+        };
+        job.Apply(Normalizer.From(job.Title, job.Description, job.Location, job.ApplyUrl, p.Workplace, p.Compensation, p.Employment, p.ApplyEmail));
+        return job;
+    }
 
+    /// <summary>A fonte é a verdade mais recente: nome, cargo e local se atualizam; a identidade canônica não muda.</summary>
     public void SeenAgain(DiscoveredPosting p, DateTime now)
     {
+        Company = Cut(p.Company.Trim(), 200);
+        Title = Cut(p.Title.Trim(), 300);
+        Location = Cut(p.Location.Trim(), 200);
         LastSeenAt = now;
         SourceUpdatedAt = p.UpdatedAt;
         Description = p.Description.Length > 20_000 ? p.Description[..20_000] : p.Description;
+        Apply(Normalizer.From(Title, Description, Location, ApplyUrl, p.Workplace, p.Compensation, p.Employment, p.ApplyEmail));
+    }
+
+    /// <summary>Fonte externa não define o tamanho dos nossos campos: corta no limite da coluna, sem derrubar a rodada.</summary>
+    private static string Cut(string value, int max) => value.Length <= max ? value : value[..max];
+
+    private void Apply(Normalized n)
+    {
+        Seniority = n.Seniority;
+        Modality = n.Modality;
+        SalaryText = n.SalaryText?.Length > 120 ? n.SalaryText[..120] : n.SalaryText;
+        SalaryMin = n.SalaryMin;
+        SalaryMax = n.SalaryMax;
+        SalaryCurrency = n.Currency;
+        Contract = n.Contract;
+        English = n.English;
+        Sponsorship = n.Sponsorship;
+        ApplyChannel = n.ApplyChannel;
+        ApplyEmail = n.ApplyEmail is null ? null : Cut(n.ApplyEmail, 200);
     }
 
     /// <summary>A mesma vaga já chegou por outra fonte: fica registrada, mas não gera candidatura.</summary>

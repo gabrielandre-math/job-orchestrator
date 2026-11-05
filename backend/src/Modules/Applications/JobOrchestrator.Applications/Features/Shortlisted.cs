@@ -1,7 +1,7 @@
 namespace JobOrchestrator.Applications.Features;
 
 /// <summary>Vaga entrou na fila: nasce a candidatura e a primeira etapa (currículo). Idempotente pela inbox e pelo índice único.</summary>
-internal sealed class JobShortlistedConsumer(ApplicationsDbContext db, TimeProvider time) : IEventConsumer
+internal sealed class JobShortlistedConsumer(ApplicationsDbContext db, ICampaignsApi campaigns, TimeProvider time) : IEventConsumer
 {
     public string EventType => JobShortlistedV1.EventType;
 
@@ -11,7 +11,9 @@ internal sealed class JobShortlistedConsumer(ApplicationsDbContext db, TimeProvi
         var now = time.GetUtcNow().UtcDateTime;
         if (!await db.RegisterInInboxAsync(message.MessageId, now, ct)) return;
         var job = message.Read<JobShortlistedV1>();
-        if (!await db.Applications.AnyAsync(a => a.CampaignId == job.CampaignId && a.CanonicalKey == job.CanonicalKey, ct))
+        // Modo só descobrir: a vaga fica na fila de vagas, sem candidatura.
+        var discoveryOnly = (await campaigns.GetAsync(job.CampaignId, ct))?.Mode == SubmissionMode.DiscoveryOnly;
+        if (!discoveryOnly && !await db.Applications.AnyAsync(a => a.CampaignId == job.CampaignId && a.CanonicalKey == job.CanonicalKey, ct))
         {
             var app = JobApplication.Create(job, now);
             db.Applications.Add(app);

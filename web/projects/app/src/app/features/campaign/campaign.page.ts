@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, effect, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, signal } from '@angular/core';
+import { DomSanitizer } from '@angular/platform-browser';
 import { Campaign, send } from '../../core/api';
 import { command } from '../../core/command';
 import { query } from '../../core/query';
@@ -12,6 +13,9 @@ import { ago } from '../../core/format';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CampaignPage {
+  /** Botão da barra de favoritos: abre "Salvar vaga" com o link, o título e só o texto que você selecionou. */
+  protected readonly bookmarklet = inject(DomSanitizer).bypassSecurityTrustUrl(
+    "javascript:(()=>{const s=String(getSelection()).slice(0,8000);window.open('http://127.0.0.1:7410/salvar?url='+encodeURIComponent(location.href)+'&title='+encodeURIComponent(document.title)+'&text='+encodeURIComponent(s),'_blank')})()");
   protected readonly list = query<Campaign[]>(() => '/campaigns');
   protected readonly form = signal({ mode: 'PrepareOnly', minFitScore: 85, maxSubmissionsPerDay: 15, technologies: '', locations: '', sources: '' });
   protected readonly saved = signal(false);

@@ -31,6 +31,13 @@
         <label class="field wide">Fontes, uma por linha (greenhouse:empresa ou greenhouse:URL do board)<textarea rows="4" [value]="form().sources" (input)="set('sources', $any($event.target).value)"></textarea></label>
       </div>
     </section>
+    <section class="panel">
+      <header><h2>Botão "Salvar vaga"</h2></header>
+      <div class="save">
+        <a class="btn" [href]="bookmarklet" (click)="$event.preventDefault()">Salvar vaga</a>
+        <p class="muted">Arraste o botão para a barra de favoritos. Numa vaga, selecione a descrição e clique nele. Link de ATS conhecido faz a empresa entrar na vigilância desta campanha; link de LinkedIn ou Gupy vira vaga salva, com a candidatura pelo site e o kit pronto. Só o texto que você selecionou é enviado, e só para o seu PC.</p>
+      </div>
+    </section>
   } @else if (list.problem(); as p) {
     <p class="problem">{{ p.detail }}</p>
   }

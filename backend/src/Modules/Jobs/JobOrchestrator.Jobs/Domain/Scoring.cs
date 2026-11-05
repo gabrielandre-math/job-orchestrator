@@ -23,7 +23,7 @@ internal static partial class Scoring
         ["PostgreSQL"] = ["postgresql", "postgres"]
     };
 
-    public static Evaluation Evaluate(CampaignSettings c, string title, string description, string location)
+    public static Evaluation Evaluate(CampaignSettings c, string title, string description, string location, string? modality = null)
     {
         var text = $" {Fingerprint.Normalize(title)} {Fingerprint.Normalize(description)} ";
         var factors = new List<Factor>();
@@ -32,7 +32,7 @@ internal static partial class Scoring
         var where = Fingerprint.Normalize(location);
         if (Restricted().IsMatch(where) || Restricted().IsMatch(text))
             return Reject(factors, "Restrita a residentes de outro país.");
-        var remote = Remote().IsMatch(where) || Remote().IsMatch(text);
+        var remote = modality == "Remoto" || Remote().IsMatch(where) || Remote().IsMatch(text);
         var allowed = c.Locations.Count == 0 || remote && c.Locations.Any(l => Remote().IsMatch(Fingerprint.Normalize(l)))
             || c.Locations.Any(l => Places(l).Any(p => where.Contains(p, StringComparison.Ordinal)));
         var locationUnknown = where.Length == 0;
@@ -56,12 +56,21 @@ internal static partial class Scoring
         var seniority = TooSenior().IsMatch(t) ? 0.3 : TooJunior().IsMatch(t) ? 0.2 : 0.8;
         factors.Add(F("Senioridade", 15, seniority, seniority == 0.8 ? "Nível compatível (estimado pelo título; o perfil ainda não define o seu)." : "Nível provavelmente distante do seu.", true));
 
-        var modality = remote ? 1.0 : Hybrid().IsMatch(text) ? 0.6 : Onsite().IsMatch(text) ? 0.3 : 0.5;
-        factors.Add(F("Modalidade", 15, modality, remote ? "Remoto." : modality == 0.6 ? "Híbrido." : modality == 0.3 ? "Presencial." : "Modalidade não informada.", modality == 0.5 || locationUnknown));
+        var mode = remote ? 1.0 : modality == "Híbrido" || Hybrid().IsMatch(text) ? 0.6 : modality == "Presencial" || Onsite().IsMatch(text) ? 0.3 : 0.5;
+        factors.Add(F("Modalidade", 15, mode, remote ? "Remoto." : mode == 0.6 ? "Híbrido." : mode == 0.3 ? "Presencial." : "Modalidade não informada.", mode == 0.5 || locationUnknown));
 
         var score = factors.Sum(f => f.Points);
         var confidence = Math.Round(Math.Max(0.4, 1 - 0.15 * factors.Count(f => f.Unknown)), 2);
         return new Evaluation(score, confidence, factors, null);
+    }
+
+    /// <summary>Pré-filtro de relevância: cita ao menos uma tecnologia essencial da campanha.</summary>
+    public static bool Relevant(CampaignSettings c, string title, string description)
+    {
+        var essential = c.Technologies.Take(2).ToList();
+        if (essential.Count == 0) return true;
+        var text = $" {Fingerprint.Normalize(title)} {Fingerprint.Normalize(description)} ";
+        return essential.Any(t => Mentions(text, t));
     }
 
     private static bool Mentions(string text, string technology) =>
