@@ -9,7 +9,7 @@ import { query } from '../../core/query';
 import { describeSource } from '../../core/sources';
 
 const KINDS: Record<string, string> = { board: 'quadros e APIs', github: 'repositórios', gupy: 'Gupy', web: 'sites' };
-const SPEAKERS = new Set(['Garimpeiro', 'Juiz', 'Coletor', 'Curador', 'Semeador', 'Robots', 'Extrator', 'Conferente']);
+const SPEAKERS = new Set(['Garimpeiro', 'Juiz', 'Coletor', 'Curador', 'Navegador', 'Semeador', 'Robots', 'Extrator', 'Conferente']);
 
 /**
  * O Explorador na tela: se está ligado, o que está fazendo agora (as falas do ciclo ao vivo), a fila de pistas e as fontes que ele

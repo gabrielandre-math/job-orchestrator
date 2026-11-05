@@ -54,7 +54,7 @@ internal sealed partial class Leads(IHttpClientFactory http, ScrapyRunner runner
     }
 
     /// <summary>A página onde a vaga foi lida (o JSON-LD e a extração da IA guardam "page"); sem ela, o link de candidatura.</summary>
-    private static string PageOf(DiscoveredPosting p)
+    internal static string PageOf(DiscoveredPosting p)
     {
         try
         {

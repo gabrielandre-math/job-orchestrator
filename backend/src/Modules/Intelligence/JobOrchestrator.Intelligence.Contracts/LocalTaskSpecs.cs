@@ -68,6 +68,7 @@ public static class LocalTaskSpecs
     public const string PageJobsSystem = """
         You read the text of one public careers web page and list the job openings written on it.
         - Only openings that are written on the page. Never invent a job, a company, a salary or an e-mail.
+        - An opening is one specific role a person applies to. Department or team names, filters, category counts such as "Engineering (4)" and calls to action such as "see open roles" are not openings.
         - quote: a short excerpt copied exactly from the page that contains the job title.
         - applyEmail: only an e-mail that the page asks candidates to send applications to; empty otherwise.
         - applyUrl: the link to apply when the page has one; empty otherwise.

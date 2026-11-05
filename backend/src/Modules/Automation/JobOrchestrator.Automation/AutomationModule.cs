@@ -43,6 +43,7 @@ public static class AutomationModule
         s.AddSingleton<ScraperEnv>();
         s.AddScoped<ScrapyRunner>();
         s.AddScoped<Leads>();
+        s.AddScoped<PageReader>();
         s.AddScoped<ISourceConnector, WebSource>();
         s.AddScoped<Features.ScraperApi>();
         s.AddScoped<CareerPageReader>();

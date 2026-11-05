@@ -31,7 +31,7 @@ internal sealed record BoardHit(string Source, string Page);
 /// Página com cara de vaga e sem dado estruturado vai para a IA (degrau da tarefa page.jobs: o Llama local por padrão);
 /// o Conferente só aceita a vaga se o título estiver no trecho citado e o trecho estiver na página.
 /// </summary>
-internal sealed partial class ScrapyRunner(ScraperEnv env, IIntelligenceApi ai, IConfiguration config, IHttpClientFactory http, ILogger<ScrapyRunner> log)
+internal sealed partial class ScrapyRunner(ScraperEnv env, IIntelligenceApi ai, IConfiguration config, IHttpClientFactory http, PageReader reader, ILogger<ScrapyRunner> log)
 {
     private sealed record Candidate(string Url, string Title, string Text);
 
@@ -134,6 +134,36 @@ internal sealed partial class ScrapyRunner(ScraperEnv env, IIntelligenceApi ai, 
                     await ai.NoteAsync(thread, "Coletor", $"Página com JavaScript lida pelo Firecrawl: {seed}", $"{page.Text.Length} caracteres para o Extrator.", "Extrator", true, ct);
                 }
 
+        // Site que não deu nada no Scrapy (página que só monta com JavaScript): o navegador de leitura abre, com o robots.txt conferido.
+        // Quadro de ATS em link ou iframe, vaga em dado estruturado e o texto da página seguem o mesmo caminho do que o Scrapy leu.
+        if (config["Scraper:Firecrawl:Url"] is not { Length: > 0 } && config.GetValue("Scraper:Browser:Enabled", true))
+        {
+            var empty = seeds.Where(s => !postings.Any(p => Leads.Under(Leads.PageOf(p), s)) && !candidates.Any(c => Leads.Under(c.Url, s)) && !hits.Any(h => Leads.Under(h.Page, s)))
+                .Take(config.GetValue("Scraper:Browser:MaxSites", 4)).ToList();
+            foreach (var seed in empty)
+            {
+                var start = seed.StartsWith("http", StringComparison.Ordinal) ? seed : $"https://{seed}";
+                RenderedPage? page = null;
+                try { page = await reader.ReadAsync(start, thread, ct); }
+                catch (Exception ex) when (ex is Microsoft.Playwright.PlaywrightException or TimeoutException or InvalidOperationException) { log.LogInformation("Browser read failed for {Seed}: {Error}", seed, ex.Message); }
+                if (page is null)
+                {
+                    await ai.NoteAsync(thread, "Navegador", $"{seed}: não abriu", "O robots.txt não deixa, o site recusou ou a página não respondeu a tempo. Não contornamos.", null, false, ct);
+                    continue;
+                }
+                // Se o clique levou para o quadro de outra empresa ou plataforma, o achado continua contando para o site de onde saiu.
+                var at = Leads.Under(page.Url, seed) ? page.Url : start;
+                var found = page.Links.Append(page.Url).Select(SourceKeys.Board).OfType<string>().Distinct().ToList();
+                foreach (var b in found) { boards.Add(b); hits.Add(new BoardHit(b, at)); }
+                var structured = page.JsonLd.SelectMany(j => PageReader.JobPostings(source, at, j)).ToList();
+                postings.AddRange(structured);
+                if (structured.Count == 0 && found.Count == 0 && page.Text.Length > 200) candidates.Add(new Candidate(at, page.Title, page.Text));
+                await ai.NoteAsync(thread, "Navegador", $"{seed}: lido pelo {reader.Engine}{(page.Steps.Count > 0 ? $" depois de {page.Steps.Count} {(page.Steps.Count == 1 ? "clique" : "cliques")}" : "")}",
+                    $"{found.Count} {(found.Count == 1 ? "quadro de ATS" : "quadros de ATS")}, {structured.Count} vagas em dado estruturado{(structured.Count == 0 && found.Count == 0 ? ", o texto vai para o Extrator" : "")}." +
+                    (page.Steps.Count > 0 ? $"\nCaminho: {string.Join(" > ", page.Steps)}" : ""), "Extrator", true, ct);
+            }
+        }
+
         // Extrator: a IA lê as páginas sem dado estruturado (até 8 por varredura) e o Conferente confere cada vaga contra a página.
         var fromAi = 0;
         var rejected = 0;
@@ -147,6 +177,8 @@ internal sealed partial class ScrapyRunner(ScraperEnv env, IIntelligenceApi ai, 
                 var page = Fold(c.Text);
                 var quote = Fold(job.Quote);
                 if (quote.Length < 6 || !page.Contains(quote, StringComparison.Ordinal) || !quote.Contains(Fold(job.Title), StringComparison.Ordinal)) { rejected++; continue; }
+                // Rótulo de filtro, contagem por área e chamada para a lista não são vagas, mesmo escritos na página.
+                if (NotAJob(job)) { rejected++; continue; }
                 var email = job.ApplyEmail is { Length: > 3 } e && c.Text.Contains(e, StringComparison.OrdinalIgnoreCase) ? e : null;
                 postings.Add(new DiscoveredPosting(source, Hash(c.Url + job.Title), job.Company is { Length: > 0 } co ? co : Host(c.Url), job.Title, job.Location,
                     Uri.TryCreate(job.ApplyUrl, UriKind.Absolute, out _) ? job.ApplyUrl : c.Url, job.Summary.Length > 0 ? job.Summary : c.Text[..Math.Min(c.Text.Length, 4000)],
@@ -173,6 +205,14 @@ internal sealed partial class ScrapyRunner(ScraperEnv env, IIntelligenceApi ai, 
 
     private sealed record PageJob(string Title, string Company, string Location, string Modality, string Summary, string ApplyUrl, string ApplyEmail, string Quote);
 
+    internal static bool NotAJob(string title, string location, string summary) =>
+        CallToAction().IsMatch(title) || Counter().IsMatch(summary.Trim()) || Counter().IsMatch(title.Trim()) || Placeholder().IsMatch(location) || title.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length > 14;
+    private static bool NotAJob(PageJob j) => NotAJob(j.Title, j.Location, j.Summary);
+
+    [GeneratedRegex(@"^\s*(to |see |view |visit |explore |browse |check |ver |veja |confira |conhe[cç]a |acesse |clique )", RegexOptions.IgnoreCase)] private static partial Regex CallToAction();
+    [GeneratedRegex(@"^[\p{L}\s&/,.-]{2,60}\(\d+\)$")] private static partial Regex Counter();
+    [GeneratedRegex(@"^\s*(select|selecione|choose|escolha|all locations|todas as localidades)", RegexOptions.IgnoreCase)] private static partial Regex Placeholder();
+
     private static IEnumerable<PageJob> Jobs(string json)
     {
         List<PageJob> list;
@@ -195,8 +235,8 @@ internal sealed partial class ScrapyRunner(ScraperEnv env, IIntelligenceApi ai, 
     private static int Stat(string log, string name) =>
         Regex.Matches(log, $"'{Regex.Escape(name)}':\\s*(\\d+)").Select(m => int.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture)).DefaultIfEmpty(0).Sum();
 
-    private static string Hash(string s) => Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(s)))[..24];
-    private static string Host(string url) => Uri.TryCreate(url, UriKind.Absolute, out var u) ? Json.Company(u.Host.Replace("www.", "").Split('.')[0]) : "";
+    internal static string Hash(string s) => Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(s)))[..24];
+    internal static string Host(string url) => Uri.TryCreate(url, UriKind.Absolute, out var u) ? Json.Company(u.Host.Replace("www.", "").Split('.')[0]) : "";
 
     private static string Fold(string s)
     {

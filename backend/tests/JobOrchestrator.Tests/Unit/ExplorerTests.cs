@@ -58,3 +58,34 @@ public sealed class ExplorerTests
     [InlineData("getonbrd:.net", "board")]
     public void Tipo_da_pista(string source, string kind) => Assert.Equal(kind, Explorer.Kind(source));
 }
+
+/// <summary>O Conferente recusa o que está escrito na página mas não é vaga: rótulo com contagem, chamada para a lista, filtro de local.</summary>
+public sealed class PageJobTests
+{
+    [Theory]
+    [InlineData("Business Development", "Select location", "Business Development (1)", true)]
+    [InlineData("To explore open roles, visit the Job Search", "", "To explore open roles", true)]
+    [InlineData("Engineering (12)", "", "", true)]
+    [InlineData("Ver todas as vagas", "", "", true)]
+    [InlineData("Desenvolvedor Backend .NET Sênior", "Rio de Janeiro", "C# e AWS, time de pagamentos.", false)]
+    [InlineData("Senior Software Engineer, Payments", "Remote", "Build the ledger in C#.", false)]
+    public void Rotulo_de_pagina_nao_vira_vaga(string title, string location, string summary, bool rejected) =>
+        Assert.Equal(rejected, JobOrchestrator.Automation.Adapters.ScrapyRunner.NotAJob(title, location, summary));
+
+    [Fact]
+    public void Dado_estruturado_que_a_pagina_monta_com_javascript_vira_vaga()
+    {
+        const string json = """
+            {"@context":"https://schema.org","@graph":[{"@type":"Organization","name":"Acme"},
+             {"@type":"JobPosting","title":"Desenvolvedor .NET Pleno","hiringOrganization":{"@type":"Organization","name":"Acme Tecnologia"},
+              "jobLocation":{"@type":"Place","address":{"addressLocality":"Rio de Janeiro","addressRegion":"RJ","addressCountry":"BR"}},
+              "jobLocationType":"TELECOMMUTE","datePosted":"2026-10-30","employmentType":["FULL_TIME"],"description":"<p>C# e ASP.NET Core</p>","url":"https://acme.com.br/vagas/dotnet"}]}
+            """;
+        var p = Assert.Single(JobOrchestrator.Automation.Adapters.PageReader.JobPostings("web:acme.com.br", "https://acme.com.br/vagas", json));
+        Assert.Equal("Acme Tecnologia", p.Company);
+        Assert.Equal("Rio de Janeiro, RJ, BR", p.Location);
+        Assert.Equal("remote", p.Workplace);
+        Assert.Equal("https://acme.com.br/vagas/dotnet", p.ApplyUrl);
+        Assert.Contains("ASP.NET Core", p.Description);
+    }
+}
