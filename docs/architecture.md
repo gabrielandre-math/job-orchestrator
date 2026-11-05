@@ -275,6 +275,8 @@ Plugins externos (`Adapters.External`):
 
 ## 7. IA
 
+Detalhe de UX, isolamento, cota e compatibilidade em `docs/integracao-ia.md`.
+
 | Provedor | Autenticação | Chamada | Privacidade permitida |
 |---|---|---|---|
 | deterministic | nenhuma | no processo | todas |

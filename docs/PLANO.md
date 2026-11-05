@@ -171,6 +171,7 @@ Os pesos ficam na configuração. Cada decisão grava todos os candidatos, os fa
 - Cada tarefa tem perfil de privacidade, qualidade, contexto e orçamento, com uma cadeia de provedores (catálogo em `architecture.md` §7).
 - E-mail bruto e dados pessoais só vão para modelo local.
 - O CV final não aceita rebaixamento silencioso: sem Claude e sem Codex, vira rascunho marcado ou `PAUSED_PROVIDER`.
+- Integração detalhada (conexão, isolamento, cota, qualidade, atualizações): `docs/integracao-ia.md`.
 
 **Fallback por etapa:**
 
