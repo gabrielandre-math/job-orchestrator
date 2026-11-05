@@ -9,6 +9,7 @@ export const routes: Routes = [
   { path: 'vagas', title: 'Vagas', loadComponent: () => import('./features/jobs/jobs.page').then((m) => m.JobsPage) },
   { path: 'candidaturas', title: 'Candidaturas', loadComponent: () => import('./features/applications/applications.page').then((m) => m.ApplicationsPage) },
   { path: 'candidaturas/:id', title: 'Candidatura', loadComponent: () => import('./features/applications/application.page').then((m) => m.ApplicationPage) },
+  { path: 'varredura', title: 'Varredura', loadComponent: () => import('./features/sweep/sweep.page').then((m) => m.SweepPage) },
   { path: 'adapters', title: 'Adapters', loadComponent: () => import('./features/adapters/adapters.page').then((m) => m.AdaptersPage) },
   { path: 'salvar', title: 'Salvar vaga', loadComponent: () => import('./features/capture/capture.page').then((m) => m.CapturePage) },
   { path: 'provedores', title: 'Provedores de IA', loadComponent: () => import('./features/providers/providers.page').then((m) => m.ProvidersPage) },

@@ -9,6 +9,11 @@ const phosphor = [
   'binoculars', 'fingerprint', 'gavel', 'chart-line-up', 'pen-nib', 'seal-check', 'clipboard-text', 'shield-check', 'paper-plane-right',
   'receipt', 'envelope-simple-open', 'hand-palm', 'magnifying-glass', 'user', 'briefcase-metal', 'files', 'warning', 'check', 'clock', 'cpu', 'chat-circle-text', 'arrows-clockwise',
   'upload-simple', 'file-text', 'identification-card', 'student', 'translate', 'certificate', 'quotes', 'download-simple', 'trash', 'pencil-simple', 'lightning', 'stack', 'arrow-up', 'arrow-down', 'eye', 'eye-slash', 'arrow-left', 'key',
+  'lock-simple', 'arrow-right', 'envelope-simple', 'thermometer', 'gauge', 'paperclip', 'sparkle', 'robot', 'chats', 'link', 'question', 'list-checks', 'rocket-launch',
+  'caret-down', 'caret-right', 'at', 'funnel', 'fan', 'circuitry', 'memory', 'magic-wand', 'arrow-counter-clockwise', 'dots-three', 'gear-six', 'map-pin', 'stop', 'copy',
+  'chat-teardrop-text', 'arrow-bend-up-right', 'speedometer', 'lightbulb', 'wave-sine', 'squares-four', 'tree-structure',
+  'code', 'stethoscope', 'chalkboard-teacher', 'wrench', 'truck', 'storefront', 'calculator', 'paint-brush', 'megaphone', 'scales', 'headset', 'hammer', 'users-three',
+  'buildings', 'airplane', 'leaf', 'bank', 'heartbeat', 'shopping-cart', 'factory', 'bowl-food', 'graduation-cap', 'film-slate', 'flask', 'first-aid', 'currency-circle-dollar',
 ];
 const missing = [];
 for (const name of phosphor) {
@@ -16,7 +21,7 @@ for (const name of phosphor) {
   if (existsSync(from)) copyFileSync(from, `projects/app/public/icons/${name}.svg`); else missing.push(name);
 }
 
-const brands = { greenhouse: 'siGreenhouse', github: 'siGithub', hackernews: 'siYcombinator', postgresql: 'siPostgresql', gmail: 'siGmail', dotnet: 'siDotnet', chrome: 'siGooglechrome' };
+const brands = { greenhouse: 'siGreenhouse', github: 'siGithub', hackernews: 'siYcombinator', postgresql: 'siPostgresql', gmail: 'siGmail', dotnet: 'siDotnet', chrome: 'siGooglechrome', personio: 'siPersonio', scrapy: 'siScrapy', nvidia: 'siNvidia', intel: 'siIntel', amd: 'siAmd', docker: 'siDocker', protonmail: 'siProtonmail', zoho: 'siZoho', indeed: 'siIndeed', glassdoor: 'siGlassdoor', wellfound: 'siWellfound' };
 for (const [file, key] of Object.entries(brands)) {
   const icon = si[key];
   writeFileSync(`projects/app/public/logos/${file}.svg`, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img"><title>${icon.title}</title><path fill="#${icon.hex}" d="${icon.path}"/></svg>\n`);

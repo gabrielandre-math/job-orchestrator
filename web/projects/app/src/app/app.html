@@ -13,7 +13,8 @@
       <jo-icon name="sidebar-simple" [size]="18" />
     </button>
   </div>
-  <nav aria-label="Principal">
+  <nav aria-label="Principal" #navEl>
+    <span class="glider" aria-hidden="true" [style.transform]="'translateY(' + glide().top + 'px)'" [style.height.px]="glide().height" [style.opacity]="glide().height ? 1 : 0"></span>
     @for (g of nav; track g.group) {
       <p class="group">{{ g.group }}</p>
       @for (i of g.items; track i.path) {

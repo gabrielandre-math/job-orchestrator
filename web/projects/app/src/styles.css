@@ -40,6 +40,22 @@ table.grid tr:last-child td { border-bottom: 0; }
 
 ::selection { background: var(--accent-weak); }
 /* Microinterações: tudo que você toca responde. Clique afunda um pouco; filtro ligado dá um pulo curto; foco acende devagar. */
+button, a, [role="button"], summary, label { -webkit-tap-highlight-color: transparent; }
+button:not(.btn):not(.chip):not(:disabled), [role="button"], summary { transition: transform 140ms cubic-bezier(0.2, 0.8, 0.2, 1), background-color 180ms ease, border-color 180ms ease, color 180ms ease, box-shadow 180ms ease, opacity 180ms ease; }
+button:not(.btn):not(.chip):not(:disabled):active, [role="button"]:active, summary:active { transform: scale(0.97); }
+.btn.primary:active:not(:disabled) { box-shadow: 0 0 0 4px var(--accent-weak); }
+.btn:not(.primary):active:not(:disabled) { background: var(--surface-3); }
+.btn jo-icon { transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.btn:hover:not(:disabled) jo-icon[name="arrow-right"], .btn:hover:not(:disabled) jo-icon[name="arrow-square-out"] { transform: translateX(2px); }
+.btn:hover:not(:disabled) jo-icon[name="arrow-left"] { transform: translateX(-2px); }
+.btn:hover:not(:disabled) jo-icon[name="plus"], .btn:hover:not(:disabled) jo-icon[name="arrows-clockwise"] { transform: rotate(90deg); }
+table.grid td { transition: background-color 180ms ease; }
+table.grid tr.row:active td { background: var(--surface-3); }
+details > summary { cursor: pointer; }
+details[open] > :not(summary) { animation: open-down 260ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+@keyframes open-down { from { opacity: 0; transform: translateY(-4px); } }
+.panel { transition: border-color 200ms ease, box-shadow 220ms ease; }
+a.panel:hover, .panel.clickable:hover { border-color: color-mix(in oklch, var(--accent) 35%, var(--line)); box-shadow: 0 12px 28px -20px oklch(0% 0 0 / 0.7); }
 .btn:active:not(:disabled), .chip:active { transform: translateY(1px) scale(0.98); }
 .chip { transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease, transform 120ms ease, box-shadow 180ms ease; }
 .chip:hover { border-color: color-mix(in oklch, var(--accent) 35%, var(--line-strong)); color: var(--text); }
@@ -70,6 +86,13 @@ input[type="checkbox"]:focus, input[type="radio"]:focus { box-shadow: 0 0 0 3px 
 
 /* Troca de página e de filtro (View Transitions): esmaecido curto e cartões que deslizam para o lugar novo. */
 ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 180ms; animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1); }
+/* Troca de página: o conteúdo antigo sai subindo um pouco e o novo entra no lugar, cruzados, sem quadro vazio no meio. */
+html.route-vt::view-transition-old(root), html.route-vt::view-transition-new(root) { animation: none; }
+html.route-vt::view-transition-group(page) { animation: none; }
+html.route-vt::view-transition-old(page) { animation: page-out 160ms cubic-bezier(0.4, 0, 1, 1) both; }
+html.route-vt::view-transition-new(page) { animation: page-in 300ms cubic-bezier(0.2, 0.8, 0.2, 1) 40ms both; }
+@keyframes page-out { to { opacity: 0; transform: translateY(-4px); } }
+@keyframes page-in { from { opacity: 0; transform: translateY(8px); } }
 /* A barra lateral e a superior ficam fixas na troca de página: só o conteúdo faz a transição. */
 ::view-transition-old(sidebar), ::view-transition-new(sidebar), ::view-transition-old(topbar), ::view-transition-new(topbar) { animation: none; }
 ::view-transition-group(sidebar), ::view-transition-group(topbar) { animation: none; }

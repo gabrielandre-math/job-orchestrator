@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, afterNextRender, computed, inject, signal, viewChild } from '@angular/core';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { Icon } from '@jo/ui/icon';
 import { Mark } from '@jo/ui/mark';
 import { Overview } from './core/api';
@@ -24,6 +24,10 @@ export class App {
   protected readonly theme = inject(Theme);
   protected readonly live = inject(Live);
   protected readonly toasts = inject(Toasts);
+  private readonly router = inject(Router);
+  private readonly navRef = viewChild<ElementRef<HTMLElement>>('navEl');
+  /** O destaque da página atual desliza de um item para o outro em vez de pular. */
+  protected readonly glide = signal({ top: 0, height: 0 });
   protected readonly collapsed = signal(read('jo.sidebar') === 'collapsed');
   /** No celular a barra lateral é uma gaveta: abre pelo menu e fecha ao navegar. */
   protected readonly drawer = signal(false);
@@ -43,11 +47,25 @@ export class App {
       { path: '/candidaturas', label: 'Candidaturas', icon: 'paper-plane-tilt' },
     ] },
     { group: 'Sistema', items: [
+      { path: '/varredura', label: 'Varredura', icon: 'globe' },
       { path: '/adapters', label: 'Adapters', icon: 'plugs-connected' },
       { path: '/provedores', label: 'Provedores de IA', icon: 'cpu' },
       { path: '/campanha', label: 'Campanha', icon: 'sliders-horizontal' },
     ] },
   ];
+
+  constructor() {
+    const destroy = inject(DestroyRef);
+    const sub = this.router.events.subscribe((e) => { if (e instanceof NavigationEnd) requestAnimationFrame(() => this.measure()); });
+    const resize = () => this.measure();
+    afterNextRender(() => { this.measure(); addEventListener('resize', resize); });
+    destroy.onDestroy(() => { sub.unsubscribe(); removeEventListener('resize', resize); });
+  }
+
+  private measure() {
+    const active = this.navRef()?.nativeElement.querySelector<HTMLElement>('a.active');
+    this.glide.set(active ? { top: active.offsetTop, height: active.offsetHeight } : { top: 0, height: 0 });
+  }
 
   protected count(kind?: NavItem['count']): number {
     const d = this.overview.value();
@@ -58,6 +76,7 @@ export class App {
   protected toggle() {
     this.collapsed.update((c) => !c);
     write('jo.sidebar', this.collapsed() ? 'collapsed' : 'open');
+    setTimeout(() => this.measure(), 170);
   }
 }
 

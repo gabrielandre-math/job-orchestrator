@@ -88,3 +88,6 @@ export async function remove(path: string): Promise<void> {
   const r = await fetch(API + path, { method: 'DELETE', headers: { accept: 'application/json' } });
   if (!r.ok) throw await toProblem(r);
 }
+
+export interface ScraperStatus { installed: boolean; version: string | null; venv: string; project: string; cacheMb: number; installing: boolean; installLog: string | null; maxPages: number; maxSeconds: number; maxAiPages: number; assist: string; collectEmails: boolean; }
+export interface CrawlFound { title: string; company: string; location: string; applyUrl: string; applyEmail: string | null; source: string; }

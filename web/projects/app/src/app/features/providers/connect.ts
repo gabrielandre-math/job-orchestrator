@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, input, output, signal } from '@angular/core';
 import { Icon } from '@jo/ui/icon';
 import { Iso } from '@jo/ui/iso';
+import { Wizard } from '../../shared/wizard';
 import { Account, LlmResult, LoginState, Provider, get, send } from '../../core/api';
 import { command } from '../../core/command';
 
@@ -47,11 +48,10 @@ const CAPS = [{ label: 'Pouco', value: 200_000, hint: 'testes' }, { label: 'Méd
  */
 @Component({
   selector: 'app-connect',
-  imports: [Icon, Iso],
+  imports: [Icon, Iso, Wizard],
   templateUrl: './connect.html',
   styleUrl: './connect.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { '(document:keydown.escape)': 'close.emit()' },
 })
 export class Connect {
   private readonly destroy = inject(DestroyRef);

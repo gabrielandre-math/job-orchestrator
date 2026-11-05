@@ -1,0 +1,213 @@
+<section class="page">
+  <jo-page-hero title="Varredura da internet" [scene]="['radar', 'extractor', 'checker']" [stats]="stats()"
+    lead="O coletor visita as páginas de carreira das empresas, lê as vagas publicadas e guarda os e-mails que elas divulgam para candidatura. Respeita o robots.txt de cada site, abre uma conexão por domínio e desacelera sozinho quando o site demora.">
+    @if (status.value()?.installed) {
+      <button type="button" class="btn primary" (click)="open()"><jo-icon name="sliders-horizontal" [size]="14" />Configurar a varredura</button>
+    } @else {
+      <button type="button" class="btn primary" (click)="install.run()" [disabled]="install.running() || status.value()?.installing">
+        @if (status.value()?.installing) { <span class="spinner sm" aria-hidden="true"></span>Instalando o coletor } @else { <jo-icon name="download-simple" [size]="14" />Instalar o coletor }
+      </button>
+    }
+    <a class="btn" routerLink="/fluxo"><jo-icon name="flow-arrow" [size]="14" />Ver no fluxo</a>
+  </jo-page-hero>
+
+  @if (status.value(); as st) {
+    @if (!st.installed) {
+      <div class="setup panel">
+        <jo-iso name="radar" [size]="76" />
+        <div>
+          <h2>O coletor ainda não está instalado</h2>
+          <p class="muted">A instalação cria um ambiente Python só do Job Orchestrator, com o Scrapy, e não mexe no resto do sistema. Leva cerca de um minuto.</p>
+          @if (st.installLog) { <pre class="mono log">{{ st.installLog }}</pre> }
+        </div>
+      </div>
+    }
+
+    <div class="cols">
+      <section class="panel">
+        <header><h2>Coletor</h2><jo-badge [label]="st.installed ? 'Scrapy ' + (st.version ?? '') : 'não instalado'" [tone]="st.installed ? 'ok' : 'warn'" /></header>
+        <dl class="facts">
+          <div><dt>Páginas por rodada</dt><dd class="num">{{ st.maxPages }}</dd></div>
+          <div><dt>Tempo máximo</dt><dd class="num">{{ minutes(st.maxSeconds) }}</dd></div>
+          <div><dt>IA de apoio</dt><dd>{{ assistLabel(st) }}</dd></div>
+          <div><dt>E-mails de candidatura</dt><dd>{{ st.collectEmails ? 'guardados' : 'ignorados' }}</dd></div>
+          <div><dt>robots.txt</dt><dd class="ok"><jo-icon name="lock-simple" [size]="13" /> sempre respeitado</dd></div>
+          <div><dt>Cache local</dt><dd class="num">{{ st.cacheMb.toFixed(1) }} MB</dd></div>
+        </dl>
+      </section>
+
+      <section class="panel">
+        <header><h2>Na campanha</h2><button type="button" class="btn ghost" (click)="open()" [disabled]="!st.installed"><jo-icon name="pencil-simple" [size]="14" />Editar</button></header>
+        <div class="sources">
+          @for (s of webSources(); track s) {
+            <div class="site"><jo-company [name]="s.slice(4)" [domain]="s.slice(4).split(',')[0]" [size]="22" /><span class="mono">{{ s.slice(4) }}</span></div>
+          } @empty {
+            <p class="faint">Nenhum site na varredura ainda. As sugestões abaixo vêm das empresas das vagas que já chegaram.</p>
+          }
+          @if (onApis().length > 0) {
+            <p class="sub">APIs públicas ligadas</p>
+            <div class="apis">@for (a of onApis(); track a.key) { <span class="api"><jo-company [name]="a.name" [domain]="a.domain" [size]="18" />{{ a.name }}</span> }</div>
+          }
+        </div>
+      </section>
+    </div>
+
+    <section class="panel">
+      <header><h2>Esteira ao vivo</h2><span class="faint small">a última varredura, estação por estação</span></header>
+      <ol class="belt">
+        @for (s of stations(); track s.agent; let last = $last) {
+          <li [class]="s.state">
+            <jo-iso [name]="s.icon" [size]="56" />
+            <strong>{{ s.agent }}</strong>
+            <span>{{ s.title || explain(s.agent) }}</span>
+          </li>
+          @if (!last) { <li class="arrow" aria-hidden="true"><jo-icon name="arrow-right" [size]="14" /></li> }
+        }
+      </ol>
+    </section>
+
+    @if (suggestions().length > 0) {
+      <section class="panel">
+        <header><h2>Sugestões de sites</h2><span class="faint small">empresas das vagas que já chegaram</span></header>
+        <div class="suggest">
+          @for (d of suggestions(); track d) { <button type="button" class="pick" (click)="open(); addSuggestion(d)"><jo-company [name]="d" [domain]="d" [size]="20" /><span class="mono">{{ d }}</span><jo-icon name="plus" [size]="13" /></button> }
+        </div>
+      </section>
+    }
+  }
+</section>
+
+@if (wizard()) {
+  <jo-wizard [steps]="['O que varrer', 'Profundidade', 'IA de apoio', 'E-mails', 'Testar e salvar']" [step]="step()" label="Configurar a varredura" (close)="wizard.set(false)">
+    @switch (step()) {
+      @case (1) {
+        <div class="wz-step">
+          <div class="intro">
+            <jo-iso name="selector" [size]="96" />
+            <div>
+              <h2>Quais sites o coletor deve visitar?</h2>
+              <p class="muted">Um por linha: o endereço do site da empresa ou da página de carreiras. Quando a página aponta para um quadro de ATS (Greenhouse, Lever, Ashby e outros), a vaga vem pela API oficial do quadro.</p>
+            </div>
+          </div>
+          <label class="field">Sites
+            <textarea rows="5" class="mono" [value]="sites()" (input)="sites.set($any($event.target).value)" placeholder="empresa.com.br&#10;carreiras.outra.com"></textarea>
+          </label>
+          @if (suggestions().length > 0) {
+            <div class="field">Das vagas que já chegaram
+              <div class="chips">@for (d of suggestions(); track d) { <button type="button" class="chip" [attr.aria-pressed]="siteList().includes(d)" (click)="addSuggestion(d)">{{ d }}</button> }</div>
+            </div>
+          }
+          <div class="field">APIs públicas de vagas
+            <div class="grid">
+              @for (a of apis; track a.key) {
+                <button type="button" class="tile" [attr.aria-pressed]="picked().has(a.key)" (click)="toggleApi(a.key)">
+                  <span class="tick"><jo-icon name="check" [size]="12" /></span>
+                  <span class="logo-box"><jo-company [name]="a.name" [domain]="a.domain" [size]="32" /></span>
+                  <strong>{{ a.name }}</strong><span class="faint small">{{ a.hint }}</span>
+                </button>
+              }
+            </div>
+          </div>
+        </div>
+      }
+      @case (2) {
+        <div class="wz-step">
+          <div class="intro">
+            <jo-iso name="radar" [size]="96" />
+            <div>
+              <h2>Até onde ir em cada rodada?</h2>
+              <p class="muted">O coletor segue os links de vagas até dois níveis a partir de cada site e para no limite de páginas ou de tempo, o que vier primeiro.</p>
+            </div>
+          </div>
+          <div class="cards row" role="radiogroup" aria-label="Profundidade">
+            @for (d of depths; track d.key) {
+              <button type="button" class="card" role="radio" [attr.aria-checked]="depth() === d.key" (click)="depth.set(d.key)">
+                <span class="dot" aria-hidden="true"></span><strong>{{ d.label }}</strong><span class="muted small">{{ d.hint }}</span>
+              </button>
+            }
+          </div>
+          <div class="locked"><jo-icon name="lock-simple" [size]="15" /><span>Fixo e sem opção de desligar: robots.txt respeitado, uma conexão por domínio, pausa automática quando o site fica lento e cache local para não repetir visitas. Sem disfarce de navegador, proxy ou quebra de CAPTCHA.</span></div>
+        </div>
+      }
+      @case (3) {
+        <div class="wz-step">
+          <div class="intro">
+            <jo-iso name="extractor" [size]="96" />
+            <div>
+              <h2>Quem lê as páginas sem dado estruturado?</h2>
+              <p class="muted">Muitas páginas de carreira não trazem a vaga em formato padrão. A IA lê só as páginas que parecem de vaga, no máximo oito por rodada, e cada vaga tirada dela é conferida palavra por palavra no texto da página.</p>
+            </div>
+          </div>
+          <div class="cards row" role="radiogroup" aria-label="IA de apoio">
+            @for (a of assists; track a.key) {
+              <button type="button" class="card" role="radio" [attr.aria-checked]="assist() === a.key" (click)="assist.set(a.key)">
+                <span class="dot" aria-hidden="true"></span><strong>{{ a.label }}</strong><span class="muted small">{{ a.hint }}</span>
+              </button>
+            }
+          </div>
+        </div>
+      }
+      @case (4) {
+        <div class="wz-step">
+          <div class="intro">
+            <jo-iso name="inbox" [size]="96" />
+            <div>
+              <h2>E-mails de candidatura</h2>
+              <p class="muted">Algumas vagas pedem o currículo por e-mail. O coletor guarda só o endereço que a página publica para isso, junto da vaga.</p>
+            </div>
+          </div>
+          <label class="line">
+            <input type="checkbox" class="switch" [checked]="emails()" (change)="emails.set($any($event.target).checked)" />
+            <span><strong>Guardar os e-mails publicados para candidatura</strong>
+              <p>Nada de lista de contatos: e-mail pessoal ou sem relação com a vaga fica de fora. O envio só acontece com a sua aprovação, no máximo cinco por dia, um por vaga e um lembrete.</p></span>
+          </label>
+        </div>
+      }
+      @case (5) {
+        <div class="wz-step">
+          <div class="intro">
+            <jo-iso name="checker" [size]="96" />
+            <div>
+              <h2>Teste um site antes de salvar</h2>
+              <p class="muted">O teste roda a varredura de verdade em um site, com as escolhas que você fez, e mostra as vagas que vieram. Você acompanha cada estação aqui embaixo.</p>
+            </div>
+          </div>
+          <div class="test">
+            <input class="mono" [value]="seed()" (input)="seed.set($any($event.target).value)" (keydown.enter)="test()" placeholder="empresa.com.br" aria-label="Site para testar" />
+            <button type="button" class="btn" (click)="test()" [disabled]="testing.running() || !seed().trim()">
+              @if (testing.running()) { <span class="spinner sm" aria-hidden="true"></span>Varrendo } @else { <jo-icon name="play" [size]="14" />Testar }
+            </button>
+          </div>
+          <div class="pipe">
+            @for (s of stations(); track s.agent) {
+              <div class="station" [class]="'station ' + s.state"><jo-iso [name]="s.icon" [size]="40" /><strong>{{ s.agent }}</strong><span>{{ s.title || explain(s.agent) }}</span></div>
+            }
+          </div>
+          @if (result(); as r) {
+            <div class="found">
+              <p><strong class="num">{{ r.found }}</strong> {{ r.found === 1 ? 'vaga encontrada' : 'vagas encontradas' }}</p>
+              @for (p of r.postings.slice(0, 8); track p.applyUrl) {
+                <div class="hit">
+                  <jo-company [name]="p.company" [domain]="host(p.applyUrl)" [size]="24" />
+                  <span class="what"><strong>{{ p.title }}</strong><span class="faint small">{{ p.company }}@if (p.location) { · {{ p.location }} }</span></span>
+                  @if (p.applyEmail) { <span class="tag"><jo-icon name="envelope-simple" [size]="12" />{{ p.applyEmail }}</span> }
+                  <a class="btn ghost" [href]="p.applyUrl" target="_blank" rel="noopener" aria-label="Abrir a vaga"><jo-icon name="arrow-square-out" [size]="14" /></a>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
+    }
+    <footer class="wz-foot" wz-foot>
+      @if (step() > 1) { <button type="button" class="btn ghost" (click)="step.set(step() - 1)"><jo-icon name="arrow-left" [size]="14" />Voltar</button> }
+      <span class="end">
+        @if (step() < 5) {
+          <button type="button" class="btn primary" (click)="step.set(step() + 1)">Continuar<jo-icon name="arrow-right" [size]="14" /></button>
+        } @else {
+          <button type="button" class="btn primary" (click)="save()" [disabled]="saveCampaign.running() || !campaign()">Salvar na campanha</button>
+        }
+      </span>
+    </footer>
+  </jo-wizard>
+}

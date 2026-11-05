@@ -1,17 +1,7 @@
-<div class="backdrop" (click)="close.emit()" aria-hidden="true"></div>
-<section class="modal" role="dialog" aria-modal="true" aria-labelledby="connect-title">
-  <header class="head">
-    <ol class="stepper" aria-label="Passos">
-      @for (s of [1, 2, 3, 4]; track s) {
-        <li [class.on]="step() === s" [class.done]="step() > s"><span class="n num">{{ s }}</span>{{ ['Provedor', 'Como conectar', 'Conectar', 'Pronto'][s - 1] }}</li>
-      }
-    </ol>
-    <button type="button" class="btn ghost" (click)="close.emit()" aria-label="Fechar"><jo-icon name="x" [size]="16" /></button>
-  </header>
-
-  <div class="body">
+<jo-wizard [steps]="['Provedor', 'Como conectar', 'Conectar', 'Pronto']" [step]="step()" label="Conectar conta" (close)="close.emit()">
     @switch (step()) {
       @case (1) {
+        <div class="wz-step">
         <div class="intro">
           <jo-iso name="router" [size]="96" />
           <div>
@@ -38,8 +28,10 @@
             <span class="faint small">Na sua placa de vídeo, de graça. O instalador recomenda o melhor.</span>
           </button>
         </div>
+        </div>
       }
       @case (2) {
+        <div class="wz-step">
         @if (option(); as o) {
           <div class="intro">
             <jo-iso name="guardian" [size]="96" />
@@ -58,8 +50,10 @@
             }
           </div>
         }
+        </div>
       }
       @case (3) {
+        <div class="wz-step">
         @if (way(); as w) {
           @if (w.subscription) {
             <div class="intro">
@@ -118,8 +112,10 @@
           }
           @if (signing.problem(); as p) { <p class="problem">{{ p.detail }}</p> }
         }
+        </div>
       }
       @case (4) {
+        <div class="wz-step">
         <div class="intro">
           <jo-iso name="checker" [size]="96" />
           <div>
@@ -135,11 +131,11 @@
           <button type="button" class="btn" (click)="restart()">Conectar outra</button>
           <button type="button" class="btn primary" (click)="close.emit()">Concluir</button>
         </div>
+        </div>
       }
     }
-  </div>
 
   @if (step() > 1 && step() < 4) {
-    <footer class="foot"><button type="button" class="btn ghost" (click)="back()"><jo-icon name="arrow-left" [size]="14" />Voltar</button></footer>
+    <footer class="wz-foot" wz-foot><button type="button" class="btn ghost" (click)="back()"><jo-icon name="arrow-left" [size]="14" />Voltar</button></footer>
   }
-</section>
+</jo-wizard>
