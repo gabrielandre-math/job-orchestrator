@@ -31,7 +31,8 @@ let next = 0;
     svg { display: block; overflow: visible; }
     .draw { stroke-dasharray: 100; stroke-dashoffset: 100; animation: draw 1.15s cubic-bezier(0.65, 0, 0.35, 1) 0.1s forwards; }
     .glow, .spark { stroke-dasharray: 16 84; stroke-linecap: round; animation: run 2.2s linear infinite; }
-    .glow { stroke: oklch(100% 0 0 / 0.18); filter: blur(6px); }
+    /* Sem filter: blur, que refaz a pintura a cada quadro; o recorte da marca já deixa a ponta macia. */
+    .glow { stroke: oklch(100% 0 0 / 0.16); stroke-dasharray: 20 80; }
     .spark { stroke: oklch(100% 0 0 / 0.5); stroke-dasharray: 9 91; animation-duration: 2.2s; }
     @keyframes draw { to { stroke-dashoffset: 0; } }
     @keyframes run { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -100; } }

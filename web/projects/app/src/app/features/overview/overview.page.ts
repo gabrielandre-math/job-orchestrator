@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { Automate } from './automate';
 import { RouterLink } from '@angular/router';
 import { Badge } from '@jo/ui/badge';
@@ -8,7 +8,7 @@ import { Empty } from '@jo/ui/empty';
 import { Icon } from '@jo/ui/icon';
 import { Iso } from '@jo/ui/iso';
 import { RouteHero, RouteStop } from '@jo/ui/route-hero';
-import { Overview, Profile, send, TaskRow } from '../../core/api';
+import { ExploreStatus, Overview, Profile, send, TaskRow } from '../../core/api';
 import { command } from '../../core/command';
 import { ago, clock, modeLabel, plural, stateLabel, stateTone } from '../../core/format';
 import { AGENT_ICON, Live, PROVIDER_LOGO } from '../../core/live';
@@ -56,6 +56,11 @@ export class OverviewPage {
   protected readonly data = query<Overview>(() => '/overview', 4000);
   protected readonly tasks = query<TaskRow[]>(() => '/tasks', 4000);
   protected readonly profile = query<Profile>(() => '/profile', 0);
+  protected readonly explore = query<ExploreStatus>(() => '/explore/status', 15000);
+  /** Relógio de 30 s para os "em 12 min" do hero andarem sozinhos. */
+  private readonly now = signal(Date.now());
+  private readonly tick = setInterval(() => this.now.set(Date.now()), 30_000);
+  private readonly untick = inject(DestroyRef).onDestroy(() => clearInterval(this.tick));
   protected readonly run = command((id: string) => send('POST', `/campaigns/${id}/runs`), 'Rodada pedida. As fontes começam a ser lidas.');
   protected readonly label = stateLabel;
   protected readonly tone = stateTone;
@@ -84,6 +89,35 @@ export class OverviewPage {
     const prepared = plural(d.applications.prepared, 'candidatura preparada', 'candidaturas preparadas');
     const you = waiting === 0 ? 'nada esperando por você' : plural(waiting, 'coisa esperando por você', 'coisas esperando por você');
     return `${queue}, ${prepared} e ${you}.`;
+  });
+
+  /**
+   * O pulso do hero: a próxima busca, o que o Explorador fez no último ciclo e a IA ligada. Três colunas com rótulo, valor e
+   * detalhe, para o hero dizer o que vem a seguir e não só o que já aconteceu.
+   */
+  protected readonly pulse = computed(() => {
+    const now = this.now();
+    const e = this.explore.value(), s = this.search.state(), full = this.search.lastFull(), o = this.hub.state();
+    const every = e?.searchIntervalMinutes ?? 60;
+    const minutes = (iso: string | null | undefined) => iso ? Math.round((new Date(iso).getTime() - now) / 60_000) : null;
+    const due = full?.lastAt ? minutes(new Date(new Date(full.lastAt).getTime() + every * 60_000).toISOString()) : null;
+    const search = s?.running
+      ? { value: 'Agora', note: `${s.sources.filter((x) => x.state === 'done' || x.state === 'failed').length} de ${s.sources.length} fontes lidas` }
+      : { value: due === null ? `A cada ${every} min` : due <= 1 ? 'Em instantes' : `Em ${due} min`, note: full?.lastAt ? `última ${ago(full.lastAt)}, ${plural(full.kept, 'vaga da sua área', 'vagas da sua área')}` : 'ainda sem rodada completa' };
+    const last = e?.last;
+    const next = minutes(e?.next);
+    const explorer = !e ? { value: '—', note: 'carregando' }
+      : e.running ? { value: 'Testando fontes', note: `${e.frontier.toLocaleString('pt-BR')} candidatas na fila` }
+      : !e.enabled ? { value: 'Desligado', note: 'ligue em Fontes' }
+      : { value: last ? plural(last.added.length, 'fonte nova', 'fontes novas') : 'Sem ciclo ainda', note: last ? `${last.tested} testadas ${ago(last.at)}${next !== null && next > 0 ? `, próximo em ${next} min` : ''}` : `${e.frontier.toLocaleString('pt-BR')} candidatas na fila` };
+    const ai = !o ? { value: '—', note: 'carregando' }
+      : o.aiReady ? { value: plural(o.accounts.length, 'conta ligada', 'contas ligadas'), note: o.accounts.slice(0, 3).join(', ') }
+      : { value: 'Sem IA', note: 'conecte em Provedores' };
+    return [
+      { label: 'Próxima busca', ...search, link: '/busca' },
+      { label: 'Explorador', ...explorer, link: '/fontes' },
+      { label: 'IA', ...ai, link: '/provedores' },
+    ];
   });
 
   /** Estações da rota: acende a que trabalhou por último (ao vivo). */

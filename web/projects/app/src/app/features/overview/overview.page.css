@@ -8,6 +8,16 @@
 .hero h1 { font-size: 28px; font-weight: 650; letter-spacing: -0.02em; line-height: 1.15; }
 .lead { margin: 0; font-size: 16px; color: var(--text); line-height: 1.5; max-width: 52ch; }
 .hero-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+/* Pulso: três colunas com fio entre elas, no tom do cartão; cada uma abre a tela de onde o número vem. */
+.pulse { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 8px 0 2px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.beat { display: grid; gap: 3px; padding: 11px 14px 12px; color: inherit; text-decoration: none; min-width: 0; transition: background 160ms ease; }
+.beat + .beat { border-left: 1px solid var(--line); }
+.beat:first-child { padding-left: 0; }
+.beat:hover { background: color-mix(in oklch, var(--accent) 5%, transparent); }
+.beat dt { font: 500 10.5px var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); }
+.beat dd { display: grid; gap: 2px; margin: 0; min-width: 0; }
+.beat strong { font-size: 15px; font-weight: 620; letter-spacing: -0.01em; }
+.beat span { font-size: 12px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hero-art { width: min(100%, 300px); justify-self: center;  }
 .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); flex: none; }
 .live-dot.on { background: var(--accent); animation: ping 1.6s ease-out infinite; }
@@ -48,6 +58,9 @@
   .hero { grid-template-columns: 1fr; padding: 18px; }
   .hero-art { width: min(100%, 240px); order: -1; }
   .hero h1 { font-size: 23px; }
+  .pulse { grid-template-columns: 1fr; }
+  .beat + .beat { border-left: 0; border-top: 1px solid var(--line); }
+  .beat { padding-left: 0; }
   .strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (prefers-reduced-motion: reduce) { .hero-text, .hero-art, .cell, .voices li { animation: none; } }

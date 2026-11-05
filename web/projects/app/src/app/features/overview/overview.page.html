@@ -22,6 +22,11 @@
       @if (data.value()?.campaign; as c) {
         <p class="faint small">{{ c.name }}: corte {{ c.minFitScore }}, até {{ c.maxSubmissionsPerDay }} envios por dia, {{ c.sources }} fontes.</p>
       }
+      <dl class="pulse">
+        @for (p of pulse(); track p.label) {
+          <a class="beat" [routerLink]="p.link"><dt>{{ p.label }}</dt><dd><strong>{{ p.value }}</strong><span>{{ p.note }}</span></dd></a>
+        }
+      </dl>
       <div class="hero-actions">
         @if (data.value()?.campaign; as c) {
           <button class="btn primary" type="button" (click)="automating.set(true)"><jo-icon name="lightning" [size]="14" />Automatizar tudo</button>
