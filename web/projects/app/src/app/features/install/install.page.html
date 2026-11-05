@@ -15,7 +15,7 @@
             <div>
               <h2>Job Orchestrator</h2>
               <p class="muted">Procura vagas de qualquer área, monta o currículo certo para cada uma e cuida das candidaturas. Tudo roda na sua máquina, e nada sai com o seu nome sem o seu ok.</p>
-              @if (info(); as i) { <p class="faint small">Versão {{ i.version }}{{ i.installed ? ', já instalada antes: esta instalação atualiza sem apagar nada' : '' }}.</p> }
+              @if (info(); as i) { <p class="faint small">Versão {{ i.version }} para {{ i.osLabel }}{{ i.installed ? '. Já instalada antes: esta instalação atualiza sem apagar nada' : '' }}.</p> }
             </div>
           </div>
           <div class="features">
@@ -45,7 +45,7 @@
               }
             </ul>
           } @else {
-            <div class="scan"><span class="bob"><jo-iso name="radar" [size]="64" /></span><p class="muted">Conferindo Docker, navegador, Python, modelo local, placa de vídeo e disco…</p></div>
+            <div class="scan"><span class="bob"><jo-iso name="radar" [size]="64" /></span><p class="muted">{{ info()?.options?.scan ?? 'Conferindo a máquina…' }}</p></div>
           }
         </div>
       }
@@ -55,10 +55,10 @@
             <jo-iso name="gate" [size]="96" />
             <div><h2>Como instalar</h2><p class="muted">O app vai para a sua pasta, sem pedir senha de administrador. Dá para mudar tudo depois rodando o instalador de novo.</p></div>
           </div>
-          <div class="where"><jo-icon name="house" [size]="15" /><span class="mono">{{ info()?.target ?? '~/.local/opt/job-orchestrator' }}</span></div>
+          <div class="where"><jo-icon name="house" [size]="15" /><span class="mono">{{ info()?.target ?? '' }}</span></div>
           <div class="opts">
-            <label class="opt"><input type="checkbox" class="switch" [checked]="menu()" (change)="menu.set($any($event.target).checked)" /><span><strong>Atalho no menu de aplicativos</strong><span class="muted small">Com o ícone do app; no terminal, o comando job-orchestrator.</span></span></label>
-            <label class="opt"><input type="checkbox" class="switch" [checked]="autostart()" (change)="autostart.set($any($event.target).checked)" /><span><strong>Abrir junto com o computador</strong><span class="muted small">A busca roda sozinha mesmo com a janela fechada. Os serviços ficam na fatia jobs.slice, com teto de memória.</span></span></label>
+            <label class="opt"><input type="checkbox" class="switch" [checked]="menu()" (change)="menu.set($any($event.target).checked)" /><span><strong>{{ info()?.options?.menu?.label ?? 'Atalho no menu' }}</strong><span class="muted small">{{ info()?.options?.menu?.hint ?? '' }}</span></span></label>
+            <label class="opt"><input type="checkbox" class="switch" [checked]="autostart()" (change)="autostart.set($any($event.target).checked)" /><span><strong>{{ info()?.options?.autostart?.label ?? 'Abrir junto com o computador' }}</strong><span class="muted small">{{ info()?.options?.autostart?.hint ?? '' }}</span></span></label>
             @if (info()?.devData) {
               <label class="opt"><input type="checkbox" class="switch" [checked]="migrate()" (change)="migrate.set($any($event.target).checked)" /><span><strong>Trazer o que você já tem</strong><span class="muted small">Perfil, campanha, configurações e o que o Explorador já achou. O banco é o mesmo; nada é apagado.</span></span></label>
             }

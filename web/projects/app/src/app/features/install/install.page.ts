@@ -5,7 +5,8 @@ import { Mark } from '@jo/ui/mark';
 import { get, send } from '../../core/api';
 import { Wizard } from '../../shared/wizard';
 
-interface Info { version: string; source: string; target: string; installed: boolean; devData: boolean; running: boolean; done: boolean; }
+interface Option { label: string; hint: string; }
+interface Info { version: string; os: 'linux' | 'macos' | 'windows'; osLabel: string; source: string; target: string; installed: boolean; devData: boolean; running: boolean; done: boolean; options: { menu: Option; autostart: Option; scan: string }; }
 interface Check { id: string; label: string; icon: string; state: 'ok' | 'warn' | 'fail'; detail: string; fix: string | null; blocking: boolean; }
 interface Step { id: string; label: string; icon: string; state: 'waiting' | 'working' | 'done' | 'failed'; detail: string; }
 interface State { running: boolean; done: boolean; error: string | null; steps: Step[]; log: string[]; }

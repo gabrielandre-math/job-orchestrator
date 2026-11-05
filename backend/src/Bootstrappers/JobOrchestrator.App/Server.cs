@@ -19,17 +19,25 @@ namespace JobOrchestrator.App;
 
 /// <summary>
 /// API, painel e Worker num processo só: o que o executável roda em segundo plano, preso em 127.0.0.1:7410. Os mesmos módulos e o mesmo
-/// banco do modo de desenvolvimento e dos serviços do systemd; muda só que tudo cabe num binário.
+/// banco do modo de desenvolvimento; muda só que tudo cabe num binário. --log grava a saída num arquivo (no Windows o processo de fundo
+/// não tem console), e a parada com calma vem por /api/app/stop com a chave desta sessão, que só o seu usuário lê.
 /// </summary>
 internal static class Server
 {
     public static async Task<int> RunAsync(string[] args)
     {
-        // Binário de arquivo único: o Playwright acha o driver (.playwright) pela pasta do executável, não pela pasta de onde foi chamado.
-        Directory.SetCurrentDirectory(AppContext.BaseDirectory);
-        if (Environment.GetEnvironmentVariable("PLAYWRIGHT_DRIVER_SEARCH_PATH") is not { Length: > 0 }) Environment.SetEnvironmentVariable("PLAYWRIGHT_DRIVER_SEARCH_PATH", AppContext.BaseDirectory);
+        var rest = new List<string>();
+        for (var i = 0; i < args.Length; i++)
+        {
+            if (args[i] == "--log" && i + 1 < args.Length) { Log(args[++i]); continue; }
+            if (args[i] == "--background") continue;
+            rest.Add(args[i]);
+        }
+        // Binário de arquivo único: o Playwright acha o driver (.playwright) pela pasta dos arquivos do app (no macOS, Contents/Resources/app).
+        Directory.SetCurrentDirectory(AppPaths.Resources);
+        if (Environment.GetEnvironmentVariable("PLAYWRIGHT_DRIVER_SEARCH_PATH") is not { Length: > 0 }) Environment.SetEnvironmentVariable("PLAYWRIGHT_DRIVER_SEARCH_PATH", AppPaths.Resources);
         if (!await Launcher.EnsureDatabaseAsync(Console.Out)) return 2;
-        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { Args = args, ContentRootPath = AppContext.BaseDirectory });
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { Args = [.. rest], ContentRootPath = AppPaths.Resources });
         var config = builder.Configuration;
         config.AddJsonFile(Path.Combine(AppPaths.Config, "settings.json"), optional: true, reloadOnChange: true);
         var modules = new[] { CampaignsModule.Assembly, JobsModule.Assembly, ApplicationsModule.Assembly, AutomationModule.Assembly, IntelligenceModule.Assembly, ProfileModule.Assembly, MaterialsModule.Assembly, AssistantModule.Assembly, MailModule.Assembly, OperationsModule.Assembly };
@@ -56,14 +64,35 @@ internal static class Server
 
         app.UseExceptionHandler();
         app.MapOpenApi("/api/openapi.json");
-        app.MapGet("/api/health", () => Results.Ok(new { status = "ok", app = "job-orchestrator", version = Launcher.Version })).WithTags("Health");
+        app.MapGet("/api/health", () => Results.Ok(new { status = "ok", app = "job-orchestrator", version = Launcher.Version, platform = Platform.Os })).WithTags("Health");
+        var token = Convert.ToHexStringLower(System.Security.Cryptography.RandomNumberGenerator.GetBytes(24));
+        var tokenFile = Path.Combine(AppPaths.In(AppPaths.Data, "run"), "control.token");
+        File.WriteAllText(tokenFile, token);
+        if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(tokenFile, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+        // Parada com calma pedida pelo job-orchestrator --stop: só com a chave do arquivo (um site aberto no navegador não manda esse cabeçalho).
+        app.MapPost("/api/app/stop", (HttpRequest req, IHostApplicationLifetime life) =>
+        {
+            if (!string.Equals(req.Headers["X-Jo-Control"].ToString(), token, StringComparison.Ordinal)) return Results.StatusCode(403);
+            _ = Task.Delay(300).ContinueWith(_ => life.StopApplication(), TaskScheduler.Default);
+            return Results.Accepted();
+        }).ExcludeFromDescription();
         app.MapCarter();
         app.MapFallback("/api/{**rest}", () => Results.NotFound());
-        Panel(app, config["Web:Root"] is { Length: > 0 } root ? root : Path.Combine(AppContext.BaseDirectory, "wwwroot"));
+        Panel(app, config["Web:Root"] is { Length: > 0 } root ? root : Path.Combine(AppPaths.Resources, "wwwroot"));
 
         File.WriteAllText(Path.Combine(AppPaths.In(AppPaths.Data, "run"), "server.pid"), Environment.ProcessId.ToString(System.Globalization.CultureInfo.InvariantCulture));
         await app.RunAsync();
         return 0;
+    }
+
+    /// <summary>A saída do processo num arquivo, junto com o console (que no Windows, em segundo plano, não existe).</summary>
+    private static void Log(string path)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
+        var writer = new StreamWriter(new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.ReadWrite)) { AutoFlush = true };
+        var sync = TextWriter.Synchronized(writer);
+        Console.SetOut(sync);
+        Console.SetError(sync);
     }
 
     /// <summary>O painel (Angular) compilado, servido pelo próprio processo; rota desconhecida cai no index.html.</summary>

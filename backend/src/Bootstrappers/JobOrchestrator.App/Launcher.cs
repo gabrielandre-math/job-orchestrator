@@ -3,32 +3,38 @@ using System.Globalization;
 using System.Net.Sockets;
 using System.Reflection;
 using JobOrchestrator.BuildingBlocks;
+using JobOrchestrator.BuildingBlocks.Data;
 
 namespace JobOrchestrator.App;
 
 /// <summary>
-/// Abrir, subir, parar e conferir. Os serviços rodam em segundo plano como unidade do systemd do usuário (job-orchestrator, na fatia
-/// jobs.slice e com teto de memória), então a busca segue com a janela fechada. A janela é o navegador do sistema em modo app, com perfil
-/// próprio; sem navegador conhecido, abre no padrão.
+/// Abrir, subir, parar e conferir, igual nos três sistemas (o que muda fica em Desktop). Os serviços rodam em segundo plano, então a
+/// busca segue com a janela fechada; a janela é o navegador do sistema em modo app, com perfil próprio.
 /// </summary>
 internal static class Launcher
 {
     public const string Url = "http://127.0.0.1:7410";
     public const string Unit = "job-orchestrator";
-    public static string Home => AppContext.BaseDirectory;
-    public static string Exe => Environment.ProcessPath ?? Path.Combine(Home, "job-orchestrator");
+    public static string Home => AppPaths.Resources;
+    public static string Exe => Environment.ProcessPath ?? Desktop.Exe(Desktop.Source);
     public static string Version => typeof(Launcher).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0] ?? "1.0.0";
-    public static string UserUnits => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".config", "systemd", "user");
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(2) };
+
+    /// <summary>Marca da instalação (versão, pasta e quando), gravada no fim do instalador.</summary>
+    public static string Marker => Path.Combine(AppPaths.Config, "install.json");
+    public static bool Installed => File.Exists(Marker) && File.Exists(Desktop.Exe(Desktop.Target));
+
+    /// <summary>Roda da pasta instalada (no macOS, do pacote em ~/Applications).</summary>
+    public static bool FromTarget => string.Equals(Path.GetFullPath(Desktop.Source), Path.GetFullPath(Desktop.Target).TrimEnd(Path.DirectorySeparatorChar), OperatingSystem.IsLinux() ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase);
 
     public static int Print(string text) { Console.WriteLine(text); return 0; }
 
     public static async Task<int> OpenAsync()
     {
         var up = await HealthyAsync();
-        if (!up) Start(Exe);
+        if (!up) Desktop.Start(Exe, ServiceEnvironment());
         // No ar: o painel direto. Subindo: a abertura animada, que entra no painel sozinha quando ele responder.
-        Window(up ? Url : SplashUrl());
+        Desktop.Window(up ? Url : SplashUrl());
         return 0;
     }
 
@@ -41,34 +47,34 @@ internal static class Launcher
     public static string SplashUrl() =>
         Path.Combine(Home, "splash", "index.html") is var splash && File.Exists(splash) ? new Uri(splash).AbsoluteUri : Url;
 
-    /// <summary>Sobe o servidor em segundo plano: pelo serviço do usuário quando instalado, senão por uma unidade passageira do systemd, senão solto.</summary>
-    public static void Start(string exe)
-    {
-        var env = ServiceEnvironment();
-        if (Which("systemctl") is not null && File.Exists(Path.Combine(UserUnits, $"{Unit}.service")))
-        {
-            if (Run("systemctl", ["--user", "start", $"{Unit}.service"]) == 0) return;
-        }
-        if (Which("systemd-run") is not null)
-        {
-            Run("systemctl", ["--user", "reset-failed", $"{Unit}.service"]);
-            var a = new List<string> { "--user", $"--unit={Unit}", "--collect", "--quiet", "--slice=jobs.slice", "-p", "MemoryMax=8G", "-p", "CPUWeight=50" };
-            a.AddRange(env.Select(e => $"--setenv={e.Key}={e.Value}"));
-            a.AddRange([exe, "--serve"]);
-            if (Run("systemd-run", [.. a]) == 0) return;
-        }
-        Detach(exe, ["--serve"], env, Path.Combine(AppPaths.In(AppPaths.Data, "run"), "server.log"));
-    }
+    public static void Start(string exe) => Desktop.Start(exe, ServiceEnvironment());
 
+    /// <summary>
+    /// Para o serviço do sistema e o servidor: pelo pedido de parada com a chave desta sessão (o Windows não tem SIGTERM, e a parada
+    /// com calma deixa o Worker terminar a etapa), e por fim pelo processo. O Postgres próprio para junto.
+    /// </summary>
     public static async Task<int> StopAsync()
     {
-        if (Which("systemctl") is not null) Run("systemctl", ["--user", "stop", $"{Unit}.service"]);
-        var pidFile = Path.Combine(AppPaths.In(AppPaths.Data, "run"), "server.pid");
+        Desktop.StopService();
+        var run = AppPaths.In(AppPaths.Data, "run");
+        if (await HealthyAsync() && File.Exists(Path.Combine(run, "control.token")))
+        {
+            try
+            {
+                using var req = new HttpRequestMessage(HttpMethod.Post, $"{Url}/api/app/stop");
+                req.Headers.Add("X-Jo-Control", (await File.ReadAllTextAsync(Path.Combine(run, "control.token"))).Trim());
+                using var _ = await Http.SendAsync(req);
+            }
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException) { }
+            for (var i = 0; i < 60 && await HealthyAsync(); i++) await Task.Delay(500);
+        }
+        var pidFile = Path.Combine(run, "server.pid");
         if (await HealthyAsync() && File.Exists(pidFile) && int.TryParse(File.ReadAllText(pidFile), NumberStyles.Integer, CultureInfo.InvariantCulture, out var pid))
         {
-            try { Process.GetProcessById(pid).Kill(entireProcessTree: true); } catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { }
+            try { using var p = Process.GetProcessById(pid); p.Kill(entireProcessTree: true); } catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { }
         }
         for (var i = 0; i < 30 && await HealthyAsync(); i++) await Task.Delay(500);
+        if (PortablePostgres.Installed) await PortablePostgres.StopAsync(CancellationToken.None);
         return Print(await HealthyAsync() ? "Ainda respondendo em 127.0.0.1:7410 (modo de desenvolvimento?)." : "Serviços parados.");
     }
 
@@ -76,18 +82,28 @@ internal static class Launcher
     {
         var up = await HealthyAsync();
         Print(up ? $"No ar em {Url}." : "Parado.");
-        if (Which("systemctl") is not null) Print($"Serviço: {Capture("systemctl", ["--user", "is-active", $"{Unit}.service"]).Trim()}");
+        Print($"Serviço: {Desktop.ServiceState()}");
+        Print($"Banco: {(await PortOpenAsync(5462) ? "no ar em 127.0.0.1:5462" : "parado")}{(PortablePostgres.Installed ? " (Postgres próprio)" : "")}");
+        Print($"Dados: {AppPaths.Data}");
         return up ? 0 : 1;
     }
 
-    /// <summary>O Postgres do compose no ar: se a porta 5462 não responde, sobe o contêiner (mesmo projeto e volume do modo de desenvolvimento).</summary>
+    /// <summary>
+    /// O Postgres no ar: se a porta 5462 não responde, liga o Postgres próprio (quando instalado) ou o contêiner do compose (mesmo
+    /// projeto e volume do modo de desenvolvimento). Sem nenhum dos dois, manda rodar o instalador.
+    /// </summary>
     public static async Task<bool> EnsureDatabaseAsync(TextWriter log)
     {
         if (await PortOpenAsync(5462)) return true;
-        var compose = Compose();
-        if (compose is null || Which("docker") is null)
+        if (PortablePostgres.Installed)
         {
-            await log.WriteLineAsync("Postgres fora do ar e sem Docker ou compose.yaml para subir. Rode o instalador (job-orchestrator --setup).");
+            await log.WriteLineAsync("Ligando o Postgres próprio...");
+            if (await PortablePostgres.StartAsync(l => log.WriteLine(l), CancellationToken.None)) return true;
+        }
+        var compose = Compose();
+        if (compose is null || Platform.Which("docker") is null)
+        {
+            await log.WriteLineAsync("Postgres fora do ar e sem banco instalado. Rode o instalador (job-orchestrator --setup).");
             return false;
         }
         await log.WriteLineAsync("Subindo o Postgres (docker compose)...");
@@ -116,62 +132,43 @@ internal static class Launcher
         catch (Exception ex) when (ex is SocketException or OperationCanceledException) { return false; }
     }
 
-    /// <summary>A janela do app: navegador do sistema em modo app, com perfil próprio (não mistura com o seu navegador) e classe para o gerenciador de janelas.</summary>
-    public static void Window(string url)
-    {
-        // Teste e uso sem tela (JO_NO_WINDOW=1): só diz o endereço.
-        if (System.Environment.GetEnvironmentVariable("JO_NO_WINDOW") is { Length: > 0 }) { Console.WriteLine($"Janela: {url}"); return; }
-        var profile = AppPaths.In(AppPaths.Data, "window");
-        foreach (var b in new[] { "chromium", "google-chrome-stable", "google-chrome", "brave", "brave-browser", "microsoft-edge-stable", "vivaldi-stable" })
-            if (Which(b) is { } path)
-            {
-                var args = new List<string> { $"--app={url}", "--class=JobOrchestrator", "--name=JobOrchestrator", $"--user-data-dir={profile}", "--no-first-run", "--no-default-browser-check", "--window-size=1440,920" };
-                // A extensão do copiloto já vem ligada na janela do app: a vaga aberta daqui tem o botão de preencher, sem instalar nada.
-                var extension = Path.Combine(Home, "extension");
-                if (File.Exists(Path.Combine(extension, "manifest.json"))) args.AddRange([$"--load-extension={extension}", "--disable-features=DisableLoadExtensionCommandLineSwitch"]);
-                Detach(path, [.. args], null);
-                return;
-            }
-        Detach("xdg-open", [url], null);
-    }
+    public static void Window(string url) => Desktop.Window(url);
 
     /// <summary>
-    /// O ambiente dos serviços: o PATH da sua sessão (onde moram as CLIs do Claude e do Codex), guardado pelo instalador em
-    /// ~/.config/job-orchestrator/env, mais ~/.local/bin e os atalhos do mise; e o IPv6 desligado no .NET, que trava sem rota.
+    /// O ambiente dos serviços: o PATH da sua sessão (onde moram as CLIs do Claude e do Codex), guardado pelo instalador no arquivo env
+    /// da pasta de configuração, mais as pastas de costume de cada sistema; e o IPv6 desligado no .NET, que trava sem rota.
     /// </summary>
     public static Dictionary<string, string> ServiceEnvironment()
     {
-        var home = System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile);
+        var home = Platform.Home;
+        var sep = Path.PathSeparator;
         var paths = new List<string>();
         var saved = Path.Combine(AppPaths.Config, "env");
         if (File.Exists(saved))
             foreach (var line in File.ReadAllLines(saved))
-                if (line.StartsWith("PATH=", StringComparison.Ordinal)) paths.AddRange(line[5..].Split(':'));
-        paths.AddRange((System.Environment.GetEnvironmentVariable("PATH") ?? "").Split(':'));
-        paths.AddRange([Path.Combine(home, ".local", "bin"), Path.Combine(home, ".local", "share", "mise", "shims"), "/usr/local/bin", "/usr/bin", "/bin"]);
+                if (line.StartsWith("PATH=", StringComparison.Ordinal)) paths.AddRange(line[5..].Split(sep));
+        paths.AddRange((Environment.GetEnvironmentVariable("PATH") ?? "").Split(sep));
+        if (OperatingSystem.IsWindows())
+            paths.AddRange([Path.Combine(home, ".local", "bin"), Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "npm")]);
+        else
+            paths.AddRange([Path.Combine(home, ".local", "bin"), Path.Combine(home, ".local", "share", "mise", "shims"), "/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin"]);
         var env = new Dictionary<string, string>
         {
-            ["PATH"] = string.Join(':', paths.Where(p => p.Length > 0).Distinct()),
+            ["PATH"] = string.Join(sep, paths.Where(p => p.Length > 0).Distinct()),
             ["DOTNET_SYSTEM_NET_DISABLEIPV6"] = "1",
         };
-        foreach (var k in new[] { "LANG", "XDG_DATA_HOME", "XDG_CONFIG_HOME" })
-            if (System.Environment.GetEnvironmentVariable(k) is { Length: > 0 } v) env[k] = v;
+        foreach (var k in new[] { "LANG", "XDG_DATA_HOME", "XDG_CONFIG_HOME", "JO_DATA_DIR", "JO_CONFIG_DIR" })
+            if (Environment.GetEnvironmentVariable(k) is { Length: > 0 } v) env[k] = v;
         return env;
     }
 
-    public static string? Which(string name)
-    {
-        if (name.Contains('/')) return File.Exists(name) ? name : null;
-        foreach (var dir in (System.Environment.GetEnvironmentVariable("PATH") ?? "/usr/bin:/bin").Split(':').Append("/usr/bin"))
-            if (dir.Length > 0 && File.Exists(Path.Combine(dir, name))) return Path.Combine(dir, name);
-        return null;
-    }
+    public static string? Which(string name) => Platform.Which(name);
 
     public static int Run(string file, string[] args, TimeSpan? wait = null)
     {
         try
         {
-            var info = new ProcessStartInfo(file) { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true };
+            var info = new ProcessStartInfo(file) { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true };
             foreach (var a in args) info.ArgumentList.Add(a);
             using var p = Process.Start(info)!;
             p.OutputDataReceived += (_, _) => { };
@@ -184,33 +181,5 @@ internal static class Launcher
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException) { return -1; }
     }
 
-    public static string Capture(string file, string[] args)
-    {
-        try
-        {
-            var info = new ProcessStartInfo(file) { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true };
-            foreach (var a in args) info.ArgumentList.Add(a);
-            using var p = Process.Start(info)!;
-            var output = p.StandardOutput.ReadToEnd() + p.StandardError.ReadToEnd();
-            p.WaitForExit(30_000);
-            return output;
-        }
-        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException) { return ""; }
-    }
-
-    /// <summary>Processo solto da janela ou do terminal: sobrevive quando quem abriu fecha, com a saída num log (ou em lugar nenhum).</summary>
-    public static void Detach(string file, string[] args, IReadOnlyDictionary<string, string>? env, string? log = null)
-    {
-        try
-        {
-            var info = new ProcessStartInfo("/bin/sh") { UseShellExecute = false };
-            info.ArgumentList.Add("-c");
-            info.ArgumentList.Add($"exec {(Which("setsid") is not null ? "setsid " : "")}\"$0\" \"$@\" >>'{(log ?? "/dev/null").Replace("'", "")}' 2>&1 </dev/null");
-            info.ArgumentList.Add(file);
-            foreach (var a in args) info.ArgumentList.Add(a);
-            foreach (var (k, v) in env ?? new Dictionary<string, string>()) info.Environment[k] = v;
-            using var p = Process.Start(info);
-        }
-        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException) { Console.Error.WriteLine($"Não abriu {file}: {ex.Message}"); }
-    }
+    public static string Capture(string file, string[] args) => Platform.Capture(file, args);
 }
