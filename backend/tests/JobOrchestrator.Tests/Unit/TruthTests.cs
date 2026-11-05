@@ -66,6 +66,26 @@ public sealed class TruthTests
     }
 
     [Fact]
+    public async Task Configuracao_da_tela_grava_e_le_de_volta()
+    {
+        var dir = Directory.CreateTempSubdirectory("jo-settings-").FullName;
+        var before = Environment.GetEnvironmentVariable("JO_CONFIG_DIR");
+        Environment.SetEnvironmentVariable("JO_CONFIG_DIR", dir);
+        try
+        {
+            await JobOrchestrator.BuildingBlocks.UserSettings.SetAsync(new Dictionary<string, object?> { ["Onboarding:Done"] = true, ["Retention:Days"] = 90, ["Scraper:Assist"] = "Local", ["Llm:Order"] = new[] { "claude-pro", "codex" } });
+            await JobOrchestrator.BuildingBlocks.UserSettings.SetAsync(new Dictionary<string, object?> { ["Scraper:Assist"] = null, ["Privacy:LocalOnly"] = false });
+            var json = System.Text.Json.Nodes.JsonNode.Parse(await File.ReadAllTextAsync(Path.Combine(dir, "settings.json")))!;
+            Assert.True(json["Onboarding"]!["Done"]!.GetValue<bool>());
+            Assert.Equal(90, json["Retention"]!["Days"]!.GetValue<int>());
+            Assert.Null(json["Scraper"]!["Assist"]);
+            Assert.Equal("codex", json["Llm"]!["Order"]![1]!.GetValue<string>());
+            Assert.False(json["Privacy"]!["LocalOnly"]!.GetValue<bool>());
+        }
+        finally { Environment.SetEnvironmentVariable("JO_CONFIG_DIR", before); Directory.Delete(dir, true); }
+    }
+
+    [Fact]
     public void Nome_no_pdf_do_linkedin_vem_antes_do_titulo()
     {
         const string cv = "Contact\n+55 (11) 98888-7777 (Mobile)\nmaria.teste@example.com\nTop Skills\nGestão de Projetos\nAtendimento ao Cliente\nLanguages\nInglês (Professional Working)\n\nMaria Souza Teste\n\nEnfermeira | UTI | Gestão de Leitos\nSão Paulo, São Paulo, Brazil\nSummary";

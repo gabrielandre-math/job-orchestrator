@@ -58,9 +58,10 @@ public static class UserSettings
                     node = next;
                 }
                 if (value is null) node.Remove(parts[^1]);
-                else node[parts[^1]] = System.Text.Json.Nodes.JsonValue.Create(value);
+                // Pelo tipo real (bool, int, string, lista): JsonValue.Create(object) vira um valor que o escritor não serializa sem resolvedor.
+                else node[parts[^1]] = System.Text.Json.JsonSerializer.SerializeToNode(value, value.GetType(), System.Text.Json.JsonSerializerOptions.Web);
             }
-            await File.WriteAllTextAsync(path, root.ToJsonString(new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+            await File.WriteAllTextAsync(path, root.ToJsonString(new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerOptions.Web) { WriteIndented = true }));
         }
         finally { Gate.Release(); }
     }
