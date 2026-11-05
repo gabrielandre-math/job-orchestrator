@@ -36,7 +36,12 @@ set -e
 T="$(mktemp -d "${TMPDIR:-/tmp}/job-orchestrator-setup.XXXXXX")"
 L=$(awk '/^__PACOTE__$/ { print NR + 1; exit 0 }' "$0")
 tail -n +"$L" "$0" | tar -xz -C "$T"
-exec "$T"/job-orchestrator-*/job-orchestrator --setup
+# O instalador copia o app para ~/.local/opt; a pasta temporária (em /tmp, muitas vezes na RAM) sai quando ele termina.
+set +e
+"$T"/job-orchestrator-*/job-orchestrator --setup
+S=$?
+rm -rf "$T"
+exit $S
 HEAD
 echo "__PACOTE__" >> "$I"
 cat "$P.tar.gz" >> "$I"
