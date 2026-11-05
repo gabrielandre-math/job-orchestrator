@@ -44,6 +44,26 @@ internal sealed partial class Leads(IHttpClientFactory http, ScrapyRunner runner
         return [.. leads.DistinctBy(l => l.Source, StringComparer.OrdinalIgnoreCase)];
     }
 
+    public async Task<IReadOnlyList<SourceLead>> PlatformLeadsAsync(string platform, CancellationToken ct)
+    {
+        if (platform != "pandape") return [];
+        // O sitemap que o robots.txt do Pandapé indica: um índice .gz de pedaços .gz com as vagas abertas de todas as empresas.
+        var index = await GunzipAsync("https://www.pandape.com.br/pandapeindexofertas.xml.gz", ct);
+        var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var shard in Loc().Matches(index).Select(m => m.Groups[1].Value).Take(2))
+            foreach (var tenant in PandapeTenant().Matches(await GunzipAsync(shard, ct)).Select(m => m.Groups[1].Value.ToLowerInvariant()))
+                counts[tenant] = counts.GetValueOrDefault(tenant) + 1;
+        return [.. counts.OrderByDescending(c => c.Value).Take(500).Select(c => new SourceLead($"pandape:{c.Key}", $"lista sitemap do Pandapé ({c.Value} vagas)"))];
+    }
+
+    private async Task<string> GunzipAsync(string url, CancellationToken ct)
+    {
+        await using var raw = await Client.GetStreamAsync(url, ct);
+        await using var gzip = new System.IO.Compression.GZipStream(raw, System.IO.Compression.CompressionMode.Decompress);
+        using var reader = new StreamReader(gzip);
+        return await reader.ReadToEndAsync(ct);
+    }
+
     public async Task<IReadOnlyList<SiteFinding>> SweepSitesAsync(IReadOnlyList<string> sites, CancellationToken ct)
     {
         var thread = AgentThread.New("crawl", $"Explorador: varredura de {sites.Count} {(sites.Count == 1 ? "site" : "sites")}");
@@ -89,6 +109,8 @@ internal sealed partial class Leads(IHttpClientFactory http, ScrapyRunner runner
     }
 
     [GeneratedRegex(@"https?://[^\s)\]|>""'`<]+", RegexOptions.IgnoreCase)] private static partial Regex Urls();
+    [GeneratedRegex(@"<loc>\s*([^<\s]+)\s*</loc>")] private static partial Regex Loc();
+    [GeneratedRegex(@"https://([a-z0-9-]+)\.pandape\.infojobs\.com\.br/Detail/", RegexOptions.IgnoreCase)] private static partial Regex PandapeTenant();
     [GeneratedRegex(@"vaga|job|emprego|hiring|oportunidade|trampo|carreira|career|remot", RegexOptions.IgnoreCase)] private static partial Regex JobRepo();
     [GeneratedRegex(@"me-contrata|curriculo|resume|portfolio", RegexOptions.IgnoreCase)] private static partial Regex NotJobs();
     [GeneratedRegex(@"carreira|career|vaga|job|trabalhe|work-with|join|oportunidade", RegexOptions.IgnoreCase)] private static partial Regex CareerPath();

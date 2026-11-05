@@ -21,6 +21,7 @@ internal sealed class AutomationApi(
 
     public Task<IReadOnlyList<SourceLead>> JobReposAsync(string query, CancellationToken ct) => leads.JobReposAsync(query, ct);
     public Task<IReadOnlyList<SourceLead>> CompanyListAsync(string repo, CancellationToken ct) => leads.CompanyListAsync(repo, ct);
+    public Task<IReadOnlyList<SourceLead>> PlatformLeadsAsync(string platform, CancellationToken ct) => leads.PlatformLeadsAsync(platform, ct);
     public Task<IReadOnlyList<SiteFinding>> SweepSitesAsync(IReadOnlyList<string> domains, CancellationToken ct) => leads.SweepSitesAsync(domains, ct);
 
     public Task<PostingStatus> CheckOpenAsync(string applyUrl, CancellationToken ct)

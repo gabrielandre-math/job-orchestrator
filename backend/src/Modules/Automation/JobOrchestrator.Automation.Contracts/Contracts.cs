@@ -86,6 +86,8 @@ public interface IAutomationApi
     Task<IReadOnlyList<SourceLead>> JobReposAsync(string query, CancellationToken ct);
     /// <summary>Lista de empresas mantida num README do GitHub: cada link vira quadro de ATS (gupy:x, lever:y) ou site para a varredura.</summary>
     Task<IReadOnlyList<SourceLead>> CompanyListAsync(string repo, CancellationToken ct);
+    /// <summary>Empresas de uma plataforma pelo sitemap que o robots.txt dela indica (hoje o Pandapé), mais vagas primeiro.</summary>
+    Task<IReadOnlyList<SourceLead>> PlatformLeadsAsync(string platform, CancellationToken ct);
     /// <summary>Varre vários sites numa rodada só do coletor (robots.txt, uma conexão por domínio) e separa o que achou por site.</summary>
     Task<IReadOnlyList<SiteFinding>> SweepSitesAsync(IReadOnlyList<string> domains, CancellationToken ct);
     Task<PostingStatus> CheckOpenAsync(string applyUrl, CancellationToken ct);

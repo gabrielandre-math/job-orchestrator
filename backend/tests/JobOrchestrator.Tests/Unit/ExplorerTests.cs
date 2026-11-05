@@ -16,6 +16,13 @@ public sealed class ExplorerTests
     [InlineData("https://portal.gupy.io/job-search/term=.net", null)]
     [InlineData("https://acme.recruitee.com/o/dev", "recruitee:acme")]
     [InlineData("https://www.empresa.com.br/carreiras", null)]
+    [InlineData("https://olist.inhire.app/vagas/2e22/analista", "inhire:olist")]
+    [InlineData("https://solides.vagas.solides.com.br/vaga/123", "solides:solides")]
+    [InlineData("https://jobs.quickin.io/igma/jobs/6a98", "quickin:igma")]
+    [InlineData("https://manpowergroup.pandape.infojobs.com.br/Detail/3901", "pandape:manpowergroup")]
+    [InlineData("https://apply.workable.com/dextra/j/9D0C", "workable:dextra")]
+    [InlineData("https://apply.workable.com/j/9D0C64C055", null)]
+    [InlineData("https://combineglobalrecruitment.na.teamtailor.com/jobs/1-dev", "teamtailor:combineglobalrecruitment.na")]
     public void Link_vira_quadro_oficial(string url, string? expected) => Assert.Equal(expected, SourceKeys.Board(url));
 
     [Fact]
@@ -40,6 +47,11 @@ public sealed class ExplorerTests
     [InlineData("https://outraempresa.com.br/jobs", "empresa.com.br", false)]
     [InlineData("https://empresa.com.br.golpe.io/", "empresa.com.br", false)]
     public void Vaga_conta_para_o_site_certo(string url, string site, bool expected) => Assert.Equal(expected, Leads.Under(url, site));
+
+    [Theory]
+    [InlineData("Desenvolvedor(a) .NET Sênior | Pagamentos", "desenvolvedor-a-net-senior-pagamentos")]
+    [InlineData("***", "vaga")]
+    public void Endereco_da_vaga_da_inhire_tem_o_titulo(string title, string slug) => Assert.Equal(slug, InhireSource.Slug(title));
 
     [Fact]
     public void Buscas_giram_entre_os_ciclos()

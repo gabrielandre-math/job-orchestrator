@@ -53,6 +53,10 @@ BOARDS = [
     (re.compile(r"([\w-]+)\.bamboohr\.com/careers", re.I), "bamboohr"),
     (re.compile(r"https?://([\w-]+)\.gupy\.io", re.I), "gupy"),
     (re.compile(r"https?://([\w-]+(?:\.[a-z]{2})?)\.teamtailor\.com", re.I), "teamtailor"),
+    (re.compile(r"https?://([\w-]+)\.vagas\.solides\.com\.br", re.I), "solides"),
+    (re.compile(r"https?://([\w-]+)\.inhire\.app", re.I), "inhire"),
+    (re.compile(r"jobs\.quickin\.io/([\w-]+)", re.I), "quickin"),
+    (re.compile(r"https?://([\w-]+)\.pandape\.(?:infojobs|catho)\.com\.br", re.I), "pandape"),
 ]
 PATHS = ["", "/careers", "/carreiras", "/vagas", "/jobs", "/trabalhe-conosco", "/work-with-us", "/join-us"]
 
@@ -110,7 +114,7 @@ class CareersSpider(scrapy.Spider):
         for pattern, kind in BOARDS:
             for m in pattern.finditer(html):
                 token = m.group(1).lower()
-                if token in ("www", "app", "api", "jobs", "careers", "embed", "portal", "login", "static", "cdn", "blog", "help", "suporte-candidatos", "j", "apply", "resources", "support", "docs"):
+                if token in ("www", "app", "api", "jobs", "careers", "embed", "portal", "login", "static", "cdn", "blog", "help", "suporte-candidatos", "j", "apply", "resources", "support", "docs", "files", "_nuxt"):
                     continue
                 source = f"{kind}:{token}"
                 if source not in self.seen_boards:

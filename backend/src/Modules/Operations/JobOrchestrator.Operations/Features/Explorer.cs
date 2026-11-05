@@ -31,7 +31,7 @@ internal sealed class Explorer(IServiceScopeFactory scopes, [FromKeyedServices("
     public static string LastFile => Path.Combine(Folder, "last.json");
 
     /// <summary>Listas de empresas lidas pelo Explorador (README no GitHub), relidas a cada 7 dias. Explorer:Lists troca a lista.</summary>
-    internal static readonly string[] DefaultLists = ["lerrua/remote-jobs-brazil", "poteto/hiring-without-whiteboards", "yanirs/established-remote"];
+    internal static readonly string[] DefaultLists = ["lerrua/remote-jobs-brazil", "sitemap:pandape", "poteto/hiring-without-whiteboards", "yanirs/established-remote"];
     /// <summary>APIs públicas que buscam por texto: cada palavra (e cargo, onde a busca entende frase) vira uma fonte candidata. A Remotive pede
     /// poucas chamadas por dia: entra só com as duas primeiras palavras e só se a campanha ainda não tiver uma busca nela.</summary>
     private static readonly (string Api, bool Titles)[] SearchApis = [("getonbrd", true), ("himalayas", true), ("remotive", false)];
@@ -109,10 +109,11 @@ internal sealed class Explorer(IServiceScopeFactory scopes, [FromKeyedServices("
         {
             try
             {
-                foreach (var l in await automation.CompanyListAsync(due, ct)) Lead(l.Source, l.Origin, "listas de empresas");
+                foreach (var l in due.StartsWith("sitemap:", StringComparison.Ordinal) ? await automation.PlatformLeadsAsync(due[8..], ct) : await automation.CompanyListAsync(due, ct))
+                    Lead(l.Source, l.Origin, "listas de empresas");
                 lists[due] = DateTime.UtcNow;
             }
-            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException) { log.LogInformation("Company list {Repo} skipped: {Error}", due, ex.Message); }
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException or InvalidDataException) { log.LogInformation("Company list {Repo} skipped: {Error}", due, ex.Message); }
         }
         // 6. Sites das empresas das vagas.
         foreach (var d in await jobs.CompanyDomainsAsync(60, ct)) Lead($"web:{d}", "site da empresa de uma vaga", "sites de empresa");
