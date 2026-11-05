@@ -1,3 +1,4 @@
+using System.Net.Http.Json;
 using System.Diagnostics;
 using System.Globalization;
 using System.Security.Cryptography;
@@ -27,9 +28,27 @@ internal sealed record CrawlSummary(int Pages, int FromJsonLd, int FromAi, int R
 /// Página com cara de vaga e sem dado estruturado vai para a IA (degrau da tarefa page.jobs: o Llama local por padrão);
 /// o Conferente só aceita a vaga se o título estiver no trecho citado e o trecho estiver na página.
 /// </summary>
-internal sealed partial class ScrapyRunner(ScraperEnv env, IIntelligenceApi ai, IConfiguration config, ILogger<ScrapyRunner> log)
+internal sealed partial class ScrapyRunner(ScraperEnv env, IIntelligenceApi ai, IConfiguration config, IHttpClientFactory http, ILogger<ScrapyRunner> log)
 {
     private sealed record Candidate(string Url, string Title, string Text);
+
+    /// <summary>Firecrawl auto-hospedado (opcional, AGPL, serviço à parte): renderiza a página e devolve o texto em markdown. Sem modo furtivo nem proxy.</summary>
+    private async Task<Candidate?> RenderAsync(string baseUrl, string url, CancellationToken ct)
+    {
+        try
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeout.CancelAfter(TimeSpan.FromSeconds(60));
+            using var res = await http.CreateClient("sources").PostAsJsonAsync($"{baseUrl.TrimEnd('/')}/v1/scrape", new { url, formats = new[] { "markdown" }, onlyMainContent = true, timeout = 45000 }, timeout.Token);
+            if (!res.IsSuccessStatusCode) return null;
+            using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync(timeout.Token));
+            var data = doc.RootElement.GetProperty("data");
+            var text = data.Str("markdown");
+            var title = data.TryGetProperty("metadata", out var m) ? m.Str("title") : "";
+            return text.Length > 200 ? new Candidate(url, title, text.Length > 20000 ? text[..20000] : text) : null;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or KeyNotFoundException) { log.LogInformation("Firecrawl skipped for {Url}: {Error}", url, ex.Message); return null; }
+    }
     private sealed record Email(string Address, string Url, string Context);
 
     public async Task<(List<DiscoveredPosting> Postings, CrawlSummary Summary)> CrawlAsync(string source, IReadOnlyList<string> seeds, AgentThread thread, CancellationToken ct)
@@ -100,6 +119,16 @@ internal sealed partial class ScrapyRunner(ScraperEnv env, IIntelligenceApi ai, 
         await ai.NoteAsync(thread, "Coletor", $"{pages} páginas lidas em {clock.Elapsed.TotalSeconds:0} s",
             $"{postings.Count} vagas com dado estruturado (JSON-LD), {candidates.Count} páginas com cara de vaga sem esse dado, {boards.Distinct().Count()} quadros de ATS, {emails.Count} e-mails de candidatura."
             + (blocked > 0 ? $"\n{blocked} páginas não lidas: o robots.txt proíbe ou o site recusou (403). Não contornamos." : ""), "Extrator", true, ct);
+
+        // Página que só monta com JavaScript: o Scrapy leu (o robots.txt já foi respeitado) e não achou nada. Com o Firecrawl configurado,
+        // ele renderiza a mesma página e o texto segue para o Extrator e o Conferente como os outros. Sem Firecrawl, nada muda.
+        if (postings.Count == 0 && candidates.Count == 0 && boards.Count == 0 && blocked == 0 && pages > 0 && config["Scraper:Firecrawl:Url"] is { Length: > 0 } firecrawl)
+            foreach (var seed in seeds.Take(3))
+                if (await RenderAsync(firecrawl, seed.StartsWith("http") ? seed : $"https://{seed}", ct) is { } page)
+                {
+                    candidates.Add(page);
+                    await ai.NoteAsync(thread, "Coletor", $"Página com JavaScript lida pelo Firecrawl: {seed}", $"{page.Text.Length} caracteres para o Extrator.", "Extrator", true, ct);
+                }
 
         // Extrator: a IA lê as páginas sem dado estruturado (até 8 por varredura) e o Conferente confere cada vaga contra a página.
         var fromAi = 0;

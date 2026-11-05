@@ -43,6 +43,8 @@ public static class AutomationModule
         s.AddScoped<Features.ScraperApi>();
         s.AddScoped<CareerPageReader>();
         s.AddScoped<IFormAdapter, GreenhouseLikeForm>();
+        s.AddScoped<IFormAdapter, LeverForm>();
+        s.AddScoped<IFormAdapter, AshbyForm>();
         s.AddScoped<Router>();
         s.AddScoped<IAutomationApi, Features.AutomationApi>();
         return s;

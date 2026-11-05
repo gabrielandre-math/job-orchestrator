@@ -1,0 +1,43 @@
+# O app inteiro em contêineres, junto do compose.yaml (Postgres): API com o painel e Worker. Rede do host para falar com o
+# Ollama do host (127.0.0.1:11434) e o Postgres (127.0.0.1:5462) sem abrir nada para a rede; tudo continua só em 127.0.0.1.
+# Subir: scripts/docker.sh up. Perfil gpu: Ollama em contêiner com a placa NVIDIA (pare o Ollama do host antes).
+services:
+  api:
+    build: { context: .., dockerfile: infra/docker/Dockerfile, target: api }
+    image: job-orchestrator-api
+    network_mode: host
+    user: "${JO_UID:-1000}:${JO_GID:-1000}"
+    depends_on: { postgres: { condition: service_healthy } }
+    environment: &env
+      ConnectionStrings__Default: Host=127.0.0.1;Port=5462;Database=job_orchestrator;Username=jo;Password=${JO_DB_PASSWORD:-jo-local}
+      DBUS_SESSION_BUS_ADDRESS: unix:path=/run/user/${JO_UID:-1000}/bus
+      Llm__Ollama__Url: ${JO_OLLAMA_URL:-http://127.0.0.1:11434}
+      Scraper__Firecrawl__Url: ${JO_FIRECRAWL_URL:-}
+    volumes: &volumes
+      - ${HOME}/.local/share/job-orchestrator:/data
+      - ${HOME}/.config/job-orchestrator:/config
+      - /run/user/${JO_UID:-1000}/bus:/run/user/${JO_UID:-1000}/bus
+      # As assinaturas (Claude Pro/Max, ChatGPT pelo Codex) usam o login que já existe no host.
+      - ${HOME}/.claude:/home/jo/.claude
+      - ${HOME}/.claude.json:/home/jo/.claude.json
+      - ${HOME}/.codex:/home/jo/.codex
+    restart: unless-stopped
+  worker:
+    build: { context: .., dockerfile: infra/docker/Dockerfile, target: worker }
+    image: job-orchestrator-worker
+    network_mode: host
+    user: "${JO_UID:-1000}:${JO_GID:-1000}"
+    shm_size: 1gb
+    depends_on: { postgres: { condition: service_healthy }, api: { condition: service_started } }
+    environment: *env
+    volumes: *volumes
+    restart: unless-stopped
+  ollama:
+    profiles: [gpu]
+    image: ollama/ollama:latest
+    ports: ["127.0.0.1:11434:11434"]
+    volumes: [jo-ollama:/root/.ollama]
+    deploy: { resources: { reservations: { devices: [{ driver: nvidia, count: all, capabilities: [gpu] }] } } }
+    restart: unless-stopped
+volumes:
+  jo-ollama: {}

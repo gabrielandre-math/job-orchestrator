@@ -102,7 +102,7 @@ internal static partial class Normalizer
     [GeneratedRegex(@"\b(fluent|advanced|intermediate)\s+english\b|\benglish\s*\(?\s*(fluent|advanced|intermediate)|ingl[eê]s\s+(fluente|avan[cç]ado|intermedi[aá]rio)", RegexOptions.IgnoreCase)] private static partial Regex EnglishLevel();
     [GeneratedRegex(@"(no|not|unable to|cannot|can't|won't)\s+(provide\s+|offer\s+)?(visa\s+)?sponsor", RegexOptions.IgnoreCase)] private static partial Regex NoSponsor();
     [GeneratedRegex(@"(visa sponsorship (is )?available|will sponsor|we sponsor|offer visa sponsorship)", RegexOptions.IgnoreCase)] private static partial Regex Sponsor();
-    [GeneratedRegex(@"/jobs/\d+/apply")] private static partial Regex FakeAts();
+    [GeneratedRegex(@"/jobs/\d+/apply|^/lever/[^/]+/\d+/apply|^/ashby/[^/]+/\d+/application")] private static partial Regex FakeAts();
     [GeneratedRegex(@"(?<c>R\$|US\$|USD|EUR|BRL|€|£|\$)\s?(?<a>\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{1,2})?|\d+)\s?(?<ka>[kK])?\s*(?:-|–|a|to|até)\s*(?:R\$|US\$|USD|EUR|BRL|€|£|\$)?\s?(?<b>\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{1,2})?|\d+)\s?(?<kb>[kK])?")] private static partial Regex Range();
     [GeneratedRegex(@"(?<c>R\$|US\$|USD|EUR|BRL|€|£|\$)\s?(?<a>\d{1,3}(?:[.,]\d{3})+(?:[.,]\d{1,2})?|\d{2,})\s?(?<ka>[kK])?")] private static partial Regex Single();
 }

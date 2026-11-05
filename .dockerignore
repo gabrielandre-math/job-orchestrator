@@ -1,0 +1,13 @@
+.git
+.dev
+references
+**/bin
+**/obj
+web/node_modules
+web/dist
+web/.angular
+**/*.log
+.env
+.env.*
+user-data
+data

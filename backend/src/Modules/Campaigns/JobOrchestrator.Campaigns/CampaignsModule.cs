@@ -31,7 +31,7 @@ public static class CampaignsModule
         var now = scope.ServiceProvider.GetRequiredService<TimeProvider>().GetUtcNow().UtcDateTime;
         var sources = config.GetSection("Seed:Sources").Get<string[]>() ?? [];
         // Campanha neutra, de qualquer área: o primeiro contato preenche cargos, palavras e fontes a partir do currículo.
-        db.Campaigns.Add(Campaign.Create("Minha busca", [], ["Brasil", "Remoto"], sources, now));
+        db.Campaigns.Add(Campaign.Create(config["Seed:Name"] ?? "Minha busca", config.GetSection("Seed:Keywords").Get<string[]>() ?? [], ["Brasil", "Remoto"], sources, now));
         await db.SaveChangesAsync();
     }
 }

@@ -37,6 +37,23 @@ public sealed class FlowTests
     }
 
     [Fact]
+    public async Task Cenarios_de_formulario_preparam_ou_param_no_que_precisa_de_voce()
+    {
+        await using var s = await Stack.StartAsync();
+        await s.SourcesAsync("PrepareOnly", $"greenhouse:{s.Ats}/boards/cenarios");
+        await s.RunAsync();
+        await SettledAsync(s, 5);
+        Assert.Equal("FormValidated", await s.StateAsync("Aurora Ashby"));   // 2: Ashby com campos extras
+        Assert.Equal("FormValidated", await s.StateAsync("Farol Lever"));    // 3: Lever com upload e pergunta condicional
+        Assert.Equal("FormValidated", await s.StateAsync("Muda Sempre"));    // 4: seletor que muda a cada carga
+        Assert.Equal("NeedsHuman", await s.StateAsync("Cofre Seguro"));      // 5: MFA
+        // 9: prompt injection na descrição é só dado: a vaga segue o caminho normal, a campanha não muda de modo e nada sai.
+        Assert.Equal("FormValidated", await s.StateAsync("Eco Injeção"));
+        Assert.Equal("PrepareOnly", (await s.GetAsync("/campaigns"))[0].GetProperty("mode").GetString());
+        Assert.Equal(0, await s.SubmissionsAsync());
+    }
+
+    [Fact]
     public async Task Aprovacao_envia_uma_vez_e_confirmacao_lenta_vira_reconciliacao()
     {
         await using var s = await Stack.StartAsync();

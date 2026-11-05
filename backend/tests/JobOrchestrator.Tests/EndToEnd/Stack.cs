@@ -86,6 +86,17 @@ internal sealed class Stack : IAsyncDisposable
         }));
     }
 
+    /// <summary>Troca as fontes da campanha (mantém modo e critérios do teste).</summary>
+    public async Task SourcesAsync(string mode, params string[] sources)
+    {
+        var campaign = (await GetAsync("/campaigns"))[0];
+        Assert.Equal(HttpStatusCode.NoContent, await PutAsync($"/campaigns/{campaign.GetProperty("id").GetString()}", new
+        {
+            mode, minFitScore = 80, maxSubmissionsPerDay = 15, technologies = new[] { "C#", ".NET", "ASP.NET Core", "AWS", "PostgreSQL" },
+            locations = new[] { "Brasil", "Remoto" }, sources
+        }));
+    }
+
     public async Task RunAsync()
     {
         var id = (await GetAsync("/campaigns"))[0].GetProperty("id").GetString();
@@ -128,6 +139,7 @@ internal sealed class Stack : IAsyncDisposable
             ["Llm__Disabled"] = "true",
             ["Automation__FakeAtsHosts__0"] = $"127.0.0.1:{_ats}", ["Automation__Browser__TimeoutSeconds"] = "5",
             ["Seed__Sources__0"] = $"greenhouse:{Ats}/boards/demo", ["Seed__Sources__1"] = $"greenhouse:{Ats}/boards/agregador",
+            ["Seed__Keywords__0"] = "C#", ["Seed__Keywords__1"] = ".NET", ["Seed__Keywords__2"] = "ASP.NET Core", ["Seed__Keywords__3"] = "AWS", ["Seed__Keywords__4"] = "PostgreSQL",
             ["Workflow__ReconcileDelaySeconds"] = "1", ["Workflow__ReconcileRetrySeconds"] = "2",
             ["Logging__LogLevel__Default"] = "Warning"
         };
