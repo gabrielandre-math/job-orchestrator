@@ -65,6 +65,11 @@ public static class AutomationModule
         s.AddScoped<ISourceConnector, QuickinSource>();
         s.AddScoped<ISourceConnector, PandapeSource>();
         s.AddScoped<ISourceConnector, WorkdaySource>();
+        s.AddScoped<ISourceConnector, RssSource>();
+        s.AddScoped<ISourceConnector, FourDayWeekSource>();
+        s.AddScoped<ISourceConnector, WorkingNomadsSource>();
+        s.AddScoped<ISourceConnector, AdzunaSource>();
+        s.AddScoped<ISourceConnector, JoobleSource>();
         s.AddSingleton<ScraperEnv>();
         s.AddScoped<ScrapyRunner>();
         s.AddScoped<Leads>();

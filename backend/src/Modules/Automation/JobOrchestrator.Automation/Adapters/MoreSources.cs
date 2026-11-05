@@ -287,3 +287,165 @@ internal sealed class TeamtailorSource(IHttpClientFactory http) : PublicSource(h
         })];
     }
 }
+
+/// <summary>
+/// Feed RSS ou Atom de qualquer quadro de vagas (rss:https://site/feed): RSS 2.0, Atom e os campos do WP Job Manager (empresa, local, tipo).
+/// O robots.txt do site é conferido antes de ler o feed.
+/// </summary>
+internal sealed class RssSource(IHttpClientFactory http) : PublicSource(http, "rss")
+{
+    public override string Id => "rss-feed";
+    public override string Name => "Feed RSS";
+
+    public override async Task<IReadOnlyList<DiscoveredPosting>> DiscoverAsync(string source, CancellationToken ct)
+    {
+        var url = new Uri(Key(source));
+        try
+        {
+            using var robots = await Client.GetAsync(new Uri(url, "/robots.txt"), ct);
+            if (robots.IsSuccessStatusCode && !CareerPageReader.Allowed(await robots.Content.ReadAsStringAsync(ct), url.AbsolutePath))
+                throw new InvalidOperationException("O robots.txt do site não permite ler este feed.");
+        }
+        catch (HttpRequestException) { /* sem robots.txt acessível: segue as regras padrão */ }
+        var xml = XDocument.Parse(await Client.GetStringAsync(url, ct));
+        XNamespace atom = "http://www.w3.org/2005/Atom", wp = "https://wpjobmanager.com/";
+        var site = (string?)xml.Root?.Element("channel")?.Element("title") ?? (string?)xml.Root?.Element(atom + "title") ?? url.Host;
+        var items = xml.Descendants("item").Select(i => (
+            Title: (string?)i.Element("title") ?? "", Link: (string?)i.Element("link") ?? "", Body: (string?)i.Elements().FirstOrDefault(e => e.Name.LocalName == "encoded")?.Value ?? (string?)i.Element("description") ?? "",
+            Date: (string?)i.Element("pubDate"), Company: Field(i, "company"), Place: Field(i, "location"), Type: Field(i, "job_type")))
+            .Concat(xml.Descendants(atom + "entry").Select(e => (
+                Title: (string?)e.Element(atom + "title") ?? "", Link: (string?)e.Elements(atom + "link").FirstOrDefault()?.Attribute("href") ?? "", Body: (string?)e.Element(atom + "content") ?? (string?)e.Element(atom + "summary") ?? "",
+                Date: (string?)e.Element(atom + "updated") ?? (string?)e.Element(atom + "published"), Company: (string?)e.Element(atom + "author")?.Element(atom + "name") ?? "", Place: "", Type: "")));
+        return [.. items.Where(i => i.Title.Length > 2 && i.Link.Length > 0).Select(i =>
+        {
+            // "Empresa: Cargo" e "Cargo at Empresa" são os formatos mais comuns quando o feed não tem o campo da empresa.
+            var (company, title) = i.Company.Length > 0 ? (i.Company, i.Title) : SplitTitle(i.Title, site);
+            return new DiscoveredPosting(source, i.Link, company, title, i.Place, i.Link, Json.Plain(i.Body), DateTime.TryParse(i.Date, out var d) ? d.ToUniversalTime() : null, i.Link,
+                Workplace: (i.Place + i.Title).Contains("remot", StringComparison.OrdinalIgnoreCase) ? "remote" : null, Employment: i.Type.Length > 0 ? i.Type : null, ListedAsOpen: true);
+        })];
+    }
+
+    private static string Field(XElement item, string name) => item.Elements().FirstOrDefault(e => e.Name.LocalName == name)?.Value.Trim() ?? "";
+
+    internal static (string Company, string Title) SplitTitle(string text, string site)
+    {
+        var colon = text.IndexOf(": ", StringComparison.Ordinal);
+        if (colon is > 1 and < 60) return (text[..colon].Trim(), text[(colon + 2)..].Trim());
+        var at = text.LastIndexOf(" at ", StringComparison.OrdinalIgnoreCase);
+        if (at > 3) return (text[(at + 4)..].Trim(), text[..at].Trim());
+        return (site, text.Trim());
+    }
+}
+
+/// <summary>4 Day Week (4dayweek:categoria): a API pública de vagas com semana de 4 dias ou jornada reduzida; o robots.txt libera /api/v2.</summary>
+internal sealed class FourDayWeekSource(IHttpClientFactory http) : PublicSource(http, "4dayweek", "4dayweek.io")
+{
+    public override string Id => "4dayweek-api";
+    public override string Name => "4 Day Week";
+
+    public override async Task<IReadOnlyList<DiscoveredPosting>> DiscoverAsync(string source, CancellationToken ct)
+    {
+        var category = Key(source).ToLowerInvariant();
+        var list = new List<DiscoveredPosting>();
+        for (var page = 1; page <= 3; page++)
+        {
+            using var doc = await Json.GetAsync(Client, $"https://4dayweek.io/api/v2/jobs?page={page}&limit=100", ct);
+            foreach (var j in doc.RootElement.GetProperty("data").EnumerateArray())
+            {
+                if (category is not ("" or "todas" or "all") && !j.Str("category").Equals(category, StringComparison.OrdinalIgnoreCase)) continue;
+                var places = j.TryGetProperty("locations", out var l) && l.ValueKind == JsonValueKind.Array
+                    ? string.Join("; ", l.EnumerateArray().Select(x => string.Join(", ", new[] { x.Str("city"), x.Str("country") }.Where(v => v.Length > 0))).Where(v => v.Length > 0).Distinct()) : "";
+                var mode = j.Str("work_arrangement");
+                var tools = j.TryGetProperty("tools", out var t) && t.ValueKind == JsonValueKind.Array ? string.Join(", ", t.EnumerateArray().Select(x => x.Str("name"))) : "";
+                var min = j.TryGetProperty("salary_min", out var mn) && mn.ValueKind == JsonValueKind.Number ? mn.GetInt64() / 100 : 0;
+                var max = j.TryGetProperty("salary_max", out var mx) && mx.ValueKind == JsonValueKind.Number ? mx.GetInt64() / 100 : 0;
+                list.Add(new DiscoveredPosting(source, j.Str("id"), j.Obj("company").Str("name") is { Length: > 0 } c ? c : "4 Day Week", j.Str("title"), places.Length > 0 ? places : mode == "remote" ? "Remoto" : "",
+                    j.Str("url"), Json.Plain($"{j.Str("description")}\nFerramentas: {tools}"), j.Date("posted_at"), j.GetRawText(),
+                    Workplace: mode is "remote" or "hybrid" ? mode : mode == "onsite" ? "onsite" : null,
+                    Compensation: min > 0 ? $"{j.Str("salary_currency")} {min}-{max} por {(j.Str("salary_period") == "year" ? "ano" : j.Str("salary_period"))}" : null, ListedAsOpen: true));
+            }
+            if (!(doc.RootElement.TryGetProperty("has_more", out var more) && more.ValueKind == JsonValueKind.True)) break;
+            await Task.Delay(500, ct);
+        }
+        return list;
+    }
+}
+
+/// <summary>Working Nomads (workingnomads:categoria): a lista pública das vagas remotas mais novas; o robots.txt libera tudo.</summary>
+internal sealed class WorkingNomadsSource(IHttpClientFactory http) : PublicSource(http, "workingnomads", "www.workingnomads.com")
+{
+    public override string Id => "workingnomads-api";
+    public override string Name => "Working Nomads";
+
+    public override async Task<IReadOnlyList<DiscoveredPosting>> DiscoverAsync(string source, CancellationToken ct)
+    {
+        var category = Key(source);
+        using var doc = await Json.GetAsync(Client, "https://www.workingnomads.com/api/exposed_jobs/", ct);
+        return [.. doc.RootElement.EnumerateArray()
+            .Where(j => category is "" or "todas" || j.Str("category_name").Contains(category, StringComparison.OrdinalIgnoreCase))
+            .Select(j => new DiscoveredPosting(source, j.Str("url"), j.Str("company_name"), j.Str("title"), j.Str("location") is { Length: > 0 } p ? p : "Remoto", j.Str("url"),
+                Json.Plain($"{j.Str("description")}\n{j.Str("tags")}"), j.Date("pub_date"), j.GetRawText(), Workplace: "remote", ListedAsOpen: true))];
+    }
+}
+
+/// <summary>Adzuna (adzuna:termo): a API oficial com as vagas do Brasil, de todas as áreas; precisa da chave gratuita (Fontes › Chaves de API).</summary>
+internal sealed class AdzunaSource(IHttpClientFactory http) : PublicSource(http, "adzuna", "www.adzuna.com.br", "api.adzuna.com")
+{
+    public override string Id => "adzuna-api";
+    public override string Name => "Adzuna";
+
+    public override async Task<IReadOnlyList<DiscoveredPosting>> DiscoverAsync(string source, CancellationToken ct)
+    {
+        var id = await ApiKeys.GetAsync("adzuna", "appId", ct);
+        var key = await ApiKeys.GetAsync("adzuna", "appKey", ct);
+        if (id is null || key is null) throw new InvalidOperationException("Conecte a chave da Adzuna em Fontes › Chaves de API.");
+        var term = Key(source);
+        var list = new List<DiscoveredPosting>();
+        for (var page = 1; page <= 2; page++)
+        {
+            using var doc = await Json.GetAsync(Client, $"https://api.adzuna.com/v1/api/jobs/br/search/{page}?app_id={Uri.EscapeDataString(id)}&app_key={Uri.EscapeDataString(key)}" +
+                $"&results_per_page=50&what={Uri.EscapeDataString(term)}&max_days_old=30&sort_by=date&content-type=application/json", ct);
+            var results = doc.RootElement.GetProperty("results").EnumerateArray().ToList();
+            foreach (var j in results)
+            {
+                var min = j.TryGetProperty("salary_min", out var mn) && mn.ValueKind == JsonValueKind.Number ? mn.GetDouble() : 0;
+                var max = j.TryGetProperty("salary_max", out var mx) && mx.ValueKind == JsonValueKind.Number ? mx.GetDouble() : 0;
+                list.Add(new DiscoveredPosting(source, j.GetProperty("id").ToString(), j.Obj("company").Str("display_name"), j.Str("title"), j.Obj("location").Str("display_name"),
+                    j.Str("redirect_url"), Json.Plain(j.Str("description")), j.Date("created"), j.GetRawText(),
+                    Compensation: min > 0 ? $"BRL {min:0}-{max:0} por ano" : null, Employment: j.Str("contract_type") is { Length: > 0 } t ? t : null, ListedAsOpen: true));
+            }
+            if (results.Count < 50) break;
+            await Task.Delay(600, ct);
+        }
+        return list;
+    }
+}
+
+/// <summary>Jooble (jooble:termo): a API oficial com vagas de muitos sites brasileiros; precisa da chave gratuita (Fontes › Chaves de API).</summary>
+internal sealed class JoobleSource(IHttpClientFactory http) : PublicSource(http, "jooble", "jooble.org", "br.jooble.org")
+{
+    public override string Id => "jooble-api";
+    public override string Name => "Jooble";
+
+    public override async Task<IReadOnlyList<DiscoveredPosting>> DiscoverAsync(string source, CancellationToken ct)
+    {
+        var key = await ApiKeys.GetAsync("jooble", "key", ct) ?? throw new InvalidOperationException("Conecte a chave do Jooble em Fontes › Chaves de API.");
+        var term = Key(source);
+        var list = new List<DiscoveredPosting>();
+        for (var page = 1; page <= 2; page++)
+        {
+            using var content = new StringContent(JsonSerializer.Serialize(new { keywords = term, location = "Brasil", page }), System.Text.Encoding.UTF8, "application/json");
+            using var response = await Client.PostAsync($"https://jooble.org/api/{Uri.EscapeDataString(key)}", content, ct);
+            response.EnsureSuccessStatusCode();
+            using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
+            var jobs = doc.RootElement.GetProperty("jobs").EnumerateArray().ToList();
+            foreach (var j in jobs)
+                list.Add(new DiscoveredPosting(source, j.GetProperty("id").ToString(), j.Str("company"), j.Str("title"), j.Str("location"), j.Str("link"),
+                    Json.Plain(j.Str("snippet")), j.Date("updated"), j.GetRawText(), Compensation: j.Str("salary") is { Length: > 0 } s ? s : null,
+                    Employment: j.Str("type") is { Length: > 0 } t ? t : null, ListedAsOpen: true));
+            if (jobs.Count == 0) break;
+            await Task.Delay(600, ct);
+        }
+        return list;
+    }
+}

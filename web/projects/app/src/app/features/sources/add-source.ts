@@ -28,6 +28,9 @@ const APIS = [
   { key: 'wwr', what: 'Categoria', example: '', options: ['remote-programming-jobs', 'remote-back-end-programming-jobs', 'remote-front-end-programming-jobs', 'remote-full-stack-programming-jobs', 'remote-design-jobs', 'remote-sales-and-marketing-jobs', 'remote-customer-support-jobs', 'remote-management-and-finance-jobs', 'remote-devops-sysadmin-jobs', 'all-other-remote-jobs'] },
   { key: 'github', what: 'Repositório de vagas', example: '', options: ['backend-br/vagas', 'frontendbr/vagas', 'react-brasil/vagas', 'qa-brasil/vagas', 'androiddevbr/vagas', 'uxbrasil/vagas'] },
   { key: 'hn', what: 'Fio', example: '', options: ['whoishiring'] },
+  { key: 'rss', what: 'Endereço do feed RSS ou Atom', example: 'https://site.com/jobs/feed/' },
+  { key: '4dayweek', what: 'Categoria', example: '', options: ['engineering', 'todas'] },
+  { key: 'workingnomads', what: 'Categoria', example: '', options: ['Development', 'todas'] },
 ];
 const DETECT: [RegExp, string][] = [
   [/(?:job-)?boards(?:\.eu)?\.greenhouse\.io\/(?:embed\/job_board\?for=)?([^/?#&]+)/i, 'greenhouse'], [/jobs\.lever\.co\/([^/?#]+)/i, 'lever'],

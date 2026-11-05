@@ -29,9 +29,19 @@ internal sealed class Explorer(IServiceScopeFactory scopes, [FromKeyedServices("
     private static string FrontierFile => Path.Combine(Folder, "frontier.json");
     private static string ListsFile => Path.Combine(Folder, "lists.json");
     public static string LastFile => Path.Combine(Folder, "last.json");
+    public static string PrintFile => Path.Combine(Folder, "campaign.txt");
 
     /// <summary>Listas de empresas lidas pelo Explorador (README no GitHub), relidas a cada 7 dias. Explorer:Lists troca a lista.</summary>
     internal static readonly string[] DefaultLists = ["lerrua/remote-jobs-brazil", "sitemap:pandape", "poteto/hiring-without-whiteboards", "yanirs/established-remote"];
+    /// <summary>Quadros de vagas brasileiros que o robots.txt deixa ler (o coletor lê o dado estruturado e o navegador o que monta com JavaScript).
+    /// Entram como pistas para qualquer currículo; o juiz decide pela área de cada pessoa.</summary>
+    internal static readonly string[] Boards =
+    [
+        "web:remotar.com.br", "web:trampos.co/oportunidades", "web:99jobs.com/opportunities", "web:programathor.com.br/jobs", "web:geekhunter.com.br/vagas",
+        "web:nerdin.com.br/vagas.php", "web:hipsters.jobs/jobs", "web:coodesh.com/vagas", "web:www.vagas.com.br",
+        "4dayweek:todas", "workingnomads:todas", "rss:https://weworkremotely.com/remote-jobs.rss",
+    ];
+
     /// <summary>APIs públicas que buscam por texto: cada palavra (e cargo, onde a busca entende frase) vira uma fonte candidata. A Remotive pede
     /// poucas chamadas por dia: entra só com as duas primeiras palavras e só se a campanha ainda não tiver uma busca nela.</summary>
     private static readonly (string Api, bool Titles)[] SearchApis = [("getonbrd", true), ("himalayas", true), ("remotive", false)];
@@ -90,6 +100,17 @@ internal sealed class Explorer(IServiceScopeFactory scopes, [FromKeyedServices("
             foreach (var (api, titles) in SearchApis)
                 if ((titles || campaign.Technologies.Take(2).Contains(term, StringComparer.OrdinalIgnoreCase)) && (titles || !campaign.Sources.Any(x => x.StartsWith($"{api}:", StringComparison.OrdinalIgnoreCase))))
                     Lead($"{api}:{term.ToLowerInvariant()}", $"API {api} por \"{term}\"", "APIs públicas");
+        // 2b. APIs com chave do usuário (Adzuna e Jooble: o Brasil inteiro, todas as áreas), pelas mesmas palavras e cargos.
+        var keys = await automation.ApiKeysAsync(ct);
+        foreach (var term in terms)
+            foreach (var api in new[] { "adzuna", "jooble" }.Where(keys.Contains)) Lead($"{api}:{term.ToLowerInvariant()}", $"{(api == "adzuna" ? "Adzuna" : "Jooble")} por \"{term}\"", "APIs públicas");
+        // 2c. A web inteira pela API oficial do buscador (Brave Search): uma consulta por ciclo, montada do currículo, dentro do teto do dia.
+        if (keys.Contains("brave") && SpendWebSearch(config.GetValue("Explorer:WebSearchPerDay", 60)))
+        {
+            var q = WebQueries(campaign);
+            try { foreach (var l in await automation.WebSearchAsync(q[turn % q.Count], ct)) Lead(l.Source, l.Origin, "busca na web"); }
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException or JsonException) { log.LogInformation("Web search skipped: {Error}", ex.Message); }
+        }
         // 3. Busca da Gupy: duas palavras por ciclo.
         foreach (var term in Rotate(terms, turn, 2))
         {
@@ -115,6 +136,8 @@ internal sealed class Explorer(IServiceScopeFactory scopes, [FromKeyedServices("
             }
             catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException or InvalidDataException) { log.LogInformation("Company list {Repo} skipped: {Error}", due, ex.Message); }
         }
+        // 5b. Quadros de vagas conhecidos, testados para a área de quem mandou o currículo.
+        foreach (var b in Boards) Lead(b, "quadro de vagas", "quadros de vagas");
         // 6. Sites das empresas das vagas.
         foreach (var d in await jobs.CompanyDomainsAsync(60, ct)) Lead($"web:{d}", "site da empresa de uma vaga", "sites de empresa");
         foreach (var k in frontier.Keys.Where(k => !Fresh(k)).ToList()) frontier.Remove(k);
@@ -123,7 +146,7 @@ internal sealed class Explorer(IServiceScopeFactory scopes, [FromKeyedServices("
         Write(ListsFile, lists);
 
         var batch = frontier.Where(f => Kind(f.Key) == "board").OrderBy(f => Priority(f.Value)).Take(config.GetValue("Explorer:BoardsPerCycle", 10))
-            .Concat(frontier.Where(f => Kind(f.Key) == "github").Take(config.GetValue("Explorer:ReposPerCycle", 3)))
+            .Concat(frontier.Where(f => Kind(f.Key) == "github").Take(config.GetValue("Explorer:ReposPerCycle", keys.Contains("github") ? 10 : 3)))
             .Concat(frontier.Where(f => Kind(f.Key) == "gupy").Take(config.GetValue("Explorer:GupyPerCycle", 4)))
             .Select(f => (Source: f.Key, Origin: f.Value)).ToList();
         var sites = frontier.Where(f => Kind(f.Key) == "web").OrderBy(f => Priority(f.Value)).Take(config.GetValue("Explorer:SitesPerCycle", 6))
@@ -269,6 +292,32 @@ internal sealed class Explorer(IServiceScopeFactory scopes, [FromKeyedServices("
 
     private static Verdict Miss(string source, string origin, string reason) => new(source, origin, 0, 0, [], false, reason, DateTime.UtcNow);
 
+    /// <summary>Consultas de busca na web para qualquer área, montadas do cargo, da palavra principal e do local da campanha.</summary>
+    internal static IReadOnlyList<string> WebQueries(CampaignSettings c)
+    {
+        var word = c.Technologies.FirstOrDefault() ?? "";
+        var title = (c.Titles ?? []).FirstOrDefault() ?? word;
+        var place = c.Locations.FirstOrDefault(l => !l.Contains("remot", StringComparison.OrdinalIgnoreCase)) ?? "Brasil";
+        return
+        [
+            $"{title} vaga {place}", $"vagas {word} {place}", $"\"trabalhe conosco\" {word} {place}", $"{title} vaga remoto",
+            $"site:gupy.io {title}", $"site:inhire.app {title}", $"site:vagas.solides.com.br {word}", $"site:jobs.quickin.io {word}",
+            $"site:pandape.infojobs.com.br {title}", $"site:myworkdayjobs.com {title} Brazil", $"site:jobs.lever.co {title} Brazil",
+            $"site:boards.greenhouse.io {title} Brazil", $"site:jobs.ashbyhq.com {title} Brazil", $"site:apply.workable.com {title} Brazil",
+        ];
+    }
+
+    /// <summary>Teto diário da busca na web (o plano gratuito do Brave Search dá cerca de 2.000 consultas por mês).</summary>
+    private static bool SpendWebSearch(int perDay)
+    {
+        var file = Path.Combine(Folder, "websearch.json");
+        var today = DateTime.UtcNow.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        var state = Read<Dictionary<string, int>>(file) ?? [];
+        if (state.GetValueOrDefault(today) >= perDay) return false;
+        Write(file, new Dictionary<string, int> { [today] = state.GetValueOrDefault(today) + 1 });
+        return true;
+    }
+
     private const string JudgeSystem = "Você confere se uma fonte de vagas serve para a busca de uma pessoa. fit=true quando as vagas listadas são da área e do tipo de cargo que ela procura; " +
         "fit=false quando só citam a palavra de passagem (outra área, estágio sem relação, vaga presencial em outro país). reason: uma frase curta em português. Responda só o JSON.";
     private const string JudgeSchema = """{"type":"object","properties":{"fit":{"type":"boolean"},"reason":{"type":"string"}},"required":["fit","reason"],"additionalProperties":false}""";
@@ -353,13 +402,23 @@ internal sealed class Continuous(Explorer explorer, IServiceScopeFactory scopes,
     private async Task ExploreAsync(CancellationToken stop)
     {
         var last = Explorer.Read<ExploreSummary>(Explorer.LastFile)?.At ?? DateTime.MinValue;
+        var seen = File.Exists(Explorer.PrintFile) ? await File.ReadAllTextAsync(Explorer.PrintFile, stop) : "";
         while (!stop.IsCancellationRequested)
         {
             try
             {
-                var every = TimeSpan.FromMinutes(Math.Clamp(config.GetValue("Explorer:IntervalMinutes", 10), 5, 1440));
-                if (config.GetValue("Explorer:Enabled", true) && DateTime.UtcNow - last >= every)
+                // Currículo novo ou busca mudada (outras palavras, cargos ou locais): o Explorador sai na hora, sem esperar o intervalo.
+                string print;
+                await using (var scope = scopes.CreateAsyncScope())
                 {
+                    var c = (await scope.ServiceProvider.GetRequiredService<ICampaignsApi>().ListAsync(stop)).FirstOrDefault();
+                    print = c is null ? "" : string.Join("|", [.. c.Technologies, "#", .. c.Titles ?? [], "#", .. c.Locations]);
+                }
+                var changed = print.Length > 0 && print != seen;
+                var every = TimeSpan.FromMinutes(Math.Clamp(config.GetValue("Explorer:IntervalMinutes", 10), 5, 1440));
+                if (config.GetValue("Explorer:Enabled", true) && (changed || DateTime.UtcNow - last >= every))
+                {
+                    if (changed) { seen = print; await File.WriteAllTextAsync(Explorer.PrintFile, print, stop); log.LogInformation("Explorer: campaign changed, exploring now"); }
                     last = DateTime.UtcNow;
                     var s = await explorer.CycleAsync(stop);
                     log.LogInformation("Explorer: {Tested} tested, {Added} added, {Frontier} in the queue", s.Tested, s.Added.Count, s.Frontier);

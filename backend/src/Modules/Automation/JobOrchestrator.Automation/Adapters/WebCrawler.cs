@@ -54,6 +54,25 @@ internal sealed partial class ScrapyRunner(ScraperEnv env, IIntelligenceApi ai, 
     }
     private sealed record Email(string Address, string Url, string Context);
 
+    private static (string? Url, DateTime At) _firecrawl;
+
+    /// <summary>O Firecrawl configurado ou, sem configuração, o que estiver no ar em 127.0.0.1:3002 (scripts/firecrawl.sh); conferido a cada 5 minutos.</summary>
+    private async Task<string?> FirecrawlAsync(CancellationToken ct)
+    {
+        if (config["Scraper:Firecrawl:Url"] is { Length: > 0 } configured) return configured;
+        if (DateTime.UtcNow - _firecrawl.At < TimeSpan.FromMinutes(5)) return _firecrawl.Url;
+        string? found = null;
+        try
+        {
+            using var probe = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
+            using var r = await probe.GetAsync("http://127.0.0.1:3002/", ct);
+            found = "http://127.0.0.1:3002";
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException) { /* Firecrawl fora do ar: fica o navegador de leitura */ }
+        _firecrawl = (found, DateTime.UtcNow);
+        return found;
+    }
+
     public async Task<(List<DiscoveredPosting> Postings, CrawlSummary Summary)> CrawlAsync(string source, IReadOnlyList<string> seeds, AgentThread thread, CancellationToken ct, int? pageBudget = null, int? aiPages = null)
     {
         var clock = Stopwatch.StartNew();
@@ -126,7 +145,7 @@ internal sealed partial class ScrapyRunner(ScraperEnv env, IIntelligenceApi ai, 
 
         // Página que só monta com JavaScript: o Scrapy leu (o robots.txt já foi respeitado) e não achou nada. Com o Firecrawl configurado,
         // ele renderiza a mesma página e o texto segue para o Extrator e o Conferente como os outros. Sem Firecrawl, nada muda.
-        if (postings.Count == 0 && candidates.Count == 0 && boards.Count == 0 && blocked == 0 && pages > 0 && config["Scraper:Firecrawl:Url"] is { Length: > 0 } firecrawl)
+        if (postings.Count == 0 && candidates.Count == 0 && boards.Count == 0 && blocked == 0 && pages > 0 && await FirecrawlAsync(ct) is { } firecrawl)
             foreach (var seed in seeds.Take(3))
                 if (await RenderAsync(firecrawl, seed.StartsWith("http") ? seed : $"https://{seed}", ct) is { } page)
                 {
@@ -136,7 +155,7 @@ internal sealed partial class ScrapyRunner(ScraperEnv env, IIntelligenceApi ai, 
 
         // Site que não deu nada no Scrapy (página que só monta com JavaScript): o navegador de leitura abre, com o robots.txt conferido.
         // Quadro de ATS em link ou iframe, vaga em dado estruturado e o texto da página seguem o mesmo caminho do que o Scrapy leu.
-        if (config["Scraper:Firecrawl:Url"] is not { Length: > 0 } && config.GetValue("Scraper:Browser:Enabled", true))
+        if (config.GetValue("Scraper:Browser:Enabled", true))
         {
             var empty = seeds.Where(s => !postings.Any(p => Leads.Under(Leads.PageOf(p), s)) && !candidates.Any(c => Leads.Under(c.Url, s)) && !hits.Any(h => Leads.Under(h.Page, s)))
                 .Take(config.GetValue("Scraper:Browser:MaxSites", 4)).ToList();

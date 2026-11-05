@@ -32,16 +32,34 @@ internal sealed partial class Leads(IHttpClientFactory http, ScrapyRunner runner
     {
         var leads = new List<SourceLead>();
         foreach (var raw in Urls().Matches(text).Select(m => m.Value.TrimEnd('.', ',', ')', ']', '|', '*', '_', ';')))
-        {
-            if (SourceKeys.Board(raw) is { } board) { leads.Add(new(board, $"lista {repo}")); continue; }
-            if (raw.Contains(',') || !Uri.TryCreate(raw, UriKind.Absolute, out var u)) continue;
-            var host = Bare(u.Host);
-            if (host.Split('.').Length < 2 || Ignored().IsMatch(host)) continue;
-            var path = u.AbsolutePath.TrimEnd('/');
-            // Link que já é a página de carreiras vai inteiro; o resto vai pela raiz, onde o coletor tenta as rotas comuns e o sitemap.
-            leads.Add(new(CareerPath().IsMatch(path) ? $"web:{host}{path}" : $"web:{host}", $"lista {repo}"));
-        }
+            if (LeadFor(raw, $"lista {repo}") is { } lead) leads.Add(lead);
         return [.. leads.DistinctBy(l => l.Source, StringComparer.OrdinalIgnoreCase)];
+    }
+
+    /// <summary>Um link vira pista: quadro de ATS vira a fonte oficial; site de empresa vai para a varredura; rede social e afins ficam de fora.</summary>
+    internal static SourceLead? LeadFor(string raw, string origin)
+    {
+        if (SourceKeys.Board(raw) is { } board) return new(board, origin);
+        if (raw.Contains(',') || !Uri.TryCreate(raw, UriKind.Absolute, out var u)) return null;
+        var host = Bare(u.Host);
+        if (host.Split('.').Length < 2 || Ignored().IsMatch(host)) return null;
+        var path = u.AbsolutePath.TrimEnd('/');
+        // Link que já é a página de carreiras vai inteiro; o resto vai pela raiz, onde o coletor tenta as rotas comuns e o sitemap.
+        return new(CareerPath().IsMatch(path) ? $"web:{host}{path}" : $"web:{host}", origin);
+    }
+
+    /// <summary>Busca na web pela API oficial do Brave Search (chave do usuário): cada resultado vira pista. Sem chave, não busca.</summary>
+    public async Task<IReadOnlyList<SourceLead>> WebSearchAsync(string query, CancellationToken ct)
+    {
+        var key = await ApiKeys.GetAsync("brave", "key", ct) ?? throw new InvalidOperationException("Conecte a chave do Brave Search em Fontes › Chaves de API.");
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"https://api.search.brave.com/res/v1/web/search?q={Uri.EscapeDataString(query)}&count=20&country=br&search_lang=pt-br");
+        request.Headers.Add("X-Subscription-Token", key);
+        request.Headers.Accept.ParseAdd("application/json");
+        using var response = await Client.SendAsync(request, ct);
+        response.EnsureSuccessStatusCode();
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
+        var results = doc.RootElement.TryGetProperty("web", out var web) && web.TryGetProperty("results", out var r) ? r.EnumerateArray().Select(x => x.Str("url")).ToList() : [];
+        return [.. results.Select(u => LeadFor(u, $"busca na web por \"{query}\"")).OfType<SourceLead>().DistinctBy(l => l.Source, StringComparer.OrdinalIgnoreCase)];
     }
 
     public async Task<IReadOnlyList<SourceLead>> PlatformLeadsAsync(string platform, CancellationToken ct)
@@ -103,6 +121,7 @@ internal sealed partial class Leads(IHttpClientFactory http, ScrapyRunner runner
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.Accept.ParseAdd(accept);
+        if (await ApiKeys.GetAsync("github", "token", ct) is { Length: > 0 } token) request.Headers.Authorization = new("Bearer", token);
         using var response = await Client.SendAsync(request, ct);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadAsStringAsync(ct);

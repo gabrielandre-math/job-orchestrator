@@ -16,6 +16,7 @@ internal sealed partial class GitHubIssuesSource(IHttpClientFactory http) : Publ
         var repo = Key(source);
         using var request = new HttpRequestMessage(HttpMethod.Get, $"https://api.github.com/repos/{repo}/issues?state=open&per_page=100");
         request.Headers.Accept.ParseAdd("application/vnd.github+json");
+        if (await ApiKeys.GetAsync("github", "token", ct) is { Length: > 0 } token) request.Headers.Authorization = new("Bearer", token);
         using var response = await Client.SendAsync(request, ct);
         response.EnsureSuccessStatusCode();
         using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));

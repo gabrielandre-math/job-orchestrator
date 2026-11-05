@@ -6,7 +6,7 @@ export const PLATFORMS: Record<string, { name: string; domain: string; kind: Sou
   ashby: { name: 'Ashby', domain: 'ashbyhq.com', kind: 'ats' }, smartrecruiters: { name: 'SmartRecruiters', domain: 'smartrecruiters.com', kind: 'ats' },
   recruitee: { name: 'Recruitee', domain: 'recruitee.com', kind: 'ats' }, breezy: { name: 'Breezy HR', domain: 'breezy.hr', kind: 'ats' },
   personio: { name: 'Personio', domain: 'personio.com', kind: 'ats' }, workable: { name: 'Workable', domain: 'workable.com', kind: 'ats' },
-  gupy: { name: 'Gupy', domain: 'gupy.io', kind: 'ats' }, getonbrd: { name: 'GetOnBoard', domain: 'getonbrd.com', kind: 'api' }, teamtailor: { name: 'Teamtailor', domain: 'teamtailor.com', kind: 'ats' }, solides: { name: 'Sólides', domain: 'solides.com.br', kind: 'ats' }, inhire: { name: 'InHire', domain: 'inhire.app', kind: 'ats' }, quickin: { name: 'Quickin', domain: 'quickin.io', kind: 'ats' }, pandape: { name: 'Pandapé', domain: 'pandape.com.br', kind: 'ats' }, workday: { name: 'Workday', domain: 'workday.com', kind: 'ats' },
+  gupy: { name: 'Gupy', domain: 'gupy.io', kind: 'ats' }, getonbrd: { name: 'GetOnBoard', domain: 'getonbrd.com', kind: 'api' }, teamtailor: { name: 'Teamtailor', domain: 'teamtailor.com', kind: 'ats' }, solides: { name: 'Sólides', domain: 'solides.com.br', kind: 'ats' }, inhire: { name: 'InHire', domain: 'inhire.app', kind: 'ats' }, quickin: { name: 'Quickin', domain: 'quickin.io', kind: 'ats' }, pandape: { name: 'Pandapé', domain: 'pandape.com.br', kind: 'ats' }, workday: { name: 'Workday', domain: 'workday.com', kind: 'ats' }, rss: { name: 'Feed RSS', domain: '', kind: 'api' }, '4dayweek': { name: '4 Day Week', domain: '4dayweek.io', kind: 'api' }, workingnomads: { name: 'Working Nomads', domain: 'workingnomads.com', kind: 'api' },
   remotive: { name: 'Remotive', domain: 'remotive.com', kind: 'api' }, arbeitnow: { name: 'Arbeitnow', domain: 'arbeitnow.com', kind: 'api' },
   himalayas: { name: 'Himalayas', domain: 'himalayas.app', kind: 'api' }, jobicy: { name: 'Jobicy', domain: 'jobicy.com', kind: 'api' },
   themuse: { name: 'The Muse', domain: 'themuse.com', kind: 'api' }, remoteok: { name: 'RemoteOK', domain: 'remoteok.com', kind: 'api' },
@@ -20,7 +20,10 @@ export function describeSource(source: string): SourceInfo {
   const target = (i < 0 ? '' : source.slice(i + 1)).replace(/^https?:\/\//, '').replace(/\/$/, '');
   const p = PLATFORMS[platform] ?? { name: platform, domain: '', kind: 'api' as const };
   const site = platform === 'web';
-  const company = p.kind === 'ats' ? (target.split('/').filter(Boolean).at(-1) ?? target) : site ? target.split('.')[0] : null;
+  // Workday: o nome vem do cliente no host (accenture.wd103...), não do site (AccentureCareers); feed RSS: a logo é a do site do feed.
+  const host = target.split('/')[0];
+  const company = platform === 'workday' ? host.split('.')[0] : p.kind === 'ats' ? (target.split('/').filter(Boolean).at(-1) ?? target) : site ? target.split('.')[0] : null;
+  if (platform === 'rss') return { source, platform, platformName: p.name, platformDomain: host, target, kind: p.kind, company: null, companyDomain: host, label: `Feed de ${host.replace(/^www\./, '')}` };
   return {
     source, platform, platformName: p.name, platformDomain: site ? target : p.domain, target, kind: p.kind, company: company ? cap(company) : null,
     companyDomain: site ? target : null, label: site ? target : p.kind === 'ats' ? `${cap(company ?? target)} no ${p.name}` : `${p.name}${target ? ` · ${target}` : ''}`,

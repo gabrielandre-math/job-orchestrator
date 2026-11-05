@@ -102,3 +102,24 @@ public sealed class PageJobTests
         Assert.Contains("ASP.NET Core", p.Description);
     }
 }
+
+/// <summary>Formatos das fontes novas: título de feed com a empresa junto e a data relativa do Workday.</summary>
+public sealed class FeedFormatTests
+{
+    [Theory]
+    [InlineData("Acme: Senior .NET Developer", "Acme", "Senior .NET Developer")]
+    [InlineData("Backend Engineer at Nubank", "Nubank", "Backend Engineer")]
+    [InlineData("Desenvolvedor C#", "Quadro X", "Desenvolvedor C#")]
+    public void Titulo_do_feed_separa_empresa_e_cargo(string text, string company, string title) =>
+        Assert.Equal((company, title), JobOrchestrator.Automation.Adapters.RssSource.SplitTitle(text, "Quadro X"));
+
+    [Fact]
+    public void Data_relativa_do_workday()
+    {
+        var today = DateTime.UtcNow.Date;
+        Assert.Equal(today, JobOrchestrator.Automation.Adapters.WorkdaySource.Posted("Posted Today"));
+        Assert.Equal(today.AddDays(-1), JobOrchestrator.Automation.Adapters.WorkdaySource.Posted("Posted Yesterday"));
+        Assert.Equal(today.AddDays(-3), JobOrchestrator.Automation.Adapters.WorkdaySource.Posted("Posted 3 Days Ago"));
+        Assert.Equal(today.AddDays(-30), JobOrchestrator.Automation.Adapters.WorkdaySource.Posted("Posted 30+ Days Ago"));
+    }
+}

@@ -88,6 +88,10 @@ public interface IAutomationApi
     Task<IReadOnlyList<SourceLead>> CompanyListAsync(string repo, CancellationToken ct);
     /// <summary>Empresas de uma plataforma pelo sitemap que o robots.txt dela indica (hoje o Pandapé), mais vagas primeiro.</summary>
     Task<IReadOnlyList<SourceLead>> PlatformLeadsAsync(string platform, CancellationToken ct);
+    /// <summary>Busca na web pela API oficial do buscador (Brave Search, com a chave do usuário); cada resultado vira pista.</summary>
+    Task<IReadOnlyList<SourceLead>> WebSearchAsync(string query, CancellationToken ct);
+    /// <summary>Quais chaves de API das fontes estão conectadas (adzuna, jooble, brave, github).</summary>
+    Task<IReadOnlySet<string>> ApiKeysAsync(CancellationToken ct);
     /// <summary>Varre vários sites numa rodada só do coletor (robots.txt, uma conexão por domínio) e separa o que achou por site.</summary>
     Task<IReadOnlyList<SiteFinding>> SweepSitesAsync(IReadOnlyList<string> domains, CancellationToken ct);
     Task<PostingStatus> CheckOpenAsync(string applyUrl, CancellationToken ct);
