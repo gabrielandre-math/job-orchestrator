@@ -20,8 +20,9 @@ echo "3/5 coletor, banco e units"
 mkdir -p "$P/scraper" && (cd "$R/scraper" && tar --exclude='__pycache__' --exclude='*.egg-info' -cf - .) | tar -xf - -C "$P/scraper"
 cp "$R/infra/compose.yaml" "$P/compose.yaml"
 mkdir -p "$P/infra/systemd" "$P/scripts" && cp "$R"/infra/systemd/* "$P/infra/systemd/" && cp "$R/scripts/backup.sh" "$P/scripts/backup.sh"
-echo "4/5 abertura e ícone"
+echo "4/5 abertura, ícone e extensão do copiloto"
 cp -r "$R/packaging/splash" "$P/splash" && cp "$R/packaging/job-orchestrator.svg" "$P/job-orchestrator.svg"
+cp -r "$R/extension" "$P/extension"
 # O instalador oferece trazer os dados do modo de desenvolvimento desta máquina (em outra máquina a pasta não existe e nada acontece).
 if [ -d "$R/.dev" ]; then echo "$R/.dev" > "$P/dev-data.txt"; fi
 chmod +x "$P/job-orchestrator"

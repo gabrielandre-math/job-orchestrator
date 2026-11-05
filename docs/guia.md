@@ -2,6 +2,18 @@
 
 O Job Orchestrator procura vagas de qualquer área, monta um currículo por vaga (perfeito para ATS, só com fatos do seu currículo) e cuida das candidaturas com você no controle. Tudo roda na sua máquina, em `http://127.0.0.1:7410`.
 
+## Instalar
+
+Rode `./job-orchestrator-instalador.run` (o arquivo que `scripts/package.sh` gera em `dist/`). A janela de instalação tem cinco passos:
+
+1. **Boas-vindas:** o que o app faz e o que nunca faz.
+2. **Sua máquina:** confere Docker, navegador, Python, modelo local, placa de vídeo, disco e chaveiro. O que faltar vem com o comando para copiar; aviso não impede.
+3. **Como instalar:** atalho no menu, abrir junto com o computador (a busca roda sozinha com a janela fechada) e trazer o que você já tem do modo de desenvolvimento.
+4. **Instalando:** arquivos, dados, banco, coletor, modelo local, atalho e serviço, um de cada vez, ao vivo.
+5. **Pronto:** "Abrir o Job Orchestrator", e a mesma janela vira o app.
+
+Depois: o app abre pelo menu (ou `job-orchestrator`); enquanto os serviços sobem, aparece a abertura animada. `job-orchestrator --status` diz se está no ar, `--stop` para, `--setup` abre o instalador de novo (para atualizar ou mudar as opções).
+
 ## Primeiro contato
 
 Na primeira vez, o assistente abre sozinho e passa por cinco passos:
@@ -28,6 +40,12 @@ O botão **Automatizar tudo** (no Início e na Campanha) abre um assistente que 
 ## O Explorador
 
 Vai atrás de fonte nova sem você passar link, a cada 10 minutos. Lê os links de candidatura das vagas que chegam (o agregador aponta para o quadro da empresa), busca na Gupy e nas APIs públicas pelas suas palavras e cargos, acha repositórios do GitHub com vagas recentes, percorre listas de empresas e manda o coletor aos sites delas, respeitando o robots.txt de cada um. Entra só a fonte com vaga recente da sua área que ainda não chegava por outra, confirmada pelo modelo local, e as vagas dela chegam na mesma hora. Acompanhe em Fontes (as fontes testadas, com o motivo) e na Busca ao vivo.
+
+## Mais vagas
+
+- **Chaves gratuitas** (Fontes › Mais vagas com chave gratuita): Adzuna e Jooble trazem vagas do Brasil inteiro, de todas as áreas; o Brave Search deixa o Explorador procurar na web inteira pela API oficial, com consultas montadas do seu currículo; o token do GitHub sobe o limite de consultas. Cada chave tem um assistente que leva ao site, testa e guarda no chaveiro do sistema.
+- **Alertas de vaga por e-mail** (Fontes › Alertas de vaga por e-mail): crie alertas no LinkedIn, Indeed, Catho, InfoJobs, Glassdoor e Vagas.com; com o seu e-mail conectado, o app lê os alertas e traz as vagas, sem abrir esses sites por robô.
+- **Firecrawl** (opcional): `scripts/firecrawl.sh` sobe o serviço em 127.0.0.1:3002 e o app o encontra sozinho para páginas que só montam com JavaScript; sem ele, o navegador de leitura (Chromium do app, ou o Obscura na versão normal, se instalado em `~/.local/opt/obscura`) faz esse trabalho.
 
 ## O dia a dia
 

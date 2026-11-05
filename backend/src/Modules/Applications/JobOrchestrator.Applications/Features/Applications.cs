@@ -175,5 +175,40 @@ internal sealed class ApplicationEndpoints : ICarterModule
                 b?.FirstName ?? "", b?.LastName ?? "", b?.Email ?? "", b?.Phone ?? "", b?.LinkedIn ?? ""));
         });
         app.MapGet("/api/tasks", async (ISender sender, CancellationToken ct) => (await sender.Send(new ListTasksQuery(), ct)).ToHttp(Results.Ok)).WithTags("Applications");
+        // Extensão do copiloto: acha a candidatura da página aberta (mesmo site, caminho mais parecido) e devolve o que preencher.
+        app.MapGet("/api/copilot/match", async (string url, ApplicationsDbContext db, Features.Workflow.Bundles bundles, CancellationToken ct) =>
+        {
+            if (!Uri.TryCreate(url, UriKind.Absolute, out var page)) return Results.BadRequest();
+            var host = page.Host.Replace("www.", "", StringComparison.OrdinalIgnoreCase);
+            var candidates = await db.Applications.AsNoTracking().Where(a => a.ApplyUrl.Contains(host)).OrderByDescending(a => a.UpdatedAt).Take(60).ToListAsync(ct);
+            var best = candidates.Select(a => (App: a, Score: CopilotMatch.Score(a.ApplyUrl, page))).Where(x => x.Score > 0).OrderByDescending(x => x.Score).Select(x => x.App).FirstOrDefault();
+            if (best is null) return Results.NotFound();
+            var b = await bundles.ForAsync(best, ct);
+            return Results.Ok(new
+            {
+                applicationId = best.Id, company = best.Company, title = best.Title,
+                copilot = new CopilotView(best.ApplyUrl, best.ApplyChannel, best.ResumePath is not null && File.Exists(best.ResumePath),
+                    b is null ? [] : [.. b.Answers.Where(x => !string.IsNullOrWhiteSpace(x.Value)).Select(x => new CopilotAnswer(x.Key, x.Value))],
+                    b?.FirstName ?? "", b?.LastName ?? "", b?.Email ?? "", b?.Phone ?? "", b?.LinkedIn ?? ""),
+            });
+        }).WithTags("Applications");
     }
 }
+
+/// <summary>Quão parecida a página aberta é do link de candidatura guardado: mesmo site e o maior pedaço de caminho em comum.</summary>
+internal static class CopilotMatch
+{
+    public static int Score(string applyUrl, Uri page)
+    {
+        if (!Uri.TryCreate(applyUrl, UriKind.Absolute, out var saved)) return 0;
+        static string Bare(string h) => h.StartsWith("www.", StringComparison.OrdinalIgnoreCase) ? h[4..] : h;
+        if (!Bare(saved.Host).Equals(Bare(page.Host), StringComparison.OrdinalIgnoreCase)) return 0;
+        var a = saved.AbsolutePath.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
+        var b = page.AbsolutePath.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
+        var common = a.Zip(b).TakeWhile(x => string.Equals(x.First, x.Second, StringComparison.OrdinalIgnoreCase)).Count();
+        // O id da vaga em qualquer parte do caminho da página conta muito: /jobs/123 e /jobs/123/apply são a mesma vaga.
+        var id = a.LastOrDefault(s => s.Any(char.IsDigit));
+        return 1 + common * 10 + (id is not null && b.Contains(id, StringComparer.OrdinalIgnoreCase) ? 100 : 0);
+    }
+}
+

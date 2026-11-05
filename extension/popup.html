@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><link rel="stylesheet" href="popup.css"></head>
+<body>
+  <header><img src="icons/icon-32.png" alt=""><div><strong>Job Orchestrator</strong><span id="state">Conferindo o app…</span></div></header>
+  <section id="job" hidden><span class="label">Candidatura</span><strong id="title"></strong><span id="company"></span></section>
+  <section id="none" hidden><p>Esta página não está nas suas candidaturas. Dá para preencher só os dados pessoais e as respostas gerais do perfil.</p></section>
+  <section id="blocked" hidden><p>O LinkedIn não aceita preenchimento automático. Use o copiloto do app para copiar as respostas.</p></section>
+  <button id="fill" disabled>Preencher este formulário</button>
+  <p class="note">Só preenche campos vazios e anexa o currículo da vaga. Confira tudo e envie você mesmo: a extensão nunca clica em enviar.</p>
+  <p id="result" class="result" hidden></p>
+  <script src="popup.js"></script>
+</body>
+</html>

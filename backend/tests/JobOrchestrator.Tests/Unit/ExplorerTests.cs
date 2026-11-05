@@ -141,3 +141,18 @@ public sealed class DuplicateTests
     public void Vagas_diferentes_tem_chaves_diferentes(string c1, string t1, string l1, string c2, string t2, string l2) =>
         Assert.NotEqual(JobOrchestrator.Jobs.Domain.Fingerprint.For(c1, t1, l1, ""), JobOrchestrator.Jobs.Domain.Fingerprint.For(c2, t2, l2, ""));
 }
+
+/// <summary>A extensão do copiloto acha a candidatura da página aberta: mesmo site, e o id da vaga no caminho vale mais.</summary>
+public sealed class CopilotMatchTests
+{
+    [Fact]
+    public void Pagina_de_candidatura_acha_a_vaga_certa()
+    {
+        var page = new Uri("https://boards.greenhouse.io/acme/jobs/123/apply?gh_src=x");
+        var right = JobOrchestrator.Applications.Features.CopilotMatch.Score("https://boards.greenhouse.io/acme/jobs/123", page);
+        var other = JobOrchestrator.Applications.Features.CopilotMatch.Score("https://boards.greenhouse.io/acme/jobs/456", page);
+        Assert.True(right > other && other > 0);
+        Assert.Equal(0, JobOrchestrator.Applications.Features.CopilotMatch.Score("https://jobs.lever.co/acme/123", page));
+    }
+}
+

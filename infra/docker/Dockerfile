@@ -23,7 +23,7 @@ COPY --from=web /usr/local/bin/node /usr/local/bin/node
 COPY --from=web /usr/local/lib/node_modules /usr/local/lib/node_modules
 RUN ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && ln -s /usr/local/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx \
  && apt-get update && apt-get install -y --no-install-recommends poppler-utils libsecret-tools python3 python3-venv git ca-certificates fonts-liberation fonts-noto-core \
- && python3 -m venv /opt/scraper-venv && /opt/scraper-venv/bin/pip install --no-cache-dir "scrapy>=2.19,<2.20" \
+ && python3 -m venv /opt/scraper-venv && /opt/scraper-venv/bin/pip install --no-cache-dir "scrapy>=2.19,<2.20" "extruct==0.18.0" "trafilatura==2.3.1" "dateparser==1.5.0" "price-parser==0.5.1" \
  && npm install -g @anthropic-ai/claude-code @openai/codex && npm cache clean --force
 COPY --from=build /out/worker/.playwright /opt/playwright-driver/.playwright
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright

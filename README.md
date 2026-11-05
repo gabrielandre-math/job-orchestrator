@@ -1,10 +1,19 @@
 # Job Orchestrator
 
-Orquestrador local de candidaturas, para qualquer área. Descobre vagas nas fontes oficiais (Gupy, Greenhouse, Lever, Ashby e outros quadros, APIs públicas como GetOnBoard e Himalayas, repositórios de vagas do GitHub, sites de carreira pelo coletor) e acha fontes novas sozinho com o Explorador, avalia com nota explicada, gera um currículo por vaga só com fatos do seu currículo e perfeito para ATS, prepara formulários e envia só com a sua aprovação ou com uma autorização válida. Toda candidatura tem histórico append-only e prova de envio.
+Orquestrador local de candidaturas, para qualquer área. Descobre vagas nas fontes oficiais (Gupy, Workday, Sólides, InHire, Quickin, Pandapé, Greenhouse, Lever, Ashby, Workable, Teamtailor e outros quadros; APIs públicas como GetOnBoard, Himalayas, Adzuna e Jooble; repositórios de vagas do GitHub; alertas de vaga do seu e-mail; sites de carreira pelo coletor e pelo navegador de leitura) e acha fontes novas sozinho com o Explorador, a partir do currículo, avalia com nota explicada, gera um currículo por vaga só com fatos do seu currículo e perfeito para ATS, prepara formulários e envia só com a sua aprovação ou com uma autorização válida. Toda candidatura tem histórico append-only e prova de envio.
 
 Como usar: `docs/guia.md`. Como operar: `docs/runbook.md`. Plano em `docs/PLANO.md`, arquitetura em `docs/architecture.md`, progresso e como retomar em `docs/PROGRESS.md`.
 
-## Rodar
+## Instalar (executável)
+
+```bash
+scripts/package.sh                     # gera dist/job-orchestrator-instalador.run (e o pacote .tar.gz)
+./dist/job-orchestrator-instalador.run # abre o instalador gráfico
+```
+
+O instalador confere a máquina (Docker, navegador, Python, Ollama, GPU, disco), copia o app para `~/.local/opt/job-orchestrator`, sobe o banco, prepara o coletor e cria o atalho no menu e o serviço do usuário. Não pede sudo. Depois, o app abre pelo menu de aplicativos ou com `job-orchestrator`; `job-orchestrator --status` e `--stop` conferem e param os serviços.
+
+## Rodar no modo de desenvolvimento
 
 ```bash
 scripts/dev.sh                     # desenvolvimento: Postgres (compose), ATS falso, API e Worker; dados em .dev/

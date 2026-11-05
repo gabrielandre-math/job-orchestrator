@@ -7,8 +7,16 @@
 | Desenvolvimento | `scripts/dev.sh` | código local, logs em `.dev/logs`, dados em `.dev/data` |
 | Serviços de usuário | `scripts/install-units.sh [--enable]` | uso diário com a busca da noite |
 | Docker | `scripts/docker.sh up` (`JO_PROFILES=gpu` para Ollama em contêiner) | tudo em contêineres, rede do host, só 127.0.0.1 |
+| Executável | `scripts/package.sh`, depois `dist/job-orchestrator-instalador.run` | uso diário: binário único (API, painel e Worker num processo), atalho no menu, serviço do usuário |
 
-Os três usam o mesmo Postgres (`infra/compose.yaml`, porta 5462). Rode um de cada vez: os três escutam em 7410.
+Todos usam o mesmo Postgres (`infra/compose.yaml`, porta 5462, projeto `job-orchestrator`). Rode um de cada vez: todos escutam em 7410. O instalador encerra a API e o Worker do modo de desenvolvimento antes de ligar o serviço instalado.
+
+## Executável
+
+- `job-orchestrator`: abre a janela (sobe os serviços se preciso, com a abertura animada); `--serve` roda os serviços no terminal; `--status`, `--stop`, `--setup`, `--version`.
+- Os serviços rodam como `job-orchestrator.service` do usuário (com "abrir junto com o computador") ou como unidade passageira do `systemd-run`, sempre em `jobs.slice` com teto de 8 GB. Logs: `journalctl --user -u job-orchestrator -f`.
+- Dados em `~/.local/share/job-orchestrator`, configurações em `~/.config/job-orchestrator` (o `env` guarda o PATH da sessão, onde moram as CLIs do Claude e do Codex). A janela usa um perfil próprio do navegador em `~/.local/share/job-orchestrator/window`.
+- `JO_NO_WINDOW=1` faz o executável só dizer o endereço, sem abrir janela (testes e uso sem tela).
 
 ## Serviços de usuário
 
@@ -33,6 +41,14 @@ Parar o Worker no meio de um envio é seguro. A intenção é gravada antes do c
 - Endpoints: `GET /api/explore/status`, `POST /api/explore/run`, `POST /api/explore/evaluate {"sources": [...]}`, `PUT /api/explore/settings`.
 - Timers da noite pelo painel: `GET /api/units` e `PUT /api/units/night {"on": true}` (só os timers; API e Worker como serviço seguem no `install-units.sh`).
 
+## Coletor e navegador de leitura
+
+- `Scraper:Browser:Enabled` (true) e `Scraper:Browser:MaxSites` (4): site que não deu nada no Scrapy é aberto pelo navegador de leitura, com o robots.txt conferido e até 3 cliques escolhidos pelo Llama.
+- `Scraper:Obscura:Enabled`, `Scraper:Obscura:Path`, `Scraper:Obscura:Port` (9444): o Obscura normal (nunca `--stealth`) entra no lugar do Chromium para ler quando instalado.
+- `Scraper:Firecrawl:Url`: sem configuração, o app usa o Firecrawl que estiver em 127.0.0.1:3002.
+- Extrações da IA guardadas por 14 dias em `scraper/extractions.json` (página igual não volta para o modelo); fontes que somem (404) em 5 rodadas seguidas saem da campanha (`jobs/source-health.json`).
+- `Explorer:WebSearchPerDay` (60): teto diário da busca na web pelo Brave Search.
+
 ## Backup e restauração
 
 - Backup diário às 7h55 (`job-orchestrator-backup.timer`) ou na hora: `scripts/backup.sh`. Os arquivos ficam em `~/.local/share/job-orchestrator/backups`, com os 14 mais novos.
@@ -56,7 +72,9 @@ Rode os E2E um de cada vez e com teto de memória (`systemd-run --user --scope -
 | Provedor "sem login" | sessão da CLI expirou | Provedores › Conectar, ou `claude auth login` na pasta da conta |
 | Restore do .NET trava | IPv6 sem rota | `DOTNET_SYSTEM_NET_DISABLEIPV6=1` |
 | Fonte "não respondeu" | site fora do ar ou 403 | não há contorno; troque a fonte |
-| Explorador não acha repositório | limite da API do GitHub (60 por hora sem token) | espera a hora virar; ele segue com as outras pistas |
+| Explorador não acha repositório | limite da API do GitHub (60 por hora sem token) | espera a hora virar ou conecte o token do GitHub em Fontes |
+| O app não abre | serviço parado ou banco fora do ar | `job-orchestrator --status`; `job-orchestrator --serve` no terminal mostra o motivo |
+| Instalador avisa da porta 7410 | o modo de desenvolvimento está no ar | ele encerra o modo de desenvolvimento no passo Serviço; ou pare antes |
 | Envio incerto | confirmação não apareceu a tempo | Atenção › "O envio chegou?" depois de conferir o e-mail |
 | E-mail recusa login | senha normal em vez de senha de app | crie a senha de app no provedor |
 | Modelo local lento | modelo maior que a VRAM | Provedores › use a recomendação para a sua placa |
