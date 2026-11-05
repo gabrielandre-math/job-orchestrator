@@ -17,7 +17,7 @@ const ATS = [
   { key: 'recruitee', hint: '', after: '.recruitee.com' }, { key: 'breezy', hint: '', after: '.breezy.hr' }, { key: 'personio', hint: '', after: '.jobs.personio.de' },
   { key: 'workable', hint: 'apply.workable.com/', after: '' }, { key: 'teamtailor', hint: '', after: '.teamtailor.com' },
   { key: 'solides', hint: '', after: '.vagas.solides.com.br' }, { key: 'inhire', hint: '', after: '.inhire.app' }, { key: 'quickin', hint: 'jobs.quickin.io/', after: '' },
-  { key: 'pandape', hint: '', after: '.pandape.infojobs.com.br' },
+  { key: 'pandape', hint: '', after: '.pandape.infojobs.com.br' }, { key: 'workday', hint: '', after: ' (cole o link do site de vagas)' },
 ];
 /** APIs públicas com o que cada uma espera depois dos dois pontos. */
 const APIS = [
@@ -36,6 +36,7 @@ const DETECT: [RegExp, string][] = [
   [/([a-z0-9-]+)\.gupy\.io/i, 'gupy'], [/github\.com\/([^/?#]+\/[^/?#]+)/i, 'github'],
   [/apply\.workable\.com\/(?!j\/)([^/?#]+)/i, 'workable'], [/([a-z0-9-]+)\.workable\.com/i, 'workable'], [/([a-z0-9-]+(?:\.[a-z]{2})?)\.teamtailor\.com/i, 'teamtailor'],
   [/([a-z0-9-]+)\.vagas\.solides\.com\.br/i, 'solides'], [/([a-z0-9-]+)\.inhire\.app/i, 'inhire'], [/jobs\.quickin\.io\/([^/?#]+)/i, 'quickin'], [/([a-z0-9-]+)\.pandape\.(?:infojobs|catho)\.com\.br/i, 'pandape'],
+  [/([a-z0-9-]+\.wd\d+\.myworkdayjobs\.com\/(?:[a-z]{2}-[A-Z]{2}\/)?[A-Za-z0-9_-]+)/i, 'workday'],
 ];
 
 /** Reconhece a fonte a partir de qualquer link de vagas: quadro de ATS, repositório ou, se nada bater, o site da empresa. */

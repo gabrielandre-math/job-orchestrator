@@ -22,6 +22,7 @@ public sealed class ExplorerTests
     [InlineData("https://manpowergroup.pandape.infojobs.com.br/Detail/3901", "pandape:manpowergroup")]
     [InlineData("https://apply.workable.com/dextra/j/9D0C", "workable:dextra")]
     [InlineData("https://apply.workable.com/j/9D0C64C055", null)]
+    [InlineData("https://accenture.wd103.myworkdayjobs.com/en-US/AccentureCareers/job/Sao-Paulo/Dev_R1", "workday:accenture.wd103.myworkdayjobs.com/AccentureCareers")]
     [InlineData("https://combineglobalrecruitment.na.teamtailor.com/jobs/1-dev", "teamtailor:combineglobalrecruitment.na")]
     public void Link_vira_quadro_oficial(string url, string? expected) => Assert.Equal(expected, SourceKeys.Board(url));
 

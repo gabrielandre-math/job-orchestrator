@@ -174,3 +174,70 @@ internal sealed partial class PandapeSource(IHttpClientFactory http) : PublicSou
     [GeneratedRegex(@"href=""/Detail/(\d+)""")] private static partial Regex Detail();
     [GeneratedRegex(@"<script[^>]*application/ld\+json[^>]*>(.*?)</script>", RegexOptions.Singleline | RegexOptions.IgnoreCase)] private static partial Regex JsonLd();
 }
+
+/// <summary>
+/// Workday (workday:empresa.wdN.myworkdayjobs.com/Site): a busca pública que o próprio site de carreira usa (/wday/cxs), pelas palavras da
+/// campanha, e o detalhe de cada vaga com a descrição. O robots.txt dos sites Workday só fecha /refreshFacet/. Usado por multinacionais
+/// (Accenture, Avanade e outras) que contratam no Brasil.
+/// </summary>
+internal sealed partial class WorkdaySource(IHttpClientFactory http) : PublicSource(http, "workday", "myworkdayjobs.com"), IHintedSource
+{
+    public override string Id => "workday-cxs";
+    public override string Name => "Workday";
+
+    public override Task<IReadOnlyList<DiscoveredPosting>> DiscoverAsync(string source, CancellationToken ct) => DiscoverAsync(source, [], ct);
+
+    public async Task<IReadOnlyList<DiscoveredPosting>> DiscoverAsync(string source, IReadOnlyList<string> hints, CancellationToken ct)
+    {
+        var key = Key(source);
+        var host = key.Split('/')[0];
+        var site = key.Split('/', StringSplitOptions.RemoveEmptyEntries).Last();
+        var tenant = host.Split('.')[0];
+        var api = $"https://{host}/wday/cxs/{tenant}/{site}";
+        // Uma busca por palavra essencial (no máximo duas) e uma puxando para o Brasil; sem palavra, as mais novas.
+        var found = new Dictionary<string, JsonElement>();
+        foreach (var text in hints.Count > 0 ? hints.Take(2).Append($"{hints[0]} Brazil") : [""])
+        {
+            using var content = new StringContent(JsonSerializer.Serialize(new { appliedFacets = new { }, limit = 20, offset = 0, searchText = text }), Encoding.UTF8, "application/json");
+            using var response = await Client.PostAsync($"{api}/jobs", content, ct);
+            response.EnsureSuccessStatusCode();
+            using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
+            foreach (var j in doc.RootElement.GetProperty("jobPostings").EnumerateArray())
+                if (j.Str("externalPath") is { Length: > 0 } path) found.TryAdd(path, j.Clone());
+            await Task.Delay(400, ct);
+        }
+        var list = new List<DiscoveredPosting>();
+        foreach (var (path, card) in found.Take(25))
+        {
+            try
+            {
+                using var doc = await Json.GetAsync(Client, api + path, ct);
+                var info = doc.RootElement.GetProperty("jobPostingInfo");
+                var country = info.Obj("country").Str("descriptor");
+                var place = string.Join(", ", new[] { info.Str("location"), country }.Where(x => x.Length > 0));
+                var title = info.Str("title");
+                var remote = Remote().IsMatch(title + " " + info.Str("remoteType"));
+                list.Add(new DiscoveredPosting(source, info.Str("jobReqId") is { Length: > 0 } req ? req : path, doc.RootElement.Obj("hiringOrganization").Str("name") is { Length: > 0 } org ? org : Json.Company(tenant),
+                    title, place, info.Str("externalUrl") is { Length: > 0 } url ? url : $"https://{host}/{site}{path}", Json.Plain(info.Str("jobDescription")),
+                    info.Date("startDate") ?? Posted(card.Str("postedOn")), info.GetRawText(), Workplace: remote ? "remote" : Hybrid().IsMatch(title) ? "hybrid" : null,
+                    Employment: info.Str("timeType") is { Length: > 0 } t ? t : null, ListedAsOpen: true));
+            }
+            catch (Exception ex) when (ex is HttpRequestException or JsonException or KeyNotFoundException) { /* vaga que saiu do ar entre a busca e o detalhe */ }
+            await Task.Delay(250, ct);
+        }
+        return list;
+    }
+
+    /// <summary>"Posted Today", "Posted Yesterday", "Posted 3 Days Ago", "Posted 30+ Days Ago".</summary>
+    internal static DateTime? Posted(string text)
+    {
+        var today = DateTime.UtcNow.Date;
+        if (text.Contains("Today", StringComparison.OrdinalIgnoreCase)) return today;
+        if (text.Contains("Yesterday", StringComparison.OrdinalIgnoreCase)) return today.AddDays(-1);
+        return Days().Match(text) is { Success: true } m ? today.AddDays(-int.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture)) : null;
+    }
+
+    [GeneratedRegex(@"(\d+)\+?\s+Days?\s+Ago", RegexOptions.IgnoreCase)] private static partial Regex Days();
+    [GeneratedRegex(@"remot[oa]|remote|home ?office|100% remoto", RegexOptions.IgnoreCase)] private static partial Regex Remote();
+    [GeneratedRegex(@"h[íi]brid[oa]|hybrid", RegexOptions.IgnoreCase)] private static partial Regex Hybrid();
+}

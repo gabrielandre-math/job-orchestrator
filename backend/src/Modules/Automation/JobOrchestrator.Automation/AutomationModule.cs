@@ -64,6 +64,7 @@ public static class AutomationModule
         s.AddScoped<ISourceConnector, InhireSource>();
         s.AddScoped<ISourceConnector, QuickinSource>();
         s.AddScoped<ISourceConnector, PandapeSource>();
+        s.AddScoped<ISourceConnector, WorkdaySource>();
         s.AddSingleton<ScraperEnv>();
         s.AddScoped<ScrapyRunner>();
         s.AddScoped<Leads>();

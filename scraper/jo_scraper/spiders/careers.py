@@ -58,6 +58,7 @@ BOARDS = [
     (re.compile(r"jobs\.quickin\.io/([\w-]+)", re.I), "quickin"),
     (re.compile(r"https?://([\w-]+)\.pandape\.(?:infojobs|catho)\.com\.br", re.I), "pandape"),
 ]
+WORKDAY = re.compile(r"https?://([\w-]+\.wd\d+\.myworkdayjobs\.com)/(?:[a-z]{2}-[A-Z]{2}/)?([\w-]+)", re.I)
 PATHS = ["", "/careers", "/carreiras", "/vagas", "/jobs", "/trabalhe-conosco", "/work-with-us", "/join-us"]
 
 
@@ -111,6 +112,12 @@ class CareersSpider(scrapy.Spider):
                     yield item
 
         html = response.text
+        for m in WORKDAY.finditer(html):
+            # Workday: host do cliente mais o nome do site, com a caixa do site preservada.
+            source = f"workday:{m.group(1).lower()}/{m.group(2)}"
+            if m.group(2).lower() != "wday" and source not in self.seen_boards:
+                self.seen_boards.add(source)
+                yield {"type": "board", "source": source, "url": response.url}
         for pattern, kind in BOARDS:
             for m in pattern.finditer(html):
                 token = m.group(1).lower()
