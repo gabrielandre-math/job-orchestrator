@@ -19,8 +19,30 @@ internal static class ApiDefaults
         "anthropic-api" => "https://api.anthropic.com/v1",
         "openai-api" => "https://api.openai.com/v1",
         "gemini-api" => "https://generativelanguage.googleapis.com/v1beta/openai",
+        "openrouter-api" => "https://openrouter.ai/api/v1",
+        "deepseek-api" => "https://api.deepseek.com/v1",
+        "mistral-api" => "https://api.mistral.ai/v1",
+        "groq-api" => "https://api.groq.com/openai/v1",
+        "xai-api" => "https://api.x.ai/v1",
         _ => ""
     };
+
+    /// <summary>Todos os tipos de conta por chave que falam o formato da OpenAI.</summary>
+    public static readonly string[] Compatible = ["openai-api", "gemini-api", "openrouter-api", "deepseek-api", "mistral-api", "groq-api", "xai-api", "openai-compatible"];
+
+    /// <summary>
+    /// Escolha automática na lista que a própria chave devolve: o leve é o menor da família (mini, flash, small, haiku),
+    /// o principal é o de linha (sonnet, pro, large, chat). Você troca depois, se quiser.
+    /// </summary>
+    public static Dictionary<string, string> Pick(IReadOnlyList<string> models)
+    {
+        var usable = models.Where(m => !System.Text.RegularExpressions.Regex.IsMatch(m, "embed|whisper|tts|audio|image|vision-preview|moderation|dall|realtime|transcribe|search", System.Text.RegularExpressions.RegexOptions.IgnoreCase)).ToList();
+        if (usable.Count == 0) return [];
+        string First(params string[] hints) => hints.Select(h => usable.FirstOrDefault(m => m.Contains(h, StringComparison.OrdinalIgnoreCase))).FirstOrDefault(x => x is not null) ?? usable[0];
+        var light = First("haiku", "flash-lite", "mini", "flash", "small", "lite", "nano", "8b", "chat");
+        var main = First("sonnet", "-pro", "large", "gpt-5", "grok-4", "deepseek-chat", "medium", "70b", "chat");
+        return new() { ["Light"] = light, ["Medium"] = main, ["Strong"] = main, ["Top"] = main };
+    }
 
     public static string Model(string kind, Rung rung) => (kind, rung) switch
     {
@@ -39,6 +61,9 @@ internal static class ApiDefaults
         "anthropic-api" => "anthropic",
         "openai-api" => "openai",
         "gemini-api" => "google",
+        "deepseek-api" => "deepseek",
+        "mistral-api" => "mistral",
+        "xai-api" => "xai",
         // OpenRouter e afins: a família vem do nome do modelo (anthropic/claude…, openai/gpt…, google/gemini…).
         _ => model.Split('/')[0].ToLowerInvariant() switch
         {

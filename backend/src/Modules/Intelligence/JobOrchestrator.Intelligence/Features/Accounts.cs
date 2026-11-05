@@ -22,7 +22,7 @@ internal sealed record LoginView(bool Running, string? Url, bool? Ok, string? Ou
 /// </summary>
 internal sealed partial class AccountsApi(IntelligenceDbContext db, IHttpClientFactory http, TimeProvider time)
 {
-    private static readonly string[] Kinds = ["claude-cli", "codex-cli", "anthropic-api", "openai-api", "gemini-api", "openai-compatible"];
+    private static readonly string[] Kinds = ["claude-cli", "codex-cli", "anthropic-api", .. ApiDefaults.Compatible];
     private static readonly ConcurrentDictionary<string, LoginJob> Logins = new();
 
     public async Task<IReadOnlyList<AccountView>> ListAsync(CancellationToken ct)
@@ -39,10 +39,10 @@ internal sealed partial class AccountsApi(IntelligenceDbContext db, IHttpClientF
         if (!Kinds.Contains(n.Kind)) return Error.Validation("kind", "Tipo de conta desconhecido.");
         var name = n.Name.Trim();
         if (name.Length is 0 or > 80) return Error.Validation("name", "Dê um nome de até 80 letras para a conta.");
-        var api = n.Kind.EndsWith("-api", StringComparison.Ordinal) || n.Kind == "openai-compatible";
+        var api = n.Kind != "claude-cli" && n.Kind != "codex-cli";
         if (api && string.IsNullOrWhiteSpace(n.ApiKey)) return Error.Validation("api-key", "Cole a chave de API.");
         if (api && n.MonthlyTokens is null or <= 0) return Error.Validation("monthly-tokens", "Chave de API cobra por uso: defina o teto de tokens por mês.");
-        if (n.Kind == "openai-compatible" && !Uri.TryCreate(n.BaseUrl, UriKind.Absolute, out _)) return Error.Validation("base-url", "Informe o endereço da API (ex.: https://openrouter.ai/api/v1).");
+        if (n.Kind == "openai-compatible" && !Uri.TryCreate(n.BaseUrl, UriKind.Absolute, out _)) return Error.Validation("base-url", "Informe o endereço da API (ex.: https://api.exemplo.com/v1).");
 
         var id = Slug(name);
         for (var i = 2; await db.Accounts.AnyAsync(a => a.Id == id, ct); i++) id = $"{Slug(name)}-{i}";
@@ -62,6 +62,20 @@ internal sealed partial class AccountsApi(IntelligenceDbContext db, IHttpClientF
             return Error.Validation("keyring", "Não foi possível guardar a chave no gnome-keyring. Confira se o keyring está destravado.");
         db.Accounts.Add(account);
         await db.SaveChangesAsync(ct);
+        if (api && (n.Models is null || n.Models.Count == 0))
+        {
+            // A lista de modelos confirma que a chave funciona e já escolhe o leve e o principal.
+            var models = await ApiProbe.ModelsAsync(account, http, ct);
+            if (models.Count == 0)
+            {
+                db.Accounts.Remove(account);
+                await db.SaveChangesAsync(ct);
+                await Keyring.ClearAsync(id, ct);
+                return Error.Validation("key-refused", "O provedor não aceitou a chave (ou não listou nenhum modelo). Confira se copiou a chave inteira.");
+            }
+            account.Models = JsonSerializer.Serialize(ApiDefaults.Pick(models));
+            await db.SaveChangesAsync(ct);
+        }
         ProviderCatalog.Invalidate();
         return (await ListAsync(ct)).First(a => a.Id == id);
     }

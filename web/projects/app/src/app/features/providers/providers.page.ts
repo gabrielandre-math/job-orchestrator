@@ -4,6 +4,7 @@ import { Icon } from '@jo/ui/icon';
 import { Iso } from '@jo/ui/iso';
 import { Account, InstallState, LlmCall, LlmResult, LocalCatalog, LoginState, Provider, TaskUsage, get, remove, send } from '../../core/api';
 import { command } from '../../core/command';
+import { Connect } from './connect';
 import { query } from '../../core/query';
 
 /** Logo oficial de cada tipo de conta. Claude tem cor de marca; OpenAI e Ollama são monocromáticas e seguem o tema. */
@@ -36,7 +37,7 @@ const KINDS = [
  */
 @Component({
   selector: 'app-providers',
-  imports: [Badge, Icon, Iso],
+  imports: [Badge, Icon, Iso, Connect],
   templateUrl: './providers.page.html',
   styleUrl: './providers.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -60,6 +61,7 @@ export class ProvidersPage {
   protected readonly kinds = KINDS;
 
   protected readonly adding = signal(false);
+  protected readonly wizard = signal(false);
   protected readonly draft = signal({ kind: 'claude-cli', name: 'Claude 2', apiKey: '', baseUrl: '', monthlyTokens: 1_000_000 });
   protected readonly confirmDelete = signal<string | null>(null);
   protected readonly login = signal<{ id: string; state: LoginState } | null>(null);
@@ -178,7 +180,12 @@ export class ProvidersPage {
     await tick();
   }
 
-  private async refresh() { await Promise.all([this.list.reload(), this.accounts.reload(), this.local.reload()]); }
+  protected goLocal() {
+    this.wizard.set(false);
+    queueMicrotask(() => document.getElementById('modelo-local')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  }
+
+  protected async refresh() { await Promise.all([this.list.reload(), this.accounts.reload(), this.local.reload()]); }
 
   protected task(name: string) { return TASKS[name] ?? name; }
   protected rung(name: string) { return RUNGS[name] ?? name; }

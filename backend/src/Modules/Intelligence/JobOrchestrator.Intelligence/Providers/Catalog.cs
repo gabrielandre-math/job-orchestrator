@@ -31,7 +31,7 @@ internal sealed class ProviderCatalog(IConfiguration config, IHttpClientFactory 
         "claude-cli" => new ClaudeCli(a.Id, a.Name, a.ConfigDir, config),
         "codex-cli" => new CodexCli(a.Id, a.Name, a.ConfigDir, config),
         "anthropic-api" => new AnthropicApi(a, http),
-        "openai-api" or "gemini-api" or "openai-compatible" => new OpenAiCompatible(a, http),
+        _ when ApiDefaults.Compatible.Contains(a.Kind) => new OpenAiCompatible(a, http),
         _ => null
     };
 

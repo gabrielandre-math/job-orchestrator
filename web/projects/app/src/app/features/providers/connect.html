@@ -1,0 +1,145 @@
+<div class="backdrop" (click)="close.emit()" aria-hidden="true"></div>
+<section class="modal" role="dialog" aria-modal="true" aria-labelledby="connect-title">
+  <header class="head">
+    <ol class="stepper" aria-label="Passos">
+      @for (s of [1, 2, 3, 4]; track s) {
+        <li [class.on]="step() === s" [class.done]="step() > s"><span class="n num">{{ s }}</span>{{ ['Provedor', 'Como conectar', 'Conectar', 'Pronto'][s - 1] }}</li>
+      }
+    </ol>
+    <button type="button" class="btn ghost" (click)="close.emit()" aria-label="Fechar"><jo-icon name="x" [size]="16" /></button>
+  </header>
+
+  <div class="body">
+    @switch (step()) {
+      @case (1) {
+        <div class="intro">
+          <jo-iso name="router" [size]="96" />
+          <div>
+            <h2 id="connect-title">Qual conta você quer conectar?</h2>
+            <p class="muted">Pode conectar várias, até duas do mesmo provedor. A ordem de gasto você ajusta depois.</p>
+          </div>
+        </div>
+        <div class="grid">
+          @for (o of options; track o.id) {
+            <button type="button" class="tile" (click)="pick(o)">
+              <span class="logo-box">
+                @if (o.logo; as l) {
+                  @if (l.mono) { <span class="logo mono" [style.--logo]="'url(/logos/' + l.file + '.svg)'"></span> } @else { <img class="logo" [src]="'/logos/' + l.file + '.svg'" alt="" /> }
+                } @else { <jo-iso name="router" [size]="40" /> }
+              </span>
+              <strong>{{ o.name }}</strong>
+              <span class="faint small">{{ o.tagline }}</span>
+              @for (e of existing().get(o.id) ?? []; track e.name) { <span class="have" [class.ready]="e.ready">{{ e.name }} {{ e.ready ? 'pronta' : 'sem login' }}</span> }
+            </button>
+          }
+          <button type="button" class="tile local" (click)="local.emit()">
+            <span class="logo-box"><span class="logo mono" style="--logo: url(/logos/ollama.svg)"></span></span>
+            <strong>Modelo local</strong>
+            <span class="faint small">Na sua placa de vídeo, de graça. O instalador recomenda o melhor.</span>
+          </button>
+        </div>
+      }
+      @case (2) {
+        @if (option(); as o) {
+          <div class="intro">
+            <jo-iso name="guardian" [size]="96" />
+            <div>
+              <h2 id="connect-title">Como conectar o {{ o.name }}?</h2>
+              <p class="muted">A assinatura usa a cota que você já paga. A chave de API cobra por uso e para no teto que você definir.</p>
+            </div>
+          </div>
+          <div class="ways">
+            @for (w of o.ways; track w.kind) {
+              <button type="button" class="way" (click)="choose(w)">
+                <span class="badge" [class.rec]="w.badge === 'recomendado'" [class.free]="w.badge === 'cota grátis'">{{ w.badge }}</span>
+                <strong>{{ w.label }}</strong>
+                <span class="muted small">{{ w.detail }}</span>
+              </button>
+            }
+          </div>
+        }
+      }
+      @case (3) {
+        @if (way(); as w) {
+          @if (w.subscription) {
+            <div class="intro">
+              <jo-iso name="you" [size]="96" />
+              <div>
+                <h2 id="connect-title">{{ login()?.running ? 'Entre na sua conta no navegador' : 'Entrar com a sua conta ' + option()?.name }}</h2>
+                <p class="muted">{{ w.detail }}</p>
+              </div>
+            </div>
+            @if (!login()) {
+              <button type="button" class="btn primary big" (click)="signIn()" [disabled]="creating.running() || signing.running()">{{ creating.running() || signing.running() ? 'Abrindo o navegador…' : 'Entrar' }}</button>
+            } @else {
+              <div class="waiting" [class.bad]="login()!.ok === false">
+                @if (login()!.running) {
+                  <span class="spinner" aria-hidden="true"></span>
+                  <div>
+                    <p>Aguardando você terminar no navegador. Esta tela segue sozinha.</p>
+                    @if (login()!.url) { <p class="small">O navegador não abriu? <a [href]="login()!.url" target="_blank" rel="noopener">Abrir a página de login</a></p> }
+                  </div>
+                } @else if (login()!.ok === false) {
+                  <div>
+                    <p>O login não terminou. Pode tentar de novo.</p>
+                    @if (login()!.output) { <pre class="mono out">{{ login()!.output }}</pre> }
+                    <button type="button" class="btn" (click)="login.set(null)">Tentar de novo</button>
+                  </div>
+                }
+              </div>
+            }
+          } @else {
+            <div class="intro">
+              <jo-iso name="guardian" [size]="96" />
+              <div>
+                <h2 id="connect-title">Cole a chave do {{ option()?.name }}</h2>
+                <p class="muted">{{ w.detail }} A chave vai direto para o gnome-keyring; nunca para arquivo, banco ou log.</p>
+              </div>
+            </div>
+            @if (w.keyUrl) { <a class="btn" [href]="w.keyUrl" target="_blank" rel="noopener"><jo-icon name="key" [size]="14" />Abrir a página para criar a chave<jo-icon name="arrow-square-out" [size]="14" /></a> }
+            <div class="keybox">
+              @if (w.baseUrl) { <label class="field">Endereço da API<input [value]="baseUrl()" (input)="baseUrl.set($any($event.target).value)" placeholder="https://api.exemplo.com/v1" /></label> }
+              <label class="field">Chave de API
+                <span class="key">
+                  <input [type]="showKey() ? 'text' : 'password'" autocomplete="off" spellcheck="false" [value]="key()" (input)="key.set($any($event.target).value)" [placeholder]="w.keyHint || 'cole aqui'" />
+                  <button type="button" class="btn ghost" (click)="showKey.set(!showKey())" [attr.aria-label]="showKey() ? 'Esconder chave' : 'Mostrar chave'"><jo-icon [name]="showKey() ? 'eye-slash' : 'eye'" [size]="16" /></button>
+                </span>
+              </label>
+              <div class="field">Teto por mês
+                <div class="caps">
+                  @for (c of caps; track c.value) {
+                    <button type="button" class="chip" [attr.aria-pressed]="cap() === c.value" (click)="cap.set(c.value)">{{ c.label }} <span class="faint">{{ tokens(c.value) }} tokens, {{ c.hint }}</span></button>
+                  }
+                </div>
+              </div>
+            </div>
+            @if (creating.problem(); as p) { <p class="problem">{{ p.detail }}</p> }
+            <button type="button" class="btn primary big" (click)="saveKey()" [disabled]="creating.running() || key().trim().length < 8">{{ creating.running() ? 'Conferindo a chave…' : 'Conectar' }}</button>
+          }
+          @if (signing.problem(); as p) { <p class="problem">{{ p.detail }}</p> }
+        }
+      }
+      @case (4) {
+        <div class="intro">
+          <jo-iso name="checker" [size]="96" />
+          <div>
+            <h2 id="connect-title">{{ account()?.name }} conectada</h2>
+            @if (testing.running()) { <p class="muted"><span class="spinner sm" aria-hidden="true"></span> Testando com uma resposta curta…</p> }
+            @else if (result(); as r) {
+              <p [class.ok]="r.ok" [class.warn]="!r.ok">{{ r.ok ? 'Respondeu em ' + r.seconds.toFixed(1) + ' s com ' + r.model + '.' : 'O teste falhou: ' + (r.error ?? 'sem resposta') }}</p>
+            }
+          </div>
+        </div>
+        <div class="done-actions">
+          <button type="button" class="btn" (click)="first()" [disabled]="ordering.running()">Usar esta conta primeiro</button>
+          <button type="button" class="btn" (click)="restart()">Conectar outra</button>
+          <button type="button" class="btn primary" (click)="close.emit()">Concluir</button>
+        </div>
+      }
+    }
+  </div>
+
+  @if (step() > 1 && step() < 4) {
+    <footer class="foot"><button type="button" class="btn ghost" (click)="back()"><jo-icon name="arrow-left" [size]="14" />Voltar</button></footer>
+  }
+</section>

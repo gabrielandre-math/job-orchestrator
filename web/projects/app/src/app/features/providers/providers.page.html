@@ -5,38 +5,10 @@
       <p>As suas contas, quantas quiser de cada provedor. A ordem da lista é a ordem de gasto; cada conta pausa sozinha na reserva e chave de API para no teto do mês.</p>
     </div>
     <div class="actions">
-      <button type="button" class="btn primary" (click)="adding.set(!adding())"><jo-icon name="plus" [size]="14" />Conectar conta</button>
+      <button type="button" class="btn primary" (click)="wizard.set(true)"><jo-icon name="plus" [size]="14" />Conectar conta</button>
     </div>
   </header>
   @for (p of [list.problem(), accounts.problem(), test.problem(), creating.problem(), logging.problem(), deleting.problem()]; track $index) { @if (p) { <p class="problem">{{ p.detail }}</p> } }
-
-  @if (adding()) {
-    <article class="panel connect">
-      <header><h2>Conectar conta</h2><button type="button" class="btn ghost" (click)="adding.set(false)" aria-label="Fechar"><jo-icon name="x" [size]="14" /></button></header>
-      <div class="kinds" role="radiogroup" aria-label="Tipo de conta">
-        @for (k of kinds; track k.kind) {
-          <button type="button" class="kind" role="radio" [attr.aria-checked]="draft().kind === k.kind" (click)="setDraft('kind', k.kind)">
-            <strong>{{ k.label }}</strong><span class="faint">{{ k.key ? 'chave de API' : 'login no navegador' }}</span>
-          </button>
-        }
-      </div>
-      <div class="form-grid">
-        <p class="hint">{{ kind().hint }}</p>
-        <label class="field">Nome da conta<input [value]="draft().name" (input)="setDraft('name', $any($event.target).value)" /></label>
-        @if (kind().key) {
-          <label class="field">Chave de API<input type="password" autocomplete="off" [value]="draft().apiKey" (input)="setDraft('apiKey', $any($event.target).value)" placeholder="cole aqui; vai direto para o keyring" /></label>
-          <label class="field">Teto de tokens por mês<input inputmode="numeric" [value]="draft().monthlyTokens" (input)="setDraft('monthlyTokens', +$any($event.target).value.replace(/\D/g, ''))" /></label>
-          @if (draft().kind === 'openai-compatible') {
-            <label class="field wide">Endereço da API<input [value]="draft().baseUrl" (input)="setDraft('baseUrl', $any($event.target).value)" placeholder="https://openrouter.ai/api/v1" /></label>
-          }
-        }
-      </div>
-      <footer>
-        <span class="faint small">{{ kind().key ? 'A chave nunca vai para arquivo, banco ou log.' : 'Depois de criar, o navegador abre para você entrar.' }}</span>
-        <button type="button" class="btn primary" (click)="connect()" [disabled]="creating.running()">{{ creating.running() ? 'Conectando…' : kind().key ? 'Guardar chave' : 'Criar e entrar' }}</button>
-      </footer>
-    </article>
-  }
 
   @if (login(); as l) {
     <article class="panel login" [class.ok]="l.state.ok === true" [class.bad]="l.state.ok === false">
@@ -109,7 +81,7 @@
     }
   </div>
 
-  <article class="panel local">
+  <article class="panel local" id="modelo-local">
     <header>
       <h2>Modelo local</h2>
       @if (ollama(); as o) { <jo-badge [label]="statusLabel(o.status)" [tone]="statusTone(o.status)" /> }
@@ -221,4 +193,5 @@
       </table>
     </div>
   </article>
+  @if (wizard()) { <app-connect [accounts]="accounts.value() ?? []" [providers]="list.value() ?? []" (close)="wizard.set(false)" (changed)="refresh()" (local)="goLocal()" /> }
 </section>

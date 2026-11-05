@@ -18,6 +18,6 @@ internal sealed class Account
     public long? MonthlyTokens { get; set; }
     public DateTime CreatedAt { get; set; }
 
-    public bool Paid => Kind is "anthropic-api" or "openai-api" or "gemini-api" or "openai-compatible";
+    public bool Paid => Kind.EndsWith("-api", StringComparison.Ordinal) || Kind == "openai-compatible";
     public Dictionary<string, string> ModelMap => JsonSerializer.Deserialize<Dictionary<string, string>>(Models) ?? [];
 }
