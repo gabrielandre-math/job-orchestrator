@@ -5,6 +5,7 @@ import { Iso } from '@jo/ui/iso';
 import { Account, InstallState, LlmCall, LlmResult, LocalCatalog, LoginState, Provider, TaskUsage, get, remove, send } from '../../core/api';
 import { command } from '../../core/command';
 import { Connect } from './connect';
+import { Sensors } from './sensors';
 import { query } from '../../core/query';
 
 /** Logo oficial de cada tipo de conta. Claude tem cor de marca; OpenAI e Ollama são monocromáticas e seguem o tema. */
@@ -37,7 +38,7 @@ const KINDS = [
  */
 @Component({
   selector: 'app-providers',
-  imports: [Badge, Icon, Iso, Connect],
+  imports: [Badge, Icon, Iso, Connect, Sensors],
   templateUrl: './providers.page.html',
   styleUrl: './providers.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

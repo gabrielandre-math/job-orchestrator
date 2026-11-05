@@ -20,6 +20,7 @@ public static class IntelligenceModule
         s.AddScoped<Features.IntelligenceApi>();
         s.AddScoped<Features.AccountsApi>();
         s.AddSingleton<Features.LocalSetup>();
+        s.AddSingleton<Features.Sensors>();
         s.AddScoped<IIntelligenceApi>(sp => sp.GetRequiredService<Features.IntelligenceApi>());
         return s;
     }
