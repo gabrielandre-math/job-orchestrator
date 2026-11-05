@@ -1,0 +1,40 @@
+<section class="page">
+  <jo-tabs [items]="tabs" label="Fontes" />
+  <jo-page-hero title="Fontes" [scene]="['radar', 'router', 'inbox']" [stats]="stats()"
+    lead="De onde vêm as vagas: os quadros oficiais das empresas, APIs públicas de todas as áreas, comunidades e sites de carreira. Tudo pela porta oficial, sem login e sem robô em rede social.">
+    <button type="button" class="btn primary" (click)="adding.set(true)" [disabled]="!campaign()"><jo-icon name="plus" [size]="14" />Adicionar fonte</button>
+    <a class="btn" routerLink="/busca"><jo-icon name="magnifying-glass" [size]="14" />Ver a busca ao vivo</a>
+  </jo-page-hero>
+
+  @for (g of groups(); track g.kind) {
+    <section class="panel">
+      <header><h2>{{ g.title }} <span class="faint num">{{ g.items.length }}</span></h2><span class="faint small">{{ g.hint }}</span></header>
+      <ul class="list">
+        @for (s of g.items; track s.source) {
+          <li [class.fail]="last().get(s.source)?.state === 'failed'">
+            <span class="logo">
+              <jo-company [name]="s.company ?? s.platformName" [domain]="s.companyDomain ?? s.platformDomain" [size]="30" />
+              @if (s.kind === 'ats') { <span class="plat" [title]="s.platformName"><jo-company [name]="s.platformName" [domain]="s.platformDomain" [size]="14" /></span> }
+            </span>
+            <span class="what"><strong>{{ s.label }}</strong><span class="faint small">{{ lastText(s.source) }}</span></span>
+            <span class="mono faint src">{{ s.source }}</span>
+            <button type="button" class="btn ghost" [class.armed]="removing() === s.source" (click)="remove(s.source)" [disabled]="saving.running()" [attr.aria-label]="'Tirar ' + s.label">
+              <jo-icon name="trash" [size]="14" />@if (removing() === s.source) { Confirmar }
+            </button>
+          </li>
+        }
+      </ul>
+    </section>
+  } @empty {
+    @if (campaigns.value()) {
+      <section class="panel calm">
+        <p class="muted">Nenhuma fonte ainda. Comece pelo assistente: ele mostra as opções, testa a fonte de verdade e só então salva.</p>
+        <button type="button" class="btn primary" (click)="adding.set(true)"><jo-icon name="plus" [size]="14" />Adicionar a primeira fonte</button>
+      </section>
+    }
+  }
+</section>
+
+@if (adding()) {
+  <app-add-source [existing]="campaign()?.sources ?? []" [keyword]="campaign()?.technologies?.[0] ?? ''" (add)="add($event)" (close)="adding.set(false)" />
+}

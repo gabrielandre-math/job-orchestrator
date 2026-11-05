@@ -19,8 +19,8 @@ export async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
   return r.json() as Promise<T>;
 }
 
-export async function send<T = void>(method: 'POST' | 'PUT', path: string, body?: unknown): Promise<T> {
-  const r = await fetch(API + path, { method, headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify(body ?? {}) });
+export async function send<T = void>(method: 'POST' | 'PUT' | 'DELETE', path: string, body?: unknown): Promise<T> {
+  const r = await fetch(API + path, { method, headers: { 'content-type': 'application/json', accept: 'application/json' }, body: method === 'DELETE' ? undefined : JSON.stringify(body ?? {}) });
   if (!r.ok) throw await toProblem(r);
   return (r.status === 204 ? undefined : await r.json()) as T;
 }

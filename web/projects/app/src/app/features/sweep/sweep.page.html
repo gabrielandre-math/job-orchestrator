@@ -1,4 +1,5 @@
 <section class="page">
+  <jo-tabs [items]="tabs" label="Fontes" />
   <jo-page-hero title="Varredura da internet" [scene]="['radar', 'extractor', 'checker']" [stats]="stats()"
     lead="O coletor visita as páginas de carreira das empresas, lê as vagas publicadas e guarda os e-mails que elas divulgam para candidatura. Respeita o robots.txt de cada site, abre uma conexão por domínio e desacelera sozinho quando o site demora.">
     @if (status.value()?.installed) {
@@ -8,7 +9,7 @@
         @if (status.value()?.installing) { <span class="spinner sm" aria-hidden="true"></span>Instalando o coletor } @else { <jo-icon name="download-simple" [size]="14" />Instalar o coletor }
       </button>
     }
-    <a class="btn" routerLink="/fluxo"><jo-icon name="flow-arrow" [size]="14" />Ver no fluxo</a>
+    <a class="btn" routerLink="/busca"><jo-icon name="magnifying-glass" [size]="14" />Ver a busca ao vivo</a>
   </jo-page-hero>
 
   @if (status.value(); as st) {

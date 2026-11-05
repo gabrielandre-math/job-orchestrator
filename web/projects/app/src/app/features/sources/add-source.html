@@ -1,0 +1,146 @@
+<jo-wizard [steps]="['Onde estão', 'Detalhes', 'Teste', 'Pronto']" [step]="step()" label="Adicionar fonte" (close)="close.emit()">
+  @switch (step()) {
+    @case (1) {
+      <div class="wz-step">
+        <div class="intro">
+          <jo-iso name="router" [size]="96" />
+          <div>
+            <h2>Onde estão as vagas que você quer?</h2>
+            <p class="muted">Toda fonte é lida pela porta oficial: a API pública do quadro de vagas ou a página de carreiras, respeitando o robots.txt. Nada de login nem de robô em rede social.</p>
+          </div>
+        </div>
+        <div class="grid">
+          <button type="button" class="tile" (click)="pick('ats')">
+            <span class="logos"><jo-company name="Greenhouse" domain="greenhouse.io" [size]="22" /><jo-company name="Lever" domain="lever.co" [size]="22" /><jo-company name="Ashby" domain="ashbyhq.com" [size]="22" /></span>
+            <strong>Empresa num sistema de vagas</strong><span class="faint small">Greenhouse, Lever, Ashby, SmartRecruiters, Recruitee, Breezy ou Personio. Basta o nome da empresa.</span>
+          </button>
+          <button type="button" class="tile" (click)="pick('api')">
+            <span class="logos"><jo-company name="Remotive" domain="remotive.com" [size]="22" /><jo-company name="Himalayas" domain="himalayas.app" [size]="22" /><jo-company name="The Muse" domain="themuse.com" [size]="22" /></span>
+            <strong>API pública de vagas</strong><span class="faint small">Agregadores abertos, de todas as áreas, com busca por palavra ou categoria.</span>
+          </button>
+          <button type="button" class="tile" (click)="pick('site')">
+            <span class="logos"><jo-iso name="radar" [size]="34" /></span>
+            <strong>Site de carreiras</strong><span class="faint small">O coletor visita a página de carreiras da empresa e lê as vagas publicadas.</span>
+          </button>
+          <button type="button" class="tile" (click)="pick('link')">
+            <span class="logos"><jo-icon name="link" [size]="24" /></span>
+            <strong>Colar um link</strong><span class="faint small">Cole o endereço de qualquer vaga ou página de vagas. A plataforma é reconhecida sozinha.</span>
+          </button>
+        </div>
+      </div>
+    }
+    @case (2) {
+      <div class="wz-step">
+        @switch (way()) {
+          @case ('ats') {
+            <div class="intro">
+              <jo-iso name="ats" [size]="96" />
+              <div><h2>Qual plataforma e qual empresa?</h2><p class="muted">O nome da empresa é o que aparece no endereço da página de vagas dela. Você pode colar o endereço inteiro.</p></div>
+            </div>
+            <div class="grid plats">
+              @for (a of atsList; track a.key) {
+                <button type="button" class="tile mini" [attr.aria-pressed]="ats() === a.key" (click)="ats.set(a.key)">
+                  <span class="tick"><jo-icon name="check" [size]="12" /></span>
+                  <jo-company [name]="platforms[a.key].name" [domain]="platforms[a.key].domain" [size]="26" /><strong>{{ platforms[a.key].name }}</strong>
+                </button>
+              }
+            </div>
+            <label class="field">Empresa
+              <span class="addr mono"><span class="faint">{{ atsInfo().hint }}</span><input [value]="company()" (input)="company.set($any($event.target).value)" (keydown.enter)="test()" placeholder="nome-da-empresa" spellcheck="false" autocomplete="off" /><span class="faint">{{ atsInfo().after }}</span></span>
+            </label>
+          }
+          @case ('api') {
+            <div class="intro">
+              <jo-iso name="inbox" [size]="96" />
+              <div><h2>Qual API e o que buscar?</h2><p class="muted">Cada API tem o seu jeito de filtrar: palavra de busca, tag ou categoria. Valem todas as áreas, não só tecnologia.</p></div>
+            </div>
+            <div class="grid plats">
+              @for (a of apiList; track a.key) {
+                <button type="button" class="tile mini" [attr.aria-pressed]="api() === a.key" (click)="pickApi(a.key)">
+                  <span class="tick"><jo-icon name="check" [size]="12" /></span>
+                  <jo-company [name]="platforms[a.key].name" [domain]="platforms[a.key].domain" [size]="26" /><strong>{{ platforms[a.key].name }}</strong>
+                </button>
+              }
+            </div>
+            @if (apiInfo().options; as opts) {
+              <label class="field">{{ apiInfo().what }}
+                <select [value]="term()" (change)="term.set($any($event.target).value)">@for (o of opts; track o) { <option [value]="o">{{ o }}</option> }</select>
+              </label>
+            } @else {
+              <label class="field">{{ apiInfo().what }}<input [value]="term()" (input)="term.set($any($event.target).value)" (keydown.enter)="test()" [placeholder]="apiInfo().example" /></label>
+            }
+          }
+          @case ('site') {
+            <div class="intro">
+              <jo-iso name="radar" [size]="96" />
+              <div><h2>Qual é o site da empresa?</h2><p class="muted">Pode ser o site principal ou a página de carreiras. Se ela apontar para um quadro de ATS, as vagas vêm pela API oficial do quadro.</p></div>
+            </div>
+            <label class="field">Site<input class="mono" [value]="site()" (input)="site.set($any($event.target).value)" (keydown.enter)="test()" placeholder="empresa.com.br" spellcheck="false" /></label>
+          }
+          @case ('link') {
+            <div class="intro">
+              <jo-iso name="selector" [size]="96" />
+              <div><h2>Cole o link</h2><p class="muted">Endereço de uma vaga, do quadro de vagas da empresa ou da página de carreiras.</p></div>
+            </div>
+            <label class="field">Link<input class="mono" [value]="link()" (input)="link.set($any($event.target).value)" (keydown.enter)="test()" placeholder="https://jobs.lever.co/empresa/..." spellcheck="false" /></label>
+          }
+        }
+        @if (info(); as i) {
+          <div class="found">
+            <jo-company [name]="i.company ?? i.platformName" [domain]="i.companyDomain ?? i.platformDomain" [size]="32" />
+            <span class="what"><strong>{{ i.label }}</strong><span class="faint small mono">{{ source() }}</span></span>
+            @if (duplicate()) { <span class="tag manual">já está na campanha</span> }
+          </div>
+        }
+      </div>
+    }
+    @case (3) {
+      <div class="wz-step">
+        <div class="intro">
+          <jo-iso name="checker" [size]="96" />
+          <div>
+            <h2>{{ testing.running() ? 'Consultando ' + (info()?.label ?? '') : result()?.ok ? 'A fonte respondeu' : 'Não deu certo desta vez' }}</h2>
+            @if (testing.running()) { <p class="muted"><span class="spinner sm" aria-hidden="true"></span>Lendo pela porta oficial. Leva alguns segundos.</p> }
+            @else if (result(); as r) {
+              @if (r.ok) { <p class="muted"><strong class="num ok">{{ r.count }}</strong> {{ r.count === 1 ? 'vaga aberta' : 'vagas abertas' }} em {{ r.seconds.toLocaleString('pt-BR') }} s. {{ r.error ?? 'As da sua área entram nas próximas rodadas.' }}</p> }
+              @else { <p class="warn">{{ r.error }}</p> }
+            }
+          </div>
+        </div>
+        @if (result(); as r) {
+          @if (r.sample.length > 0) {
+            <ul class="sample">
+              @for (p of r.sample; track p.applyUrl) {
+                <li><jo-company [name]="p.company" [size]="24" /><span class="what"><strong>{{ p.title }}</strong><span class="faint small">{{ p.company }}@if (p.location) { · {{ p.location }} }</span></span></li>
+              }
+            </ul>
+          }
+        }
+      </div>
+    }
+    @case (4) {
+      <div class="wz-step">
+        <div class="intro">
+          <jo-iso name="send" [size]="96" />
+          <div><h2>{{ info()?.label }} na campanha</h2><p class="muted">A fonte entra na próxima rodada da busca. Você acompanha a consulta dela na Busca ao vivo.</p></div>
+        </div>
+        <div class="done-actions">
+          <button type="button" class="btn" (click)="again()"><jo-icon name="plus" [size]="14" />Adicionar outra</button>
+          <button type="button" class="btn primary" (click)="close.emit()">Concluir</button>
+        </div>
+      </div>
+    }
+  }
+  @if (step() > 1 && step() < 4) {
+    <footer class="wz-foot" wz-foot>
+      <button type="button" class="btn ghost" (click)="back()"><jo-icon name="arrow-left" [size]="14" />Voltar</button>
+      <span class="end">
+        @if (step() === 2) { <button type="button" class="btn primary" (click)="test()" [disabled]="!source()">Testar a fonte<jo-icon name="arrow-right" [size]="14" /></button> }
+        @if (step() === 3) {
+          <button type="button" class="btn" (click)="test()" [disabled]="testing.running()"><jo-icon name="arrows-clockwise" [size]="14" />Testar de novo</button>
+          <button type="button" class="btn primary" (click)="save()" [disabled]="testing.running() || duplicate() || !source()">{{ result()?.ok === false ? 'Salvar mesmo assim' : 'Salvar na campanha' }}</button>
+        }
+      </span>
+    </footer>
+  }
+</jo-wizard>

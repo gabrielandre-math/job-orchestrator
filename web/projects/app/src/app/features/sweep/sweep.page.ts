@@ -10,6 +10,7 @@ import { command } from '../../core/command';
 import { AGENT_ICON, Live } from '../../core/live';
 import { query } from '../../core/query';
 import { Wizard } from '../../shared/wizard';
+import { SOURCE_TABS, Tabs } from '../../shared/tabs';
 
 /** APIs públicas que a varredura pode ligar, com o que cada uma pede de chave na fonte. */
 const APIS = [
@@ -42,7 +43,7 @@ const STATIONS = ['Semeador', 'Robots', 'Coletor', 'Extrator', 'Conferente'];
  */
 @Component({
   selector: 'app-sweep',
-  imports: [RouterLink, Badge, Company, Icon, Iso, PageHero, Wizard],
+  imports: [RouterLink, Badge, Company, Icon, Iso, PageHero, Tabs, Wizard],
   templateUrl: './sweep.page.html',
   styleUrl: './sweep.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -60,6 +61,7 @@ export class SweepPage {
   protected readonly depths = DEPTHS;
   protected readonly assists = ASSISTS;
   protected readonly icons = AGENT_ICON;
+  protected readonly tabs = SOURCE_TABS;
 
   protected readonly wizard = signal(false);
   protected readonly step = signal(1);

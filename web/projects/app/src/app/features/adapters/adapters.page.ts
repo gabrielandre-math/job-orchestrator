@@ -5,6 +5,7 @@ import { HeroStat, PageHero } from '@jo/ui/page-hero';
 import { Adapter } from '../../core/api';
 import { ago } from '../../core/format';
 import { query } from '../../core/query';
+import { SOURCE_TABS, Tabs } from '../../shared/tabs';
 
 const LOGO: Record<string, { file: string; mono: boolean }> = {
   greenhouse: { file: 'greenhouse', mono: false }, github: { file: 'github', mono: true }, hackernews: { file: 'hackernews', mono: false },
@@ -13,10 +14,11 @@ const LOGO: Record<string, { file: string; mono: boolean }> = {
 /** Adapters: cada conector com o que faz, onde atua e o placar real que alimenta o roteador. */
 @Component({
   selector: 'app-adapters',
-  imports: [Badge, Iso, PageHero],
+  imports: [Badge, Iso, PageHero, Tabs],
   template: `
     <section class="page">
-      <jo-page-hero title="Adapters" lead="Os conectores de fontes e de formulários. O roteador escolhe por capacidade testada, domínio, risco e placar; circuito aberto tira o adapter da rota por 10 minutos."
+      <jo-tabs [items]="tabs" label="Fontes" />
+      <jo-page-hero title="Conectores" lead="Os conectores de fontes e de formulários. O roteador escolhe por capacidade testada, domínio, risco e placar; circuito aberto tira o adapter da rota por 10 minutos."
         [scene]="['router', 'radar', 'form']" [stats]="stats()" />
       @if (list.problem(); as p) { <p class="problem">{{ p.detail }}</p> }
       <div class="cards">
@@ -67,6 +69,7 @@ const LOGO: Record<string, { file: string; mono: boolean }> = {
 export class AdaptersPage {
   protected readonly list = query<Adapter[]>(() => '/adapters', 6000);
   protected readonly ago = ago;
+  protected readonly tabs = SOURCE_TABS;
   protected readonly stats = computed<HeroStat[]>(() => {
     const all = this.list.value() ?? [];
     return [

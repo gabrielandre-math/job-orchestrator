@@ -49,8 +49,7 @@ export class App {
       { path: '/candidaturas', label: 'Candidaturas', icon: 'paper-plane-tilt' },
     ] },
     { group: 'Sistema', items: [
-      { path: '/varredura', label: 'Varredura', icon: 'globe' },
-      { path: '/adapters', label: 'Adapters', icon: 'plugs-connected' },
+      { path: '/fontes', label: 'Fontes', icon: 'plugs-connected' },
       { path: '/provedores', label: 'Provedores de IA', icon: 'cpu' },
       { path: '/campanha', label: 'Campanha', icon: 'sliders-horizontal' },
     ] },
