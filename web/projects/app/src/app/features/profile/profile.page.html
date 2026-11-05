@@ -98,7 +98,7 @@
                       <button type="button" class="chip" [attr.aria-pressed]="f.authorizedCountries.includes(c[0])" (click)="toggleIn('authorizedCountries', c[0])">{{ c[1] }}</button>
                     }
                   </div>
-                  <label class="check"><input type="checkbox" [checked]="f.needsSponsorship" (change)="set('needsSponsorship', $any($event.target).checked)" />Preciso de visto patrocinado pela empresa</label>
+                  <label class="check"><input type="checkbox" class="switch" [checked]="f.needsSponsorship" (change)="set('needsSponsorship', $any($event.target).checked)" />Preciso de visto patrocinado pela empresa</label>
                 </section>
                 <section class="sec">
                   <h3>Pisos, por vínculo</h3>
@@ -116,7 +116,7 @@
                     <button type="button" class="chip" [attr.aria-pressed]="f.modalities.includes('onsite')" (click)="toggleIn('modalities', 'onsite')">Presencial</button>
                   </div>
                   <label class="field">Cidades para híbrido ou presencial, separadas por vírgula<input [value]="f.cities.join(', ')" (input)="set('cities', $any($event.target).value.split(','))" placeholder="ex.: São Paulo, Campinas" /></label>
-                  <label class="check"><input type="checkbox" [checked]="f.relocate" (change)="set('relocate', $any($event.target).checked)" />Aceito me mudar pela vaga certa</label>
+                  <label class="check"><input type="checkbox" class="switch" [checked]="f.relocate" (change)="set('relocate', $any($event.target).checked)" />Aceito me mudar pela vaga certa</label>
                 </section>
                 <section class="sec">
                   <h3>Disponibilidade e inglês</h3>

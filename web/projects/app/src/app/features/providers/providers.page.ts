@@ -50,14 +50,14 @@ export class ProvidersPage {
   protected readonly usage = query<TaskUsage[]>(() => '/providers/usage', 15000);
   protected readonly calls = query<LlmCall[]>(() => '/providers/calls?limit=12', 15000);
   protected readonly testing = signal<string | null>(null);
-  protected readonly test = command((id: string) => send<LlmResult>('POST', `/providers/${id}/test`));
-  protected readonly saving = command((x: { id: string; body: object }) => send('PUT', `/accounts/${x.id}`, x.body));
-  protected readonly ordering = command((ids: string[]) => send('PUT', '/accounts/order', ids));
-  protected readonly deleting = command((id: string) => remove(`/accounts/${id}`));
+  protected readonly test = command((id: string) => send<LlmResult>('POST', `/providers/${id}/test`), (r) => (r.ok ? `Respondeu em ${r.seconds.toFixed(1)} s com ${r.model}.` : `O teste falhou: ${r.error ?? 'sem resposta'}`));
+  protected readonly saving = command((x: { id: string; body: object }) => send('PUT', `/accounts/${x.id}`, x.body), 'Conta atualizada.');
+  protected readonly ordering = command((ids: string[]) => send('PUT', '/accounts/order', ids), 'Ordem de gasto salva.');
+  protected readonly deleting = command((id: string) => remove(`/accounts/${id}`), 'Conta removida, com a chave e a pasta de login.');
   protected readonly creating = command((body: object) => send<Account>('POST', '/accounts', body));
   protected readonly logging = command((id: string) => send<LoginState>('POST', `/accounts/${id}/login`));
-  protected readonly installing = command((body: object) => send<InstallState>('POST', '/local/install', body));
-  protected readonly slotting = command((body: object) => send('PUT', '/local/slots', body));
+  protected readonly installing = command((body: object) => send<InstallState>('POST', '/local/install', body), 'Instalação começou. O progresso aparece aqui.');
+  protected readonly slotting = command((body: object) => send('PUT', '/local/slots', body), 'Modelos locais escolhidos.');
   protected readonly kinds = KINDS;
 
   protected readonly adding = signal(false);

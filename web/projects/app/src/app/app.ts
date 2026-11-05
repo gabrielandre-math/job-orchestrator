@@ -7,6 +7,7 @@ import { query } from './core/query';
 import { modeLabel } from './core/format';
 import { Theme } from './core/theme';
 import { Live } from './core/live';
+import { Toasts } from './core/toast';
 
 interface NavItem { path: string; label: string; icon: string; exact?: boolean; count?: 'review' | 'attention'; }
 
@@ -17,12 +18,15 @@ interface NavItem { path: string; label: string; icon: string; exact?: boolean; 
   templateUrl: './app.html',
   styleUrl: './app.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { '[class.collapsed]': 'collapsed()' },
+  host: { '[class.collapsed]': 'collapsed()', '[class.drawer-open]': 'drawer()' },
 })
 export class App {
   protected readonly theme = inject(Theme);
   protected readonly live = inject(Live);
+  protected readonly toasts = inject(Toasts);
   protected readonly collapsed = signal(read('jo.sidebar') === 'collapsed');
+  /** No celular a barra lateral é uma gaveta: abre pelo menu e fecha ao navegar. */
+  protected readonly drawer = signal(false);
   protected readonly overview = query<Overview>(() => '/overview', 5000);
   protected readonly online = computed(() => this.overview.problem() === null && this.overview.value() !== undefined);
   protected readonly mode = computed(() => modeLabel(this.overview.value()?.campaign?.mode ?? ''));

@@ -27,10 +27,10 @@ export class ProfilePage {
   protected readonly profile = query<Profile>(() => '/profile', 3000);
   protected readonly answers = query<Record<string, string>>(() => '/profile/answers?lang=pt', 0);
   protected readonly dragging = signal(false);
-  protected readonly sending = command((f: File) => upload<{ documentId: string }>('/profile/documents', f));
-  protected readonly retrying = command((id: string) => send('POST', `/profile/documents/${id}/retry`));
-  protected readonly savingIdentity = command((id: Identity) => send('PUT', '/profile/identity', id));
-  protected readonly confirming = command((body: { confirmations: Confirmations; decisions: Record<string, boolean> }) => send('PUT', '/profile/confirmations', body));
+  protected readonly sending = command((f: File) => upload<{ documentId: string }>('/profile/documents', f), 'Currículo recebido. O Leitor começou a ler.');
+  protected readonly retrying = command((id: string) => send('POST', `/profile/documents/${id}/retry`), 'Lendo o documento de novo.');
+  protected readonly savingIdentity = command((id: Identity) => send('PUT', '/profile/identity', id), 'Dados pessoais salvos.');
+  protected readonly confirming = command((body: { confirmations: Confirmations; decisions: Record<string, boolean> }) => send('PUT', '/profile/confirmations', body), 'Perfil confirmado. Daqui para frente o sistema usa estes dados.');
   protected readonly countries = COUNTRIES;
 
   protected readonly identity = signal<Identity>({ fullName: '', email: null, phone: null, location: null, linkedIn: null, gitHub: null, website: null });

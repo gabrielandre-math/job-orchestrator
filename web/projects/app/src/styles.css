@@ -11,11 +11,12 @@ h3 { font-size: 13px; }
 .muted { color: var(--text-2); }
 .faint { color: var(--text-3); }
 
-.btn { display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px; border-radius: var(--radius-sm); border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--text); font: 500 12.5px var(--font-ui); cursor: pointer; text-decoration: none; white-space: nowrap; transition: background 120ms, border-color 120ms, filter 120ms; }
+.btn { display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px; border-radius: var(--radius-sm); border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--text); font: 500 12.5px var(--font-ui); cursor: pointer; text-decoration: none; white-space: nowrap;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, transform 120ms ease, box-shadow 180ms ease, filter 160ms ease; }
 .btn:hover { background: var(--surface-3); }
 .btn:disabled { opacity: 0.5; cursor: default; }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
-.btn.primary:hover { filter: brightness(1.06); }
+.btn.primary:hover { filter: brightness(1.06); box-shadow: 0 8px 20px -10px color-mix(in oklch, var(--accent) 75%, transparent); }
 .btn.danger { color: var(--danger); }
 .btn.ghost { background: transparent; border-color: transparent; color: var(--text-2); }
 .btn.ghost:hover { color: var(--text); background: var(--surface-2); }
@@ -38,6 +39,39 @@ table.grid tr:last-child td { border-bottom: 0; }
 .right { text-align: right; }
 
 ::selection { background: var(--accent-weak); }
+/* Microinterações: tudo que você toca responde. Clique afunda um pouco; filtro ligado dá um pulo curto; foco acende devagar. */
+.btn:active:not(:disabled), .chip:active { transform: translateY(1px) scale(0.98); }
+.chip { transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease, transform 120ms ease, box-shadow 180ms ease; }
+.chip:hover { border-color: color-mix(in oklch, var(--accent) 35%, var(--line-strong)); color: var(--text); }
+.chip[aria-pressed="true"] { animation: pop 260ms cubic-bezier(0.2, 0.8, 0.2, 1); box-shadow: 0 0 0 3px color-mix(in oklch, var(--accent) 10%, transparent); }
+@keyframes pop { 40% { transform: scale(1.045); } }
+input, select, textarea { transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease; }
+input:focus, select:focus, textarea:focus { border-color: color-mix(in oklch, var(--accent) 70%, var(--line-strong)); box-shadow: 0 0 0 3px var(--accent-weak); outline: none; }
+:focus-visible { transition: outline-offset 140ms ease; }
+a { transition: color 160ms ease, opacity 160ms ease; }
+
+/* Caixa de seleção com o visto desenhado; chave (.switch) que desliza; opção com o ponto crescendo. */
+input[type="checkbox"], input[type="radio"] { appearance: none; -webkit-appearance: none; flex: none; width: 16px; height: 16px; padding: 0; margin: 0; display: inline-grid; place-items: center;
+  border: 1.5px solid var(--line-strong); background: var(--surface); cursor: pointer; vertical-align: -3px; transition: background-color 160ms ease, border-color 160ms ease, box-shadow 180ms ease; }
+input[type="checkbox"] { border-radius: 4px; }
+input[type="checkbox"]::after { content: ""; width: 8px; height: 4px; margin-top: -2px; border: 2px solid var(--accent-text); border-top: 0; border-right: 0; transform: rotate(-45deg) scale(0); transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+input[type="checkbox"]:checked { background: var(--accent); border-color: var(--accent); }
+input[type="checkbox"]:checked::after { transform: rotate(-45deg) scale(1); }
+input[type="checkbox"].switch { width: 34px; height: 20px; border-radius: 10px; background: var(--surface-3); border-color: var(--line-strong); }
+input[type="checkbox"].switch::after { width: 14px; height: 14px; margin: 0; border: 0; border-radius: 50%; background: var(--text-3); transform: translateX(-7px); transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1), background-color 180ms ease; }
+input[type="checkbox"].switch:checked { background: var(--accent); border-color: var(--accent); }
+input[type="checkbox"].switch:checked::after { background: var(--accent-text); transform: translateX(7px); }
+input[type="radio"] { border-radius: 50%; }
+input[type="radio"]::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); transform: scale(0); transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+input[type="radio"]:checked { border-color: var(--accent); }
+input[type="radio"]:checked::after { transform: scale(1); }
+input[type="checkbox"]:disabled, input[type="radio"]:disabled { opacity: 0.55; cursor: default; }
+input[type="checkbox"]:focus, input[type="radio"]:focus { box-shadow: 0 0 0 3px var(--accent-weak); }
+
+/* Troca de página e de filtro (View Transitions): esmaecido curto e cartões que deslizam para o lugar novo. */
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 180ms; animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1); }
+::view-transition-group(*) { animation-duration: 260ms; animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1); }
+
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 
 /* Página: cabeçalho com título, apoio e ações; conteúdo com respiro fixo. */
@@ -57,3 +91,10 @@ table.grid tr:last-child td { border-bottom: 0; }
 .tag { height: 20px; padding: 0 7px; border-radius: 3px; display: inline-flex; align-items: center; background: var(--surface-3); color: var(--text-2); font: 500 11px var(--font-ui); white-space: nowrap; }
 .tag.money { font-family: var(--font-mono); }
 .tag.manual { color: var(--warn); background: var(--warn-weak); }
+
+@media (max-width: 760px) {
+  .page { padding: 14px 14px 32px; }
+  .page-head { flex-direction: column; align-items: stretch; }
+  .page-head .actions { flex-wrap: wrap; }
+  .page-head .actions input { width: 100%; }
+}

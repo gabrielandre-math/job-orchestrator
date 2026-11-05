@@ -4,95 +4,215 @@
       <h1>Vagas</h1>
       <p>Tudo que as fontes trouxeram. A nota mede aderência à campanha, não chance de contratação.</p>
     </div>
-    <div class="actions"><input type="search" placeholder="Buscar empresa ou cargo" [value]="search()" (input)="search.set($any($event.target).value)" aria-label="Buscar" /></div>
+    <div class="actions">
+      <input type="search" placeholder="Buscar empresa, cargo ou tecnologia" [value]="search()" (input)="search.set($any($event.target).value)" aria-label="Buscar" />
+    </div>
   </header>
-
-  <div class="chips" role="group" aria-label="Filtrar por situação">
-    @for (f of filters; track f.label) {
-      <button type="button" class="chip" [attr.aria-pressed]="status() === f.key" (click)="filter(f.key)">{{ f.label }}<span class="n">{{ count(f.key) }}</span></button>
-    }
-  </div>
-
   @if (all.problem(); as p) { <p class="problem">{{ p.detail }}</p> }
 
-  <div class="layout" [class.with-detail]="open()">
-    <section class="panel">
-      @if (all.value() && rows().length === 0) {
-        <jo-empty title="Nenhuma vaga neste filtro." hint="Rode a campanha ou troque o filtro." />
-      } @else {
-        <table class="grid">
-          <thead><tr><th>Nota</th><th>Cargo</th><th>Local</th><th>Situação</th><th>Motivo</th><th class="right">Vista</th></tr></thead>
-          <tbody>
-            @for (j of rows(); track j.id) {
-              <tr class="row" [class.current]="open() === j.id" (click)="open.set(open() === j.id ? null : j.id)">
-                <td><jo-score [value]="j.status === 'Rejected' ? null : j.score" /></td>
-                <td>
-                  <span class="title">{{ j.title }}</span><span class="company">{{ j.company }}</span>
-                  <span class="tags">
-                    @if (j.modality) { <span class="tag">{{ j.modality }}</span> }
-                    @if (j.seniority) { <span class="tag">{{ j.seniority }}</span> }
-                    @if (j.contract) { <span class="tag">{{ j.contract }}</span> }
-                    @if (j.salaryText) { <span class="tag money">{{ j.salaryText }}</span> }
-                    @if (j.applyChannel !== 'ats') { <span class="tag manual">{{ channel(j.applyChannel) }}</span> }
-                  </span>
-                </td>
-                <td class="muted">{{ j.location || 'não informado' }}</td>
-                <td><jo-badge [label]="label(j.status)" [tone]="tone(j.status)" /></td>
-                <td class="muted reason">{{ j.reason ?? '' }}</td>
-                <td class="right faint">{{ ago(j.firstSeenAt) }}</td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      }
-    </section>
-
-    @if (open()) {
-      <aside class="panel detail">
-        @if (detail.value(); as d) {
-          <header>
-            <div><h2>{{ d.job.title }}</h2><p class="muted">{{ d.job.company }}, {{ d.job.location || 'local não informado' }}</p></div>
-            <button type="button" class="btn ghost" (click)="open.set(null)">Fechar</button>
-          </header>
-          <div class="body">
-            <div class="facts">
-              <span><jo-badge [label]="label(d.job.status)" [tone]="tone(d.job.status)" /></span>
-              <span class="muted">Fonte <span class="mono">{{ source(d.job.source) }}</span></span>
-              <span class="muted">{{ d.snapshots }} {{ d.snapshots === 1 ? 'cópia guardada' : 'cópias guardadas' }}</span>
+  @if (stats.value(); as st) {
+    <div class="charts">
+      <article class="panel chart wide">
+        <header><h2>Funil</h2><span class="faint small num"><jo-count [value]="st.total" /> no total</span></header>
+        <jo-iso-bars class="bars" [data]="funnel()" />
+      </article>
+      <article class="panel chart">
+        <header><h2>Por fonte</h2></header>
+        <jo-iso-bars class="bars" [data]="sources()" />
+      </article>
+      <article class="panel chart">
+        <header><h2>Notas</h2><span class="faint small">corte em 80</span></header>
+        <jo-iso-bars class="bars" [data]="scores()" [max]="50" />
+      </article>
+      <article class="panel chart">
+        <header><h2>Novas por dia</h2><span class="faint small">últimos 14 dias</span></header>
+        <jo-iso-bars class="bars" [data]="days()" [max]="50" />
+      </article>
+      <article class="panel chart wide">
+        <header><h2>Stack mais pedida</h2>@if (profile.value()?.facts?.length) { <span class="faint small">verde: você tem</span> }</header>
+        <ul class="stack">
+          @for (t of stack(); track t.key) {
+            <li [class.have]="t.have === true" [class.missing]="t.have === false">
+              <jo-tech [name]="t.key" [have]="t.have" />
+              <span class="track"><span class="fill" [style.width.%]="t.pct"></span></span>
+              <span class="num">{{ t.value }}</span>
+            </li>
+          }
+        </ul>
+      </article>
+      <article class="panel chart">
+        <header><h2>Perfil das vagas</h2></header>
+        <div class="shape">
+          @for (g of shape(); track g.title) {
+            <div class="seg-group">
+              <p class="faint small">{{ g.title }}</p>
+              <div class="seg" role="img" [attr.aria-label]="g.title">
+                @for (x of g.parts; track x.label) { <span [style.width.%]="x.pct" [attr.data-i]="x.i % 5" [attr.title]="x.label + ': ' + x.value"></span> }
+              </div>
+              <p class="legend small">@for (x of g.parts; track x.label) { <span><i [attr.data-i]="x.i % 5"></i>{{ x.label }} <b class="num">{{ x.value }}</b></span> }</p>
             </div>
-            <dl class="normalized">
-              <dt>Modalidade</dt><dd>{{ d.job.modality ?? 'não informada' }}</dd>
-              <dt>Senioridade</dt><dd>{{ d.job.seniority ?? 'não informada' }}</dd>
+          }
+        </div>
+      </article>
+    </div>
+  } @else {
+    <div class="charts">@for (i of [1, 2, 3, 4]; track i) { <div class="panel chart skeleton"></div> }</div>
+  }
+
+  <div class="filters">
+    <div class="chips" role="group" aria-label="Filtrar por situação">
+      @for (f of filters; track f.label) {
+        <button type="button" class="chip" [attr.aria-pressed]="status() === f.key" (click)="filter(f.key)">{{ f.label }}<span class="n">{{ count(f.key) }}</span></button>
+      }
+    </div>
+    <button type="button" class="chip" [attr.aria-pressed]="remoteOnly()" (click)="toggleRemote()">Só remoto</button>
+  </div>
+
+  @if (all.value() && rows().length === 0) {
+    <div class="panel"><jo-empty title="Nenhuma vaga neste filtro." hint="Rode a campanha ou troque o filtro." /></div>
+  } @else if (!all.value()) {
+    <div class="cards">@for (i of [1, 2, 3, 4, 5, 6]; track i) { <div class="panel card skeleton"></div> }</div>
+  } @else {
+    <div class="cards">
+      @for (j of rows(); track j.id) {
+        <button type="button" class="panel card" [style.view-transition-name]="'job-' + j.id" [class.current]="open() === j.id" [class.cut]="j.status === 'Rejected' || j.status === 'Duplicate' || j.status === 'Expired'" (click)="open.set(j.id)">
+          <span class="c-head">
+            <jo-company [name]="j.company" [domain]="j.companyDomain" [size]="44" />
+            <span class="c-title">
+              <strong>{{ j.title }}</strong>
+              <span class="muted small">{{ company(j.company) }}@if (j.location) { · {{ j.location }} }</span>
+            </span>
+            <jo-score [value]="j.status === 'Rejected' ? null : j.score" />
+          </span>
+          <span class="tags">
+            @if (j.modality) { <span class="tag">{{ j.modality }}</span> }
+            @if (j.seniority) { <span class="tag">{{ j.seniority }}</span> }
+            @if (j.contract) { <span class="tag">{{ j.contract }}</span> }
+            @if (j.salaryText) { <span class="tag money">{{ j.salaryText }}</span> }
+            @if (j.applyChannel !== 'ats') { <span class="tag manual">{{ channel(j.applyChannel) }}</span> }
+          </span>
+          @if (j.stack.length > 0) {
+            <span class="techs">
+              @for (t of j.stack.slice(0, 7); track t) { <jo-tech [name]="t" [label]="false" [size]="18" [have]="has(t)" /> }
+              @if (j.stack.length > 7) { <span class="more faint small">+{{ j.stack.length - 7 }}</span> }
+            </span>
+          }
+          <span class="c-foot">
+            <jo-badge [label]="label(j.status)" [tone]="tone(j.status)" />
+            @if (platform(j.source); as l) {
+              @if (l.mono) { <span class="src mono" [style.--logo]="'url(/logos/' + l.file + '.svg)'"></span> } @else { <img class="src" [src]="'/logos/' + l.file + '.svg'" alt="" /> }
+            }
+            <span class="faint small">{{ ago(j.firstSeenAt) }}</span>
+          </span>
+          @if (j.reason && j.status === 'Rejected') { <span class="reason small">{{ j.reason }}</span> }
+        </button>
+      }
+    </div>
+  }
+
+  @if (open()) {
+    <div class="scrim" (click)="open.set(null)" aria-hidden="true"></div>
+    <aside class="drawer" aria-label="Detalhes da vaga">
+      @if (detail.value(); as d) {
+        <header class="d-head">
+          <jo-company [name]="d.job.company" [domain]="d.job.companyDomain" [size]="56" />
+          <div class="d-title">
+            <h2>{{ d.job.title }}</h2>
+            <p class="muted">{{ company(d.job.company) }}, {{ d.job.location || 'local não informado' }}</p>
+            <p class="d-badges"><jo-badge [label]="label(d.job.status)" [tone]="tone(d.job.status)" /><jo-score [value]="d.job.status === 'Rejected' ? null : d.job.score" /></p>
+          </div>
+          <button type="button" class="btn ghost" (click)="open.set(null)" aria-label="Fechar"><jo-icon name="x" [size]="16" /></button>
+        </header>
+        <div class="d-body">
+          <div class="d-actions">
+            <a class="btn" [href]="d.job.applyUrl" target="_blank" rel="noopener">Abrir a vaga<jo-icon name="arrow-square-out" [size]="14" /></a>
+            <button type="button" class="btn primary" (click)="compose(d.job.id)" [disabled]="composing.running()">
+              <jo-icon name="pen-nib" [size]="14" />{{ composing.running() ? 'Os agentes estão escrevendo…' : 'Gerar currículo para esta vaga' }}
+            </button>
+          </div>
+
+          @if (composing.running() || composing.problem()) {
+            <ol class="mini" aria-live="polite">
+              @for (s of stations(); track s.agent) {
+                <li [class]="'mini-st ' + s.state" [attr.title]="s.title">
+                  <jo-iso [name]="s.icon" [size]="44" />
+                  <span class="small">{{ s.agent }}</span>
+                </li>
+              }
+            </ol>
+            @if (composing.problem(); as p) { <p class="problem">{{ p.detail }}</p> }
+          }
+          @if ((resumes.value() ?? []).length > 0) {
+            <section class="d-sec">
+              <h3>Currículos desta vaga</h3>
+              <ul class="resumes">
+                @for (r of resumes.value() ?? []; track r.id) {
+                  <li>
+                    <jo-icon name="file-text" [size]="18" />
+                    <a [href]="'/api/materials/resumes/' + r.id + '/pdf'" target="_blank" rel="noopener">{{ r.fileName }}</a>
+                    <span class="faint small">{{ modeLabel(r.mode) }}{{ r.reviewed ? ', revisado por outra família' : '' }} · {{ r.pages }} {{ r.pages === 1 ? 'página' : 'páginas' }} · {{ ago(r.createdAt) }}</span>
+                  </li>
+                }
+              </ul>
+            </section>
+          }
+
+          <section class="d-sec">
+            <h3>Resumo</h3>
+            <dl class="facts">
+              <dt>Modalidade</dt><dd>{{ d.job.modality ?? 'não informado' }}</dd>
+              <dt>Senioridade</dt><dd>{{ d.job.seniority ?? 'não informado' }}</dd>
               <dt>Vínculo</dt><dd>{{ d.job.contract ?? 'não informado' }}</dd>
               <dt>Salário</dt><dd>{{ d.job.salaryText ?? 'não informado' }}</dd>
               <dt>Inglês</dt><dd>{{ d.job.english ?? 'não informado' }}</dd>
               <dt>Visto</dt><dd>{{ d.job.sponsorship ?? 'não informado' }}</dd>
-              <dt>Candidatura</dt><dd>{{ channel(d.job.applyChannel) }}@if (d.job.applyEmail) {, <span class="mono">{{ d.job.applyEmail }}</span>}</dd>
+              <dt>Candidatura</dt><dd>{{ channel(d.job.applyChannel) }}</dd>
+              <dt>Fonte</dt><dd class="mono">{{ source(d.job.source) }}</dd>
+              <dt>Vista</dt><dd>{{ ago(d.job.firstSeenAt) }}</dd>
             </dl>
-            @if (d.job.reason) { <p class="notice">{{ d.job.reason }}</p> }
-            @if (d.factors.length > 0) {
-              <h3>Como a nota foi formada</h3>
-              <table class="grid factors">
-                <thead><tr><th>Fator</th><th class="right">Peso</th><th class="right">Pontos</th><th>Por quê</th></tr></thead>
-                <tbody>
-                  @for (f of d.factors; track f.name) {
-                    <tr>
-                      <td>{{ f.name }}@if (f.unknown) {<span class="faint"> (estimado)</span>}</td>
-                      <td class="right num">{{ f.weight }}</td>
-                      <td class="right num">{{ f.points }}</td>
-                      <td class="muted">{{ f.note }}</td>
-                    </tr>
-                  }
-                  <tr><td><strong>Total</strong></td><td></td><td class="right num"><strong>{{ d.job.score }}</strong></td><td class="faint">confiança {{ ((d.job.confidence ?? 0) * 100).toFixed(0) }}%</td></tr>
-                </tbody>
-              </table>
-            }
+          </section>
+
+          @if (d.job.stack.length > 0) {
+            <section class="d-sec">
+              <h3>Stack</h3>
+              <div class="d-stack">@for (t of d.job.stack; track t) { <jo-tech [name]="t" [have]="has(t)" /> }</div>
+              @if (profile.value()?.facts?.length) { <p class="faint small">Verde: está no seu perfil. Tracejado: não está, e não entra no currículo.</p> }
+            </section>
+          }
+
+          @if (d.factors.length > 0) {
+            <section class="d-sec">
+              <h3>Por que essa nota</h3>
+              <ul class="factors">
+                @for (f of d.factors; track f.name) {
+                  <li>
+                    <span class="f-name">{{ f.name }}</span>
+                    <span class="track"><span class="fill" [style.width.%]="(f.points / f.weight) * 100" [class.low]="f.points / f.weight < 0.5"></span></span>
+                    <span class="num small">{{ f.points }} de {{ f.weight }}</span>
+                    <span class="f-note faint small">{{ f.note }}</span>
+                  </li>
+                }
+              </ul>
+              @if (d.job.reason) { <p class="reason">{{ d.job.reason }}</p> }
+            </section>
+          }
+
+          <section class="d-sec">
             <h3>Descrição</h3>
-            <p class="desc">{{ d.description }}</p>
-            <a class="btn" [href]="d.job.applyUrl" target="_blank" rel="noopener noreferrer">Abrir vaga original</a>
-          </div>
-        }
-      </aside>
-    }
-  </div>
+            <div class="desc">
+              @for (b of blocks(); track $index) {
+                @switch (b.kind) {
+                  @case ('h') { <h4>{{ b.text }}</h4> }
+                  @case ('ul') { <ul>@for (it of b.items; track $index) { <li>{{ it }}</li> }</ul> }
+                  @default { <p>{{ b.text }}</p> }
+                }
+              }
+            </div>
+          </section>
+        </div>
+      } @else {
+        <div class="d-body"><div class="skeleton tall"></div></div>
+      }
+    </aside>
+  }
 </section>

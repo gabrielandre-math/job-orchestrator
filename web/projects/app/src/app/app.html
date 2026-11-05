@@ -1,4 +1,9 @@
-<aside class="side">
+<header class="topbar">
+  <button type="button" class="menu" (click)="drawer.set(!drawer())" [attr.aria-expanded]="drawer()" aria-label="Abrir menu"><jo-icon name="sidebar-simple" [size]="20" /></button>
+  <a class="brand" routerLink="/" aria-label="Job Orchestrator"><jo-mark class="mark" [size]="22" [animated]="true" [active]="live.busy()" /><span class="name">Job Orchestrator</span></a>
+</header>
+@if (drawer()) { <div class="scrim" (click)="drawer.set(false)" aria-hidden="true"></div> }
+<aside class="side" (click)="$any($event.target).closest('a') && drawer.set(false)">
   <div class="head">
     <a class="brand" routerLink="/" [attr.aria-label]="'Job Orchestrator, ' + (mode() || 'sem campanha')">
       <jo-mark class="mark" [size]="24" [animated]="true" [active]="live.busy()" />
@@ -31,3 +36,12 @@
 <main>
   <router-outlet />
 </main>
+
+<div class="toasts" aria-live="polite">
+  @for (t of toasts.list(); track t.id) {
+    <div [class]="'toast ' + t.tone" role="status">
+      <span class="dot" aria-hidden="true"></span><span>{{ t.text }}</span>
+      <button type="button" (click)="toasts.dismiss(t.id)" aria-label="Fechar aviso">×</button>
+    </div>
+  }
+</div>

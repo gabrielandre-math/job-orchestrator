@@ -76,7 +76,7 @@ export class Connect {
   protected readonly creating = command((body: object) => send<Account>('POST', '/accounts', body));
   protected readonly signing = command((id: string) => send<LoginState>('POST', `/accounts/${id}/login`));
   protected readonly testing = command((id: string) => send<LlmResult>('POST', `/providers/${id}/test`));
-  protected readonly ordering = command((ids: string[]) => send('PUT', '/accounts/order', ids));
+  protected readonly ordering = command((ids: string[]) => send('PUT', '/accounts/order', ids), 'Esta conta agora é a primeira da ordem de gasto.');
   private timer?: ReturnType<typeof setInterval>;
 
   /** O que já está conectado de cada provedor, para mostrar no bloco. */
