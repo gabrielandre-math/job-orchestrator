@@ -13,6 +13,7 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ENV DOTNET_SYSTEM_NET_DISABLEIPV6=1
 WORKDIR /src
 COPY backend/ backend/
+COPY data/ data/
 RUN dotnet publish backend/src/Bootstrappers/JobOrchestrator.Api -c Release -o /out/api /p:UseAppHost=false \
  && dotnet publish backend/src/Bootstrappers/JobOrchestrator.Worker -c Release -o /out/worker /p:UseAppHost=false
 

@@ -7,7 +7,13 @@ references/
 !.env.example
 *.local.json
 user-data/
+# o catálogo de fontes e o registro são do repositório (sem dado pessoal)
 data/
+!/data/
+/data/*
+!/data/catalog/
+!/data/source-registry.json
+!/data/ats-board-catalog*
 *.log
 
 # execução local de desenvolvimento

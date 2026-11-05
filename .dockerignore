@@ -10,4 +10,6 @@ web/.angular
 .env
 .env.*
 user-data
-data
+data/*
+!data/catalog
+!data/source-registry.json

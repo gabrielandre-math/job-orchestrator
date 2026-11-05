@@ -1,0 +1,59 @@
+<section class="page">
+  <jo-tabs [items]="tabs" label="Fontes" />
+  <jo-page-hero title="Registro de fontes" [scene]="['guardian', 'router', 'checker']" [stats]="stats()"
+    lead="Cada plataforma que o app sabe ler, com o estado dela, a documentação e os termos que valem e a prova da última sondagem real. Fonte sem permissão não é coletada: o portão fecha sozinho.">
+    <button type="button" class="btn primary" (click)="probe()" [disabled]="probing.running()">
+      @if (probing.running()) { <span class="spinner sm" aria-hidden="true"></span>Sondando cada fonte } @else { <jo-icon name="arrows-clockwise" [size]="14" />Sondar agora }
+    </button>
+    @if (registry.value(); as r) {
+      <label class="exp"><input type="checkbox" class="switch" [checked]="r.experimentalOn" (change)="setExperimental($any($event.target).checked)" [disabled]="experimental.running()" />Ler as experimentais</label>
+      <span class="faint small">{{ r.probedAt ? 'última sondagem ' + ago(r.probedAt) : 'nenhuma sondagem ainda' }}</span>
+    }
+  </jo-page-hero>
+
+  @if (registry.problem(); as p) { <p class="problem">{{ p.detail }}</p> }
+
+  <div class="chips" role="group" aria-label="Filtrar por estado">
+    <button type="button" class="chip" [attr.aria-pressed]="filter() === null" (click)="filter.set(null)">Todas<span class="n">{{ all().length }}</span></button>
+    @for (c of counts(); track c.key) { <button type="button" class="chip" [attr.aria-pressed]="filter() === c.key" (click)="filter.set(filter() === c.key ? null : c.key)">{{ c.title }}<span class="n">{{ c.n }}</span></button> }
+  </div>
+
+  @for (g of groups(); track g.key) {
+    <section class="panel">
+      <header><h2>{{ g.title }} <span class="faint num">{{ g.items.length }}</span></h2><span class="faint small">{{ g.hint }}</span></header>
+      <ul class="list">
+        @for (s of g.items; track s.prefix) {
+          <li [class.off]="!!s.gate">
+            <jo-company [name]="s.name" [domain]="host(s.docsUrl)" [size]="28" />
+            <span class="what">
+              <strong>{{ s.name }} <span class="mono faint">{{ s.prefix }}</span></strong>
+              <span class="faint small">{{ access[s.access] ?? s.access }} · {{ s.refresh }}@if (!s.connector) { · <span class="warn">sem conector ainda</span> }</span>
+              <span class="small note">{{ s.gate ?? s.notes }}</span>
+            </span>
+            <span class="where">@for (c of s.countries.slice(0, 4); track c) { <span class="tag mono">{{ c }}</span> }@if (s.countries.length > 4) { <span class="tag">+{{ s.countries.length - 4 }}</span> }</span>
+            <span class="probe" [class.ok]="s.probe?.ok && (s.probe?.count ?? 0) > 0" [class.bad]="s.probe?.source && !s.probe?.ok">
+              @if (s.probe?.http; as code) { <span class="code mono">{{ code }}</span> }
+              <span class="small">{{ probeText(s.probe) }}</span>
+            </span>
+            <span class="links">
+              <a class="btn ghost" [href]="s.docsUrl" target="_blank" rel="noopener" title="Documentação"><jo-icon name="file-text" [size]="14" /></a>
+              @if (s.termsUrl) { <a class="btn ghost" [href]="s.termsUrl" target="_blank" rel="noopener" title="Termos"><jo-icon name="scales" [size]="14" /></a> }
+            </span>
+            @if (locked(s)) { <span class="lock" title="Nunca coletada"><jo-icon name="lock-simple" [size]="14" /></span> }
+            @else { <input type="checkbox" class="switch" [checked]="!s.disabled" (change)="toggle(s)" [disabled]="toggling.running()" [attr.aria-label]="(s.disabled ? 'Ligar ' : 'Desligar ') + s.name" /> }
+          </li>
+        }
+      </ul>
+    </section>
+  }
+
+  @if (registry.value(); as r) {
+    <section class="panel">
+      <header><h2>Catálogo V2 do usuário</h2><span class="faint small">{{ r.catalog.records }} registros, {{ r.catalog.matchedToConnectors }} ligados a plataformas do registro</span></header>
+      <div class="cat">
+        <p class="muted">Registro do catálogo não é fonte funcionando: cada um vira plataforma aqui só depois de documentação, termos e sondagem. O resto segue como pista do Explorador ou pendência.</p>
+        <jo-hbars [data]="methods()" />
+      </div>
+    </section>
+  }
+</section>

@@ -5,13 +5,14 @@ namespace JobOrchestrator.Automation.Features;
 /// <summary>A porta do módulo para os outros: fontes, formulários pelo roteador, PDF e o registro de adapters.</summary>
 internal sealed class AutomationApi(
     IEnumerable<ISourceConnector> sources, IEnumerable<IFormAdapter> forms, Router router, BrowserPool browsers,
-    IReadDb<AutomationDbContext> read, CareerPageReader careers, Leads leads) : IAutomationApi
+    IReadDb<AutomationDbContext> read, CareerPageReader careers, Leads leads, IConfiguration config, TimeProvider time) : IAutomationApi
 {
-    public Task<IReadOnlyList<DiscoveredPosting>> DiscoverAsync(string source, CancellationToken ct) =>
-        (sources.FirstOrDefault(s => s.Accepts(source)) ?? throw new InvalidOperationException($"Fonte desconhecida: {source}")).DiscoverAsync(source, ct);
+    public Task<IReadOnlyList<DiscoveredPosting>> DiscoverAsync(string source, CancellationToken ct) => DiscoverAsync(source, [], ct);
 
     public Task<IReadOnlyList<DiscoveredPosting>> DiscoverAsync(string source, IReadOnlyList<string> hints, CancellationToken ct)
     {
+        // Fonte sem permissão não é coletada (bloqueada, só com parceria, desligada em Fontes ou experimental com as experimentais desligadas).
+        if (SourcesRegistryEndpoints.Gate(source, config, time) is { } reason) throw new InvalidOperationException(reason);
         var connector = sources.FirstOrDefault(s => s.Accepts(source)) ?? throw new InvalidOperationException($"Fonte desconhecida: {source}");
         return connector is IHintedSource hinted && hints.Count > 0 ? hinted.DiscoverAsync(source, hints, ct) : connector.DiscoverAsync(source, ct);
     }

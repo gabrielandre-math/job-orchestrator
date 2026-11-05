@@ -15,6 +15,8 @@ internal static class ApiKeys
         new("adzuna", "Adzuna", ["appId", "appKey"], "https://developer.adzuna.com/signup", "Agregador com vagas do Brasil inteiro, de todas as áreas, por API oficial."),
         new("jooble", "Jooble", ["key"], "https://jooble.org/api/about", "Agregador com vagas de muitos sites brasileiros, de todas as áreas."),
         new("brave", "Brave Search", ["key"], "https://api-dashboard.search.brave.com/register", "Busca na web inteira por API oficial: o Explorador acha quadros de vagas e sites de carreira pelas palavras do currículo."),
+        new("usajobs", "USAJOBS", ["key", "email"], "https://developer.usajobs.gov/apirequest/", "Vagas do governo dos EUA pela API oficial (quase todas pedem cidadania americana; a elegibilidade marca)."),
+        new("reliefweb", "ReliefWeb", ["appname"], "https://apidoc.reliefweb.int/parameters#appname", "Vagas de ONGs e agências humanitárias do mundo todo pela API oficial, com o appname aprovado pela ReliefWeb."),
         new("github", "GitHub", ["token"], "https://github.com/settings/personal-access-tokens/new", "Token só de leitura pública: o limite sobe de 60 para 5.000 consultas por hora e o Explorador testa mais repositórios de vagas."),
     ];
 

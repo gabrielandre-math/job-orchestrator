@@ -11,4 +11,7 @@
     <ProjectReference Include="../JobOrchestrator.Automation.Contracts/JobOrchestrator.Automation.Contracts.csproj" />
     <ProjectReference Include="../../Intelligence/JobOrchestrator.Intelligence.Contracts/JobOrchestrator.Intelligence.Contracts.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="../../../../../data/catalog/catalogo-fontes-v2-2026.json" LogicalName="catalogo-fontes-v2.json" />
+  </ItemGroup>
 </Project>

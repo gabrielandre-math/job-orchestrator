@@ -1,0 +1,1597 @@
+{
+  "generated_at": "2026-11-05T23:21:27.6327440Z",
+  "generated_by": "jo sources probe",
+  "experimental_on": true,
+  "catalog": {
+    "name": "Global Job Source Seed Registry v2 (with agency discovery and audit tracker)",
+    "compiledOn": "2026-11-05",
+    "records": 321,
+    "byMethod": {
+      "PUBLIC_READ_API": 14,
+      "PUBLIC_RSS_BY_BOARD": 1,
+      "PUBLIC_XML_BY_BOARD": 1,
+      "PUBLIC_JSON_BY_BOARD": 1,
+      "TOKEN_REQUIRED_FROM_2027-02-10": 1,
+      "UNOFFICIAL_PUBLIC_WIDGET": 1,
+      "UNOFFICIAL_WEB_BACKEND": 3,
+      "AUTHENTICATED_PARTNER_API": 2,
+      "PUBLIC_RSS": 1,
+      "REGISTRATION_OR_KEY": 1,
+      "API_KEY": 3,
+      "API_KEY_PER_COUNTRY": 1,
+      "APPNAME_APPROVAL": 1,
+      "RESTRICTED_ACCESS": 1,
+      "DISCOVERY_ONLY": 157,
+      "HN_ALGOLIA_DISCOVERY": 1,
+      "PUBLIC_API_CLAIM_REQUIRES_VALIDATION": 1,
+      "ATS_BOARD_CATALOG": 1,
+      "ATS_BOARD_CATALOG_CSV": 1,
+      "ATS_BOARD_CATALOG_JSON": 1,
+      "COMPANY_ATS_DIRECTORY": 1,
+      "JOB_AGGREGATOR_SOURCE_CODE": 1,
+      "SOURCE_INDEX": 1,
+      "ATS_SCRAPER_AND_SNAPSHOTS": 2,
+      "OPEN_DATA_SNAPSHOTS": 1,
+      "ATS_API_GUIDE": 1,
+      "SCRAPER_SOURCE_CODE": 1,
+      "UNOFFICIAL_CONNECTOR_EXAMPLE": 1,
+      "REMOTE_COMPANY_DIRECTORY": 1,
+      "UNOFFICIAL_GOV_API_WRAPPER": 1,
+      "SEMANTIC_SCHEMA": 1,
+      "PUBLIC_EVENT_FEED": 1,
+      "DO_NOT_USE": 1,
+      "PUBLIC_DATA_FEED": 1,
+      "API_KEY_REGISTRATION": 3,
+      "APPROVAL_REQUIRED": 1,
+      "PARTNER_REGISTRATION": 1,
+      "ACCOUNT_REQUIRED": 1,
+      "OFFICIAL_PDF_BULLETIN": 1,
+      "OFFICIAL_JOB_PORTAL": 6,
+      "OFFICIAL_BULLETIN": 1,
+      "OFFICIAL_DIRECTORY": 1,
+      "DIRECTORY_ONLY": 1,
+      "SNAPSHOT_ONLY": 2,
+      "PARTIAL_DATA_OR_PAID_API": 1,
+      "OPEN_SOURCE_CODE": 3,
+      "EXTERNAL_PAID_ACTOR": 1,
+      "OPEN_SOURCE_OR_ACTOR": 1,
+      "PUBLIC_SNAPSHOT": 1,
+      "COMMERCIAL_FEED_DIRECTORY": 1,
+      "DISCOVERY_DIRECTORY": 1,
+      "WEBSITE_ONLY": 3,
+      "SOURCE_DIRECTORY": 2,
+      "OPEN_SOURCE_REFERENCE": 1,
+      "AGENCY_DIRECTORY_ONLY": 79
+    },
+    "byCategory": {
+      "ats_api": 5,
+      "ats_feed": 4,
+      "ats_unofficial": 4,
+      "ats_auth": 2,
+      "jobs_api": 23,
+      "jobs_feed": 6,
+      "dataset_or_code": 25,
+      "government_or_international": 75,
+      "job_board_or_employer": 90,
+      "api_deprecation": 1,
+      "agency_directory": 1,
+      "company_directory": 4,
+      "public_employment_agency": 79,
+      "public_labor_market_statistics": 2
+    },
+    "matchedToConnectors": 35
+  },
+  "sources": [
+    {
+      "id": "greenhouse",
+      "name": "Greenhouse Job Board API",
+      "category": "ats",
+      "integration_method": "OFFICIAL_PUBLIC",
+      "state": "ACTIVE",
+      "country_codes": [
+        "GLOBAL"
+      ],
+      "api_doc_url": "https://docs.greenhouse.io/job-board",
+      "terms_url": "https://www.greenhouse.com/legal",
+      "attribution": null,
+      "update_frequency": "2-6 h por quadro",
+      "catalog_ids": [
+        "greenhouse-job-board-api"
+      ],
+      "notes": "GET de anúncios públicos sem chave; candidatura por API exige credencial do empregador e não é implementada.",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": true,
+      "ingestion_enabled": true,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "greenhouse",
+        "source": "greenhouse:vtex",
+        "ok": true,
+        "count": 33,
+        "http": 200,
+        "seconds": 1.2,
+        "error": null,
+        "at": "2026-11-05T23:20:48.3132481Z"
+      }
+    },
+    {
+      "id": "lever",
+      "name": "Lever Postings API",
+      "category": "ats",
+      "integration_method": "OFFICIAL_PUBLIC",
+      "state": "ACTIVE",
+      "country_codes": [
+        "GLOBAL"
+      ],
+      "api_doc_url": "https://github.com/lever/postings-api",
+      "terms_url": "https://www.lever.co/terms-of-service/",
+      "attribution": null,
+      "update_frequency": "2-6 h por quadro",
+      "catalog_ids": [
+        "lever-postings-api"
+      ],
+      "notes": "api.lever.co e api.eu.lever.co; diferente da API privada do Lever.",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": true,
+      "ingestion_enabled": true,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "lever",
+        "source": "lever:spotify",
+        "ok": true,
+        "count": 86,
+        "http": 200,
+        "seconds": 24,
+        "error": null,
+        "at": "2026-11-05T23:21:11.2257367Z"
+      }
+    },
+    {
+      "id": "ashby",
+      "name": "Ashby Public Job Posting API",
+      "category": "ats",
+      "integration_method": "OFFICIAL_PUBLIC",
+      "state": "ACTIVE",
+      "country_codes": [
+        "GLOBAL"
+      ],
+      "api_doc_url": "https://developers.ashbyhq.com/docs/public-job-posting-api",
+      "terms_url": "https://www.ashbyhq.com/terms",
+      "attribution": null,
+      "update_frequency": "2-6 h por quadro",
+      "catalog_ids": [
+        "ashby-public-posting-api"
+      ],
+      "notes": "Vaga com isListed=false não aparece.",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": true,
+      "ingestion_enabled": true,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "ashby",
+        "source": "ashby:ramp",
+        "ok": true,
+        "count": 170,
+        "http": 200,
+        "seconds": 0.2,
+        "error": null,
+        "at": "2026-11-05T23:20:47.4056861Z"
+      }
+    },
+    {
+      "id": "smartrecruiters",
+      "name": "SmartRecruiters Posting API",
+      "category": "ats",
+      "integration_method": "OFFICIAL_PUBLIC",
+      "state": "ACTIVE",
+      "country_codes": [
+        "GLOBAL"
+      ],
+      "api_doc_url": "https://developers.smartrecruiters.com/docs/endpoints",
+      "terms_url": "https://www.smartrecruiters.com/terms-of-service/",
+      "attribution": null,
+      "update_frequency": "2-6 h por empresa",
+      "catalog_ids": [
+        "smartrecruiters-posting-api"
+      ],
+      "notes": "Paginado (limit e offset).",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": true,
+      "ingestion_enabled": true,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "smartrecruiters",
+        "source": "smartrecruiters:BoschGroup",
+        "ok": true,
+        "count": 40,
+        "http": 200,
+        "seconds": 36.7,
+        "error": null,
+        "at": "2026-11-05T23:21:23.8899456Z"
+      }
+    },
+    {
+      "id": "inhire",
+      "name": "InHire páginas públicas",
+      "category": "ats",
+      "integration_method": "OFFICIAL_PUBLIC",
+      "state": "ACTIVE",
+      "country_codes": [
+        "BR"
+      ],
+      "api_doc_url": "https://docs.inhire.com.br/guides/guias/pagina-de-divulgacao/listar/",
+      "terms_url": null,
+      "attribution": null,
+      "update_frequency": "2-6 h por empresa",
+      "catalog_ids": [
+        "inhire-public-pages-api"
+      ],
+      "notes": "Por tenant (X-Tenant), sem busca unificada.",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": true,
+      "ingestion_enabled": true,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "inhire",
+        "source": null,
+        "ok": false,
+        "count": 0,
+        "http": null,
+        "seconds": 0,
+        "error": "sem amostra pública segura",
+        "at": "2026-11-05T23:20:47.1960508Z"
+      }
+    },
+    {
+      "id": "teamtailor",
+      "name": "Teamtailor RSS",
+      "category": "ats",
+      "integration_method": "OFFICIAL_PUBLIC",
+      "state": "ACTIVE",
+      "country_codes": [
+        "GLOBAL"
+      ],
+      "api_doc_url": "https://docs.teamtailor.com/",
+      "terms_url": null,
+      "attribution": null,
+      "update_frequency": "2-6 h por site",
+      "catalog_ids": [
+        "teamtailor-job-rss"
+      ],
+      "notes": "Só o RSS público; a API central exige token da conta e não é chamada.",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": true,
+      "ingestion_enabled": true,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "teamtailor",
+        "source": "teamtailor:polestar",
+        "ok": true,
+        "count": 12,
+        "http": 200,
+        "seconds": 1.5,
+        "error": null,
+        "at": "2026-11-05T23:20:48.8980099Z"
+      }
+    },
+    {
+      "id": "personio",
+      "name": "Personio XML",
+      "category": "ats",
+      "integration_method": "OBSERVED",
+      "state": "EXPERIMENTAL",
+      "country_codes": [
+        "EUROPE"
+      ],
+      "api_doc_url": "https://www.personio.com/",
+      "terms_url": null,
+      "attribution": null,
+      "update_frequency": "6 h por empresa",
+      "catalog_ids": [
+        "personio-careers-xml"
+      ],
+      "notes": "Feed XML público por tenant; confirmar por empresa.",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": true,
+      "ingestion_enabled": true,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "personio",
+        "source": "personio:personio",
+        "ok": true,
+        "count": 0,
+        "http": 200,
+        "seconds": 1.1,
+        "error": "A fonte respondeu, mas não tem vaga aberta agora. Pode salvar: ela entra nas próximas rodadas.",
+        "at": "2026-11-05T23:20:49.3840425Z"
+      }
+    },
+    {
+      "id": "breezy",
+      "name": "Breezy HR JSON",
+      "category": "ats",
+      "integration_method": "OBSERVED",
+      "state": "EXPERIMENTAL",
+      "country_codes": [
+        "GLOBAL"
+      ],
+      "api_doc_url": "https://breezy.hr/",
+      "terms_url": null,
+      "attribution": null,
+      "update_frequency": "6 h por empresa",
+      "catalog_ids": [
+        "breezy-hr-jobs-json"
+      ],
+      "notes": "JSON por empresa divulgado em referência técnica comunitária.",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": true,
+      "ingestion_enabled": true,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "breezy",
+        "source": "breezy:breezy",
+        "ok": true,
+        "count": 3,
+        "http": 200,
+        "seconds": 0.3,
+        "error": null,
+        "at": "2026-11-05T23:20:49.1831493Z"
+      }
+    },
+    {
+      "id": "recruitee",
+      "name": "Recruitee Careers Site",
+      "category": "ats",
+      "integration_method": "OBSERVED",
+      "state": "EXPERIMENTAL",
+      "country_codes": [
+        "GLOBAL"
+      ],
+      "api_doc_url": "https://docs.recruitee.com/reference/authentication-1",
+      "terms_url": null,
+      "attribution": null,
+      "update_frequency": "6 h por empresa",
+      "catalog_ids": [
+        "recruitee-careers-site"
+      ],
+      "notes": "Rota anônima legada: a partir de 10/02/2027 exige X-Careers-Sites-Token e para sozinha.",
+      "authorization_kind": "user_key",
+      "credential_present": false,
+      "connector": true,
+      "ingestion_enabled": true,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "recruitee",
+        "source": "recruitee:bunq",
+        "ok": true,
+        "count": 23,
+        "http": 200,
+        "seconds": 1.3,
+        "error": null,
+        "at": "2026-11-05T23:20:50.4388489Z"
+      }
+    },
+    {
+      "id": "workable",
+      "name": "Workable widget",
+      "category": "ats",
+      "integration_method": "OBSERVED",
+      "state": "EXPERIMENTAL",
+      "country_codes": [
+        "GLOBAL"
+      ],
+      "api_doc_url": "https://apply.workable.com/",
+      "terms_url": "https://www.workable.com/terms",
+      "attribution": null,
+      "update_frequency": "6 h por empresa",
+      "catalog_ids": [
+        "workable-careers-widget"
+      ],
+      "notes": "Widget de carreiras observado; a SPI oficial é autenticada e não é usada.",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": true,
+      "ingestion_enabled": true,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "workable",
+        "source": "workable:huggingface",
+        "ok": true,
+        "count": 6,
+        "http": 200,
+        "seconds": 0.2,
+        "error": null,
+        "at": "2026-11-05T23:20:49.5919872Z"
+      }
+    },
+    {
+      "id": "workable-search",
+      "name": "Workable busca de vagas",
+      "category": "api",
+      "integration_method": "OBSERVED",
+      "state": "EXPERIMENTAL",
+      "country_codes": [
+        "GLOBAL"
+      ],
+      "api_doc_url": "https://jobs.workable.com/",
+      "terms_url": "https://www.workable.com/terms",
+      "attribution": null,
+      "update_frequency": "6 h por termo",
+      "catalog_ids": [
+        "workable-careers-widget"
+      ],
+      "notes": "Busca pública de todas as empresas no Workable.",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": true,
+      "ingestion_enabled": true,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "workable-search",
+        "source": "workable-search:asp.net core",
+        "ok": true,
+        "count": 60,
+        "http": 200,
+        "seconds": 3.4,
+        "error": null,
+        "at": "2026-11-05T23:20:52.9839613Z"
+      }
+    },
+    {
+      "id": "workday",
+      "name": "Workday CXS",
+      "category": "ats",
+      "integration_method": "OBSERVED",
+      "state": "EXPERIMENTAL",
+      "country_codes": [
+        "GLOBAL"
+      ],
+      "api_doc_url": "https://www.workday.com/",
+      "terms_url": null,
+      "attribution": null,
+      "update_frequency": "6 h por site",
+      "catalog_ids": [
+        "workday-careers-cxs"
+      ],
+      "notes": "Endpoint dos sites públicos; tenant, host e site exatos; páginas de 20.",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": true,
+      "ingestion_enabled": true,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "workday",
+        "source": "workday:accenture.wd103.myworkdayjobs.com/AvanadeCareers",
+        "ok": true,
+        "count": 20,
+        "http": 200,
+        "seconds": 14.6,
+        "error": null,
+        "at": "2026-11-05T23:21:05.0580734Z"
+      }
+    },
+    {
+      "id": "rippling",
+      "name": "Rippling ATS board",
+      "category": "ats",
+      "integration_method": "OBSERVED",
+      "state": "EXPERIMENTAL",
+      "country_codes": [
+        "GLOBAL"
+      ],
+      "api_doc_url": "https://ats.rippling.com/",
+      "terms_url": null,
+      "attribution": null,
+      "update_frequency": "6 h por empresa",
+      "catalog_ids": [
+        "rippling-careers-board"
+      ],
+      "notes": "Endpoint público observado em referência comunitária.",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": false,
+      "ingestion_enabled": false,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "rippling",
+        "source": null,
+        "ok": false,
+        "count": 0,
+        "http": null,
+        "seconds": 0,
+        "error": "sem amostra pública segura",
+        "at": "2026-11-05T23:20:47.1964851Z"
+      }
+    },
+    {
+      "id": "oracle",
+      "name": "Oracle Recruiting Cloud",
+      "category": "ats",
+      "integration_method": "OBSERVED",
+      "state": "EXPERIMENTAL",
+      "country_codes": [
+        "GLOBAL"
+      ],
+      "api_doc_url": "https://www.oracle.com/human-capital-management/recruiting/",
+      "terms_url": null,
+      "attribution": null,
+      "update_frequency": "6 h por site",
+      "catalog_ids": [],
+      "notes": "API REST pública dos sites de carreira (requisitionList); robots.txt conferido.",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": true,
+      "ingestion_enabled": true,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "oracle",
+        "source": "oracle:eeho.fa.us2.oraclecloud.com/CX_1",
+        "ok": true,
+        "count": 20,
+        "http": 200,
+        "seconds": 17.7,
+        "error": null,
+        "at": "2026-11-05T23:21:10.6866047Z"
+      }
+    },
+    {
+      "id": "successfactors",
+      "name": "SAP SuccessFactors",
+      "category": "ats",
+      "integration_method": "OBSERVED",
+      "state": "EXPERIMENTAL",
+      "country_codes": [
+        "GLOBAL"
+      ],
+      "api_doc_url": "https://www.sap.com/products/hcm/recruiting-software.html",
+      "terms_url": null,
+      "attribution": null,
+      "update_frequency": "6 h por site",
+      "catalog_ids": [],
+      "notes": "Página pública de vagas; robots.txt conferido.",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": true,
+      "ingestion_enabled": true,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "successfactors",
+        "source": null,
+        "ok": false,
+        "count": 0,
+        "http": null,
+        "seconds": 0,
+        "error": "sem amostra pública segura",
+        "at": "2026-11-05T23:20:47.196488Z"
+      }
+    },
+    {
+      "id": "gupy",
+      "name": "Gupy páginas de carreira e portal",
+      "category": "ats",
+      "integration_method": "OBSERVED",
+      "state": "EXPERIMENTAL",
+      "country_codes": [
+        "BR"
+      ],
+      "api_doc_url": "https://portal.gupy.io/",
+      "terms_url": "https://www.gupy.io/termos-de-uso",
+      "attribution": null,
+      "update_frequency": "6 h por empresa",
+      "catalog_ids": [
+        "gupy-employability-portal"
+      ],
+      "notes": "Dados embutidos na página pública de carreiras (robots.txt libera /) e busca do portal; a API de empregador (Bearer) nunca é usada.",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": true,
+      "ingestion_enabled": true,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "gupy",
+        "source": "gupy:softplan",
+        "ok": true,
+        "count": 5,
+        "http": 200,
+        "seconds": 2.8,
+        "error": null,
+        "at": "2026-11-05T23:21:07.8424754Z"
+      }
+    },
+    {
+      "id": "solides",
+      "name": "Sólides vagas",
+      "category": "ats",
+      "integration_method": "OBSERVED",
+      "state": "EXPERIMENTAL",
+      "country_codes": [
+        "BR"
+      ],
+      "api_doc_url": "https://solides.com.br/",
+      "terms_url": null,
+      "attribution": null,
+      "update_frequency": "6 h por empresa",
+      "catalog_ids": [],
+      "notes": "API pública da página de vagas.",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": true,
+      "ingestion_enabled": true,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "solides",
+        "source": "solides:solides",
+        "ok": true,
+        "count": 18,
+        "http": 200,
+        "seconds": 2.1,
+        "error": null,
+        "at": "2026-11-05T23:21:09.9665018Z"
+      }
+    },
+    {
+      "id": "quickin",
+      "name": "Quickin vagas",
+      "category": "ats",
+      "integration_method": "OBSERVED",
+      "state": "EXPERIMENTAL",
+      "country_codes": [
+        "BR"
+      ],
+      "api_doc_url": "https://quickin.io/",
+      "terms_url": null,
+      "attribution": null,
+      "update_frequency": "6 h por empresa",
+      "catalog_ids": [],
+      "notes": "API pública da página de vagas.",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": true,
+      "ingestion_enabled": true,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "quickin",
+        "source": "quickin:igma",
+        "ok": true,
+        "count": 3,
+        "http": 200,
+        "seconds": 0.2,
+        "error": null,
+        "at": "2026-11-05T23:21:10.189642Z"
+      }
+    },
+    {
+      "id": "pandape",
+      "name": "Pandapé",
+      "category": "ats",
+      "integration_method": "OBSERVED",
+      "state": "EXPERIMENTAL",
+      "country_codes": [
+        "BR",
+        "LATAM"
+      ],
+      "api_doc_url": "https://www.pandape.com.br/",
+      "terms_url": null,
+      "attribution": null,
+      "update_frequency": "6 h por empresa",
+      "catalog_ids": [],
+      "notes": "Página da vaga com JSON-LD; empresas pelo sitemap oficial.",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": true,
+      "ingestion_enabled": true,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "pandape",
+        "source": "pandape:infojobs",
+        "ok": true,
+        "count": 3,
+        "http": 200,
+        "seconds": 2.7,
+        "error": null,
+        "at": "2026-11-05T23:21:12.9370129Z"
+      }
+    },
+    {
+      "id": "himalayas",
+      "name": "Himalayas",
+      "category": "api",
+      "integration_method": "OFFICIAL_PUBLIC",
+      "state": "ACTIVE",
+      "country_codes": [
+        "GLOBAL"
+      ],
+      "api_doc_url": "https://himalayas.app/docs/remote-jobs-api",
+      "terms_url": "https://himalayas.app/docs/remote-jobs-api",
+      "attribution": "Crédito à Himalayas; candidatura pelo applicationLink da API; não redistribuir a outros agregadores.",
+      "update_frequency": "1 h",
+      "catalog_ids": [
+        "himalayas-api"
+      ],
+      "notes": "locationRestrictions e timezoneRestrictions entram na elegibilidade.",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": true,
+      "ingestion_enabled": true,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "himalayas",
+        "source": "himalayas:c#",
+        "ok": true,
+        "count": 20,
+        "http": 200,
+        "seconds": 0.1,
+        "error": null,
+        "at": "2026-11-05T23:21:10.7672274Z"
+      }
+    },
+    {
+      "id": "remoteok",
+      "name": "Remote OK",
+      "category": "api",
+      "integration_method": "OFFICIAL_PUBLIC",
+      "state": "ACTIVE",
+      "country_codes": [
+        "GLOBAL"
+      ],
+      "api_doc_url": "https://remoteok.com/api",
+      "terms_url": "https://remoteok.com/faq",
+      "attribution": "Crédito e link para a vaga no Remote OK.",
+      "update_frequency": "1 h",
+      "catalog_ids": [
+        "remote-ok-api"
+      ],
+      "notes": "",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": true,
+      "ingestion_enabled": true,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "remoteok",
+        "source": "remoteok:dev",
+        "ok": true,
+        "count": 99,
+        "http": 200,
+        "seconds": 1.2,
+        "error": null,
+        "at": "2026-11-05T23:21:11.9241959Z"
+      }
+    },
+    {
+      "id": "wwr",
+      "name": "We Work Remotely",
+      "category": "feed",
+      "integration_method": "OFFICIAL_PUBLIC",
+      "state": "ACTIVE",
+      "country_codes": [
+        "GLOBAL"
+      ],
+      "api_doc_url": "https://weworkremotely.com/remote-job-rss-feed",
+      "terms_url": "https://weworkremotely.com/remote-job-rss-feed",
+      "attribution": "Atribuir os links à origem.",
+      "update_frequency": "30 min",
+      "catalog_ids": [
+        "we-work-remotely-rss"
+      ],
+      "notes": "RSS oficial por categoria.",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": true,
+      "ingestion_enabled": true,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "wwr",
+        "source": "wwr:remote-back-end-programming-jobs",
+        "ok": true,
+        "count": 13,
+        "http": 200,
+        "seconds": 0.5,
+        "error": null,
+        "at": "2026-11-05T23:21:11.6828187Z"
+      }
+    },
+    {
+      "id": "remotive",
+      "name": "Remotive",
+      "category": "api",
+      "integration_method": "OFFICIAL_PUBLIC",
+      "state": "ACTIVE",
+      "country_codes": [
+        "GLOBAL"
+      ],
+      "api_doc_url": "https://remotive.com/remote-jobs/api",
+      "terms_url": "https://remotive.com/remote-jobs/api",
+      "attribution": "Link e crédito à Remotive; não repassar a outros boards.",
+      "update_frequency": "6 h (até 4 leituras por dia)",
+      "catalog_ids": [
+        "remotive-api"
+      ],
+      "notes": "Vagas chegam com 24 h de atraso.",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": true,
+      "ingestion_enabled": true,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "remotive",
+        "source": "remotive:dotnet",
+        "ok": true,
+        "count": 10,
+        "http": 200,
+        "seconds": 0.1,
+        "error": null,
+        "at": "2026-11-05T23:21:11.7419436Z"
+      }
+    },
+    {
+      "id": "jobicy",
+      "name": "Jobicy",
+      "category": "api",
+      "integration_method": "OFFICIAL_PUBLIC",
+      "state": "ACTIVE",
+      "country_codes": [
+        "GLOBAL"
+      ],
+      "api_doc_url": "https://jobicy.com/jobs-rss-feed",
+      "terms_url": null,
+      "attribution": null,
+      "update_frequency": "2 h",
+      "catalog_ids": [
+        "jobicy-api"
+      ],
+      "notes": "Janela recente de 7 dias.",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": true,
+      "ingestion_enabled": true,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "jobicy",
+        "source": "jobicy:dev",
+        "ok": true,
+        "count": 50,
+        "http": 200,
+        "seconds": 1.4,
+        "error": null,
+        "at": "2026-11-05T23:21:13.1580353Z"
+      }
+    },
+    {
+      "id": "getonbrd",
+      "name": "Get on Board",
+      "category": "api",
+      "integration_method": "OFFICIAL_PUBLIC",
+      "state": "ACTIVE",
+      "country_codes": [
+        "LATAM"
+      ],
+      "api_doc_url": "https://www.getonbrd.com/user-manual/get-on-board-s-api",
+      "terms_url": "https://www.getonbrd.com/terms",
+      "attribution": null,
+      "update_frequency": "2 h",
+      "catalog_ids": [
+        "get-on-board-api"
+      ],
+      "notes": "Tecnologia na América Latina.",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": true,
+      "ingestion_enabled": true,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "getonbrd",
+        "source": "getonbrd:developer",
+        "ok": true,
+        "count": 150,
+        "http": 200,
+        "seconds": 3,
+        "error": null,
+        "at": "2026-11-05T23:21:14.9416498Z"
+      }
+    },
+    {
+      "id": "arbeitnow",
+      "name": "Arbeitnow",
+      "category": "api",
+      "integration_method": "OFFICIAL_PUBLIC",
+      "state": "ACTIVE",
+      "country_codes": [
+        "EUROPE"
+      ],
+      "api_doc_url": "https://www.arbeitnow.com/blog/job-board-api",
+      "terms_url": null,
+      "attribution": null,
+      "update_frequency": "2 h",
+      "catalog_ids": [
+        "arbeitnow-api"
+      ],
+      "notes": "Sobretudo Europa.",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": true,
+      "ingestion_enabled": true,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "arbeitnow",
+        "source": "arbeitnow:dotnet",
+        "ok": true,
+        "count": 0,
+        "http": 200,
+        "seconds": 0.4,
+        "error": "A fonte respondeu, mas não tem vaga aberta agora. Pode salvar: ela entra nas próximas rodadas.",
+        "at": "2026-11-05T23:21:13.3328617Z"
+      }
+    },
+    {
+      "id": "themuse",
+      "name": "The Muse",
+      "category": "api",
+      "integration_method": "OFFICIAL_PUBLIC",
+      "state": "ACTIVE",
+      "country_codes": [
+        "GLOBAL"
+      ],
+      "api_doc_url": "https://www.themuse.com/developers/api/v2",
+      "terms_url": "https://www.themuse.com/developers/api/v2",
+      "attribution": null,
+      "update_frequency": "6 h",
+      "catalog_ids": [
+        "the-muse-jobs-api"
+      ],
+      "notes": "Registro do app recomendado; sem chave funciona com cota menor.",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": true,
+      "ingestion_enabled": true,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "themuse",
+        "source": "themuse:Software Engineering",
+        "ok": true,
+        "count": 20,
+        "http": 200,
+        "seconds": 1.1,
+        "error": null,
+        "at": "2026-11-05T23:21:14.2295322Z"
+      }
+    },
+    {
+      "id": "jobtech",
+      "name": "JobTech JobSearch (Suécia)",
+      "category": "gov",
+      "integration_method": "OFFICIAL_PUBLIC",
+      "state": "ACTIVE",
+      "country_codes": [
+        "SE"
+      ],
+      "api_doc_url": "https://jobsearch.api.jobtechdev.se/",
+      "terms_url": "https://data.arbetsformedlingen.se/dataset/job-ads/",
+      "attribution": "Dados CC0 da Arbetsförmedlingen.",
+      "update_frequency": "3 h",
+      "catalog_ids": [
+        "sweden-jobtech-jobsearch-api"
+      ],
+      "notes": "Serviço público de emprego da Suécia.",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": true,
+      "ingestion_enabled": true,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "jobtech",
+        "source": "jobtech:developer",
+        "ok": true,
+        "count": 200,
+        "http": 200,
+        "seconds": 10.5,
+        "error": null,
+        "at": "2026-11-05T23:21:23.8018838Z"
+      }
+    },
+    {
+      "id": "nav",
+      "name": "NAV pam-stilling-feed (Noruega)",
+      "category": "gov",
+      "integration_method": "OFFICIAL_PUBLIC",
+      "state": "ACTIVE",
+      "country_codes": [
+        "NO"
+      ],
+      "api_doc_url": "https://navikt.github.io/pam-stilling-feed/",
+      "terms_url": "https://navikt.github.io/pam-stilling-feed/",
+      "attribution": "Dados abertos da NAV.",
+      "update_frequency": "3 h",
+      "catalog_ids": [
+        "norway-nav-stilling-feed",
+        "norway-nav-feed-openapi"
+      ],
+      "notes": "Feed de eventos com token público; a API antiga pam-public-feed está descontinuada.",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": false,
+      "ingestion_enabled": false,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "nav",
+        "source": "nav:utvikler",
+        "ok": false,
+        "count": 0,
+        "http": null,
+        "seconds": 0,
+        "error": "Não reconheci esta fonte. Confira a plataforma e o nome da empresa.",
+        "at": "2026-11-05T23:21:14.2296358Z"
+      }
+    },
+    {
+      "id": "seasonaljobs",
+      "name": "SeasonalJobs.dol.gov (EUA)",
+      "category": "gov",
+      "integration_method": "OFFICIAL_PUBLIC",
+      "state": "ACTIVE",
+      "country_codes": [
+        "US"
+      ],
+      "api_doc_url": "https://seasonaljobs.dol.gov/feeds",
+      "terms_url": "https://seasonaljobs.dol.gov/feeds",
+      "attribution": "Dados do U.S. Department of Labor.",
+      "update_frequency": "24 h",
+      "catalog_ids": [
+        "us-dol-seasonal-jobs-feeds"
+      ],
+      "notes": "Vagas H-2A e H-2B: visto temporário, não patrocínio de visto qualificado.",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": false,
+      "ingestion_enabled": false,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "seasonaljobs",
+        "source": "seasonaljobs:all",
+        "ok": false,
+        "count": 0,
+        "http": null,
+        "seconds": 0,
+        "error": "Não reconheci esta fonte. Confira a plataforma e o nome da empresa.",
+        "at": "2026-11-05T23:21:14.2296727Z"
+      }
+    },
+    {
+      "id": "freehire",
+      "name": "freehire",
+      "category": "api",
+      "integration_method": "OBSERVED",
+      "state": "EXPERIMENTAL",
+      "country_codes": [
+        "GLOBAL"
+      ],
+      "api_doc_url": "https://freehire.me/docs/api",
+      "terms_url": "https://freehire.me/docs/api",
+      "attribution": "Link de origem preservado; uso pessoal e não comercial.",
+      "update_frequency": "2 h",
+      "catalog_ids": [
+        "freehire-api"
+      ],
+      "notes": "Agregador aberto de ~420 fontes; números do projeto são declarados por ele.",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": true,
+      "ingestion_enabled": true,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "freehire",
+        "source": "freehire:developer",
+        "ok": true,
+        "count": 720,
+        "http": 200,
+        "seconds": 13.4,
+        "error": null,
+        "at": "2026-11-05T23:21:27.5837646Z"
+      }
+    },
+    {
+      "id": "4dayweek",
+      "name": "4 Day Week",
+      "category": "api",
+      "integration_method": "OBSERVED",
+      "state": "EXPERIMENTAL",
+      "country_codes": [
+        "GLOBAL"
+      ],
+      "api_doc_url": "https://4dayweek.io/",
+      "terms_url": null,
+      "attribution": null,
+      "update_frequency": "6 h",
+      "catalog_ids": [],
+      "notes": "",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": true,
+      "ingestion_enabled": true,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "4dayweek",
+        "source": "4dayweek:engineering",
+        "ok": true,
+        "count": 59,
+        "http": 200,
+        "seconds": 3.1,
+        "error": null,
+        "at": "2026-11-05T23:21:18.078687Z"
+      }
+    },
+    {
+      "id": "workingnomads",
+      "name": "Working Nomads",
+      "category": "api",
+      "integration_method": "OBSERVED",
+      "state": "EXPERIMENTAL",
+      "country_codes": [
+        "GLOBAL"
+      ],
+      "api_doc_url": "https://www.workingnomads.com/",
+      "terms_url": null,
+      "attribution": null,
+      "update_frequency": "6 h",
+      "catalog_ids": [],
+      "notes": "",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": true,
+      "ingestion_enabled": true,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "workingnomads",
+        "source": "workingnomads:development",
+        "ok": true,
+        "count": 23,
+        "http": 200,
+        "seconds": 1,
+        "error": null,
+        "at": "2026-11-05T23:21:19.0966403Z"
+      }
+    },
+    {
+      "id": "hn",
+      "name": "Hacker News Who is hiring",
+      "category": "community",
+      "integration_method": "OFFICIAL_PUBLIC",
+      "state": "ACTIVE",
+      "country_codes": [
+        "GLOBAL"
+      ],
+      "api_doc_url": "https://hn.algolia.com/api",
+      "terms_url": "https://news.ycombinator.com/",
+      "attribution": null,
+      "update_frequency": "24 h",
+      "catalog_ids": [
+        "hacker-news-hiring-threads"
+      ],
+      "notes": "Busca da Algolia; e-mail só quando o post o publica para candidatura.",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": true,
+      "ingestion_enabled": true,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "hn",
+        "source": "hn:whoishiring",
+        "ok": true,
+        "count": 3,
+        "http": 200,
+        "seconds": 1.3,
+        "error": null,
+        "at": "2026-11-05T23:21:20.4329244Z"
+      }
+    },
+    {
+      "id": "github",
+      "name": "GitHub issues de vagas",
+      "category": "community",
+      "integration_method": "OFFICIAL_PUBLIC",
+      "state": "ACTIVE",
+      "country_codes": [
+        "BR"
+      ],
+      "api_doc_url": "https://docs.github.com/rest/issues",
+      "terms_url": "https://docs.github.com/site-policy/github-terms/github-terms-of-service",
+      "attribution": null,
+      "update_frequency": "6 h",
+      "catalog_ids": [],
+      "notes": "60 chamadas por hora sem token.",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": true,
+      "ingestion_enabled": true,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "github",
+        "source": "github:backend-br/vagas",
+        "ok": true,
+        "count": 44,
+        "http": 200,
+        "seconds": 0.7,
+        "error": null,
+        "at": "2026-11-05T23:21:21.1513171Z"
+      }
+    },
+    {
+      "id": "rss",
+      "name": "RSS de vagas",
+      "category": "feed",
+      "integration_method": "OBSERVED",
+      "state": "EXPERIMENTAL",
+      "country_codes": [
+        "GLOBAL"
+      ],
+      "api_doc_url": "https://www.rssboard.org/rss-specification",
+      "terms_url": null,
+      "attribution": null,
+      "update_frequency": "6 h por feed",
+      "catalog_ids": [],
+      "notes": "Feed público informado por fonte.",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": true,
+      "ingestion_enabled": true,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "rss",
+        "source": null,
+        "ok": false,
+        "count": 0,
+        "http": null,
+        "seconds": 0,
+        "error": "sem amostra pública segura",
+        "at": "2026-11-05T23:20:47.1965348Z"
+      }
+    },
+    {
+      "id": "web",
+      "name": "Site de carreiras (coletor)",
+      "category": "site",
+      "integration_method": "OBSERVED",
+      "state": "EXPERIMENTAL",
+      "country_codes": [
+        "GLOBAL"
+      ],
+      "api_doc_url": "https://developers.google.com/search/docs/appearance/structured-data/job-posting",
+      "terms_url": null,
+      "attribution": null,
+      "update_frequency": "6 h por site",
+      "catalog_ids": [
+        "google-jobposting-structured-data"
+      ],
+      "notes": "JSON-LD JobPosting e links de ATS; robots.txt sempre obedecido.",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": true,
+      "ingestion_enabled": true,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "web",
+        "source": null,
+        "ok": false,
+        "count": 0,
+        "http": null,
+        "seconds": 0,
+        "error": "sem amostra pública segura",
+        "at": "2026-11-05T23:20:47.1965359Z"
+      }
+    },
+    {
+      "id": "alertas",
+      "name": "Alertas de vaga por e-mail",
+      "category": "email",
+      "integration_method": "OFFICIAL_PUBLIC",
+      "state": "ACTIVE",
+      "country_codes": [
+        "GLOBAL"
+      ],
+      "api_doc_url": "https://support.google.com/mail/answer/7126229",
+      "terms_url": null,
+      "attribution": null,
+      "update_frequency": "10 min",
+      "catalog_ids": [],
+      "notes": "Da caixa da própria pessoa (IMAP); o link do alerta nunca é aberto por robô.",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": true,
+      "ingestion_enabled": true,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "alertas",
+        "source": null,
+        "ok": false,
+        "count": 0,
+        "http": null,
+        "seconds": 0,
+        "error": "sem amostra pública segura",
+        "at": "2026-11-05T23:20:47.1965368Z"
+      }
+    },
+    {
+      "id": "adzuna",
+      "name": "Adzuna",
+      "category": "api",
+      "integration_method": "CREDENTIALS_REQUIRED",
+      "state": "CREDENTIALS_REQUIRED",
+      "country_codes": [
+        "GLOBAL"
+      ],
+      "api_doc_url": "https://developer.adzuna.com/overview",
+      "terms_url": "https://developer.adzuna.com/overview",
+      "attribution": null,
+      "update_frequency": "6 h",
+      "catalog_ids": [
+        "adzuna-api"
+      ],
+      "notes": "app_id e app_key próprios.",
+      "authorization_kind": "user_key",
+      "credential_present": false,
+      "connector": true,
+      "ingestion_enabled": false,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "adzuna",
+        "source": null,
+        "ok": false,
+        "count": 0,
+        "http": null,
+        "seconds": 0,
+        "error": "sem amostra pública segura",
+        "at": "2026-11-05T23:20:47.1965381Z"
+      }
+    },
+    {
+      "id": "jooble",
+      "name": "Jooble",
+      "category": "api",
+      "integration_method": "CREDENTIALS_REQUIRED",
+      "state": "CREDENTIALS_REQUIRED",
+      "country_codes": [
+        "GLOBAL"
+      ],
+      "api_doc_url": "https://jooblehelpcenter.freshdesk.com/en/support/solutions/articles/60001448238-rest-api-documentation",
+      "terms_url": null,
+      "attribution": null,
+      "update_frequency": "24 h",
+      "catalog_ids": [
+        "jooble-rest-api"
+      ],
+      "notes": "Chave por país; o plano grátis tem 500 chamadas no total da chave.",
+      "authorization_kind": "user_key",
+      "credential_present": false,
+      "connector": true,
+      "ingestion_enabled": false,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "jooble",
+        "source": null,
+        "ok": false,
+        "count": 0,
+        "http": null,
+        "seconds": 0,
+        "error": "sem amostra pública segura",
+        "at": "2026-11-05T23:20:47.1965417Z"
+      }
+    },
+    {
+      "id": "usajobs",
+      "name": "USAJOBS",
+      "category": "gov",
+      "integration_method": "CREDENTIALS_REQUIRED",
+      "state": "CREDENTIALS_REQUIRED",
+      "country_codes": [
+        "US"
+      ],
+      "api_doc_url": "https://developer.usajobs.gov/guides/authentication",
+      "terms_url": "https://developer.usajobs.gov/",
+      "attribution": null,
+      "update_frequency": "24 h",
+      "catalog_ids": [
+        "usajobs-api",
+        "us-usajobs-api-spec"
+      ],
+      "notes": "Authorization-Key e o e-mail da conta no User-Agent; quase sempre pede cidadania americana.",
+      "authorization_kind": "user_key",
+      "credential_present": false,
+      "connector": false,
+      "ingestion_enabled": false,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "usajobs",
+        "source": null,
+        "ok": false,
+        "count": 0,
+        "http": null,
+        "seconds": 0,
+        "error": "sem amostra pública segura",
+        "at": "2026-11-05T23:20:47.1965427Z"
+      }
+    },
+    {
+      "id": "reliefweb",
+      "name": "ReliefWeb Jobs",
+      "category": "gov",
+      "integration_method": "CREDENTIALS_REQUIRED",
+      "state": "CREDENTIALS_REQUIRED",
+      "country_codes": [
+        "GLOBAL"
+      ],
+      "api_doc_url": "https://apidoc.reliefweb.int/read/resources/jobs/",
+      "terms_url": "https://apidoc.reliefweb.int/",
+      "attribution": null,
+      "update_frequency": "24 h",
+      "catalog_ids": [
+        "reliefweb-jobs-api"
+      ],
+      "notes": "appname aprovado pela ReliefWeb.",
+      "authorization_kind": "user_key",
+      "credential_present": false,
+      "connector": false,
+      "ingestion_enabled": false,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "reliefweb",
+        "source": null,
+        "ok": false,
+        "count": 0,
+        "http": null,
+        "seconds": 0,
+        "error": "sem amostra pública segura",
+        "at": "2026-11-05T23:20:47.196544Z"
+      }
+    },
+    {
+      "id": "linkedin",
+      "name": "LinkedIn Jobs",
+      "category": "board",
+      "integration_method": "PARTNER_ONLY",
+      "state": "BLOCKED",
+      "country_codes": [
+        "GLOBAL"
+      ],
+      "api_doc_url": "https://www.linkedin.com/help/linkedin/answer/a1341387/prohibited-software-and-extensions",
+      "terms_url": "https://www.linkedin.com/legal/user-agreement",
+      "attribution": null,
+      "update_frequency": "-",
+      "catalog_ids": [],
+      "notes": "Robôs e extensões de automação proibidos: só export de dados, link salvo e alertas por e-mail.",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": false,
+      "ingestion_enabled": false,
+      "gate": "BLOCKED_BY_POLICY: LinkedIn Jobs. Robôs e extensões de automação proibidos: só export de dados, link salvo e alertas por e-mail.",
+      "disabled": false,
+      "probe": {
+        "prefix": "linkedin",
+        "source": null,
+        "ok": false,
+        "count": 0,
+        "http": null,
+        "seconds": 0,
+        "error": "não sondada: BLOCKED",
+        "at": "2026-11-05T23:20:47.1965453Z"
+      }
+    },
+    {
+      "id": "francetravail",
+      "name": "France Travail Offres d'emploi",
+      "category": "gov",
+      "integration_method": "PARTNER_ONLY",
+      "state": "BLOCKED",
+      "country_codes": [
+        "FR"
+      ],
+      "api_doc_url": "https://www.data.gouv.fr/dataservices/api-offres-demploi",
+      "terms_url": null,
+      "attribution": null,
+      "update_frequency": "-",
+      "catalog_ids": [
+        "france-travail-offres-api"
+      ],
+      "notes": "Acesso restrito em 2026; pedir pelo formulário oficial.",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": false,
+      "ingestion_enabled": false,
+      "gate": "BLOCKED_BY_POLICY: France Travail Offres d'emploi. Acesso restrito em 2026; pedir pelo formulário oficial.",
+      "disabled": false,
+      "probe": {
+        "prefix": "francetravail",
+        "source": null,
+        "ok": false,
+        "count": 0,
+        "http": null,
+        "seconds": 0,
+        "error": "não sondada: BLOCKED",
+        "at": "2026-11-05T23:20:47.1965456Z"
+      }
+    },
+    {
+      "id": "gupy-api",
+      "name": "Gupy API de empregador",
+      "category": "ats",
+      "integration_method": "PARTNER_ONLY",
+      "state": "PARTNER_ONLY",
+      "country_codes": [
+        "BR"
+      ],
+      "api_doc_url": "https://developers.gupy.io/reference/authentication",
+      "terms_url": null,
+      "attribution": null,
+      "update_frequency": "-",
+      "catalog_ids": [
+        "gupy-employer-api"
+      ],
+      "notes": "Bearer de cliente da Gupy; nunca usada como busca global.",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": false,
+      "ingestion_enabled": false,
+      "gate": "PARTNER_ONLY: Gupy API de empregador só com parceria. Bearer de cliente da Gupy; nunca usada como busca global.",
+      "disabled": false,
+      "probe": {
+        "prefix": "gupy-api",
+        "source": null,
+        "ok": false,
+        "count": 0,
+        "http": null,
+        "seconds": 0,
+        "error": "não sondada: PARTNER_ONLY",
+        "at": "2026-11-05T23:20:47.1965457Z"
+      }
+    }
+  ]
+}

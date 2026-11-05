@@ -15,6 +15,7 @@ export const routes: Routes = [
   { path: 'fontes', title: 'Fontes', loadComponent: () => import('./features/sources/sources.page').then((m) => m.SourcesPage) },
   { path: 'fontes/varredura', title: 'Varredura da internet', loadComponent: () => import('./features/sweep/sweep.page').then((m) => m.SweepPage) },
   { path: 'fontes/adapters', title: 'Conectores', loadComponent: () => import('./features/adapters/adapters.page').then((m) => m.AdaptersPage) },
+  { path: 'fontes/registro', title: 'Registro de fontes', loadComponent: () => import('./features/sources/registry.page').then((m) => m.RegistryPage) },
   { path: 'varredura', redirectTo: 'fontes/varredura' },
   { path: 'adapters', redirectTo: 'fontes/adapters' },
   { path: 'salvar', title: 'Salvar vaga', loadComponent: () => import('./features/capture/capture.page').then((m) => m.CapturePage) },
