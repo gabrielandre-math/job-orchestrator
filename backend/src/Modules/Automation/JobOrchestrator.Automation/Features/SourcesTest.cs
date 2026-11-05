@@ -23,10 +23,14 @@ internal static class SourceProbe
         var clock = Stopwatch.StartNew();
         try
         {
-            var found = await connector.DiscoverAsync(source, timeout.Token);
+            var all = await connector.DiscoverAsync(source, timeout.Token);
+            // Marcação de encerramento (tombstone) não é vaga: conta à parte.
+            var found = all.Where(p => !p.Tombstone).ToList();
+            var closed = all.Count - found.Count;
             var sample = found.Take(6).Select(p => new SourceSample(p.Title, p.Company, p.Location, p.ApplyUrl, p.ApplyEmail)).ToList();
             return new SourceTestResult(true, found.Count, Math.Round(clock.Elapsed.TotalSeconds, 1), sample,
-                found.Count == 0 ? "A fonte respondeu, mas não tem vaga aberta agora. Pode salvar: ela entra nas próximas rodadas." : null, 200);
+                found.Count == 0 ? "A fonte respondeu, mas não tem vaga aberta agora. Pode salvar: ela entra nas próximas rodadas."
+                : closed > 0 ? $"Também declarou {closed} {(closed == 1 ? "anúncio encerrado" : "anúncios encerrados")}, que fecham as vagas que já estiverem aqui." : null, 200);
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException or JsonException or KeyNotFoundException)
         {

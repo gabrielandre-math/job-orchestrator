@@ -48,7 +48,8 @@ public static class SourceRegistry
         new("workday", "Workday CXS", "ats", "OBSERVED", "EXPERIMENTAL", [Global], "https://www.workday.com/", null,
             null, "6 h por site", ["workday-careers-cxs"], "Endpoint dos sites públicos; tenant, host e site exatos; páginas de 20."),
         new("rippling", "Rippling ATS board", "ats", "OBSERVED", "EXPERIMENTAL", [Global], "https://ats.rippling.com/", null,
-            null, "6 h por empresa", ["rippling-careers-board"], "Endpoint público observado em referência comunitária."),
+            null, "6 h por empresa", ["rippling-careers-board"],
+            "Sem conector: o endpoint público não foi confirmado em 05/11/2026 (o quadro do próprio Rippling redireciona para rippling.com/careers). Pendente em docs/NEXT_SOURCES.md."),
         new("oracle", "Oracle Recruiting Cloud", "ats", "OBSERVED", "EXPERIMENTAL", [Global], "https://www.oracle.com/human-capital-management/recruiting/", null,
             null, "6 h por site", [], "API REST pública dos sites de carreira (requisitionList); robots.txt conferido."),
         new("successfactors", "SAP SuccessFactors", "ats", "OBSERVED", "EXPERIMENTAL", [Global], "https://www.sap.com/products/hcm/recruiting-software.html", null,
@@ -80,10 +81,12 @@ public static class SourceRegistry
             null, "6 h", ["the-muse-jobs-api"], "Registro do app recomendado; sem chave funciona com cota menor."),
         new("jobtech", "JobTech JobSearch (Suécia)", "gov", "OFFICIAL_PUBLIC", "ACTIVE", ["SE"], "https://jobsearch.api.jobtechdev.se/", "https://data.arbetsformedlingen.se/dataset/job-ads/",
             "Dados CC0 da Arbetsförmedlingen.", "3 h", ["sweden-jobtech-jobsearch-api"], "Serviço público de emprego da Suécia."),
-        new("nav", "NAV pam-stilling-feed (Noruega)", "gov", "OFFICIAL_PUBLIC", "ACTIVE", ["NO"], "https://navikt.github.io/pam-stilling-feed/", "https://navikt.github.io/pam-stilling-feed/",
-            "Dados abertos da NAV.", "3 h", ["norway-nav-stilling-feed", "norway-nav-feed-openapi"], "Feed de eventos com token público; a API antiga pam-public-feed está descontinuada."),
+        new("nav", "NAV pam-stilling-feed (Noruega)", "gov", "OFFICIAL_PUBLIC", "ACTIVE", ["NO"], "https://navikt.github.io/pam-stilling-feed/", "https://arbeidsplassen.nav.no/vilkar-api",
+            "Dados abertos da NAV.", "3 h", ["norway-nav-stilling-feed", "norway-nav-feed-openapi"],
+            "Token público rotativo (/api/publicToken); anúncio INACTIVE fecha a vaga, como os termos pedem; contatos pessoais não são guardados; a API antiga pam-public-feed saiu em maio de 2025."),
         new("seasonaljobs", "SeasonalJobs.dol.gov (EUA)", "gov", "OFFICIAL_PUBLIC", "ACTIVE", ["US"], "https://seasonaljobs.dol.gov/feeds", "https://seasonaljobs.dol.gov/feeds",
-            "Dados do U.S. Department of Labor.", "24 h", ["us-dol-seasonal-jobs-feeds"], "Vagas H-2A e H-2B: visto temporário, não patrocínio de visto qualificado."),
+            "Dados do U.S. Department of Labor.", "24 h", ["us-dol-seasonal-jobs-feeds"],
+            "Arquivo diário oficial com as ordens H-2A (790/790A) dos últimos 20 dias: visto temporário agrícola, não patrocínio de visto qualificado. Os arquivos 9142A e 9142B são pedidos de certificação, não vagas."),
         new("freehire", "freehire", "api", "OBSERVED", "EXPERIMENTAL", [Global], "https://freehire.me/docs/api", "https://freehire.me/docs/api",
             "Link de origem preservado; uso pessoal e não comercial.", "2 h", ["freehire-api"], "Agregador aberto de ~420 fontes; números do projeto são declarados por ele."),
         new("4dayweek", "4 Day Week", "api", "OBSERVED", "EXPERIMENTAL", [Global], "https://4dayweek.io/", null, null, "6 h", [], ""),
@@ -129,6 +132,8 @@ public static class SourceRegistry
         ["smartrecruiters"] = "smartrecruiters:BoschGroup", ["teamtailor"] = "teamtailor:polestar", ["breezy"] = "breezy:breezy", ["workable"] = "workable:huggingface",
         ["recruitee"] = "recruitee:bunq", ["solides"] = "solides:solides", ["pandape"] = "pandape:infojobs", ["oracle"] = "oracle:eeho.fa.us2.oraclecloud.com/CX_1",
         ["4dayweek"] = "4dayweek:engineering", ["workingnomads"] = "workingnomads:development", ["freehire"] = "freehire:developer", ["personio"] = "personio:personio",
+        // Com chave da pessoa: a sondagem mostra "pede credencial" até a chave existir.
+        ["usajobs"] = "usajobs:developer", ["reliefweb"] = "reliefweb:officer", ["adzuna"] = "adzuna:developer", ["jooble"] = "jooble:developer",
     };
 
     public static SourceProfile? Find(string source)

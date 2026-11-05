@@ -35,7 +35,10 @@ internal static partial class Eligibility
         if (Citizenship().Match(text) is { Success: true } citizen) return new("BR_RESTRICTED", Snippet(text, citizen), true);
         var local = LocalAuth().Match(text);
         var restricted = local.Success ? local : remote ? RemoteRestricted().Match($"{title}\n{location}") : Match.Empty;
-        if (InBrazil().IsMatch(location)) return new("BR_ELIGIBLE_CONFIRMED", $"local da vaga: {location.Trim()}{(remote ? " (remota)" : "")}", true);
+        // Sigla de estado e cidade ambígua (SC é Carolina do Sul, Salvador pode ser El Salvador): se o local cita outro país e não o Brasil, não é no Brasil.
+        var countries = SourceCatalog.MatchCountries(location);
+        var abroad = countries.Count > 0 && !countries.Contains("BR");
+        if (!abroad && InBrazil().IsMatch(location)) return new("BR_ELIGIBLE_CONFIRMED", $"local da vaga: {location.Trim()}{(remote ? " (remota)" : "")}", true);
         var open = remote ? OpenToBrazil().Match(text) is { Success: true } latam ? latam : Worldwide().Match(text) : Match.Empty;
         if (open.Success && restricted.Success) return new("REVIEW", $"{Snippet(text, open)} / {Snippet(restricted == local ? text : $"{title}\n{location}", restricted)}", true);
         if (open.Success) return new("BR_ELIGIBLE_CONFIRMED", Snippet(text, open), true);

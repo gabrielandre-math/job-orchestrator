@@ -59,6 +59,10 @@ public static class AutomationModule
         s.AddScoped<ISourceConnector, RecruiteeSource>();
         s.AddScoped<ISourceConnector, BreezySource>();
         s.AddScoped<ISourceConnector, GupySource>();
+        s.AddScoped<ISourceConnector, NavSource>();
+        s.AddScoped<ISourceConnector, SeasonalJobsSource>();
+        s.AddScoped<ISourceConnector, UsaJobsSource>();
+        s.AddScoped<ISourceConnector, ReliefWebSource>();
         s.AddScoped<ISourceConnector, GetOnBoardSource>();
         s.AddScoped<ISourceConnector, PersonioSource>();
         s.AddScoped<ISourceConnector, WorkableSource>();

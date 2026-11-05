@@ -12,10 +12,11 @@ public enum Capability { DiscoverJobs, CheckPostingOpen, PrepareForm, SubmitAppl
 public enum AdapterResultKind { Completed, Unsupported, RetryableFailure, PermanentFailure, NeedsHuman, BlockedByPolicy, QuotaExceeded, SubmissionUnknown }
 
 /// <summary>Uma vaga como veio da fonte, antes de normalizar. ListedAsOpen: a API oficial só lista vagas abertas, então não precisa conferir uma por uma.</summary>
+/// <summary>Vaga lida de uma fonte. Tombstone: a fonte declarou a vaga encerrada (ex.: INACTIVE na NAV); fecha a que existe e nunca cria linha nova.</summary>
 public sealed record DiscoveredPosting(
     string Source, string ExternalId, string Company, string Title, string Location, string ApplyUrl, string Description, DateTime? UpdatedAt, string RawJson,
     string? Workplace = null, string? Compensation = null, string? Employment = null, string? ApplyEmail = null, bool ListedAsOpen = false,
-    IReadOnlyList<string>? AllowedCountries = null);
+    IReadOnlyList<string>? AllowedCountries = null, bool Tombstone = false);
 
 /// <summary>Pista de fonte achada pelo Explorador (greenhouse:x, gupy:y, github:dono/repo, web:empresa.com) e de onde ela veio.</summary>
 public sealed record SourceLead(string Source, string Origin);

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-05T23:21:27.6327440Z",
+  "generated_at": "2026-11-05T23:45:00.3209797Z",
   "generated_by": "jo sources probe",
   "experimental_on": true,
   "catalog": {
@@ -111,9 +111,9 @@
         "ok": true,
         "count": 33,
         "http": 200,
-        "seconds": 1.2,
+        "seconds": 0.5,
         "error": null,
-        "at": "2026-11-05T23:20:48.3132481Z"
+        "at": "2026-11-05T23:44:23.881902Z"
       }
     },
     {
@@ -145,9 +145,9 @@
         "ok": true,
         "count": 86,
         "http": 200,
-        "seconds": 24,
+        "seconds": 2.1,
         "error": null,
-        "at": "2026-11-05T23:21:11.2257367Z"
+        "at": "2026-11-05T23:44:25.5472165Z"
       }
     },
     {
@@ -179,9 +179,9 @@
         "ok": true,
         "count": 170,
         "http": 200,
-        "seconds": 0.2,
+        "seconds": 0.1,
         "error": null,
-        "at": "2026-11-05T23:20:47.4056861Z"
+        "at": "2026-11-05T23:44:23.5538271Z"
       }
     },
     {
@@ -213,9 +213,9 @@
         "ok": true,
         "count": 40,
         "http": 200,
-        "seconds": 36.7,
+        "seconds": 36.8,
         "error": null,
-        "at": "2026-11-05T23:21:23.8899456Z"
+        "at": "2026-11-05T23:45:00.254681Z"
       }
     },
     {
@@ -249,7 +249,7 @@
         "http": null,
         "seconds": 0,
         "error": "sem amostra pública segura",
-        "at": "2026-11-05T23:20:47.1960508Z"
+        "at": "2026-11-05T23:44:23.4323383Z"
       }
     },
     {
@@ -281,9 +281,9 @@
         "ok": true,
         "count": 12,
         "http": 200,
-        "seconds": 1.5,
+        "seconds": 1.3,
         "error": null,
-        "at": "2026-11-05T23:20:48.8980099Z"
+        "at": "2026-11-05T23:44:24.8998224Z"
       }
     },
     {
@@ -315,9 +315,9 @@
         "ok": true,
         "count": 0,
         "http": 200,
-        "seconds": 1.1,
+        "seconds": 0.9,
         "error": "A fonte respondeu, mas não tem vaga aberta agora. Pode salvar: ela entra nas próximas rodadas.",
-        "at": "2026-11-05T23:20:49.3840425Z"
+        "at": "2026-11-05T23:44:24.7640468Z"
       }
     },
     {
@@ -349,9 +349,9 @@
         "ok": true,
         "count": 3,
         "http": 200,
-        "seconds": 0.3,
+        "seconds": 0.2,
         "error": null,
-        "at": "2026-11-05T23:20:49.1831493Z"
+        "at": "2026-11-05T23:44:24.9439829Z"
       }
     },
     {
@@ -385,7 +385,7 @@
         "http": 200,
         "seconds": 1.3,
         "error": null,
-        "at": "2026-11-05T23:20:50.4388489Z"
+        "at": "2026-11-05T23:44:26.2145418Z"
       }
     },
     {
@@ -417,9 +417,9 @@
         "ok": true,
         "count": 6,
         "http": 200,
-        "seconds": 0.2,
+        "seconds": 0.3,
         "error": null,
-        "at": "2026-11-05T23:20:49.5919872Z"
+        "at": "2026-11-05T23:44:25.2367908Z"
       }
     },
     {
@@ -451,9 +451,9 @@
         "ok": true,
         "count": 60,
         "http": 200,
-        "seconds": 3.4,
+        "seconds": 3.3,
         "error": null,
-        "at": "2026-11-05T23:20:52.9839613Z"
+        "at": "2026-11-05T23:44:28.5770401Z"
       }
     },
     {
@@ -485,9 +485,9 @@
         "ok": true,
         "count": 20,
         "http": 200,
-        "seconds": 14.6,
+        "seconds": 14.5,
         "error": null,
-        "at": "2026-11-05T23:21:05.0580734Z"
+        "at": "2026-11-05T23:44:40.0532318Z"
       }
     },
     {
@@ -506,7 +506,7 @@
       "catalog_ids": [
         "rippling-careers-board"
       ],
-      "notes": "Endpoint público observado em referência comunitária.",
+      "notes": "Sem conector: o endpoint público não foi confirmado em 05/11/2026 (o quadro do próprio Rippling redireciona para rippling.com/careers). Pendente em docs/NEXT_SOURCES.md.",
       "authorization_kind": "none",
       "credential_present": false,
       "connector": false,
@@ -521,7 +521,7 @@
         "http": null,
         "seconds": 0,
         "error": "sem amostra pública segura",
-        "at": "2026-11-05T23:20:47.1964851Z"
+        "at": "2026-11-05T23:44:23.4325003Z"
       }
     },
     {
@@ -551,9 +551,9 @@
         "ok": true,
         "count": 20,
         "http": 200,
-        "seconds": 17.7,
+        "seconds": 22.6,
         "error": null,
-        "at": "2026-11-05T23:21:10.6866047Z"
+        "at": "2026-11-05T23:44:48.8563495Z"
       }
     },
     {
@@ -585,7 +585,7 @@
         "http": null,
         "seconds": 0,
         "error": "sem amostra pública segura",
-        "at": "2026-11-05T23:20:47.196488Z"
+        "at": "2026-11-05T23:44:23.4325036Z"
       }
     },
     {
@@ -617,9 +617,9 @@
         "ok": true,
         "count": 5,
         "http": 200,
-        "seconds": 2.8,
+        "seconds": 2.7,
         "error": null,
-        "at": "2026-11-05T23:21:07.8424754Z"
+        "at": "2026-11-05T23:44:31.2298781Z"
       }
     },
     {
@@ -649,9 +649,9 @@
         "ok": true,
         "count": 18,
         "http": 200,
-        "seconds": 2.1,
+        "seconds": 1,
         "error": null,
-        "at": "2026-11-05T23:21:09.9665018Z"
+        "at": "2026-11-05T23:44:32.2339279Z"
       }
     },
     {
@@ -681,9 +681,9 @@
         "ok": true,
         "count": 3,
         "http": 200,
-        "seconds": 0.2,
+        "seconds": 0.1,
         "error": null,
-        "at": "2026-11-05T23:21:10.189642Z"
+        "at": "2026-11-05T23:44:32.3603103Z"
       }
     },
     {
@@ -714,9 +714,9 @@
         "ok": true,
         "count": 3,
         "http": 200,
-        "seconds": 2.7,
+        "seconds": 2.8,
         "error": null,
-        "at": "2026-11-05T23:21:12.9370129Z"
+        "at": "2026-11-05T23:44:35.1118092Z"
       }
     },
     {
@@ -750,7 +750,7 @@
         "http": 200,
         "seconds": 0.1,
         "error": null,
-        "at": "2026-11-05T23:21:10.7672274Z"
+        "at": "2026-11-05T23:44:35.2363711Z"
       }
     },
     {
@@ -782,9 +782,9 @@
         "ok": true,
         "count": 99,
         "http": 200,
-        "seconds": 1.2,
+        "seconds": 0.6,
         "error": null,
-        "at": "2026-11-05T23:21:11.9241959Z"
+        "at": "2026-11-05T23:44:35.8217054Z"
       }
     },
     {
@@ -818,7 +818,7 @@
         "http": 200,
         "seconds": 0.5,
         "error": null,
-        "at": "2026-11-05T23:21:11.6828187Z"
+        "at": "2026-11-05T23:44:36.2833152Z"
       }
     },
     {
@@ -850,9 +850,9 @@
         "ok": true,
         "count": 10,
         "http": 200,
-        "seconds": 0.1,
+        "seconds": 0.2,
         "error": null,
-        "at": "2026-11-05T23:21:11.7419436Z"
+        "at": "2026-11-05T23:44:36.4539789Z"
       }
     },
     {
@@ -884,9 +884,9 @@
         "ok": true,
         "count": 50,
         "http": 200,
-        "seconds": 1.4,
+        "seconds": 1.6,
         "error": null,
-        "at": "2026-11-05T23:21:13.1580353Z"
+        "at": "2026-11-05T23:44:38.0975778Z"
       }
     },
     {
@@ -918,9 +918,9 @@
         "ok": true,
         "count": 150,
         "http": 200,
-        "seconds": 3,
+        "seconds": 3.6,
         "error": null,
-        "at": "2026-11-05T23:21:14.9416498Z"
+        "at": "2026-11-05T23:44:41.6833927Z"
       }
     },
     {
@@ -954,7 +954,7 @@
         "http": 200,
         "seconds": 0.4,
         "error": "A fonte respondeu, mas não tem vaga aberta agora. Pode salvar: ela entra nas próximas rodadas.",
-        "at": "2026-11-05T23:21:13.3328617Z"
+        "at": "2026-11-05T23:44:40.4936856Z"
       }
     },
     {
@@ -988,7 +988,7 @@
         "http": 200,
         "seconds": 1.1,
         "error": null,
-        "at": "2026-11-05T23:21:14.2295322Z"
+        "at": "2026-11-05T23:44:41.5700368Z"
       }
     },
     {
@@ -1020,9 +1020,9 @@
         "ok": true,
         "count": 200,
         "http": 200,
-        "seconds": 10.5,
+        "seconds": 11.8,
         "error": null,
-        "at": "2026-11-05T23:21:23.8018838Z"
+        "at": "2026-11-05T23:44:53.3901293Z"
       }
     },
     {
@@ -1035,29 +1035,29 @@
         "NO"
       ],
       "api_doc_url": "https://navikt.github.io/pam-stilling-feed/",
-      "terms_url": "https://navikt.github.io/pam-stilling-feed/",
+      "terms_url": "https://arbeidsplassen.nav.no/vilkar-api",
       "attribution": "Dados abertos da NAV.",
       "update_frequency": "3 h",
       "catalog_ids": [
         "norway-nav-stilling-feed",
         "norway-nav-feed-openapi"
       ],
-      "notes": "Feed de eventos com token público; a API antiga pam-public-feed está descontinuada.",
+      "notes": "Token público rotativo (/api/publicToken); anúncio INACTIVE fecha a vaga, como os termos pedem; contatos pessoais não são guardados; a API antiga pam-public-feed saiu em maio de 2025.",
       "authorization_kind": "none",
       "credential_present": false,
-      "connector": false,
-      "ingestion_enabled": false,
+      "connector": true,
+      "ingestion_enabled": true,
       "gate": null,
       "disabled": false,
       "probe": {
         "prefix": "nav",
         "source": "nav:utvikler",
-        "ok": false,
-        "count": 0,
-        "http": null,
-        "seconds": 0,
-        "error": "Não reconheci esta fonte. Confira a plataforma e o nome da empresa.",
-        "at": "2026-11-05T23:21:14.2296358Z"
+        "ok": true,
+        "count": 14,
+        "http": 200,
+        "seconds": 11.2,
+        "error": "Também declarou 15 anúncios encerrados, que fecham as vagas que já estiverem aqui.",
+        "at": "2026-11-05T23:44:52.8557286Z"
       }
     },
     {
@@ -1076,22 +1076,22 @@
       "catalog_ids": [
         "us-dol-seasonal-jobs-feeds"
       ],
-      "notes": "Vagas H-2A e H-2B: visto temporário, não patrocínio de visto qualificado.",
+      "notes": "Arquivo diário oficial com as ordens H-2A (790/790A) dos últimos 20 dias: visto temporário agrícola, não patrocínio de visto qualificado. Os arquivos 9142A e 9142B são pedidos de certificação, não vagas.",
       "authorization_kind": "none",
       "credential_present": false,
-      "connector": false,
-      "ingestion_enabled": false,
+      "connector": true,
+      "ingestion_enabled": true,
       "gate": null,
       "disabled": false,
       "probe": {
         "prefix": "seasonaljobs",
         "source": "seasonaljobs:all",
-        "ok": false,
-        "count": 0,
-        "http": null,
-        "seconds": 0,
-        "error": "Não reconheci esta fonte. Confira a plataforma e o nome da empresa.",
-        "at": "2026-11-05T23:21:14.2296727Z"
+        "ok": true,
+        "count": 200,
+        "http": 200,
+        "seconds": 1.5,
+        "error": null,
+        "at": "2026-11-05T23:44:50.37184Z"
       }
     },
     {
@@ -1121,11 +1121,11 @@
         "prefix": "freehire",
         "source": "freehire:developer",
         "ok": true,
-        "count": 720,
+        "count": 718,
         "http": 200,
-        "seconds": 13.4,
+        "seconds": 9.9,
         "error": null,
-        "at": "2026-11-05T23:21:27.5837646Z"
+        "at": "2026-11-05T23:45:00.2247726Z"
       }
     },
     {
@@ -1155,9 +1155,9 @@
         "ok": true,
         "count": 59,
         "http": 200,
-        "seconds": 3.1,
+        "seconds": 2.8,
         "error": null,
-        "at": "2026-11-05T23:21:18.078687Z"
+        "at": "2026-11-05T23:44:55.6725901Z"
       }
     },
     {
@@ -1189,7 +1189,7 @@
         "http": 200,
         "seconds": 1,
         "error": null,
-        "at": "2026-11-05T23:21:19.0966403Z"
+        "at": "2026-11-05T23:44:54.4265311Z"
       }
     },
     {
@@ -1223,7 +1223,7 @@
         "http": 200,
         "seconds": 1.3,
         "error": null,
-        "at": "2026-11-05T23:21:20.4329244Z"
+        "at": "2026-11-05T23:44:55.6778009Z"
       }
     },
     {
@@ -1253,9 +1253,9 @@
         "ok": true,
         "count": 44,
         "http": 200,
-        "seconds": 0.7,
+        "seconds": 0.8,
         "error": null,
-        "at": "2026-11-05T23:21:21.1513171Z"
+        "at": "2026-11-05T23:44:56.4624817Z"
       }
     },
     {
@@ -1287,7 +1287,7 @@
         "http": null,
         "seconds": 0,
         "error": "sem amostra pública segura",
-        "at": "2026-11-05T23:20:47.1965348Z"
+        "at": "2026-11-05T23:44:23.4325559Z"
       }
     },
     {
@@ -1321,7 +1321,7 @@
         "http": null,
         "seconds": 0,
         "error": "sem amostra pública segura",
-        "at": "2026-11-05T23:20:47.1965359Z"
+        "at": "2026-11-05T23:44:23.4325571Z"
       }
     },
     {
@@ -1353,7 +1353,7 @@
         "http": null,
         "seconds": 0,
         "error": "sem amostra pública segura",
-        "at": "2026-11-05T23:20:47.1965368Z"
+        "at": "2026-11-05T23:44:23.4325582Z"
       }
     },
     {
@@ -1387,7 +1387,7 @@
         "http": null,
         "seconds": 0,
         "error": "sem amostra pública segura",
-        "at": "2026-11-05T23:20:47.1965381Z"
+        "at": "2026-11-05T23:44:23.4325599Z"
       }
     },
     {
@@ -1421,7 +1421,7 @@
         "http": null,
         "seconds": 0,
         "error": "sem amostra pública segura",
-        "at": "2026-11-05T23:20:47.1965417Z"
+        "at": "2026-11-05T23:44:23.432561Z"
       }
     },
     {
@@ -1444,7 +1444,7 @@
       "notes": "Authorization-Key e o e-mail da conta no User-Agent; quase sempre pede cidadania americana.",
       "authorization_kind": "user_key",
       "credential_present": false,
-      "connector": false,
+      "connector": true,
       "ingestion_enabled": false,
       "gate": null,
       "disabled": false,
@@ -1456,7 +1456,7 @@
         "http": null,
         "seconds": 0,
         "error": "sem amostra pública segura",
-        "at": "2026-11-05T23:20:47.1965427Z"
+        "at": "2026-11-05T23:44:23.4325642Z"
       }
     },
     {
@@ -1478,7 +1478,7 @@
       "notes": "appname aprovado pela ReliefWeb.",
       "authorization_kind": "user_key",
       "credential_present": false,
-      "connector": false,
+      "connector": true,
       "ingestion_enabled": false,
       "gate": null,
       "disabled": false,
@@ -1490,7 +1490,7 @@
         "http": null,
         "seconds": 0,
         "error": "sem amostra pública segura",
-        "at": "2026-11-05T23:20:47.196544Z"
+        "at": "2026-11-05T23:44:23.4325658Z"
       }
     },
     {
@@ -1522,7 +1522,7 @@
         "http": null,
         "seconds": 0,
         "error": "não sondada: BLOCKED",
-        "at": "2026-11-05T23:20:47.1965453Z"
+        "at": "2026-11-05T23:44:23.4325674Z"
       }
     },
     {
@@ -1556,7 +1556,7 @@
         "http": null,
         "seconds": 0,
         "error": "não sondada: BLOCKED",
-        "at": "2026-11-05T23:20:47.1965456Z"
+        "at": "2026-11-05T23:44:23.4325676Z"
       }
     },
     {
@@ -1590,7 +1590,7 @@
         "http": null,
         "seconds": 0,
         "error": "não sondada: PARTNER_ONLY",
-        "at": "2026-11-05T23:20:47.1965457Z"
+        "at": "2026-11-05T23:44:23.4325677Z"
       }
     }
   ]

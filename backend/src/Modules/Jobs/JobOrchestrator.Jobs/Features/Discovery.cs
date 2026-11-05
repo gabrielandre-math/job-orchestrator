@@ -24,6 +24,7 @@ internal sealed class RunRequestedConsumer(
         if (campaign is null) return;
 
         var found = new List<(DiscoveredPosting Posting, PostingStatus Status)>();
+        var tombstones = new List<DiscoveredPosting>();
         var ignored = 0;
         var clock = Stopwatch.StartNew();
         var sources = run.Only is { Count: > 0 } only ? [.. campaign.Sources.Where(x => only.Contains(x, StringComparer.OrdinalIgnoreCase))] : campaign.Sources;
@@ -42,6 +43,8 @@ internal sealed class RunRequestedConsumer(
                 listed = postings.Count;
                 foreach (var p in postings)
                 {
+                    // Encerramento declarado pela fonte: só fecha a vaga que já existe (depois, na transação), sem filtro de relevância.
+                    if (p.Tombstone) { tombstones.Add(p); continue; }
                     // Sem nenhuma palavra essencial da campanha, a vaga nem entra: boards grandes têm centenas de vagas de outras áreas.
                     if (!Scoring.Relevant(campaign, p.Title, p.Description)) { ignored++; continue; }
                     kept++;
@@ -74,6 +77,10 @@ internal sealed class RunRequestedConsumer(
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         var now = time.GetUtcNow().UtcDateTime;
         if (!await db.RegisterInInboxAsync(message.MessageId, now, ct)) return;
+        // Encerradas pela fonte: a vaga que existe vira Expired (o histórico fica); a que não existe é ignorada.
+        var keys = tombstones.Select(t => t.ExternalId).Distinct().ToList();
+        var known = keys.Count == 0 ? [] : await db.Postings.Where(x => x.CampaignId == campaign.Id && keys.Contains(x.ExternalId)).ToListAsync(ct);
+        var closed = Close(known, tombstones, now);
         int shortlisted = 0, fresh = 0, again = 0, duplicates = 0, scored = 0;
         var top = new List<(string Company, string Title, int Score, string? Domain, Guid Id)>();
         var bands = new int[10];
@@ -105,6 +112,8 @@ internal sealed class RunRequestedConsumer(
         await transaction.CommitAsync(ct);
         log.LogInformation("Run {Run}: {Found} postings, {Ignored} ignored as off-profile, {Shortlisted} shortlisted", run.RunId, found.Count, ignored, shortlisted);
 
+        if (closed > 0) await SayAsync(thread, "Normalizador", $"{closed} {(closed == 1 ? "vaga encerrada" : "vagas encerradas")} pela própria fonte", "Saem da fila e o histórico fica.",
+            new { stage = "closed", closed }, "Juiz", true, ct);
         await SayAsync(thread, "Normalizador", $"{fresh} {(fresh == 1 ? "vaga nova" : "vagas novas")}, {again} já conhecidas, {duplicates} repetidas", null,
             new { stage = "dedupe", found = found.Count, fresh, again, duplicates, ignored }, "Juiz", true, ct);
         var above = bands.Skip(Math.Clamp(campaign.MinFitScore / 10, 0, 9)).Sum();
@@ -128,6 +137,19 @@ internal sealed class RunRequestedConsumer(
         var authorized = c.AuthorizedCountries.SelectMany(SourceCatalog.MatchCountries).Concat(c.AuthorizedCountries.Where(x => x.Equals("BR", StringComparison.OrdinalIgnoreCase)).Select(_ => "BR")).ToList();
         var brazil = here.Contains("BR") || authorized.Contains("BR") || (here.Count == 0 && authorized.Count == 0);
         return new EligibilityPolicy(brazil, c.Relocate);
+    }
+
+    /// <summary>Fecha as vagas que a fonte declarou encerradas (mesma fonte e mesmo id externo). Devolve quantas fecharam agora.</summary>
+    internal static int Close(IEnumerable<JobPosting> existing, IReadOnlyCollection<DiscoveredPosting> tombstones, DateTime now)
+    {
+        var dead = tombstones.Select(t => (t.Source, t.ExternalId)).ToHashSet();
+        var count = 0;
+        foreach (var posting in existing.Where(x => dead.Contains((x.Source, x.ExternalId)) && x.Status is not (JobStatus.Expired or JobStatus.Duplicate)))
+        {
+            posting.Verified(new PostingStatus(false, "Encerrada na própria fonte (anúncio inativo)."), now);
+            count++;
+        }
+        return count;
     }
 
     /// <summary>A narração nunca derruba a rodada: falha ao gravar a nota só vira log.</summary>

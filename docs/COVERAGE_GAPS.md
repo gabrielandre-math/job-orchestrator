@@ -1,6 +1,6 @@
 # Lacunas de cobertura
 
-Gerado por `jo sources coverage` em 05/11/2026 23:28 UTC, contra a API local. O universo é a auditoria dos 249 países e territórios ISO 3166-1
+Gerado por `jo sources coverage` em 05/11/2026 23:45 UTC, contra a API local. O universo é a auditoria dos 249 países e territórios ISO 3166-1
 (`data/catalog/auditoria-249-paises-v2.csv`, do usuário). O estado de cada país sai só do que existe: conector do país sondado com vaga, fonte do país
 no registro ainda sem conector, vaga aberta vista com local nele, ou o estado da auditoria. **Isto não é cobertura mundial completa.**
 
@@ -9,9 +9,9 @@ no registro ainda sem conector, vaga aberta vista com local nele, ou o estado da
 | | Quantas |
 |---|---|
 | Fontes configuradas (plataformas no registro) | 45 |
-| Com conector no app | 37 |
+| Com conector no app | 41 |
 | Autorizadas (portão aberto) | 38 |
-| Funcionando (última sondagem com vaga) | 28 |
+| Funcionando (última sondagem com vaga) | 30 |
 | Quadros de empresa na campanha | 23 |
 | Empresas com vaga aberta | 88 |
 | Vagas únicas abertas | 143 |
@@ -21,7 +21,7 @@ no registro ainda sem conector, vaga aberta vista com local nele, ou o estado da
 | Vagas restritas (fora do alcance de quem mora no Brasil) | 6 |
 | Vagas que se contradizem (revisão) | 0 |
 | Vagas sem local nenhum | 0 |
-| Países integrados | 2 |
+| Países integrados | 4 |
 | Países com vaga aberta vista | 26 |
 | Países não pesquisados | 147 |
 | Registros no catálogo V2 (referência, não fonte) | 321 |
@@ -33,9 +33,9 @@ Fontes globais ou regionais ativas (cobrem qualquer país, mas só onde as empre
 
 | Continente | Países | Integrados | Conector pendente | Vagas vistas | Pistas sem teste | Não pesquisados | Vagas abertas |
 |---|---|---|---|---|---|---|---|
+| Europa | 51 | 2 | 0 | 10 | 22 | 17 | 17 |
 | América do Sul | 16 | 1 | 0 | 0 | 5 | 10 | 60 |
-| Europa | 51 | 1 | 1 | 10 | 22 | 17 | 17 |
-| América do Norte | 5 | 0 | 1 | 1 | 0 | 3 | 22 |
+| América do Norte | 5 | 1 | 0 | 1 | 0 | 3 | 22 |
 | Ásia | 51 | 0 | 0 | 10 | 14 | 27 | 21 |
 | África | 60 | 0 | 0 | 1 | 25 | 34 | 5 |
 | América Central e Caribe | 36 | 0 | 0 | 1 | 4 | 31 | 3 |
@@ -126,7 +126,7 @@ Não pesquisados (31): Anguilla, Antigua and Barbuda, Aruba, Bahamas, Barbados, 
 
 | País | Estado | Conectores do país | Pendentes | Vagas abertas | Brasil (confirmadas/possíveis) | Pistas da auditoria |
 |---|---|---|---|---|---|---|
-| Norway (NO) | conector pendente | - | `nav` | 0 | 0/0 | 3 portais, 2 APIs candidatas, 1 agências WAPES |
+| Norway (NO) | integrado | `nav` | - | 0 | 0/0 | 3 portais, 2 APIs candidatas, 1 agências WAPES |
 | Sweden (SE) | integrado | `jobtech` | - | 0 | 0/0 | 1 portais, 0 APIs candidatas, 1 agências WAPES |
 | Albania (AL) | vagas vistas por fonte global | - | - | 1 | 0/1 | 0 portais, 0 APIs candidatas, 1 agências WAPES |
 | France (FR) | vagas vistas por fonte global | - | - | 2 | 0/1 | 1 portais, 0 APIs candidatas, 1 agências WAPES |
@@ -167,7 +167,7 @@ Não pesquisados (17): Åland Islands, Andorra, Belarus, Czechia, Faroe Islands,
 
 | País | Estado | Conectores do país | Pendentes | Vagas abertas | Brasil (confirmadas/possíveis) | Pistas da auditoria |
 |---|---|---|---|---|---|---|
-| United States (US) | conector pendente | - | `seasonaljobs`, `usajobs` | 15 | 3/8 | 3 portais, 2 APIs candidatas, 0 agências WAPES |
+| United States (US) | integrado | `seasonaljobs` | `usajobs` | 15 | 3/8 | 3 portais, 2 APIs candidatas, 0 agências WAPES |
 | Canada (CA) | vagas vistas por fonte global | - | - | 7 | 2/5 | 2 portais, 0 APIs candidatas, 2 agências WAPES |
 
 Não pesquisados (3): Bermuda, Greenland, Saint Pierre and Miquelon.
