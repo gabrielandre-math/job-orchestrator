@@ -255,8 +255,7 @@ internal sealed class ProviderEndpoints : ICarterModule
         agents.MapGet("threads", async (int? limit, IntelligenceApi api, CancellationToken ct) => Results.Ok(await api.ThreadsAsync(limit ?? 30, ct)));
         agents.MapGet("threads/{id:guid}", async (Guid id, IntelligenceApi api, CancellationToken ct) => Results.Ok(await api.ThreadAsync(id, ct)));
         // Ao vivo: cada mensagem nova dos agentes chega pela notificação do Postgres e sai por Server-Sent Events.
-        agents.MapGet("stream", (IConfiguration config, IServiceProvider sp, CancellationToken ct) =>
-            TypedResults.ServerSentEvents(LiveStream.ReadAsync(config.ConnectionFor("Intelligence"), sp, ct), eventType: "message"));
+        agents.MapGet("stream", (HttpContext http, IConfiguration config, IServiceProvider sp) => LiveStream.ServeAsync(http, config.ConnectionFor("Intelligence"), sp));
         // Resultado do último `jo llm bench` (bench/latest.json no diretório de dados), para a tela mostrar por que cada modelo está na vaga.
         group.MapGet("bench", (IConfiguration config) =>
         {
