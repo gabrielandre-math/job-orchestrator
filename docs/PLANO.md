@@ -85,6 +85,7 @@ O caminho de uso:
    - disponibilidade para começar;
    - nível de inglês, se o CV não disser;
    - resposta padrão para autoidentificação voluntária;
+   - se as respostas abertas passam por revisão ou vão sozinhas depois da checagem;
    - autorização de envio (ATS, limite diário, validade).
 4. Você conecta o Gmail com um clique (OAuth).
 5. A partir daí roda sozinho:
@@ -103,6 +104,20 @@ Para reduzir o que sobra:
 - a sessão assistida pode ser feita pelo celular, via Tailscale (opcional, desligado por padrão).
 
 CAPTCHA nunca é resolvido por máquina nem por serviço externo.
+
+### 3.2 Perguntas do formulário
+
+| Tipo | Exemplo | O que o sistema faz |
+|---|---|---|
+| Objetiva com resposta no perfil | anos de C#, formação, inglês, autorização, sponsor, pretensão, aviso prévio, links | responde sozinho a partir dos fatos; anos calculados pelas datas das experiências; mesma resposta em todas as empresas |
+| Aberta sobre carreira ou tecnologia | "conte um projeto desafiador", "experiência com sistemas distribuídos", "por que esta empresa" | o Redator escreve com seus fatos e histórias, a descrição da vaga e a página pública da empresa, no idioma e no limite de caracteres do campo; o Revisor confere cada afirmação |
+| Eliminatória em que a verdade te tira | "tem 5 anos de Go?" sem fato que sustente | responde a verdade; se ela elimina, o sistema nem aplica e registra o motivo |
+| Sensível | autoidentificação, deficiência, antecedentes, documento | só com resposta padrão aprovada por você; declaração legal sempre vai para você |
+| Teste ou avaliação | quiz técnico, desafio de código, HackerRank, Codility, case com prazo, testes da Gupy | não responde por você; detecta, registra o prazo, avisa, e o Coach prepara um guia de estudo |
+
+Outras regras:
+- Toda resposta aprovada ou editada entra no banco e é reaproveitada em perguntas parecidas, então a revisão diminui com o tempo.
+- Todas as respostas ficam gravadas na linha do tempo da candidatura.
 
 ## 4. Os agentes
 
