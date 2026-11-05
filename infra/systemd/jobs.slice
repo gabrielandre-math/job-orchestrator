@@ -1,0 +1,9 @@
+# Fatia do Job Orchestrator: teto de memória e prioridade baixa, para a madrugada não disputar com o resto do PC.
+[Unit]
+Description=Job Orchestrator (fatia de recursos)
+
+[Slice]
+MemoryHigh=6G
+MemoryMax=8G
+CPUWeight=20
+IOWeight=20
