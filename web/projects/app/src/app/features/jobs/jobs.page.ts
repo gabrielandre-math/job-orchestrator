@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, WritableSignal, computed, inject, input, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { Badge } from '@jo/ui/badge';
 import { Company } from '@jo/ui/company';
@@ -14,6 +14,7 @@ import { command } from '../../core/command';
 import { ago, jobLabel, jobTone } from '../../core/format';
 import { AGENT_ICON, Live } from '../../core/live';
 import { query } from '../../core/query';
+import { PLATFORMS } from '../../core/sources';
 
 interface Tally { key: string; value: number }
 interface JobStats { byStatus: Tally[]; bySource: Tally[]; scores: Tally[]; byModality: Tally[]; byContract: Tally[]; bySeniority: Tally[]; topStack: Tally[]; perDay: { day: string; value: number }[]; total: number }
@@ -24,6 +25,10 @@ const SOURCE_LOGO: Record<string, { file: string; mono: boolean }> = {
   greenhouse: { file: 'greenhouse', mono: false }, github: { file: 'github', mono: true }, hn: { file: 'hackernews', mono: false },
 };
 const PIPELINE = ['Seletor', 'Redator', 'Conferente', 'Revisor', 'Renderizador', 'Inspetor ATS'];
+const LEVELS = ['Estágio', 'Júnior', 'Pleno', 'Sênior', 'Especialista', 'Liderança'];
+const MODES: Record<string, string> = { Remoto: 'globe-hemisphere-west', 'Híbrido': 'arrows-left-right', Presencial: 'buildings' };
+interface Facet { key: string; n: number }
+type Sort = 'score' | 'new' | 'company';
 
 /**
  * Vagas: tudo que as fontes trouxeram, com os números em gráficos isométricos, a logo da empresa, a stack com ícones
@@ -43,6 +48,19 @@ export class JobsPage {
   readonly status = input<string | undefined>();
   protected readonly search = signal('');
   protected readonly remoteOnly = signal(false);
+  // Filtros da lista: tecnologias, fonte, modalidade, senioridade e contrato (vários de cada, qualquer um vale), mais os extras e a ordem.
+  protected readonly techSel = signal<ReadonlySet<string>>(new Set());
+  protected readonly sourceSel = signal<ReadonlySet<string>>(new Set());
+  protected readonly modeSel = signal<ReadonlySet<string>>(new Set());
+  protected readonly levelSel = signal<ReadonlySet<string>>(new Set());
+  protected readonly contractSel = signal<ReadonlySet<string>>(new Set());
+  protected readonly withSalary = signal(false);
+  protected readonly atsOnly = signal(false);
+  protected readonly minScore = signal(0);
+  protected readonly sort = signal<Sort>('score');
+  protected readonly allTech = signal(false);
+  protected readonly modes = MODES;
+  protected readonly sorts: { key: Sort; label: string }[] = [{ key: 'score', label: 'Nota' }, { key: 'new', label: 'Mais novas' }, { key: 'company', label: 'Empresa' }];
   protected readonly open = signal<string | null>(null);
   protected readonly all = query<JobRow[]>(() => '/jobs', 8000);
   protected readonly stats = query<JobStats>(() => '/jobs/stats', 15000);
@@ -85,12 +103,53 @@ export class JobsPage {
     return c;
   });
 
+  /** O que existe em cada filtro, com a contagem sobre todas as vagas (as mais comuns primeiro; senioridade na ordem da carreira). */
+  protected readonly facets = computed(() => {
+    const jobs = this.all.value() ?? [];
+    const tally = (keys: (j: JobRow) => (string | null | undefined)[]): Facet[] => {
+      const m = new Map<string, number>();
+      for (const j of jobs) for (const k of new Set(keys(j))) if (k) m.set(k, (m.get(k) ?? 0) + 1);
+      return [...m].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'pt-BR')).map(([key, n]) => ({ key, n }));
+    };
+    const level = tally((j) => [j.seniority]);
+    return {
+      tech: tally((j) => j.stack), source: tally((j) => [j.source.split(':')[0]]), mode: tally((j) => [j.modality]),
+      level: level.sort((a, b) => (LEVELS.indexOf(a.key) + 99) % 99 - (LEVELS.indexOf(b.key) + 99) % 99), contract: tally((j) => [j.contract]),
+      salary: jobs.filter((j) => j.salaryText).length, ats: jobs.filter((j) => j.applyChannel === 'ats').length,
+    };
+  });
+  protected readonly techShown = computed(() => this.allTech() ? this.facets().tech : this.facets().tech.slice(0, 14));
+
+  protected readonly activeCount = computed(() =>
+    [this.techSel(), this.sourceSel(), this.modeSel(), this.levelSel(), this.contractSel()].reduce((n, s) => n + s.size, 0)
+    + (this.withSalary() ? 1 : 0) + (this.atsOnly() ? 1 : 0) + (this.minScore() > 0 ? 1 : 0) + (this.status() ? 1 : 0) + (this.search().trim() ? 1 : 0));
+
   protected readonly rows = computed(() => {
     const s = this.search().trim().toLowerCase();
-    return (this.all.value() ?? []).filter((j) => (!this.status() || j.status === this.status())
+    const any = (sel: ReadonlySet<string>, v: string | null | undefined) => sel.size === 0 || (!!v && sel.has(v));
+    const list = (this.all.value() ?? []).filter((j) => (!this.status() || j.status === this.status())
       && (!this.remoteOnly() || j.modality === 'Remoto')
+      && (this.techSel().size === 0 || j.stack.some((t) => this.techSel().has(t)))
+      && any(this.sourceSel(), j.source.split(':')[0]) && any(this.modeSel(), j.modality) && any(this.levelSel(), j.seniority) && any(this.contractSel(), j.contract)
+      && (!this.withSalary() || !!j.salaryText) && (!this.atsOnly() || j.applyChannel === 'ats') && (this.minScore() === 0 || (j.score ?? 0) >= this.minScore())
       && (!s || `${j.company} ${j.title} ${j.stack.join(' ')}`.toLowerCase().includes(s)));
+    const by: Record<Sort, (a: JobRow, b: JobRow) => number> = {
+      score: (a, b) => (b.score ?? -1) - (a.score ?? -1), new: (a, b) => b.firstSeenAt.localeCompare(a.firstSeenAt), company: (a, b) => a.company.localeCompare(b.company, 'pt-BR'),
+    };
+    return list.sort(by[this.sort()]);
   });
+
+  protected toggle(sel: WritableSignal<ReadonlySet<string>>, key: string) {
+    transition(() => sel.update((s) => { const n = new Set(s); if (n.has(key)) n.delete(key); else n.add(key); return n; }));
+  }
+  protected clearFilters() {
+    transition(() => {
+      for (const sel of [this.techSel, this.sourceSel, this.modeSel, this.levelSel, this.contractSel]) sel.set(new Set());
+      this.withSalary.set(false); this.atsOnly.set(false); this.minScore.set(0); this.search.set(''); this.remoteOnly.set(false);
+      void this.router.navigate([], { queryParams: { status: null }, queryParamsHandling: 'merge' });
+    });
+  }
+  protected platformName(key: string) { return PLATFORMS[key]?.name ?? key; }
 
   // Gráficos: funil, fontes, notas, novas por dia, stack e o perfil das vagas.
   protected readonly funnel = computed<ChartRow[]>(() => {

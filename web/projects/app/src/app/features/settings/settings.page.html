@@ -50,6 +50,10 @@
   <section class="panel">
     <header><h2>Privacidade</h2></header>
     <div class="rows">
+      <div class="row">
+        <span><strong>Termos de uso</strong><p class="muted">@if (termsInfo.value()?.accepted) { Aceitos em {{ acceptedOn(termsInfo.value()?.acceptedAt) }} (versão {{ termsInfo.value()?.version }}): o app usa o processador, a placa de vídeo e a internet como descrito neles. } @else { Ainda não aceitos: a busca, o Explorador e o modelo local ficam parados. }</p></span>
+        <button type="button" class="btn" [class.primary]="!termsInfo.value()?.accepted" (click)="readingTerms.set(true)"><jo-icon name="file-text" [size]="14" />{{ termsInfo.value()?.accepted ? 'Ler os termos' : 'Ler e aceitar' }}</button>
+      </div>
       <label class="row">
         <input type="checkbox" class="switch" [checked]="settings.value()?.localOnly" (change)="privacy($any($event.target).checked)" [disabled]="saving.running()" />
         <span><strong>Modo privado: só o modelo local</strong><p class="muted">Nada vai para Claude, ChatGPT ou API: cada pedido desce para o Llama na sua placa de vídeo. Os textos ficam mais simples e mais lentos.</p></span>
@@ -88,3 +92,4 @@
     </div>
   </section>
 </section>
+@if (readingTerms()) { <app-terms (done)="termsClosed()" /> }

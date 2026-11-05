@@ -4,6 +4,7 @@ import { Iso } from '@jo/ui/iso';
 import { Mark } from '@jo/ui/mark';
 import { get, send } from '../../core/api';
 import { Wizard } from '../../shared/wizard';
+import { TermsDialog } from '../terms/terms';
 
 interface Option { label: string; hint: string; }
 interface Info { version: string; os: 'linux' | 'macos' | 'windows'; osLabel: string; source: string; target: string; installed: boolean; devData: boolean; running: boolean; done: boolean; options: { menu: Option; autostart: Option; scan: string }; }
@@ -17,13 +18,13 @@ interface State { running: boolean; done: boolean; error: string | null; steps: 
  */
 @Component({
   selector: 'app-install',
-  imports: [Icon, Iso, Mark, Wizard],
+  imports: [Icon, Iso, Mark, Wizard, TermsDialog],
   templateUrl: './install.page.html',
   styleUrl: './install.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class InstallPage {
-  protected readonly steps = ['Boas-vindas', 'Sua máquina', 'Como instalar', 'Instalando', 'Pronto'];
+  protected readonly steps = ['Boas-vindas', 'Termos', 'Sua máquina', 'Como instalar', 'Instalando', 'Pronto'];
   protected readonly step = signal(1);
   protected readonly info = signal<Info | null>(null);
   protected readonly checks = signal<Check[] | null>(null);
@@ -51,9 +52,16 @@ export class InstallPage {
 
   protected async next() {
     const s = this.step();
-    if (s === 1) { this.step.set(2); await this.check(); return; }
-    if (s === 2) { this.step.set(3); return; }
-    if (s === 3) { await this.install(); }
+    if (s === 1) { this.step.set(2); return; }
+    if (s === 3) { this.step.set(4); return; }
+    if (s === 4) { await this.install(); }
+  }
+
+  /** Termos aceitos: segue para a conferência da máquina; recusados, o instalador fecha sem instalar nada. */
+  protected async terms(accepted: boolean) {
+    if (!accepted) { await this.quit(); return; }
+    this.step.set(3);
+    await this.check();
   }
 
   protected async check() {
@@ -64,14 +72,14 @@ export class InstallPage {
   }
 
   protected async install() {
-    this.step.set(4);
+    this.step.set(5);
     try { await send('POST', '/setup/install', { menu: this.menu(), autostart: this.autostart(), migrate: this.migrate() && !!this.info()?.devData }); } catch { /* já rodando: a esteira mostra */ }
     clearInterval(this.timer);
     this.timer = setInterval(async () => {
       try {
         const s = await get<State>('/setup/state');
         this.state.set(s);
-        if (!s.running && (s.done || s.error)) { clearInterval(this.timer); if (s.done) setTimeout(() => this.step.set(5), 900); }
+        if (!s.running && (s.done || s.error)) { clearInterval(this.timer); if (s.done) setTimeout(() => this.step.set(6), 900); }
       } catch { /* o instalador volta já */ }
     }, 700);
   }

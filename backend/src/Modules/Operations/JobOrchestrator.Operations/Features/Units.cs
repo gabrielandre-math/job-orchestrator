@@ -141,7 +141,7 @@ internal sealed class NightClock(IServiceProvider services, IConfiguration confi
         {
             try { await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken); } catch (OperationCanceledException) { return; }
             var now = DateTime.Now;
-            if (config.GetValue("Night:InApp", false))
+            if (config.GetValue("Night:InApp", false) && Consent.Accepted)
                 foreach (var job in Schedule.Where(s => Due(s.At, last, now)).Select(s => s.Name).Distinct().ToList())
                 {
                     try { await RunAsync(job, stoppingToken); }

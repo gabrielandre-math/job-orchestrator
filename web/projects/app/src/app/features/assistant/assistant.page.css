@@ -64,9 +64,6 @@
 .clip input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .send { width: 36px; height: 36px; padding: 0; justify-content: center; }
 .opts { max-width: 860px; margin: 8px auto 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.seg { display: inline-flex; padding: 2px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); }
-.seg button { height: 26px; padding: 0 10px; border: 0; border-radius: 4px; background: transparent; color: var(--text-3); font: 500 12px var(--font-ui); cursor: pointer; }
-.seg button[aria-checked="true"] { background: var(--surface-3); color: var(--text); }
 .cmp { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-2); cursor: pointer; }
 @keyframes rise { from { opacity: 0; transform: translateY(6px); } }
 @keyframes dot { 0%, 100% { opacity: 0.3; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-3px); } }

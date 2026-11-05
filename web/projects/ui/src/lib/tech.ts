@@ -1,11 +1,15 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { TECH } from './brands';
+import { svgl } from './logo';
 
-/** Tecnologia com o ícone oficial (Simple Icons) ou monograma. have: você tem no perfil (true), não tem (false) ou sem perfil (null). */
+/** Tecnologia com o logo do svgl (com a versão para fundo escuro, quando há), o ícone oficial (Simple Icons) ou monograma. have: você tem no perfil (true), não tem (false) ou sem perfil (null). */
 @Component({
   selector: 'jo-tech',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `@if (icon(); as i) { <img [src]="'/logos/tech/' + i.file + '.svg'" [class.dark]="i.dark" alt="" [width]="size()" [height]="size()" /> }
+  template: `@if (logo(); as l) {
+      <img class="on-light" [class.solo]="!l.d" [src]="'/logos/svgl/' + l.f" alt="" [width]="size()" [height]="size()" />
+      @if (l.d) { <img class="on-dark" [src]="'/logos/svgl/' + l.d" alt="" [width]="size()" [height]="size()" /> }
+    } @else if (icon(); as i) { <img [src]="'/logos/tech/' + i.file + '.svg'" [class.dark]="i.dark" alt="" [width]="size()" [height]="size()" /> }
     @else { <span class="mono-ic" [style.width.px]="size()" [style.height.px]="size()">{{ initials() }}</span> }
     @if (label()) { <span class="name">{{ name() }}</span> }`,
   styles: `
@@ -13,7 +17,9 @@ import { TECH } from './brands';
     :host(.have) { border-color: color-mix(in oklch, var(--ok) 45%, var(--line)); }
     :host(.missing) { opacity: 0.6; border-style: dashed; }
     :host(.bare) { padding: 0; background: none; border: 0; }
-    img { display: block; flex: none; }
+    img { display: block; flex: none; object-fit: contain; }
+    :host-context(:root:not([data-theme="light"])) img.on-light:not(.solo) { display: none; }
+    :host-context(:root[data-theme="light"]) img.on-dark { display: none; }
     :host-context(:root:not([data-theme="light"])) img.dark { filter: invert(1) hue-rotate(180deg); }
     .mono-ic { display: grid; place-items: center; flex: none; border-radius: 3px; background: var(--surface-3); color: var(--text-2); font: 700 9px var(--font-mono); letter-spacing: -0.02em; }
   `,
@@ -24,6 +30,7 @@ export class Tech {
   readonly size = input(16);
   readonly label = input(true);
   readonly have = input<boolean | null>(null);
+  protected readonly logo = computed(() => svgl(this.name()));
   protected readonly icon = computed(() => TECH[this.name()] ?? null);
   protected readonly initials = computed(() => this.name().replace(/[^A-Za-z0-9#+]/g, '').slice(0, 3));
 }

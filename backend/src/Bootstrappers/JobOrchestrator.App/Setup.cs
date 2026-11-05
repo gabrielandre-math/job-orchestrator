@@ -40,6 +40,9 @@ internal static class Setup
             options = Options(),
         }));
         app.MapGet("/api/setup/checks", async () => Results.Ok(await Checks.RunAsync()));
+        // Os termos aceitos no instalador valem para o app: na primeira abertura ele não pergunta de novo.
+        app.MapGet("/api/terms", () => Results.Ok(new { version = Consent.Version, accepted = Consent.Accepted, acceptedAt = Consent.Current()?.AcceptedAt }));
+        app.MapPost("/api/terms/accept", () => Results.Ok(new { version = Consent.Version, accepted = true, acceptedAt = Consent.Accept().AcceptedAt }));
         app.MapPost("/api/setup/install", (InstallInput body) =>
         {
             if (installer.Running) return Results.Conflict();

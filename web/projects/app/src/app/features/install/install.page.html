@@ -27,6 +27,9 @@
         </div>
       }
       @case (2) {
+        <div class="wz-step"><app-terms [embedded]="true" (done)="terms($event)" /></div>
+      }
+      @case (3) {
         <div class="wz-step">
           <div class="intro">
             <jo-iso name="router" [size]="96" />
@@ -49,7 +52,7 @@
           }
         </div>
       }
-      @case (3) {
+      @case (4) {
         <div class="wz-step">
           <div class="intro">
             <jo-iso name="gate" [size]="96" />
@@ -65,7 +68,7 @@
           </div>
         </div>
       }
-      @case (4) {
+      @case (5) {
         <div class="wz-step">
           <div class="intro">
             <span class="bob"><jo-iso [name]="current()?.icon ?? 'router'" [size]="96" /></span>
@@ -85,7 +88,7 @@
 }</pre> }
         </div>
       }
-      @case (5) {
+      @case (6) {
         <div class="wz-step">
           <div class="hero done">
             <span class="bob"><jo-iso name="send" [size]="110" /></span>
@@ -105,18 +108,18 @@
         </div>
       }
     }
-    @if (step() < 5) {
+    @if (step() < 6 && step() !== 2) {
       <footer class="wz-foot" wz-foot>
-        @if (step() > 1 && step() < 4) { <button type="button" class="btn ghost" (click)="step.set(step() - 1)"><jo-icon name="arrow-left" [size]="14" />Voltar</button> } @else { <span></span> }
+        @if (step() > 2 && step() < 5) { <button type="button" class="btn ghost" (click)="step.set(step() - 1)"><jo-icon name="arrow-left" [size]="14" />Voltar</button> } @else { <span></span> }
         <span class="end">
           @switch (step()) {
             @case (1) { <button type="button" class="btn primary" (click)="next()">Começar<jo-icon name="arrow-right" [size]="14" /></button> }
-            @case (2) {
+            @case (3) {
               <button type="button" class="btn" (click)="check()" [disabled]="checking()"><jo-icon name="arrows-clockwise" [size]="14" />Conferir de novo</button>
               <button type="button" class="btn primary" (click)="next()" [disabled]="!checks() || blocked()">{{ blocked() ? 'Resolva o que falta' : warnings() ? 'Continuar mesmo assim' : 'Continuar' }}<jo-icon name="arrow-right" [size]="14" /></button>
             }
-            @case (3) { <button type="button" class="btn primary" (click)="next()"><jo-icon name="download-simple" [size]="14" />Instalar</button> }
-            @case (4) { @if (state()?.error) { <button type="button" class="btn primary" (click)="install()"><jo-icon name="arrows-clockwise" [size]="14" />Tentar de novo</button> } }
+            @case (4) { <button type="button" class="btn primary" (click)="next()"><jo-icon name="download-simple" [size]="14" />Instalar</button> }
+            @case (5) { @if (state()?.error) { <button type="button" class="btn primary" (click)="install()"><jo-icon name="arrows-clockwise" [size]="14" />Tentar de novo</button> } }
           }
         </span>
       </footer>

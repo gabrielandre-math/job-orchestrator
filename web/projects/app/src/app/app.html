@@ -51,7 +51,8 @@
   <router-outlet />
 </main>
 
-@if (welcome()) { <app-welcome (close)="closeWelcome()" /> }
+@if (terms()) { <app-terms (done)="termsDone($event)" /> }
+@if (welcome() && !terms()) { <app-welcome (close)="closeWelcome()" /> }
 @if (quitting()) { <app-quit (close)="quitting.set(false)" /> }
 
 <div class="toasts" aria-live="polite">

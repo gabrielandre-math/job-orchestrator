@@ -398,6 +398,8 @@ internal sealed class Continuous(Explorer explorer, IServiceScopeFactory scopes,
     protected override async Task ExecuteAsync(CancellationToken stop)
     {
         await Task.Delay(TimeSpan.FromSeconds(45), stop);
+        // Nada roda sozinho antes do aceite dos termos de uso (primeira vez no painel ou no instalador).
+        while (!Consent.Accepted && !stop.IsCancellationRequested) await Task.Delay(TimeSpan.FromSeconds(20), stop);
         // Dois laços independentes: um ciclo longo do Explorador nunca atrasa a rodada da campanha.
         await Task.WhenAll(SearchAsync(stop), ExploreAsync(stop));
     }

@@ -4,6 +4,7 @@ import { PageHero } from '@jo/ui/page-hero';
 import { Campaign, ExploreStatus, send } from '../../core/api';
 import { command } from '../../core/command';
 import { query } from '../../core/query';
+import { TermsDialog } from '../terms/terms';
 
 interface Privacy { localOnly: boolean; retentionDays: number }
 interface TimerView { name: string; label: string; enabled: boolean; active: boolean; next: string | null; }
@@ -16,12 +17,16 @@ const PHRASE = 'APAGAR TUDO';
  */
 @Component({
   selector: 'app-settings',
-  imports: [Icon, PageHero],
+  imports: [Icon, PageHero, TermsDialog],
   templateUrl: './settings.page.html',
   styleUrl: './settings.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SettingsPage {
+  protected readonly termsInfo = query<{ version: string; accepted: boolean; acceptedAt: string | null }>(() => '/terms', 0);
+  protected readonly readingTerms = signal(false);
+  protected async termsClosed() { this.readingTerms.set(false); await this.termsInfo.reload(); }
+  protected acceptedOn(iso: string | null | undefined) { return iso ? new Date(iso).toLocaleDateString('pt-BR') : ''; }
   protected readonly settings = query<Privacy>(() => '/settings', 0);
   protected readonly campaigns = query<Campaign[]>(() => '/campaigns', 0);
   protected readonly campaign = computed(() => this.campaigns.value()?.[0] ?? null);

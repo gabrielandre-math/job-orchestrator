@@ -12,13 +12,15 @@ import { Toasts } from './core/toast';
 import { SearchRun } from './core/search';
 import { Welcome } from './features/welcome/welcome';
 import { Quit } from './features/quit/quit';
+import { TermsDialog } from './features/terms/terms';
+import { get } from './core/api';
 
 interface NavItem { path: string; label: string; icon: string; exact?: boolean; count?: 'review' | 'attention'; }
 
 /** Shell: barra lateral recolhível (lembrada neste navegador), contadores reais e o estado da API. */
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icon, Mark, Welcome, Quit],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icon, Mark, Welcome, Quit, TermsDialog],
   templateUrl: './app.html',
   styleUrl: './app.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -69,7 +71,8 @@ export class App {
   protected readonly welcome = this.hub.open;
 
   constructor() {
-    if (!this.bare) void this.hub.refresh().then((o) => { if (o && !o.done && sessionStorageGet('jo.welcome') !== 'later') this.welcome.set(true); });
+    // Primeira vez: os termos de uso vêm antes de tudo (sem o aceite, nada roda sozinho); as boas-vindas só depois deles.
+    if (!this.bare) void get<{ accepted: boolean }>('/terms').then((t) => { if (t.accepted) this.greet(); else this.terms.set(true); }).catch(() => this.greet());
     const destroy = inject(DestroyRef);
     const sub = this.router.events.subscribe((e) => { if (e instanceof NavigationEnd) requestAnimationFrame(() => this.measure()); });
     const resize = () => this.measure();
@@ -89,6 +92,10 @@ export class App {
     if (!d || !kind) return 0;
     return kind === 'review' ? d.applications.awaitingApproval : d.pendingTasks;
   }
+
+  protected readonly terms = signal(false);
+  private greet() { void this.hub.refresh().then((o) => { if (o && !o.done && sessionStorageGet('jo.welcome') !== 'later') this.welcome.set(true); }); }
+  protected termsDone(accepted: boolean) { this.terms.set(false); if (accepted) this.greet(); }
 
   protected closeWelcome() { this.welcome.set(false); sessionStorageSet('jo.welcome', 'later'); void this.hub.refresh(); }
 

@@ -81,7 +81,7 @@ internal sealed class OllamaKeeper(IConfiguration config, ILogger<OllamaKeeper> 
         while (!stoppingToken.IsCancellationRequested)
         {
             var local = (config["Llm:Ollama:Url"] ?? "http://127.0.0.1:11434").Contains("127.0.0.1", StringComparison.Ordinal) || (config["Llm:Ollama:Url"] ?? "").Contains("localhost", StringComparison.Ordinal);
-            if (local && config["Llm:Ollama:Models:Local"] is { Length: > 0 } && !await OllamaHost.UpAsync() && (OllamaHost.Binary() is not null || OllamaHost.MacApp() is not null))
+            if (local && Consent.Accepted && config["Llm:Ollama:Models:Local"] is { Length: > 0 } && !await OllamaHost.UpAsync() && (OllamaHost.Binary() is not null || OllamaHost.MacApp() is not null))
                 log.LogInformation("Ollama parado; ligando: {Started}", OllamaHost.Start());
             try { await Task.Delay(TimeSpan.FromMinutes(3), stoppingToken); } catch (OperationCanceledException) { return; }
         }
