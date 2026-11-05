@@ -259,11 +259,27 @@ class CareersSpider(scrapy.Spider):
             money = f"{salary.get('currency', '')} {value.get('minValue') or value.get('value')}-{value.get('maxValue') or ''} {value.get('unitText', '')}".strip()
         description = re.sub(r"<[^>]+>", " ", job.get("description") or "")
         url = job.get("url") or response.url
+        # Países que o anúncio declara aceitar para trabalho remoto (applicantLocationRequirements): nome ou código, como a página escreveu.
+        required = job.get("applicantLocationRequirements") or []
+        if isinstance(required, (dict, str)):
+            required = [required]
+        allowed = []
+        for item in required:
+            if isinstance(item, str):
+                allowed.append(item)
+            elif isinstance(item, dict):
+                address = item.get("address") if isinstance(item.get("address"), dict) else {}
+                name = item.get("name") or item.get("addressCountry") or address.get("addressCountry")
+                if isinstance(name, dict):
+                    name = name.get("name")
+                if isinstance(name, str) and name:
+                    allowed.append(name)
         return {
             "type": "posting", "key": f"{url}|{title}", "url": url, "page": response.url, "title": title, "company": company or "",
             "location": "; ".join(p for p in place if p), "remote": job.get("jobLocationType") == "TELECOMMUTE",
             "employment": job.get("employmentType") if isinstance(job.get("employmentType"), str) else ", ".join(job.get("employmentType") or []),
             "salary": money, "posted": CareersSpider.iso(job.get("datePosted")), "valid": job.get("validThrough"), "description": " ".join(description.split())[:20000],
+            "allowed": allowed[:40],
         }
 
     @staticmethod

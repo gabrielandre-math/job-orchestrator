@@ -44,6 +44,8 @@ internal sealed class JobPosting : AggregateRoot
     public string? Sponsorship { get; private set; }
     /// <summary>Elegibilidade de quem mora no Brasil (Eligibility) e a frase do anúncio que a sustenta, com "declarado" ou "inferido".</summary>
     public string? Eligibility { get; private set; }
+    /// <summary>Países que a própria fonte diz aceitar (ISO 3166-1), quando ela diz de forma estruturada (Himalayas, JSON-LD). Vazio é "não disse".</summary>
+    public string[] AllowedCountries { get; private set; } = [];
     public string? EligibilityEvidence { get; private set; }
     public string ApplyChannel { get; private set; } = "ats";
     public string? ApplyEmail { get; private set; }
@@ -69,7 +71,8 @@ internal sealed class JobPosting : AggregateRoot
         SourceUpdatedAt = p.UpdatedAt,
         FirstSeenAt = now,
         LastSeenAt = now,
-        Status = JobStatus.Discovered
+        Status = JobStatus.Discovered,
+        AllowedCountries = [.. (p.AllowedCountries ?? []).Take(60)]
         };
         job.Apply(Normalizer.From(job.Title, job.Description, job.Location, job.ApplyUrl, p.Workplace, p.Compensation, p.Employment, p.ApplyEmail));
         return job;
@@ -84,6 +87,7 @@ internal sealed class JobPosting : AggregateRoot
         LastSeenAt = now;
         SourceUpdatedAt = p.UpdatedAt;
         Description = p.Description.Length > 20_000 ? p.Description[..20_000] : p.Description;
+        AllowedCountries = [.. (p.AllowedCountries ?? []).Take(60)];
         Apply(Normalizer.From(Title, Description, Location, ApplyUrl, p.Workplace, p.Compensation, p.Employment, p.ApplyEmail));
     }
 
@@ -110,7 +114,7 @@ internal sealed class JobPosting : AggregateRoot
     /// <summary>Recalcula a elegibilidade com a regra atual (as vagas antigas ganham na subida, uma vez).</summary>
     public void Classify()
     {
-        var e = Domain.Eligibility.Classify(Title, Description, Location, Modality);
+        var e = Domain.Eligibility.Classify(Title, Description, Location, Modality, AllowedCountries);
         Eligibility = e.Class;
         EligibilityEvidence = Cut($"{(e.Declared ? "declarado" : "inferido")}: {e.Evidence}", 320);
     }
@@ -152,12 +156,31 @@ internal sealed class JobPosting : AggregateRoot
     }
 
     /// <summary>Aplica elegibilidade e nota. Devolve true só na primeira vez que a vaga entra na fila.</summary>
-    public bool Evaluate(Evaluation e, int minFitScore)
+    public bool Evaluate(Evaluation e, int minFitScore) => Evaluate(e, minFitScore, EligibilityPolicy.Default);
+
+    /// <summary>
+    /// Com a política de quem procura: quem mora no Brasil não vê vaga restrita (US only, residência ou cidadania de fora) na fila, e vaga
+    /// presencial fora do Brasil só entra quando o perfil aceita mudança. A frase do anúncio vai no motivo. Vaga já na fila não muda.
+    /// </summary>
+    public bool Evaluate(Evaluation e, int minFitScore, EligibilityPolicy policy)
     {
         if (Status is JobStatus.Duplicate or JobStatus.Expired or JobStatus.Shortlisted) return false;
         Score = e.Score;
         Confidence = e.Confidence;
         Breakdown = JsonSerializer.Serialize(e.Factors, JsonSerializerOptions.Web);
+        var why = EligibilityEvidence is { Length: > 0 } ev ? $" ({ev})" : "";
+        if (policy.ResidesInBrazil && Eligibility == "BR_RESTRICTED")
+        {
+            Status = JobStatus.Rejected;
+            Reason = $"Restrita: quem mora no Brasil não pode se candidatar{why}.";
+            return false;
+        }
+        if (!policy.AcceptsRelocation && Eligibility is "RELOCATION_WITH_SPONSORSHIP" or "RELOCATION_UNVERIFIED")
+        {
+            Status = JobStatus.Rejected;
+            Reason = $"Presencial fora do Brasil e o perfil não aceita mudança{why}.";
+            return false;
+        }
         if (e.Rejection is not null)
         {
             Status = JobStatus.Rejected;

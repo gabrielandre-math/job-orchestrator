@@ -11,7 +11,8 @@ namespace JobOrchestrator.Jobs.Features;
 /// Cada etapa é narrada no fio "search" com números (Data), para a Busca ao vivo desenhar o progresso.
 /// </summary>
 internal sealed class RunRequestedConsumer(
-    JobsDbContext db, ICampaignsApi campaigns, ICampaignRuns runs, IAutomationApi automation, IIntelligenceApi ai, TimeProvider time, ILogger<RunRequestedConsumer> log) : IEventConsumer
+    JobsDbContext db, ICampaignsApi campaigns, ICampaignRuns runs, IAutomationApi automation, IIntelligenceApi ai, Profile.Contracts.IProfileApi profiles, TimeProvider time,
+    ILogger<RunRequestedConsumer> log) : IEventConsumer
 {
     public string EventType => RunRequestedV1.EventType;
 
@@ -19,6 +20,7 @@ internal sealed class RunRequestedConsumer(
     {
         var run = message.Read<RunRequestedV1>();
         var campaign = await campaigns.GetAsync(run.CampaignId, ct);
+        var policy = Policy(await profiles.CurrentAsync(ct));
         if (campaign is null) return;
 
         var found = new List<(DiscoveredPosting Posting, PostingStatus Status)>();
@@ -90,7 +92,7 @@ internal sealed class RunRequestedConsumer(
 
             await SnapshotAsync(posting.Id, p.RawJson, now, ct);
             posting.Verified(status, now);
-            var passed = posting.Evaluate(Scoring.Evaluate(campaign, posting.Title, posting.Description, posting.Location, posting.Modality), campaign.MinFitScore);
+            var passed = posting.Evaluate(Scoring.Evaluate(campaign, posting.Title, posting.Description, posting.Location, posting.Modality), campaign.MinFitScore, policy);
             if (posting.DuplicateOf is null && posting.Score is { } score) { scored++; bands[Math.Clamp(score / 10, 0, 9)]++; }
             if (passed)
             {
@@ -112,6 +114,20 @@ internal sealed class RunRequestedConsumer(
         await SayAsync(thread, "Analista", shortlisted > 0 ? $"{shortlisted} {(shortlisted == 1 ? "vaga foi" : "vagas foram")} para a fila" : "Nenhuma vaga nova acima do corte",
             shortlisted > 0 ? string.Join("\n", best.Select(b => $"{b.score} · {b.company}: {b.title}")) : "A busca segue nas próximas rodadas.",
             new { stage = "done", found = found.Count, fresh, duplicates, ignored, scored, shortlisted, seconds = Math.Round(clock.Elapsed.TotalSeconds, 1), top = best }, "Você", true, ct);
+    }
+
+    /// <summary>
+    /// A política de elegibilidade de quem procura, da confirmação do perfil: mora no Brasil quando o local do perfil é no Brasil ou o Brasil está
+    /// entre os países autorizados (sem nada dito, vale o Brasil); aceita mudança só quando a pessoa disse que aceita.
+    /// </summary>
+    internal static EligibilityPolicy Policy(Profile.Contracts.ProfileSnapshot? p)
+    {
+        if (p is null) return EligibilityPolicy.Default;
+        var c = p.Confirmations;
+        var here = SourceCatalog.MatchCountries(p.Identity.Location ?? "");
+        var authorized = c.AuthorizedCountries.SelectMany(SourceCatalog.MatchCountries).Concat(c.AuthorizedCountries.Where(x => x.Equals("BR", StringComparison.OrdinalIgnoreCase)).Select(_ => "BR")).ToList();
+        var brazil = here.Contains("BR") || authorized.Contains("BR") || (here.Count == 0 && authorized.Count == 0);
+        return new EligibilityPolicy(brazil, c.Relocate);
     }
 
     /// <summary>A narração nunca derruba a rodada: falha ao gravar a nota só vira log.</summary>

@@ -5,6 +5,14 @@ namespace JobOrchestrator.Jobs.Domain;
 /// <summary>A elegibilidade de quem mora no Brasil para uma vaga, com o trecho que sustenta e se foi dito pelo anúncio ou deduzido do local.</summary>
 internal sealed record EligibilityResult(string Class, string Evidence, bool Declared);
 
+/// <summary>Quem procura: mora no Brasil (vaga restrita sai da fila) e aceita mudança (vaga presencial fora entra). Sem perfil, mora no Brasil e não aceita.</summary>
+internal sealed record EligibilityPolicy(bool ResidesInBrazil, bool AcceptsRelocation)
+{
+    public static readonly EligibilityPolicy Default = new(true, false);
+    /// <summary>Vaga salva à mão: nada é cortado pela elegibilidade.</summary>
+    public static readonly EligibilityPolicy Manual = new(false, true);
+}
+
 /// <summary>
 /// Quem mora no Brasil pode se candidatar? O HiringEligibilityEngine da especificação V2, com regras determinísticas em português,
 /// inglês e espanhol (sem IA) e a frase do anúncio guardada como prova:
@@ -15,8 +23,13 @@ internal sealed record EligibilityResult(string Class, string Evidence, bool Dec
 /// </summary>
 internal static partial class Eligibility
 {
-    public static EligibilityResult Classify(string title, string description, string location, string? modality)
+    public static EligibilityResult Classify(string title, string description, string location, string? modality, IReadOnlyCollection<string>? allowed = null)
     {
+        // A fonte disse quais países aceita, de forma estruturada: é prova declarada e vale mais que o texto.
+        if (allowed is { Count: > 0 })
+            return allowed.Contains("BR")
+                ? new("BR_ELIGIBLE_CONFIRMED", $"a fonte lista os países aceitos: {string.Join(", ", allowed.Take(12))}", true)
+                : new("BR_RESTRICTED", $"a fonte aceita só: {string.Join(", ", allowed.Take(12))}", true);
         var text = $"{title}\n{location}\n{description}";
         var remote = modality == "Remoto" || RemoteWord().IsMatch(location) || RemoteWord().IsMatch(title);
         if (Citizenship().Match(text) is { Success: true } citizen) return new("BR_RESTRICTED", Snippet(text, citizen), true);

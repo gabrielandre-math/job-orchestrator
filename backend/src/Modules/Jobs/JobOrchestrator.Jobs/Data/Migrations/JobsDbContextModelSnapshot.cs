@@ -96,6 +96,11 @@ namespace JobOrchestrator.Jobs.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.PrimitiveCollection<string[]>("AllowedCountries")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("allowed_countries");
+
                     b.Property<string>("ApplyChannel")
                         .IsRequired()
                         .HasMaxLength(10)

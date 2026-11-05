@@ -284,7 +284,13 @@ internal sealed partial class ScrapyRunner(ScraperEnv env, IIntelligenceApi ai, 
         new(source, Hash(j.Str("key")), j.Str("company") is { Length: > 0 } c ? c : Host(j.Str("page")), j.Str("title"), j.Str("location"), j.Str("url"), j.Str("description"),
             DateTime.TryParse(j.Str("posted"), out var d) ? d.ToUniversalTime() : null, j.GetRawText(),
             Workplace: j.TryGetProperty("remote", out var r) && r.ValueKind == JsonValueKind.True ? "remote" : null,
-            Compensation: j.Str("salary") is { Length: > 0 } s ? s : null, Employment: j.Str("employment") is { Length: > 0 } e ? e : null, ListedAsOpen: true);
+            Compensation: j.Str("salary") is { Length: > 0 } s ? s : null, Employment: j.Str("employment") is { Length: > 0 } e ? e : null, ListedAsOpen: true,
+            AllowedCountries: j.TryGetProperty("allowed", out var a) && a.ValueKind == JsonValueKind.Array
+                ? a.EnumerateArray().Where(x => x.ValueKind == JsonValueKind.String).SelectMany(x => SourceCatalog.MatchCountries(x.GetString()!.Length == 2 ? Country(x.GetString()!) : x.GetString()!)).Distinct().ToList() is { Count: > 0 } list ? list : null
+                : null);
+
+    /// <summary>Código ISO de duas letras no JSON-LD vira o nome em inglês, para o mesmo casamento de país das outras fontes.</summary>
+    private static string Country(string iso) { try { return new RegionInfo(iso).EnglishName; } catch (ArgumentException) { return iso; } }
 
     private static int Stat(string log, string name) =>
         Regex.Matches(log, $"'{Regex.Escape(name)}':\\s*(\\d+)").Select(m => int.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture)).DefaultIfEmpty(0).Sum();

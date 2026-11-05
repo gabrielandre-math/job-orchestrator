@@ -60,8 +60,11 @@ internal sealed class HimalayasSource(IHttpClientFactory http, TimeProvider time
         {
             var salary = j.TryGetProperty("minSalary", out var min) && min.ValueKind == JsonValueKind.Number ? $"{j.Str("currency")} {min.GetDouble():0}-{(j.TryGetProperty("maxSalary", out var max) && max.ValueKind == JsonValueKind.Number ? max.GetDouble().ToString("0") : "")}" : null;
             var where = j.TryGetProperty("locationRestrictions", out var lr) && lr.ValueKind == JsonValueKind.Array ? string.Join(", ", lr.EnumerateArray().Select(x => x.ValueKind == JsonValueKind.String ? x.GetString() : x.Str("name"))) : "Remoto";
+            // Os países aceitos vêm estruturados da Himalayas: a elegibilidade usa a lista como prova declarada, não o texto.
+            var allowed = lr.ValueKind == JsonValueKind.Array ? lr.EnumerateArray().SelectMany(x => SourceCatalog.MatchCountries(x.ValueKind == JsonValueKind.String ? x.GetString() ?? "" : x.Str("name"))).Distinct().ToList() : null;
             return new DiscoveredPosting(source, j.Str("guid") is { Length: > 0 } g ? g : j.Str("applicationLink"), j.Str("companyName"), j.Str("title"), where, j.Str("applicationLink"),
-                Json.Plain(j.Str("description")), j.Date("pubDate"), j.GetRawText(), Workplace: "remote", Compensation: salary, Employment: j.Str("employmentType"), ListedAsOpen: true);
+                Json.Plain(j.Str("description")), j.Date("pubDate"), j.GetRawText(), Workplace: "remote", Compensation: salary, Employment: j.Str("employmentType"), ListedAsOpen: true,
+                AllowedCountries: allowed is { Count: > 0 } ? allowed : null);
         })];
     }
 }

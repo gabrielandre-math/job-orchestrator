@@ -58,7 +58,8 @@ internal sealed partial class CaptureJobHandler(JobsDbContext db, ICampaignsApi 
         var raw = JsonSerializer.Serialize(new { c.Url, c.Title }, JsonSerializerOptions.Web);
         var posting = JobPosting.Discover(campaign.Id, new DiscoveredPosting(origin, id, company, role, "", c.Url, c.Text ?? "", now, raw), now);
         db.Postings.Add(posting);
-        var shortlisted = posting.Evaluate(Scoring.Evaluate(campaign, posting.Title, posting.Description, posting.Location, posting.Modality), campaign.MinFitScore);
+        // Vaga salva pela pessoa: ela escolheu, então a elegibilidade informa, mas não corta.
+        var shortlisted = posting.Evaluate(Scoring.Evaluate(campaign, posting.Title, posting.Description, posting.Location, posting.Modality), campaign.MinFitScore, EligibilityPolicy.Manual);
         if (shortlisted)
             db.Publish(JobShortlistedV1.EventType, new JobShortlistedV1(posting.Id, campaign.Id, posting.CanonicalKey, posting.Company, posting.Title, posting.Location, posting.ApplyUrl, posting.Score!.Value, posting.ApplyChannel), now);
         return new CaptureResult("saved", posting.Id, origin, string.IsNullOrWhiteSpace(c.Text)
