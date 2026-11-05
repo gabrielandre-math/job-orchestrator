@@ -16,6 +16,8 @@ internal sealed class StepKit(ApplicationsDbContext db, IAutomationApi automatio
     public IAutomationApi Automation => automation;
     public ProfileSource Profiles => profiles;
     public DateTime Now => time.GetUtcNow().UtcDateTime;
+    public TimeSpan ReconcileDelay => TimeSpan.FromSeconds(config.GetValue("Workflow:ReconcileDelaySeconds", 20));
+    public TimeSpan ReconcileRetry => TimeSpan.FromSeconds(config.GetValue("Workflow:ReconcileRetrySeconds", 30));
 
     public async Task<(JobApplication App, WorkItem Item)> LoadAsync(Claimed c, CancellationToken ct) =>
         (await db.Applications.FirstAsync(a => a.Id == c.ApplicationId, ct), await db.WorkItems.FirstAsync(w => w.Id == c.Id, ct));
@@ -135,7 +137,7 @@ internal sealed class SubmitStep(StepKit k, TokenIssuer tokens) : IStep
             var stale = await db.Intents.FirstOrDefaultAsync(i => i.ApplicationId == app.Id && i.State == IntentState.Open, ct);
             stale?.Close(IntentState.SentUnverified, "O processo caiu durante o envio.", k.Now);
             app.Move(ApplicationState.SubmissionUnknown, "O processo caiu durante o envio. Nada será reenviado sem reconciliação.", "Supervisor", k.Now);
-            k.Enqueue(app.Id, WorkStep.Reconcile, TimeSpan.FromSeconds(3));
+            k.Enqueue(app.Id, WorkStep.Reconcile, k.ReconcileDelay);
             item.Complete(k.Now);
             await db.SaveChangesAsync(ct);
             return;
@@ -182,7 +184,7 @@ internal sealed class SubmitStep(StepKit k, TokenIssuer tokens) : IStep
             case AdapterResultKind.SubmissionUnknown:
                 intent.Close(IntentState.SentUnverified, outcome.Detail, now);
                 app.Move(ApplicationState.SubmissionUnknown, outcome.Detail, "Remetente", now, new { outcome.ReasonCode });
-                k.Enqueue(app.Id, WorkStep.Reconcile, TimeSpan.FromSeconds(20));
+                k.Enqueue(app.Id, WorkStep.Reconcile, k.ReconcileDelay);
                 break;
             case AdapterResultKind.PermanentFailure:
                 intent.Close(IntentState.Discarded, outcome.Detail, now);
@@ -231,14 +233,14 @@ internal sealed class ReconcileStep(StepKit k) : IStep
         }
         else if (outcome.Kind == AdapterResultKind.Completed && c.Attempts < 3)
         {
-            throw new RetryLaterException(TimeSpan.FromSeconds(30), "O ATS ainda não mostra a candidatura.");
+            throw new RetryLaterException(k.ReconcileRetry, "O ATS ainda não mostra a candidatura.");
         }
         else if (outcome.Kind is AdapterResultKind.Completed or AdapterResultKind.NeedsHuman)
         {
             app.Move(ApplicationState.NeedsHuman, outcome.Kind == AdapterResultKind.Completed ? "O ATS não mostra a candidatura depois de 3 consultas. Confira e decida." : outcome.Detail, "Verificador", now);
             k.Db.AddTask(app.Id, HumanTaskKind.Reconcile, "Conferir envio incerto", "Veja no site ou no e-mail se a candidatura chegou.", now);
         }
-        else throw new RetryLaterException(TimeSpan.FromSeconds(30), outcome.Detail);
+        else throw new RetryLaterException(k.ReconcileRetry, outcome.Detail);
         item.Complete(now);
         await k.Db.SaveChangesAsync(ct);
     }
