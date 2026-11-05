@@ -1,0 +1,15 @@
+.page-head input { width: 260px; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
+.layout.with-detail { grid-template-columns: minmax(0, 1fr) 440px; }
+.title { display: block; font-weight: 500; }
+.company { display: block; color: var(--text-2); font-size: 12.5px; }
+.reason { max-width: 320px; }
+tr.current td { background: var(--surface-2); }
+.detail { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow: auto; }
+.detail header p { margin: 2px 0 0; }
+.body { display: grid; gap: 12px; padding: 16px; }
+.facts { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; font-size: 12.5px; }
+.factors td, .factors th { padding: 8px 10px; }
+.desc { margin: 0; color: var(--text-2); white-space: pre-line; max-height: 240px; overflow: auto; }
+.body .btn { justify-self: start; }
+.receipt { display: block; font-size: 12px; }

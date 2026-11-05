@@ -1,0 +1,104 @@
+<section class="page">
+  @if (data.value(); as d) {
+    <header class="page-head">
+      <div>
+        <a class="back" routerLink="/candidaturas">Candidaturas</a>
+        <h1>{{ d.application.company }}</h1>
+        <p>{{ d.application.title }}, {{ d.application.location }}. Nota {{ d.application.score }}.</p>
+      </div>
+      <div class="actions">
+        <jo-badge [label]="label(d.application.state)" [tone]="tone(d.application.state)" />
+        @if (d.hasResume) { <a class="btn" [href]="'/api/applications/' + d.application.id + '/resume'" target="_blank" rel="noopener">Currículo enviado (PDF)</a> }
+        <a class="btn" [href]="d.applyUrl" target="_blank" rel="noopener noreferrer">Vaga original</a>
+      </div>
+    </header>
+
+    @for (p of [approve.problem(), withdraw.problem(), retry.problem()]; track $index) { @if (p) { <p class="problem">{{ p.detail }}</p> } }
+
+    @if (d.application.state === 'AwaitingApproval' && d.payloadHash) {
+      <div class="decision panel">
+        <div>
+          <h2>Aprovar o envio deste formulário</h2>
+          <p class="muted">A aprovação vale só para os valores abaixo (hash <span class="mono">{{ d.payloadHash.slice(0, 12) }}</span>). Se o formulário mudar, pede aprovação de novo.</p>
+        </div>
+        <div class="actions">
+          <button class="btn" type="button" [disabled]="withdraw.running()" (click)="doWithdraw()">Recusar</button>
+          <button class="btn primary" type="button" [disabled]="approve.running()" (click)="doApprove(d.payloadHash)">{{ confirming() ? 'Confirmar envio' : 'Aprovar envio' }}</button>
+        </div>
+      </div>
+    }
+    @if (d.application.state === 'NeedsHuman') {
+      <div class="decision panel">
+        <div>
+          <h2>Parada com você</h2>
+          <p class="muted">{{ d.application.lastReason }} Depois de resolver, refaça o preparo. Nada é reenviado sem nova aprovação.</p>
+        </div>
+        <div class="actions">
+          <button class="btn" type="button" (click)="doWithdraw()">Retirar</button>
+          <button class="btn primary" type="button" [disabled]="retry.running() || !d.hasResume" (click)="doRetry()">Refazer preparo</button>
+        </div>
+      </div>
+    }
+
+    <div class="cols">
+      <section class="panel">
+        <header><h2>Linha do tempo</h2></header>
+        <ol class="timeline">
+          @for (h of history(); track $index) {
+            <li [class]="tone(h.to)">
+              <span class="when"><span class="num">{{ clock(h.at) }}</span><span class="faint">{{ day(h.at) }}</span></span>
+              <span class="mark"></span>
+              <div>
+                <p class="what"><strong>{{ label(h.to) }}</strong><span class="faint">, {{ h.actor }}</span></p>
+                <p class="why">{{ h.reason }}</p>
+              </div>
+            </li>
+          }
+        </ol>
+      </section>
+
+      <div class="side">
+        <section class="panel">
+          <header><h2>Formulário preparado</h2>@if (d.payloadHash) {<span class="mono faint">{{ d.payloadHash.slice(0, 12) }}</span>}</header>
+          @if (d.fields.length === 0) {
+            <p class="pad muted">Ainda não preenchido.</p>
+          } @else {
+            <table class="grid">
+              <thead><tr><th>Campo</th><th>Valor</th><th>Origem</th></tr></thead>
+              <tbody>
+                @for (f of d.fields; track f.label) {
+                  <tr><td class="muted">{{ f.label }}</td><td>{{ f.value }}</td><td class="faint">{{ f.source }}</td></tr>
+                }
+              </tbody>
+            </table>
+          }
+        </section>
+
+        <section class="panel">
+          <header><h2>Provas</h2><span class="muted">{{ evidence(d.application.evidenceLevel) }}</span></header>
+          @if (d.evidence.length === 0) {
+            <p class="pad muted">Sem prova de envio. Preenchido não é enviado.</p>
+          } @else {
+            <ul class="list">
+              @for (e of d.evidence; track $index) {
+                <li><span>Nível {{ e.level }}, {{ evidence(e.level).toLowerCase() }}</span><span class="muted">{{ e.detail }}</span></li>
+              }
+            </ul>
+          }
+          @if (d.application.receiptId) { <p class="pad">Recibo <span class="mono">{{ d.application.receiptId }}</span></p> }
+        </section>
+
+        @if (pending().length > 0) {
+          <section class="panel">
+            <header><h2>Pendências</h2></header>
+            <ul class="list">
+              @for (t of pending(); track t.id) { <li><span>{{ t.title }}</span><span class="muted">{{ t.detail }}</span></li> }
+            </ul>
+          </section>
+        }
+      </div>
+    </div>
+  } @else if (data.problem(); as p) {
+    <p class="problem">{{ p.detail }}</p>
+  }
+</section>

@@ -1,0 +1,80 @@
+<section class="page">
+  <header class="page-head">
+    <div>
+      <h1>Vagas</h1>
+      <p>Tudo que as fontes trouxeram. A nota mede aderência à campanha, não chance de contratação.</p>
+    </div>
+    <div class="actions"><input type="search" placeholder="Buscar empresa ou cargo" [value]="search()" (input)="search.set($any($event.target).value)" aria-label="Buscar" /></div>
+  </header>
+
+  <div class="chips" role="group" aria-label="Filtrar por situação">
+    @for (f of filters; track f.label) {
+      <button type="button" class="chip" [attr.aria-pressed]="status() === f.key" (click)="filter(f.key)">{{ f.label }}<span class="n">{{ count(f.key) }}</span></button>
+    }
+  </div>
+
+  @if (all.problem(); as p) { <p class="problem">{{ p.detail }}</p> }
+
+  <div class="layout" [class.with-detail]="open()">
+    <section class="panel">
+      @if (all.value() && rows().length === 0) {
+        <jo-empty title="Nenhuma vaga neste filtro." hint="Rode a campanha ou troque o filtro." />
+      } @else {
+        <table class="grid">
+          <thead><tr><th>Nota</th><th>Cargo</th><th>Local</th><th>Situação</th><th>Motivo</th><th class="right">Vista</th></tr></thead>
+          <tbody>
+            @for (j of rows(); track j.id) {
+              <tr class="row" [class.current]="open() === j.id" (click)="open.set(open() === j.id ? null : j.id)">
+                <td><jo-score [value]="j.status === 'Rejected' ? null : j.score" /></td>
+                <td><span class="title">{{ j.title }}</span><span class="company">{{ j.company }}</span></td>
+                <td class="muted">{{ j.location || 'não informado' }}</td>
+                <td><jo-badge [label]="label(j.status)" [tone]="tone(j.status)" /></td>
+                <td class="muted reason">{{ j.reason ?? '' }}</td>
+                <td class="right faint">{{ ago(j.firstSeenAt) }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </section>
+
+    @if (open()) {
+      <aside class="panel detail">
+        @if (detail.value(); as d) {
+          <header>
+            <div><h2>{{ d.job.title }}</h2><p class="muted">{{ d.job.company }}, {{ d.job.location || 'local não informado' }}</p></div>
+            <button type="button" class="btn ghost" (click)="open.set(null)">Fechar</button>
+          </header>
+          <div class="body">
+            <div class="facts">
+              <span><jo-badge [label]="label(d.job.status)" [tone]="tone(d.job.status)" /></span>
+              <span class="muted">Fonte <span class="mono">{{ source(d.job.source) }}</span></span>
+              <span class="muted">{{ d.snapshots }} {{ d.snapshots === 1 ? 'cópia guardada' : 'cópias guardadas' }}</span>
+            </div>
+            @if (d.job.reason) { <p class="notice">{{ d.job.reason }}</p> }
+            @if (d.factors.length > 0) {
+              <h3>Como a nota foi formada</h3>
+              <table class="grid factors">
+                <thead><tr><th>Fator</th><th class="right">Peso</th><th class="right">Pontos</th><th>Por quê</th></tr></thead>
+                <tbody>
+                  @for (f of d.factors; track f.name) {
+                    <tr>
+                      <td>{{ f.name }}@if (f.unknown) {<span class="faint"> (estimado)</span>}</td>
+                      <td class="right num">{{ f.weight }}</td>
+                      <td class="right num">{{ f.points }}</td>
+                      <td class="muted">{{ f.note }}</td>
+                    </tr>
+                  }
+                  <tr><td><strong>Total</strong></td><td></td><td class="right num"><strong>{{ d.job.score }}</strong></td><td class="faint">confiança {{ ((d.job.confidence ?? 0) * 100).toFixed(0) }}%</td></tr>
+                </tbody>
+              </table>
+            }
+            <h3>Descrição</h3>
+            <p class="desc">{{ d.description }}</p>
+            <a class="btn" [href]="d.job.applyUrl" target="_blank" rel="noopener noreferrer">Abrir vaga original</a>
+          </div>
+        }
+      </aside>
+    }
+  </div>
+</section>

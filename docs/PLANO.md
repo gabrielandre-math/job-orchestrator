@@ -242,7 +242,7 @@ A lista de empresas cresce sozinha:
 
 ## 10. Interface
 
-Painel em `127.0.0.1:7410`, React + Vite, sóbrio, claro e escuro, sem número simulado.
+Painel em `127.0.0.1:7410`, Angular 22 no padrão do Grifo, sóbrio, claro e escuro, sem número simulado.
 
 1. **Visão geral:** a última noite com contagens provadas, campanha, ações pendentes, cota.
 2. **Campanhas:** criar, pausar, editar; fontes, cargos, modalidade, remuneração por moeda e vínculo, idiomas, senioridade, limites, janela, autonomia.
@@ -267,8 +267,8 @@ Fora do painel:
 
 ### 10.1 Fluxo visual (estilo n8n)
 
-- **Canvas.** Feito com React Flow (`@xyflow/react`, MIT). Cada agente é um nó com:
-  - logo (Simple Icons, CC0);
+- **Canvas.** Feito à mão em SVG dentro do Angular (zoom, arrasto, minimapa), sem biblioteca. Cada agente é um nó com:
+  - nome e papel, sem ícone decorativo;
   - status e contagem da noite;
   - provedor, modelo e esforço em uso.
 

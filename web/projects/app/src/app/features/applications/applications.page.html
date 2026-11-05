@@ -1,0 +1,32 @@
+<section class="page">
+  <header class="page-head">
+    <div><h1>Candidaturas</h1><p>Cada vaga que entrou na fila, com o estado atual e a prova de envio.</p></div>
+  </header>
+  <div class="chips" role="group" aria-label="Filtrar por estado">
+    @for (f of filters; track f.label) {
+      <button type="button" class="chip" [attr.aria-pressed]="state() === f.key" (click)="filter(f.key)">{{ f.label }}<span class="n">{{ count(f.key) }}</span></button>
+    }
+  </div>
+  @if (all.problem(); as p) { <p class="problem">{{ p.detail }}</p> }
+  <section class="panel">
+    @if (all.value() && rows().length === 0) {
+      <jo-empty title="Nenhuma candidatura neste filtro." hint="As candidaturas nascem quando uma vaga passa no corte da campanha." />
+    } @else {
+      <table class="grid">
+        <thead><tr><th>Empresa e cargo</th><th>Estado</th><th>Nota</th><th>Prova</th><th>Último passo</th><th class="right">Atualizada</th></tr></thead>
+        <tbody>
+          @for (a of rows(); track a.id) {
+            <tr class="row" [routerLink]="['/candidaturas', a.id]">
+              <td><span class="title">{{ a.company }}</span><span class="company">{{ a.title }}</span></td>
+              <td><jo-badge [label]="label(a.state)" [tone]="tone(a.state)" /></td>
+              <td><jo-score [value]="a.score" /></td>
+              <td><span class="muted">{{ evidence(a.evidenceLevel) }}</span>@if (a.receiptId) {<span class="mono faint receipt">{{ a.receiptId }}</span>}</td>
+              <td class="muted reason">{{ a.lastReason }}</td>
+              <td class="right faint">{{ ago(a.updatedAt) }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </section>
+</section>

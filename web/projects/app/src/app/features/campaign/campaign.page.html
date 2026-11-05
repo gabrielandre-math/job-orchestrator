@@ -1,0 +1,37 @@
+<section class="page">
+  @if (list.value()?.[0]; as c) {
+    <header class="page-head">
+      <div><h1>Campanha</h1><p>{{ c.name }}. Última rodada {{ ago(c.lastRunAt) }}. Fuso {{ c.timeZone }}, janela {{ c.window }}.</p></div>
+      <div class="actions">
+        <button class="btn" type="button" [disabled]="run.running()" (click)="run.run(c)">Rodar agora</button>
+        <button class="btn primary" type="button" [disabled]="save.running()" (click)="submit(c)">{{ saved() ? 'Salvo' : 'Salvar' }}</button>
+      </div>
+    </header>
+    @if (save.problem(); as p) { <p class="problem">{{ p.detail }}</p> }
+    @if (run.problem(); as p) { <p class="problem">{{ p.detail }}</p> }
+
+    <section class="panel">
+      <header><h2>Até onde o sistema vai sozinho</h2></header>
+      <div class="modes" role="radiogroup" aria-label="Modo de envio">
+        @for (m of modes; track m.key) {
+          <button type="button" role="radio" class="mode" [attr.aria-checked]="form().mode === m.key" [disabled]="m.locked" (click)="set('mode', m.key)">
+            <span class="m-label">{{ m.label }}</span><span class="m-hint">{{ m.hint }}</span>
+          </button>
+        }
+      </div>
+    </section>
+
+    <section class="panel">
+      <header><h2>Critérios e limites</h2></header>
+      <div class="form">
+        <label class="field">Nota mínima para entrar na fila<input type="number" min="0" max="100" [value]="form().minFitScore" (input)="set('minFitScore', $any($event.target).value)" /></label>
+        <label class="field">Envios por dia, no máximo<input type="number" min="0" max="100" [value]="form().maxSubmissionsPerDay" (input)="set('maxSubmissionsPerDay', $any($event.target).value)" /></label>
+        <label class="field wide">Tecnologias, separadas por vírgula. As duas primeiras são eliminatórias.<input [value]="form().technologies" (input)="set('technologies', $any($event.target).value)" /></label>
+        <label class="field wide">Locais aceitos, separados por vírgula<input [value]="form().locations" (input)="set('locations', $any($event.target).value)" /></label>
+        <label class="field wide">Fontes, uma por linha (greenhouse:empresa ou greenhouse:URL do board)<textarea rows="4" [value]="form().sources" (input)="set('sources', $any($event.target).value)"></textarea></label>
+      </div>
+    </section>
+  } @else if (list.problem(); as p) {
+    <p class="problem">{{ p.detail }}</p>
+  }
+</section>

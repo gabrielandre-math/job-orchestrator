@@ -1,0 +1,24 @@
+<aside class="side">
+  <a class="brand" routerLink="/">
+    <span class="name">Job Orchestrator</span>
+    <span class="sub">local, {{ mode() || 'sem campanha' }}</span>
+  </a>
+  <nav aria-label="Principal">
+    @for (g of nav; track g.group) {
+      <p class="group">{{ g.group }}</p>
+      @for (i of g.items; track i.path) {
+        <a [routerLink]="i.path" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: !!i.exact }">
+          <span>{{ i.label }}</span>
+          @if (count(i.count) > 0) { <span class="count">{{ count(i.count) }}</span> }
+        </a>
+      }
+    }
+  </nav>
+  <footer>
+    <span class="status" [class.on]="online()">{{ online() ? 'API no ar' : 'API fora do ar' }}</span>
+    <button class="btn ghost" type="button" (click)="theme.toggle()">{{ theme.mode() === 'dark' ? 'Tema claro' : 'Tema escuro' }}</button>
+  </footer>
+</aside>
+<main>
+  <router-outlet />
+</main>

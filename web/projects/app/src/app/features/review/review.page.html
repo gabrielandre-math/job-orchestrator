@@ -1,0 +1,39 @@
+<section class="page">
+  <header class="page-head">
+    <div><h1>Revisão</h1><p>O que vai ser enviado, exatamente. A aprovação vale só para estes valores.</p></div>
+  </header>
+  @if (decide.problem(); as p) { <p class="problem">{{ p.detail }}</p> }
+  @if (list.value(); as l) {
+    @if (rows().length === 0) {
+      <section class="panel"><jo-empty title="Nada para revisar." hint="Com a campanha em modo Revisão sua, cada formulário preparado aparece aqui antes do envio." /></section>
+    }
+  }
+  @for (a of rows(); track a.id) {
+    <article class="panel card">
+      <header>
+        <div>
+          <h2><a [routerLink]="['/candidaturas', a.id]">{{ a.company }}</a></h2>
+          <p class="muted">{{ a.title }}, {{ a.location }}</p>
+        </div>
+        <jo-score [value]="a.score" />
+      </header>
+      @if (details()[a.id]; as d) {
+        <table class="grid">
+          <tbody>
+            @for (f of d.fields; track f.label) {
+              <tr><td class="muted label">{{ f.label }}</td><td>{{ f.value }}</td><td class="faint origin">{{ f.source }}</td></tr>
+            }
+          </tbody>
+        </table>
+        <footer>
+          <span class="faint">Destino <span class="mono">{{ d.applyUrl }}</span></span>
+          <div class="actions">
+            @if (d.hasResume) { <a class="btn ghost" [href]="'/api/applications/' + a.id + '/resume'" target="_blank" rel="noopener">Ver currículo</a> }
+            <button type="button" class="btn" [disabled]="decide.running()" (click)="reject(a.id)">Recusar</button>
+            <button type="button" class="btn primary" [disabled]="decide.running()" (click)="approve(a.id)">{{ confirming() === a.id ? 'Confirmar envio' : 'Aprovar envio' }}</button>
+          </div>
+        </footer>
+      }
+    </article>
+  }
+</section>

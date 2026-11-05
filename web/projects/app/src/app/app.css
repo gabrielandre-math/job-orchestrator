@@ -1,0 +1,19 @@
+:host { display: grid; grid-template-columns: 224px minmax(0, 1fr); height: 100vh; }
+.side { display: flex; flex-direction: column; gap: 8px; padding: 16px 12px; border-right: 1px solid var(--line); background: var(--surface); }
+.brand { display: grid; gap: 2px; padding: 4px 10px 14px; text-decoration: none; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+.brand .name { font-weight: 650; letter-spacing: -0.01em; }
+.brand .sub { font-size: 12px; color: var(--text-3); }
+nav { display: grid; gap: 1px; overflow-y: auto; }
+.group { margin: 14px 10px 6px; font: 500 10.5px var(--font-ui); text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-3); }
+nav a { position: relative; display: flex; align-items: center; justify-content: space-between; height: 32px; padding: 0 10px; border-radius: var(--radius-sm); color: var(--text-2); text-decoration: none; font-weight: 500; }
+nav a:hover { color: var(--text); background: var(--surface-2); }
+nav a.active { color: var(--text); background: var(--surface-3); }
+nav a.active::before { content: ""; position: absolute; left: -12px; top: 8px; bottom: 8px; width: 2px; border-radius: 2px; background: var(--accent); }
+.count { min-width: 20px; height: 18px; padding: 0 6px; border-radius: 9px; background: var(--warn-weak); color: var(--warn); font: 600 11px var(--font-mono); display: inline-grid; place-items: center; }
+footer { margin-top: auto; display: grid; gap: 6px; padding-top: 12px; border-top: 1px solid var(--line); }
+.status { display: flex; align-items: center; gap: 8px; padding: 0 10px; font-size: 12px; color: var(--danger); }
+.status::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.status.on { color: var(--text-3); }
+.status.on::before { background: var(--ok); }
+footer .btn { justify-content: flex-start; }
+main { overflow: auto; min-width: 0; background: var(--bg); }

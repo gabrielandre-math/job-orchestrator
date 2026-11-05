@@ -49,7 +49,7 @@ job-orchestrator/
     JobOrchestrator.Resume/               seleção de fatos, composição, proveniência, templates, PDF
     JobOrchestrator.Tracking/             Gmail/IMAP, classificação, casamento, ICS, follow-ups
     JobOrchestrator.Cli/                  jo: doctor, status, campaign, submit-mode, llm bench, replay, export
-  dashboard/                              React + Vite + TS, @xyflow/react (canvas), simple-icons (logos), cliente gerado do OpenAPI
+  web/                                    Angular 22 no padrão do Grifo: projects/app (core + features por tela) e projects/ui (componentes)
   fake-ats/                               ASP.NET mínimo com os 10 cenários e contador de envios
   omarchy-plugin/                         widget da barra (manifest.json + BarWidget.qml)
   tests/  Unit/ Integration/ Contracts/ E2E/ Chaos/ Security/
@@ -508,12 +508,12 @@ O exemplo não liga envio, não liga provedor em nuvem e não informa cota. Cota
 | 0001 | Motor de fluxo: máquina de estados própria em Postgres, sem Temporal (`docs/adr/0001-motor-de-fluxo.md`) |
 | 0002 | Monólito modular .NET 10 com Carter e vertical slices; processos filhos para navegador, IA e plugins |
 | 0003 | Playwright .NET no lugar de sidecar Node |
-| 0004 | Painel em React + Vite servido pela própria API, no lugar de Next.js (sem servidor Node em runtime) |
+| 0004 | Painel em Angular 22 (mesma arquitetura do frontend do Grifo), servido pela própria API; sem servidor Node em runtime |
 | 0005 | IA só local ou pelos CLIs oficiais das assinaturas; API paga desligada; nunca `claude --bare` |
 | 0006 | Os cinco repos auditados ficam como referência; integração futura só como plugin de processo |
 | 0007 | PDF pelo Chromium a partir de HTML, validado com poppler; sem LaTeX |
 | 0008 | Acompanhamento por Gmail `gmail.readonly`; IMAP como alternativa |
 | 0009 | Sem Redis no início; Postgres é a fonte da verdade e a fila |
 | 0010 | Segredos no Secret Service (gnome-keyring); consentimento só pelo painel, nunca por arquivo |
-| 0011 | Canvas do fluxo com React Flow; topologia de segurança fixa; stack-diagram só como referência e skill de documentação |
+| 0011 | Canvas do fluxo próprio em SVG (zoom, arrasto, minimapa), sem biblioteca; topologia de segurança fixa; stack-diagram só como referência |
 | 0012 | Modelo e esforço na medida: começa no degrau mínimo calibrado por tarefa e só sobe quando a validação falha (`docs/integracao-ia.md` §10) |

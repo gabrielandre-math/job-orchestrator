@@ -1,0 +1,86 @@
+<section class="page flow-page">
+  <header class="page-head">
+    <div>
+      <h1>Fluxo</h1>
+      <p>Os agentes e quantos itens passaram por cada um. @if (flow.value(); as f) {<span class="faint">Atualizado às {{ clock(f.at) }}.</span>}</p>
+    </div>
+    <div class="actions">
+      <button class="chip" type="button" [attr.aria-pressed]="live()" (click)="live.set(!live())">Animação {{ live() ? 'ligada' : 'desligada' }}</button>
+    </div>
+  </header>
+
+  @if (flow.problem(); as p) { <p class="problem">{{ p.detail }}</p> }
+
+  <div #viewport class="canvas" tabindex="0" role="application" aria-label="Fluxo dos agentes. Arraste para mover, Ctrl e roda para zoom, 0 para ajustar."
+       [class.live]="live()" [style.background-size]="grid().size" [style.background-position]="grid().pos"
+       (wheel)="wheel($event)" (pointerdown)="down($event)" (pointermove)="move($event)" (pointerup)="up()" (pointercancel)="up()" (keydown)="key($event)">
+    <div class="world" [style.transform]="transform()">
+      @for (l of lanes; track l.label) {
+        <span class="lane" [style.top.px]="l.y">{{ l.label }}</span>
+      }
+      <svg class="edges" width="1" height="1" overflow="visible" aria-hidden="true">
+        @for (e of edges(); track e.id) {
+          <path [attr.d]="e.d" [attr.class]="'edge ' + e.kind + (e.kind === 'flow' && e.count > 0 ? ' hot' : '')" />
+          @if (e.kind === 'flow' && e.count > 0) { <path [attr.d]="e.d" class="pulse" /> }
+        }
+      </svg>
+      @for (e of edges(); track e.id) {
+        @if (e.kind !== 'planned' && e.count > 0) {
+          <span class="edge-count" [class.fallback]="e.kind === 'fallback'" [style.left.px]="e.mx" [style.top.px]="e.my">{{ e.count }}</span>
+        }
+      }
+      @for (n of nodes(); track n.id) {
+        <button type="button" class="node" [class]="'node ' + n.status" [class.source]="n.id.startsWith('source-')" [class.selected]="selected() === n.id"
+                [style.left.px]="n.x" [style.top.px]="n.y" [style.width.px]="n.w" [style.height.px]="n.h" (click)="toggle(n.id)"
+                [attr.aria-pressed]="selected() === n.id">
+          <span class="port in"></span><span class="port out"></span>
+          <span class="top">
+            <span class="dot"></span>
+            <span class="name">{{ n.label }}</span>
+            @if (n.phase) { <span class="phase">{{ n.phase }}</span> } @else { <span class="count">{{ n.count }}</span> }
+          </span>
+          <span class="role">{{ n.role }}</span>
+          @if (!n.id.startsWith('source-')) { <span class="detail">{{ n.detail }}</span> }
+        </button>
+      }
+    </div>
+
+    <div class="controls">
+      <button type="button" class="btn" (click)="zoom(1 / 1.2)" aria-label="Diminuir zoom">−</button>
+      <span class="zoom num">{{ (k() * 100).toFixed(0) }}%</span>
+      <button type="button" class="btn" (click)="zoom(1.2)" aria-label="Aumentar zoom">+</button>
+      <button type="button" class="btn" (click)="fit()">Ajustar</button>
+    </div>
+
+    <svg class="mini" [attr.width]="mini().w" [attr.height]="mini().h" (click)="jump($event)" role="img" aria-label="Minimapa">
+      @for (m of mini().nodes; track m.id) {
+        <rect [attr.x]="m.x" [attr.y]="m.y" [attr.width]="m.w" [attr.height]="m.h" rx="2" [attr.class]="m.status" />
+      }
+      <rect class="view" [attr.x]="mini().view.x" [attr.y]="mini().view.y" [attr.width]="mini().view.w" [attr.height]="mini().view.h" rx="2" />
+    </svg>
+
+    @if (current(); as n) {
+      <aside class="drawer" aria-label="Detalhes do agente">
+        <header>
+          <div>
+            <h2>{{ n.label }}</h2>
+            <p class="muted">{{ n.role }}</p>
+          </div>
+          <button type="button" class="btn ghost" (click)="selected.set(null)">Fechar</button>
+        </header>
+        <div class="figure">
+          <span class="num big">{{ n.phase ? '–' : n.count }}</span>
+          <jo-badge [label]="statusLabel(n.status)" [tone]="statusTone(n.status)" />
+        </div>
+        @if (!n.phase) { <p class="muted">{{ n.detail }}</p> }
+        @if (about(); as a) {
+          <dl>
+            <dt>O que faz</dt><dd>{{ a.does }}</dd>
+            <dt>Como roda agora</dt><dd>{{ a.runs }}</dd>
+          </dl>
+          @if (a.link) { <a class="btn" [routerLink]="a.link.path" [queryParams]="a.link.params ?? {}">{{ a.link.label }}</a> }
+        }
+      </aside>
+    }
+  </div>
+</section>

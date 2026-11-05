@@ -1,0 +1,8 @@
+.card header p { margin: 2px 0 0; }
+.card h2 a { text-decoration: none; }
+.card h2 a:hover { text-decoration: underline; }
+.label { width: 46%; }
+.origin { width: 140px; }
+.card footer { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 12px 16px; border-top: 1px solid var(--line); }
+.card footer .actions { display: flex; gap: 8px; }
+.mono { font-size: 12px; }
