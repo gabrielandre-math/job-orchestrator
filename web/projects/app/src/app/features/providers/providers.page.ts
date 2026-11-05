@@ -26,8 +26,8 @@ const RUNGS: Record<string, string> = { Local: 'local rápido', LocalStrong: 'lo
 const KINDS = [
   { kind: 'claude-cli', label: 'Claude, pela assinatura', hint: 'Abre o navegador para você entrar na sua conta Claude (Pro ou Max). Cada conta tem a sua pasta de login.', key: false },
   { kind: 'codex-cli', label: 'ChatGPT, pela assinatura', hint: 'Abre o navegador para você entrar na sua conta ChatGPT (Plus ou Pro), pelo Codex.', key: false },
-  { kind: 'anthropic-api', label: 'Anthropic, chave de API', hint: 'Cobra por uso. A chave fica no gnome-keyring.', key: true },
-  { kind: 'openai-api', label: 'OpenAI, chave de API', hint: 'Cobra por uso. A chave fica no gnome-keyring.', key: true },
+  { kind: 'anthropic-api', label: 'Anthropic, chave de API', hint: 'Cobra por uso. A chave fica no chaveiro do sistema.', key: true },
+  { kind: 'openai-api', label: 'OpenAI, chave de API', hint: 'Cobra por uso. A chave fica no chaveiro do sistema.', key: true },
   { kind: 'gemini-api', label: 'Gemini, chave do AI Studio', hint: 'Tem cota grátis. No nível grátis o Google pode usar os dados para melhorar produtos; o perfil vai minimizado, sem dados pessoais.', key: true },
   { kind: 'openai-compatible', label: 'Outra API compatível (OpenRouter, Groq, DeepSeek)', hint: 'Qualquer API no formato da OpenAI. Informe o endereço e a chave.', key: true },
 ];

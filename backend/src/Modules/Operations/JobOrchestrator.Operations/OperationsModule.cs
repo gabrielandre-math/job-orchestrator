@@ -19,5 +19,5 @@ public static class OperationsModule
     }
 
     /// <summary>Só no Worker: limpeza pela retenção, busca contínua e o Explorador.</summary>
-    public static IServiceCollection AddOperationsWorker(this IServiceCollection s) => s.AddHostedService<Features.Retention>().AddHostedService<Features.Continuous>();
+    public static IServiceCollection AddOperationsWorker(this IServiceCollection s) => s.AddHostedService<Features.Retention>().AddHostedService<Features.Continuous>().AddHostedService<Features.NightClock>();
 }

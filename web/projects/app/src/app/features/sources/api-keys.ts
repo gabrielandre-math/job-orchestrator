@@ -56,7 +56,7 @@ const HOW: Record<string, string[]> = {
           }
           @case (2) {
             <div class="wz-step">
-              <div class="intro"><jo-iso name="guardian" [size]="96" /><div><h2>Cole a chave</h2><p class="muted">Ela vai para o chaveiro do sistema (gnome-keyring), testada na hora. Se não funcionar, sai de lá e a tela diz por quê.</p></div></div>
+              <div class="intro"><jo-iso name="guardian" [size]="96" /><div><h2>Cole a chave</h2><p class="muted">Ela vai para o chaveiro do sistema, testada na hora. Se não funcionar, sai de lá e a tela diz por quê.</p></div></div>
               <div class="fields">
                 @for (f of k.fields; track f) {
                   <label class="field">{{ label(f) }}<input type="password" autocomplete="off" spellcheck="false" [value]="values()[f] ?? ''" (input)="set(f, $any($event.target).value)" /></label>

@@ -157,7 +157,7 @@
           </div>
           <div class="opt">
             <label class="sw"><input type="checkbox" class="switch" [checked]="nightOn()" (change)="nightOn.set($any($event.target).checked)" [disabled]="!units()?.available" />
-              <span><strong>Rodadas da noite</strong><span class="muted small">@if (units()?.available) { Timers do systemd do seu usuário: rodadas às 23h05, 1h35 e 4h05, resumo às 7h45 e backup às 7h55. } @else { {{ units()?.reason ?? 'Conferindo o systemd…' }} }</span></span></label>
+              <span><strong>Rodadas da noite</strong><span class="muted small">@if (units()?.available) { {{ units()?.mode === 'app' ? 'No próprio app, enquanto ele estiver no ar:' : 'Timers do systemd do seu usuário:' }} rodadas às 23h05, 1h35 e 4h05, resumo às 7h45 e backup às 7h55. } @else { {{ units()?.reason ?? 'Conferindo o systemd…' }} }</span></span></label>
             @if (nightAll()) { <span class="badge free">ligados</span> }
           </div>
         </div>

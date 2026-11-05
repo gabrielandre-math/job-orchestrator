@@ -7,7 +7,7 @@ import { query } from '../../core/query';
 
 interface Privacy { localOnly: boolean; retentionDays: number }
 interface TimerView { name: string; label: string; enabled: boolean; active: boolean; next: string | null; }
-interface UnitsView { available: boolean; reason: string | null; timers: TimerView[]; }
+interface UnitsView { available: boolean; reason: string | null; timers: TimerView[]; mode?: 'systemd' | 'app'; }
 const PHRASE = 'APAGAR TUDO';
 
 /**

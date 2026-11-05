@@ -88,8 +88,8 @@ internal sealed class NightReports([FromKeyedServices("operations")] NpgsqlDataS
 
     private void Notify(string text)
     {
-        try { Process.Start(new ProcessStartInfo("notify-send", ["-a", "Job Orchestrator", "Job Orchestrator", text]) { UseShellExecute = false })?.Dispose(); }
-        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException) { log.LogInformation("No desktop notification: {Error}", ex.Message); }
+        Platform.Notify("Job Orchestrator", text);
+        log.LogInformation("Notified: {Text}", text);
     }
 }
 

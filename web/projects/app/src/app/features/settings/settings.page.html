@@ -24,7 +24,7 @@
         </select>
       </div>
       <div class="row">
-        <span><strong>Timers da noite</strong>
+        <span><strong>{{ units.value()?.mode === 'app' ? 'Rodadas da noite (no próprio app)' : 'Timers da noite' }}</strong>
           @if (units.value(); as u) {
             @if (u.available) {
               <ul class="timers">
@@ -37,11 +37,13 @@
           <button type="button" class="btn" [class.primary]="!nightAll()" (click)="timers(!nightAll())" [disabled]="unitsSaving.running()"><jo-icon name="moon" [size]="14" />{{ nightAll() ? 'Desligar' : 'Ligar os timers' }}</button>
         }
       </div>
+      @if (units.value()?.mode !== 'app') {
       <div class="row install">
         <span><strong>API e Worker como serviços</strong><p class="muted">Para o painel subir sozinho com o computador (sem o terminal aberto), instale os serviços de usuário:</p>
           <code class="mono">{{ install }}</code></span>
         <button type="button" class="btn" (click)="copy()"><jo-icon [name]="copied() ? 'check' : 'copy'" [size]="14" />{{ copied() ? 'Copiado' : 'Copiar' }}</button>
       </div>
+      }
     </div>
   </section>
 

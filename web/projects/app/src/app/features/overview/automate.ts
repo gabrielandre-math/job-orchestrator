@@ -8,7 +8,7 @@ import { SearchRun } from '../../core/search';
 import { Wizard } from '../../shared/wizard';
 
 interface TimerView { name: string; label: string; enabled: boolean; active: boolean; next: string | null; }
-interface UnitsView { available: boolean; reason: string | null; timers: TimerView[]; }
+interface UnitsView { available: boolean; reason: string | null; timers: TimerView[]; mode?: 'systemd' | 'app'; }
 interface Check { label: string; hint: string; done: boolean; optional?: boolean; step?: number; }
 type SendMode = 'ReviewRequired' | 'AutoSubmit' | 'DiscoveryOnly';
 
