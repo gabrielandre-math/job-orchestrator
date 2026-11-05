@@ -453,6 +453,18 @@ internal sealed partial class MailService(
                     Guid? link = refs.Select(r => byId.TryGetValue(r, out var g) ? g : (Guid?)null).FirstOrDefault(g => g is not null)
                         ?? (domains.TryGetValue(from.Split('@').Last().ToLowerInvariant(), out var d) ? d : null);
                     var subject = env.Subject ?? "";
+                    // Alerta de vaga (LinkedIn, Indeed, Catho, InfoJobs...): as vagas do corpo vão para a fonte "alertas:email".
+                    if (link is null && AlertParser.IsAlert(from, subject))
+                    {
+                        var message = await inbox.GetMessageAsync(summary.UniqueId, ct);
+                        foreach (var job in AlertParser.Parse(from, message.HtmlBody ?? System.Net.WebUtility.HtmlEncode(message.TextBody ?? ""), env.Date?.UtcDateTime ?? Now))
+                            if (!await db.AlertPostings.AnyAsync(x => x.Url == job.Url, ct) && !db.AlertPostings.Local.Any(x => x.Url == job.Url))
+                            {
+                                db.AlertPostings.Add(new AlertPosting { Sender = job.Sender, Title = job.Title, Company = job.Company, Location = job.Location, Url = job.Url, Snippet = job.Snippet, ReceivedAt = job.ReceivedAt });
+                                stored++;
+                            }
+                        continue;
+                    }
                     if (link is null && !Hiring().IsMatch(subject)) continue;
                     var messageId = env.MessageId ?? $"{a.Id}:{summary.UniqueId.Id}";
                     if (await db.Incoming.AnyAsync(x => x.MessageId == messageId, ct)) continue;

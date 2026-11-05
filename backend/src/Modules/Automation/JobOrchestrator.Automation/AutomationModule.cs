@@ -70,6 +70,7 @@ public static class AutomationModule
         s.AddScoped<ISourceConnector, WorkingNomadsSource>();
         s.AddScoped<ISourceConnector, AdzunaSource>();
         s.AddScoped<ISourceConnector, JoobleSource>();
+        s.AddScoped<ISourceConnector, EmailAlertsSource>();
         s.AddSingleton<ScraperEnv>();
         s.AddScoped<ScrapyRunner>();
         s.AddScoped<Leads>();

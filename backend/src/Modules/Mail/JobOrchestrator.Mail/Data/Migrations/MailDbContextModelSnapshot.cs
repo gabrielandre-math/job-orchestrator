@@ -23,6 +23,60 @@ namespace JobOrchestrator.Mail.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("JobOrchestrator.Mail.Data.AlertPosting", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Company")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("company");
+
+                    b.Property<string>("Location")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("location");
+
+                    b.Property<DateTime>("ReceivedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("received_at");
+
+                    b.Property<string>("Sender")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("sender");
+
+                    b.Property<string>("Snippet")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("snippet");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("title");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("url");
+
+                    b.HasKey("Id")
+                        .HasName("pk_alert_postings");
+
+                    b.HasIndex("ReceivedAt")
+                        .HasDatabaseName("ix_alert_postings_received_at");
+
+                    b.HasIndex("Url")
+                        .IsUnique()
+                        .HasDatabaseName("ix_alert_postings_url");
+
+                    b.ToTable("alert_postings", "mail");
+                });
+
             modelBuilder.Entity("JobOrchestrator.Mail.Data.IncomingMail", b =>
                 {
                     b.Property<Guid>("Id")

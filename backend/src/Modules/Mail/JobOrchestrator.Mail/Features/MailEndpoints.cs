@@ -12,6 +12,13 @@ internal sealed class MailEndpoints : ICarterModule
         var g = app.MapGroup("/api/mail").WithTags("Mail");
         g.MapGet("presets", () => Results.Ok(Presets.All));
         g.MapGet("consent", () => Results.Ok(new { text = MailService.ConsentText }));
+        g.MapGet("alerts", async (MailDbContext db, CancellationToken ct) =>
+        {
+            var since = DateTime.UtcNow.AddDays(-14);
+            var recent = await db.AlertPostings.AsNoTracking().Where(x => x.ReceivedAt >= since).OrderByDescending(x => x.ReceivedAt).Take(12)
+                .Select(x => new { x.Sender, x.Title, x.Company, x.Location, x.Url, x.ReceivedAt }).ToListAsync(ct);
+            return Results.Ok(new { count = await db.AlertPostings.CountAsync(x => x.ReceivedAt >= since, ct), connected = await db.Accounts.AnyAsync(a => a.ImapHost != "", ct), recent });
+        });
         g.MapGet("overview", async (MailDbContext db, MailService mail, CancellationToken ct) =>
         {
             var s = await mail.SettingsAsync(ct);

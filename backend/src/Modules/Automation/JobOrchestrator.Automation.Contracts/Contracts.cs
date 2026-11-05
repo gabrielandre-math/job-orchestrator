@@ -103,3 +103,12 @@ public interface IAutomationApi
     /// <summary>Boards de ATS citados numa página de carreira (respeita o robots.txt).</summary>
     Task<(IReadOnlyList<string> Boards, string Detail)> FindBoardsAsync(string pageUrl, CancellationToken ct);
 }
+
+/// <summary>Vaga que chegou num alerta de vaga no e-mail da pessoa (LinkedIn, Indeed, Catho, InfoJobs, Glassdoor, Vagas.com e outros).</summary>
+public sealed record AlertJob(string Sender, string Title, string Company, string Location, string Url, string Snippet, DateTime ReceivedAt);
+
+/// <summary>Quem lê a caixa de e-mail entrega aqui as vagas dos alertas; a fonte "alertas:email" as leva para a campanha.</summary>
+public interface IJobAlertFeed
+{
+    Task<IReadOnlyList<AlertJob>> RecentAsync(DateTime since, CancellationToken ct);
+}

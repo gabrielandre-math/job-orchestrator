@@ -449,3 +449,24 @@ internal sealed class JoobleSource(IHttpClientFactory http) : PublicSource(http,
         return list;
     }
 }
+
+/// <summary>
+/// Alertas de vaga do e-mail (alertas:email): as vagas que a leitura da caixa achou nos alertas do LinkedIn, Indeed, Catho, InfoJobs,
+/// Glassdoor, Vagas.com e outros nos últimos 14 dias. Nenhum desses sites é aberto por robô; a candidatura segue pelo copiloto.
+/// </summary>
+internal sealed class EmailAlertsSource(IHttpClientFactory http, IEnumerable<IJobAlertFeed> feeds) : PublicSource(http, "alertas")
+{
+    public override string Id => "email-alerts";
+    public override string Name => "Alertas de vaga por e-mail";
+
+    public override async Task<IReadOnlyList<DiscoveredPosting>> DiscoverAsync(string source, CancellationToken ct)
+    {
+        var jobs = new List<AlertJob>();
+        foreach (var feed in feeds) jobs.AddRange(await feed.RecentAsync(DateTime.UtcNow.AddDays(-14), ct));
+        return [.. jobs.Select(j => new DiscoveredPosting(source, j.Url, j.Company.Length > 0 ? j.Company : Json.Company(j.Sender.Split('.')[0]), j.Title, j.Location, j.Url,
+            $"{j.Title}\n{j.Company}\n{j.Location}\n{j.Snippet}\nRecebida no alerta de {j.Sender} em {j.ReceivedAt:dd/MM}.", j.ReceivedAt, JsonSerializer.Serialize(j), ListedAsOpen: true))];
+    }
+
+    /// <summary>O alerta é recente e o site não é aberto por robô: a vaga conta como aberta até sair do alerta.</summary>
+    public override Task<PostingStatus> CheckOpenAsync(string applyUrl, CancellationToken ct) => Task.FromResult(new PostingStatus(true, "Vaga de um alerta recente do seu e-mail."));
+}

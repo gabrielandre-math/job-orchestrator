@@ -88,8 +88,22 @@ internal sealed class IncomingMail
     public DateTime ReceivedAt { get; init; }
 }
 
+/// <summary>Vaga lida num alerta de vaga da caixa de e-mail (uma por link, sem rastreio).</summary>
+internal sealed class AlertPosting
+{
+    public Guid Id { get; init; } = Guid.CreateVersion7();
+    public string Sender { get; set; } = "";
+    public string Title { get; set; } = "";
+    public string Company { get; set; } = "";
+    public string Location { get; set; } = "";
+    public string Url { get; set; } = "";
+    public string Snippet { get; set; } = "";
+    public DateTime ReceivedAt { get; set; }
+}
+
 internal sealed class MailDbContext(DbContextOptions<MailDbContext> options) : DbContext(options)
 {
+    public DbSet<AlertPosting> AlertPostings => Set<AlertPosting>();
     public DbSet<MailAccount> Accounts => Set<MailAccount>();
     public DbSet<MailSettings> Settings => Set<MailSettings>();
     public DbSet<MailTemplate> Templates => Set<MailTemplate>();
@@ -111,5 +125,6 @@ internal sealed class MailDbContext(DbContextOptions<MailDbContext> options) : D
             e.Property(x => x.Status).HasMaxLength(20);
         });
         b.Entity<IncomingMail>(e => { e.ToTable("incoming"); e.HasKey(x => x.Id); e.HasIndex(x => x.MessageId).IsUnique(); });
+        b.Entity<AlertPosting>(e => { e.ToTable("alert_postings"); e.HasKey(x => x.Id); e.HasIndex(x => x.Url).IsUnique(); e.HasIndex(x => x.ReceivedAt); });
     }
 }

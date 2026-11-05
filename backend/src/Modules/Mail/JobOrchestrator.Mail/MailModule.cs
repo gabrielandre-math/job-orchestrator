@@ -11,6 +11,7 @@ public static class MailModule
     {
         s.AddDbContext<MailDbContext>(o => o.UseModuleDatabase(config.ConnectionFor("Mail"), "mail"));
         s.AddScoped<Features.MailService>();
+        s.AddScoped<JobOrchestrator.Automation.Contracts.IJobAlertFeed, Features.MailAlertFeed>();
         return s;
     }
 

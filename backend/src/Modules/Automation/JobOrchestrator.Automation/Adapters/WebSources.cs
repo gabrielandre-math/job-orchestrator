@@ -20,7 +20,7 @@ internal sealed class RemotiveSource(IHttpClientFactory http, TimeProvider time)
         var now = time.GetUtcNow().UtcDateTime;
         if (LastCall.TryGetValue(search, out var last) && now - last < MinInterval) return [];
         LastCall[search] = now;
-        using var doc = await Json.GetAsync(Client, $"https://remotive.com/api/remote-jobs?category=software-dev&search={Uri.EscapeDataString(search)}&limit=100", ct);
+        using var doc = await Json.GetAsync(Client, $"https://remotive.com/api/remote-jobs?search={Uri.EscapeDataString(search)}&limit=100", ct);
         return [.. doc.RootElement.GetProperty("jobs").EnumerateArray().Select(j => Parse(source, j))];
     }
 

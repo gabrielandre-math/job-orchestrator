@@ -136,6 +136,15 @@ internal sealed class Explorer(IServiceScopeFactory scopes, [FromKeyedServices("
             }
             catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException or InvalidDataException) { log.LogInformation("Company list {Repo} skipped: {Error}", due, ex.Message); }
         }
+        // 5a. Alertas de vaga do e-mail da pessoa: assim que a caixa traz vaga de alerta, a fonte entra no teste (sem esperar os 7 dias).
+        if (!known.Contains("alertas:email"))
+        {
+            try
+            {
+                if ((await automation.DiscoverAsync("alertas:email", ct)).Count > 0) { seen.Remove("alertas:email"); Lead("alertas:email", "alertas de vaga do seu e-mail", "alertas por e-mail"); }
+            }
+            catch (InvalidOperationException) { /* sem módulo de e-mail neste processo */ }
+        }
         // 5b. Quadros de vagas conhecidos, testados para a área de quem mandou o currículo.
         foreach (var b in Boards) Lead(b, "quadro de vagas", "quadros de vagas");
         // 6. Sites das empresas das vagas.
