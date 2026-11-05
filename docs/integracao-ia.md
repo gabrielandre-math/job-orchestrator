@@ -23,7 +23,7 @@ Objetivo: funcionar sem você pensar nela.
 
 ## 2. Sem surpresa de cobrança
 
-- **Ambiente limpo.** O processo filho recebe só `PATH`, `HOME`, `LANG`, `TERM` e `XDG_*`. Saem `ANTHROPIC_API_KEY`, `ANTHROPIC_BASE_URL`, `CLAUDE_CODE_USE_BEDROCK`, `CLAUDE_CODE_USE_VERTEX`, `AWS_*`, `OPENAI_API_KEY` e `OPENAI_BASE_URL`.
+- **Ambiente limpo.** O processo filho recebe só `PATH`, `HOME`, `LANG`, `TERM` e `XDG_*`. Saem `ANTHROPIC_API_KEY`, `ANTHROPIC_BASE_URL`, `CLAUDE_CODE_USE_BEDROCK`, `CLAUDE_CODE_USE_VERTEX`, `AWS_*`, `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `GEMINI_API_KEY`, `GOOGLE_API_KEY` e `GOOGLE_GENAI_USE_VERTEXAI`.
 - **Login conferido toda noite.** Antes de cada noite o `auth status` confirma o login por assinatura. Se o método virou API key, o provedor fica bloqueado e você recebe aviso.
 - **`--bare` proibido.** Nesse modo o Claude Code aceita só API key.
 - **API paga** existe só como stub desligado.
@@ -98,3 +98,30 @@ Um card por provedor, com:
 - botões Conectar, Testar e Pausar.
 
 No topo fica o interruptor do modo privado.
+
+## 9. Várias contas e ordem de gasto
+
+Cada conta vira um provedor separado, com login, cota e reserva próprios. A ordem abaixo é a padrão pedida pelo usuário e pode ser mudada arrastando na tela Provedores.
+
+| Ordem | Provedor | Como conecta | Estado em 05/11 |
+|---|---|---|---|
+| 0 | Ollama na RTX (local) | serviço de usuário | a instalar; sempre primeiro nas tarefas locais (extração, e-mail, embeddings, resumo) e último recurso para rascunho |
+| 1 | Claude Pro (segunda conta) | pasta própria: `CLAUDE_CONFIG_DIR=~/.local/share/job-orchestrator/accounts/claude-pro`, login uma vez com `claude auth login` nessa pasta | a conectar |
+| 2 | ChatGPT Plus (Codex) | `~/.codex` atual | logado, plano `plus` |
+| 3 | Google AI Pro (Gemini CLI) | `~/.gemini` atual, login Google | logado (`oauth-personal`), CLI 0.60.0 (0.67.0 disponível) |
+| 4 | Claude Max (o "ultra") | `~/.claude` atual | logado, `subscriptionType: max`; reserva alta: só entra com a janela de 5 h abaixo de 30% e a semanal abaixo de 50% |
+
+Regras:
+- A ordem vale para tarefas de nuvem. Cada tarefa percorre a lista e pula quem não atende a qualidade exigida.
+- O revisor é sempre de família diferente do redator. Exemplo: se o Claude escreveu, Codex ou Gemini conferem.
+- Cada conta pausa no próprio limite ou na própria reserva e volta sozinha depois do reset.
+- Como cada conta tem a sua pasta, a conta Pro não carrega nada do seu Claude Code (plugins, hooks, MCP, memória).
+- Uso real por conta:
+  - Claude Max: pela sua statusline;
+  - Claude Pro: só por erro de limite e teto por noite, porque não há statusline nessa pasta;
+  - Codex: pelos eventos `rate_limits`;
+  - Gemini: por erro de cota e pelas estatísticas do JSON (a validar).
+- Gemini sem interação: `gemini -p ... -o json -m <modelo>`, com extensões e MCP desligados (`-e`, `--allowed-mcp-server-names`) e ferramentas negadas pelo Policy Engine (a validar).
+- Conta de empresa nunca entra.
+- Nos termos de consumidor da Anthropic não há cláusula contra ter mais de uma conta (lido em 05/11). O sistema não cria conta, não compartilha login e usa cada conta dentro do próprio limite.
+- O Gemini recebe a mesma minimização dos outros, sem PII. A política de uso de dados do plano Google deve ser conferida antes de ligar.

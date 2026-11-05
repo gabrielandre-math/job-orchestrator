@@ -281,8 +281,9 @@ Detalhe de UX, isolamento, cota e compatibilidade em `docs/integracao-ia.md`.
 |---|---|---|---|
 | deterministic | nenhuma | no processo | todas |
 | ollama | local | HTTP `127.0.0.1:11434`, `format` com JSON schema | todas |
-| claude-cli | login da assinatura no CLI | `claude -p` | pública e perfil minimizado |
+| claude-cli | login da assinatura no CLI; uma instância por conta (`CLAUDE_CONFIG_DIR`) | `claude -p` | pública e perfil minimizado |
 | codex-cli | login ChatGPT no CLI | `codex exec` | pública e perfil minimizado |
+| gemini-cli | login Google no CLI (AI Pro) | `gemini -p -o json` | pública e perfil minimizado |
 | paid-api | desligado | stub | nenhuma |
 
 Execução do Claude:
