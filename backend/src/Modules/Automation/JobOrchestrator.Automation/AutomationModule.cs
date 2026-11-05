@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Http.Resilience;
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -13,11 +14,30 @@ public static class AutomationModule
         s.Configure<AutomationOptions>(config.GetSection("Automation"));
         s.AddDbContext<AutomationDbContext>(o => o.UseModuleDatabase(config.ConnectionFor("Automation"), "automation"));
         s.AddModuleReadDb<AutomationDbContext>(config, "Automation");
+        s.AddTransient<ResilienceErrors>();
         s.AddHttpClient("sources", c =>
         {
-            c.Timeout = TimeSpan.FromSeconds(20);
+            // O tempo de cada tentativa fica com a resiliência; o HttpClient guarda só o teto total.
+            c.Timeout = TimeSpan.FromSeconds(90);
             c.DefaultRequestHeaders.UserAgent.ParseAdd("JobOrchestrator/1.0 (uso pessoal)");
-        });
+        })
+        .AddHttpMessageHandler<ResilienceErrors>()
+        // Fonte instável não derruba a rodada nem as outras: nova tentativa com espera (o Retry-After do 429 manda), tempo por tentativa
+        // e circuito aberto por host quando o site insiste em falhar. Só GET se repete; 404 não é falha passageira e não se repete.
+        .AddStandardResilienceHandler(o =>
+        {
+            o.Retry.MaxRetryAttempts = 2;
+            o.Retry.Delay = TimeSpan.FromSeconds(2);
+            o.Retry.BackoffType = Polly.DelayBackoffType.Exponential;
+            o.Retry.UseJitter = true;
+            o.Retry.DisableForUnsafeHttpMethods();
+            o.AttemptTimeout.Timeout = TimeSpan.FromSeconds(20);
+            o.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(75);
+            o.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(60);
+            o.CircuitBreaker.MinimumThroughput = 4;
+            o.CircuitBreaker.BreakDuration = TimeSpan.FromMinutes(2);
+        })
+        .SelectPipelineByAuthority();
         s.TryAddSingleton<GuardKey>();
         s.AddSingleton<BrowserPool>();
         s.AddScoped<ISourceConnector, GreenhouseLikeSource>();

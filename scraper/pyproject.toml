@@ -3,7 +3,7 @@ name = "jo-scraper"
 version = "0.1.0"
 description = "Coletor do Job Orchestrator: spiders próprios sobre o Scrapy (BSD-3-Clause), para páginas de carreira."
 requires-python = ">=3.11"
-dependencies = ["scrapy==2.19.0"]
+dependencies = ["scrapy==2.19.0", "extruct==0.18.0", "trafilatura==2.3.1", "dateparser==1.5.0", "price-parser==0.5.1"]
 
 [build-system]
 requires = ["setuptools>=68"]

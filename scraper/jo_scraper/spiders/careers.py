@@ -1,10 +1,12 @@
 """Spider de páginas de carreira: lê a página da empresa, o sitemap e os links de vaga do mesmo domínio.
 
 Entrega itens em JSON Lines para o Worker do Job Orchestrator:
-- posting: vaga estruturada pelo padrão schema.org JobPosting (JSON-LD), que as páginas de carreira publicam para o Google;
+- posting: vaga estruturada pelo padrão schema.org JobPosting (JSON-LD, microdata ou RDFa, lidos pelo extruct), que as páginas de
+  carreira publicam para o Google;
 - board: link de um ATS (Greenhouse, Lever, Ashby, SmartRecruiters, Recruitee, Breezy, Personio, Workable, BambooHR);
 - email: e-mail de candidatura, só quando o texto em volta fala de enviar currículo ou se candidatar;
-- candidate: página com cara de vaga e sem dado estruturado, para a IA do Job Orchestrator ler;
+- candidate: página com cara de vaga e sem dado estruturado, para a IA do Job Orchestrator ler: só o conteúdo principal (trafilatura),
+  com a data de publicação (dateparser entende "há 3 dias") e o salário escrito (price-parser), quando a página traz;
 - progress: contagem de páginas lidas, a cada dez.
 """
 import json
@@ -12,6 +14,27 @@ import re
 from urllib.parse import urljoin, urlparse
 
 import scrapy
+
+# Bibliotecas de extração (BSD e Apache). Sem elas o spider segue como antes: só JSON-LD e o texto inteiro da página.
+try:
+    import extruct
+except ImportError:
+    extruct = None
+try:
+    import trafilatura
+except ImportError:
+    trafilatura = None
+try:
+    import dateparser
+except ImportError:
+    dateparser = None
+try:
+    from price_parser import Price
+except ImportError:
+    Price = None
+
+POSTED = re.compile(r"(?:publicad[ao]|postad[ao]|posted|atualizad[ao]|updated)\s*(?:em|on|:)?\s*([^\n|•·]{3,32})|(h[áa]\s+\d+\s+\w+|\d+\s+(?:days?|hours?|weeks?|months?)\s+ago)", re.I)
+SALARY = re.compile(r"(?:sal[áa]rio|remunera[çc][ãa]o|faixa salarial|salary|compensation)[^\n]{0,24}?((?:R\$|US\$|USD|BRL|\$|€)\s?[\d.,]+(?:\s*(?:a|-|até|to)\s*(?:R\$|US\$|USD|BRL|\$|€)?\s?[\d.,]+)?)", re.I)
 
 JOB_WORDS = re.compile(r"vaga|vagas|job|jobs|career|careers|carreira|carreiras|oportunidade|position|opening|trabalhe|work-with-us|join", re.I)
 SECTION_WORDS = re.compile(r"requisitos|responsabilidades|atribui[cç][oõ]es|qualifica[cç][oõ]es|requirements|responsibilities|qualifications|what you.ll do|o que voc[eê] vai fazer", re.I)
@@ -75,7 +98,7 @@ class CareersSpider(scrapy.Spider):
             yield {"type": "progress", "pages": self.pages}
 
         found = False
-        for data in self.json_ld(response):
+        for data in self.structured(response):
             for job in self.job_postings(data):
                 item = self.posting(job, response)
                 if item and item["key"] not in self.seen_postings:
@@ -105,7 +128,9 @@ class CareersSpider(scrapy.Spider):
 
         title = " ".join(response.css("title::text, h1::text").getall())[:300]
         if not found and JOB_WORDS.search(title + " " + response.url) and len(SECTION_WORDS.findall(text)) >= 2:
-            yield {"type": "candidate", "url": response.url, "title": " ".join(title.split()), "text": text[:12000]}
+            main = self.main_text(response) or text
+            yield {"type": "candidate", "url": response.url, "title": " ".join(title.split()), "text": main[:12000],
+                   "posted": self.posted(main), "salary": self.salary(main)}
 
         for href in response.css("a::attr(href)").getall():
             url = response.urljoin(href)
@@ -120,6 +145,58 @@ class CareersSpider(scrapy.Spider):
                 yield json.loads(raw.strip())
             except ValueError:
                 continue
+
+    def structured(self, response):
+        """JSON-LD, microdata e RDFa no mesmo formato (extruct, uniform=True); sem o extruct, só o JSON-LD."""
+        if extruct is None:
+            yield from self.json_ld(response)
+            return
+        try:
+            data = extruct.extract(response.text, base_url=response.url, syntaxes=["json-ld", "microdata", "rdfa"], uniform=True)
+        except Exception:  # página com marcação quebrada: fica o JSON-LD lido à mão
+            yield from self.json_ld(response)
+            return
+        for syntax in ("json-ld", "microdata", "rdfa"):
+            for item in data.get(syntax) or []:
+                yield item
+
+    @staticmethod
+    def main_text(response):
+        """Só o conteúdo principal da página (sem menu, rodapé e banner), para a IA ler menos e errar menos."""
+        if trafilatura is None:
+            return None
+        try:
+            main = trafilatura.extract(response.text, url=response.url, include_comments=False, include_tables=True, favor_recall=True)
+        except Exception:
+            return None
+        return main if main and len(main) >= 300 else None
+
+    @staticmethod
+    def posted(text):
+        """Data de publicação escrita na página ("publicada em 2 de novembro", "há 3 dias"), em ISO; None quando não há."""
+        if dateparser is None:
+            return None
+        for m in POSTED.finditer(text[:4000]):
+            raw = (m.group(1) or m.group(2) or "").strip(" .:-")
+            when = dateparser.parse(raw, languages=["pt", "en", "es"], settings={"PREFER_DATES_FROM": "past", "DATE_ORDER": "DMY", "RETURN_AS_TIMEZONE_AWARE": False})
+            if when:
+                return when.date().isoformat()
+        return None
+
+    @staticmethod
+    def salary(text):
+        """Faixa de salário escrita perto de "salário" ou "remuneração", normalizada ("BRL 8000-10000")."""
+        m = SALARY.search(text)
+        if not m or Price is None:
+            return m.group(1).strip() if m else None
+        parts = re.split(r"\s*(?:a|-|até|to)\s*", m.group(1))
+        prices = [Price.fromstring(p) for p in parts if p.strip()]
+        amounts = [p.amount_float for p in prices if p.amount_float]
+        currency = next((p.currency for p in prices if p.currency), "") or ""
+        code = {"R$": "BRL", "US$": "USD", "$": "USD", "€": "EUR"}.get(currency, currency)
+        if not amounts:
+            return m.group(1).strip()
+        return f"{code} {int(min(amounts))}" + (f"-{int(max(amounts))}" if len(amounts) > 1 and max(amounts) != min(amounts) else "")
 
     def job_postings(self, data):
         if isinstance(data, list):
@@ -163,5 +240,14 @@ class CareersSpider(scrapy.Spider):
             "type": "posting", "key": f"{url}|{title}", "url": url, "page": response.url, "title": title, "company": company or "",
             "location": "; ".join(p for p in place if p), "remote": job.get("jobLocationType") == "TELECOMMUTE",
             "employment": job.get("employmentType") if isinstance(job.get("employmentType"), str) else ", ".join(job.get("employmentType") or []),
-            "salary": money, "posted": job.get("datePosted"), "valid": job.get("validThrough"), "description": " ".join(description.split())[:20000],
+            "salary": money, "posted": CareersSpider.iso(job.get("datePosted")), "valid": job.get("validThrough"), "description": " ".join(description.split())[:20000],
         }
+
+    @staticmethod
+    def iso(value):
+        """datePosted às vezes vem como texto ("2 days ago", "02/11/2026"): o dateparser devolve ISO; ISO segue como está."""
+        if not value or not isinstance(value, str) or re.match(r"^\d{4}-\d{2}-\d{2}", value) or dateparser is None:
+            return value
+        when = dateparser.parse(value, languages=["pt", "en", "es"], settings={"PREFER_DATES_FROM": "past", "DATE_ORDER": "DMY"})
+        return when.date().isoformat() if when else value
+

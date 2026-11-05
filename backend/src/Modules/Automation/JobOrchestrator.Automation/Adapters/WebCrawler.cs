@@ -33,7 +33,7 @@ internal sealed record BoardHit(string Source, string Page);
 /// </summary>
 internal sealed partial class ScrapyRunner(ScraperEnv env, IIntelligenceApi ai, IConfiguration config, IHttpClientFactory http, PageReader reader, ILogger<ScrapyRunner> log)
 {
-    private sealed record Candidate(string Url, string Title, string Text);
+    private sealed record Candidate(string Url, string Title, string Text, DateTime? Posted = null, string? Salary = null);
 
     /// <summary>Firecrawl auto-hospedado (opcional, AGPL, serviço à parte): renderiza a página e devolve o texto em markdown. Sem modo furtivo nem proxy.</summary>
     private async Task<Candidate?> RenderAsync(string baseUrl, string url, CancellationToken ct)
@@ -107,7 +107,7 @@ internal sealed partial class ScrapyRunner(ScraperEnv env, IIntelligenceApi ai, 
                         case "posting": postings.Add(FromJsonLd(source, item)); break;
                         case "board": boards.Add(item.Str("source")); hits.Add(new BoardHit(item.Str("source"), item.Str("url"))); break;
                         case "email": emails.Add(new Email(item.Str("email"), item.Str("url"), item.Str("context"))); break;
-                        case "candidate": candidates.Add(new Candidate(item.Str("url"), item.Str("title"), item.Str("text"))); break;
+                        case "candidate": candidates.Add(new Candidate(item.Str("url"), item.Str("title"), item.Str("text"), DateTime.TryParse(item.Str("posted"), CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var posted) ? posted : null, item.Str("salary") is { Length: > 0 } pay ? pay : null)); break;
                     }
                 }
                 await p.WaitForExitAsync(limit.Token);
@@ -172,7 +172,8 @@ internal sealed partial class ScrapyRunner(ScraperEnv env, IIntelligenceApi ai, 
             var r = await ai.CompleteAsync(LlmRequest.For(LlmTasks.PageJobs, LocalTaskSpecs.PageJobsSystem, LocalTaskSpecs.PageJobsPrompt(c.Url, c.Title, c.Text),
                 LocalTaskSpecs.PageJobsSchema, timeoutSeconds: 240, thread: thread, agent: "Extrator"), ct);
             if (!r.Ok) continue;
-            foreach (var job in Jobs(r.Json!))
+            var jobs = Jobs(r.Json!).ToList();
+            foreach (var job in jobs)
             {
                 var page = Fold(c.Text);
                 var quote = Fold(job.Quote);
@@ -182,7 +183,9 @@ internal sealed partial class ScrapyRunner(ScraperEnv env, IIntelligenceApi ai, 
                 var email = job.ApplyEmail is { Length: > 3 } e && c.Text.Contains(e, StringComparison.OrdinalIgnoreCase) ? e : null;
                 postings.Add(new DiscoveredPosting(source, Hash(c.Url + job.Title), job.Company is { Length: > 0 } co ? co : Host(c.Url), job.Title, job.Location,
                     Uri.TryCreate(job.ApplyUrl, UriKind.Absolute, out _) ? job.ApplyUrl : c.Url, job.Summary.Length > 0 ? job.Summary : c.Text[..Math.Min(c.Text.Length, 4000)],
-                    null, $"{{\"page\":{JsonSerializer.Serialize(c.Url)},\"extraction\":{r.Json}}}", Workplace: job.Modality is "remote" or "hybrid" or "onsite" ? job.Modality : null, ApplyEmail: email, ListedAsOpen: true));
+                    // Data e salário escritos na página valem quando a página é de uma vaga só (página de vaga, não lista).
+                    c.Posted, $"{{\"page\":{JsonSerializer.Serialize(c.Url)},\"extraction\":{r.Json}}}", Workplace: job.Modality is "remote" or "hybrid" or "onsite" ? job.Modality : null,
+                    Compensation: jobs.Count == 1 ? c.Salary : null, ApplyEmail: email, ListedAsOpen: true));
                 fromAi++;
             }
         }
