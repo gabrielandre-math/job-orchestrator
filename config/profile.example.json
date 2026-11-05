@@ -1,0 +1,29 @@
+{
+  "synthetic": true,
+  "firstName": "Ana",
+  "lastName": "Exemplo",
+  "email": "ana.exemplo@example.com",
+  "phone": "+55 11 90000-0000",
+  "linkedIn": "https://www.linkedin.com/in/ana-exemplo",
+  "headline": "Engenheira de software backend (.NET, AWS)",
+  "location": "São Paulo, Brasil",
+  "summary": "Perfil sintético para testes. Backend em C# e ASP.NET Core, com filas, Postgres e serviços na AWS.",
+  "experiences": [
+    { "company": "Empresa Fictícia A", "title": "Engenheira de Software", "start": "2022-02", "end": null,
+      "technologies": ["C#", ".NET", "ASP.NET Core", "PostgreSQL", "AWS"],
+      "highlights": ["Manteve APIs em ASP.NET Core com Postgres.", "Levou filas de processamento para SQS na AWS."] },
+    { "company": "Empresa Fictícia B", "title": "Desenvolvedora Backend", "start": "2019-03", "end": "2022-01",
+      "technologies": ["C#", ".NET", "SQL Server"],
+      "highlights": ["Escreveu serviços internos em C#.", "Cobriu a camada de dados com testes de integração."] }
+  ],
+  "education": [ { "institution": "Universidade Fictícia", "degree": "Bacharelado em Ciência da Computação", "end": "2018" } ],
+  "languages": ["Português (nativo)", "Inglês (avançado)"],
+  "answers": {
+    "work_authorization": "Yes",
+    "requires_sponsorship": "No",
+    "english_level": "Advanced",
+    "notice_period": "30 days",
+    "salary_expectation": "A combinar",
+    "referral_source": "Job board"
+  }
+}

@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.Playwright" />
+    <ProjectReference Include="../../../BuildingBlocks/JobOrchestrator.BuildingBlocks/JobOrchestrator.BuildingBlocks.csproj" />
+    <ProjectReference Include="../../../BuildingBlocks/JobOrchestrator.BuildingBlocks.Data/JobOrchestrator.BuildingBlocks.Data.csproj" />
+    <ProjectReference Include="../../../BuildingBlocks/JobOrchestrator.BuildingBlocks.Web/JobOrchestrator.BuildingBlocks.Web.csproj" />
+    <ProjectReference Include="../JobOrchestrator.Automation.Contracts/JobOrchestrator.Automation.Contracts.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <ProjectReference Include="../../src/Bootstrappers/JobOrchestrator.Api/JobOrchestrator.Api.csproj" />
+    <ProjectReference Include="../../src/Bootstrappers/JobOrchestrator.Worker/JobOrchestrator.Worker.csproj" />
+    <ProjectReference Include="../../src/Tools/JobOrchestrator.FakeAts/JobOrchestrator.FakeAts.csproj" />
+  </ItemGroup>
+</Project>

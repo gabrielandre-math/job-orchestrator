@@ -9,3 +9,11 @@ references/
 user-data/
 data/
 *.log
+
+# execução local de desenvolvimento
+.dev/
+bin/
+obj/
+node_modules/
+web/dist/
+web/.angular/

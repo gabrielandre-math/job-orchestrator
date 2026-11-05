@@ -1,0 +1,15 @@
+global using Carter;
+global using FluentValidation;
+global using JobOrchestrator.BuildingBlocks;
+global using JobOrchestrator.BuildingBlocks.Data;
+global using JobOrchestrator.BuildingBlocks.Web;
+global using JobOrchestrator.Campaigns.Contracts;
+global using JobOrchestrator.Campaigns.Data;
+global using JobOrchestrator.Campaigns.Domain;
+global using MediatR;
+global using Microsoft.AspNetCore.Builder;
+global using Microsoft.AspNetCore.Http;
+global using Microsoft.AspNetCore.Routing;
+global using Microsoft.EntityFrameworkCore;
+global using Microsoft.Extensions.Configuration;
+global using Microsoft.Extensions.DependencyInjection;

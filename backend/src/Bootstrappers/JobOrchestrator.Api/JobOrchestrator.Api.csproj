@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
+    <ProjectReference Include="../../Modules/Campaigns/JobOrchestrator.Campaigns/JobOrchestrator.Campaigns.csproj" />
+    <ProjectReference Include="../../Modules/Jobs/JobOrchestrator.Jobs/JobOrchestrator.Jobs.csproj" />
+    <ProjectReference Include="../../Modules/Applications/JobOrchestrator.Applications/JobOrchestrator.Applications.csproj" />
+    <ProjectReference Include="../../Modules/Automation/JobOrchestrator.Automation/JobOrchestrator.Automation.csproj" />
+  </ItemGroup>
+</Project>

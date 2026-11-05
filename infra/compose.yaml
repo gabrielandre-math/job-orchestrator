@@ -1,0 +1,18 @@
+# Dependências locais do Job Orchestrator. Só escuta em 127.0.0.1.
+name: job-orchestrator
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: job_orchestrator
+      POSTGRES_USER: jo
+      POSTGRES_PASSWORD: ${JO_DB_PASSWORD:-jo-local}
+    ports: ["127.0.0.1:5462:5432"]
+    volumes: [jo-pg:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jo -d job_orchestrator"]
+      interval: 5s
+      retries: 20
+    restart: unless-stopped
+volumes:
+  jo-pg: {}

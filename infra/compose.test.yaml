@@ -1,0 +1,15 @@
+# Banco descartável dos testes (tmpfs, sem volume).
+name: job-orchestrator-test
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: jo_test
+      POSTGRES_USER: jo
+      POSTGRES_PASSWORD: jo-test
+    ports: ["127.0.0.1:5463:5432"]
+    tmpfs: [/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jo -d jo_test"]
+      interval: 2s
+      retries: 30

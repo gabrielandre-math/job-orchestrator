@@ -1,0 +1,35 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/Bootstrappers/">
+    <Project Path="src/Bootstrappers/JobOrchestrator.Api/JobOrchestrator.Api.csproj" />
+    <Project Path="src/Bootstrappers/JobOrchestrator.Worker/JobOrchestrator.Worker.csproj" />
+  </Folder>
+  <Folder Name="/src/BuildingBlocks/">
+    <Project Path="src/BuildingBlocks/JobOrchestrator.BuildingBlocks.Data/JobOrchestrator.BuildingBlocks.Data.csproj" />
+    <Project Path="src/BuildingBlocks/JobOrchestrator.BuildingBlocks.Web/JobOrchestrator.BuildingBlocks.Web.csproj" />
+    <Project Path="src/BuildingBlocks/JobOrchestrator.BuildingBlocks/JobOrchestrator.BuildingBlocks.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/" />
+  <Folder Name="/src/Modules/Applications/">
+    <Project Path="src/Modules/Applications/JobOrchestrator.Applications.Contracts/JobOrchestrator.Applications.Contracts.csproj" />
+    <Project Path="src/Modules/Applications/JobOrchestrator.Applications/JobOrchestrator.Applications.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Automation/">
+    <Project Path="src/Modules/Automation/JobOrchestrator.Automation.Contracts/JobOrchestrator.Automation.Contracts.csproj" />
+    <Project Path="src/Modules/Automation/JobOrchestrator.Automation/JobOrchestrator.Automation.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Campaigns/">
+    <Project Path="src/Modules/Campaigns/JobOrchestrator.Campaigns.Contracts/JobOrchestrator.Campaigns.Contracts.csproj" />
+    <Project Path="src/Modules/Campaigns/JobOrchestrator.Campaigns/JobOrchestrator.Campaigns.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Jobs/">
+    <Project Path="src/Modules/Jobs/JobOrchestrator.Jobs.Contracts/JobOrchestrator.Jobs.Contracts.csproj" />
+    <Project Path="src/Modules/Jobs/JobOrchestrator.Jobs/JobOrchestrator.Jobs.csproj" />
+  </Folder>
+  <Folder Name="/src/Tools/">
+    <Project Path="src/Tools/JobOrchestrator.FakeAts/JobOrchestrator.FakeAts.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/JobOrchestrator.Tests/JobOrchestrator.Tests.csproj" />
+  </Folder>
+</Solution>
