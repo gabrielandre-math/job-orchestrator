@@ -23,6 +23,7 @@ public sealed class ExplorerTests
     [InlineData("https://apply.workable.com/dextra/j/9D0C", "workable:dextra")]
     [InlineData("https://apply.workable.com/j/9D0C64C055", null)]
     [InlineData("https://accenture.wd103.myworkdayjobs.com/en-US/AccentureCareers/job/Sao-Paulo/Dev_R1", "workday:accenture.wd103.myworkdayjobs.com/AccentureCareers")]
+    [InlineData("https://eeho.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_45001/job/348574", "oracle:eeho.fa.us2.oraclecloud.com/CX_45001")]
     [InlineData("https://combineglobalrecruitment.na.teamtailor.com/jobs/1-dev", "teamtailor:combineglobalrecruitment.na")]
     public void Link_vira_quadro_oficial(string url, string? expected) => Assert.Equal(expected, SourceKeys.Board(url));
 
@@ -122,4 +123,21 @@ public sealed class FeedFormatTests
         Assert.Equal(today.AddDays(-3), JobOrchestrator.Automation.Adapters.WorkdaySource.Posted("Posted 3 Days Ago"));
         Assert.Equal(today.AddDays(-30), JobOrchestrator.Automation.Adapters.WorkdaySource.Posted("Posted 30+ Days Ago"));
     }
+}
+
+/// <summary>A mesma vaga em quadros diferentes ganha a mesma chave; vagas diferentes, não.</summary>
+public sealed class DuplicateTests
+{
+    [Theory]
+    [InlineData("Accenture do Brasil Ltda", "Desenvolvedor .NET Sr (Remoto)", "Rio de Janeiro, RJ, BR", "Accenture", "Desenvolvedor .NET Sênior", "Rio de Janeiro")]
+    [InlineData("Acme Tecnologia S.A.", "Engenheiro de Software Pleno - Remoto", "Remote", "ACME", "Engenheiro de Software Pl", "Remoto")]
+    public void Mesma_vaga_escrita_de_outro_jeito_tem_a_mesma_chave(string c1, string t1, string l1, string c2, string t2, string l2) =>
+        Assert.Equal(JobOrchestrator.Jobs.Domain.Fingerprint.For(c1, t1, l1, ""), JobOrchestrator.Jobs.Domain.Fingerprint.For(c2, t2, l2, ""));
+
+    [Theory]
+    [InlineData("Banco Inter", "Analista de Dados", "Belo Horizonte", "Banco Itaú", "Analista de Dados", "Belo Horizonte")]
+    [InlineData("Magalu", "Atendente", "Recife, PE", "Magalu", "Atendente", "Natal, RN")]
+    [InlineData("Acme", "Desenvolvedor .NET Júnior", "Remoto", "Acme", "Desenvolvedor .NET Sênior", "Remoto")]
+    public void Vagas_diferentes_tem_chaves_diferentes(string c1, string t1, string l1, string c2, string t2, string l2) =>
+        Assert.NotEqual(JobOrchestrator.Jobs.Domain.Fingerprint.For(c1, t1, l1, ""), JobOrchestrator.Jobs.Domain.Fingerprint.For(c2, t2, l2, ""));
 }

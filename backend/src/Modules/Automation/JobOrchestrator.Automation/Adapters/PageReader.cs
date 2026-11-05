@@ -66,7 +66,16 @@ internal sealed partial class PageReader(IOptions<AutomationOptions> options, IH
             clicked.Add($"{choice.Text}|{choice.Href}");
             snap = await SnapAsync(page) ?? snap;
         }
-        return snap is null ? null : new RenderedPage(page.Url, snap.Title, snap.Text, snap.Links, snap.JsonLd, steps);
+        if (snap is null) return null;
+        // O texto principal (SmartReader, a leitura do Readability em .NET) tira menu, rodapé e banner antes do Extrator; sem leitura boa, fica o texto inteiro.
+        var text = snap.Text;
+        try
+        {
+            var article = SmartReader.Reader.ParseArticle(page.Url, await page.ContentAsync());
+            if (article.IsReadable && article.TextContent is { Length: >= 300 } main) text = main.Trim();
+        }
+        catch (Exception ex) when (ex is PlaywrightException or InvalidOperationException or ArgumentException) { /* fica o texto inteiro */ }
+        return new RenderedPage(page.Url, snap.Title, text, snap.Links, snap.JsonLd, steps);
     }
 
     private async Task<IBrowserContext> ContextAsync(CancellationToken ct, bool chromium = false)
@@ -226,6 +235,9 @@ internal sealed partial class PageReader(IOptions<AutomationOptions> options, IH
         var country = a.TryGetProperty("addressCountry", out var c) ? c.ValueKind == JsonValueKind.Object ? c.Str("name") : c.GetString() ?? "" : "";
         return string.Join(", ", new[] { a.Str("addressLocality"), a.Str("addressRegion"), country }.Where(x => x.Length > 0));
     }
+
+    /// <summary>Se o robots.txt do site deixa ler este endereço (o Firecrawl e o navegador perguntam antes).</summary>
+    public Task<bool> AllowedAsync(string url, CancellationToken ct) => Uri.TryCreate(url, UriKind.Absolute, out var u) ? RobotsAllowAsync(u, ct) : Task.FromResult(false);
 
     private async Task<bool> RobotsAllowAsync(Uri uri, CancellationToken ct)
     {

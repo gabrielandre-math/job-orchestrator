@@ -4,6 +4,7 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Playwright" />
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
+    <PackageReference Include="SmartReader" />
     <ProjectReference Include="../../../BuildingBlocks/JobOrchestrator.BuildingBlocks/JobOrchestrator.BuildingBlocks.csproj" />
     <ProjectReference Include="../../../BuildingBlocks/JobOrchestrator.BuildingBlocks.Data/JobOrchestrator.BuildingBlocks.Data.csproj" />
     <ProjectReference Include="../../../BuildingBlocks/JobOrchestrator.BuildingBlocks.Web/JobOrchestrator.BuildingBlocks.Web.csproj" />

@@ -11,7 +11,7 @@ public static class SourceKeys
             if (re.Match(url) is { Success: true } m && m.Groups[1].Value is { Length: > 1 } slug && !Reserved.Contains(slug.ToLowerInvariant()))
             {
                 // Workday: o quadro é o host do cliente mais o nome do site (accenture.wd103.myworkdayjobs.com/AccentureCareers).
-                if (platform == "workday") { if (Reserved.Contains(m.Groups[2].Value.ToLowerInvariant())) continue; return $"workday:{slug.ToLowerInvariant()}/{m.Groups[2].Value}"; }
+                if (platform is "workday" or "oracle") { if (Reserved.Contains(m.Groups[2].Value.ToLowerInvariant())) continue; return $"{platform}:{slug.ToLowerInvariant()}/{m.Groups[2].Value}"; }
                 return $"{platform}:{(platform is "gupy" or "recruitee" or "breezy" or "personio" or "workable" or "teamtailor" or "solides" or "inhire" or "pandape" ? slug.ToLowerInvariant() : slug)}";
             }
         return null;
@@ -36,5 +36,6 @@ public static class SourceKeys
         (new(@"jobs\.quickin\.io/([A-Za-z0-9_-]+)", RegexOptions.IgnoreCase), "quickin"),
         (new(@"https?://([a-z0-9-]+)\.pandape\.(?:infojobs|catho)\.com\.br", RegexOptions.IgnoreCase), "pandape"),
         (new(@"https?://([a-z0-9-]+\.wd\d+\.myworkdayjobs\.com)/(?:[a-z]{2}-[A-Z]{2}/)?([A-Za-z0-9_-]+)", RegexOptions.IgnoreCase), "workday"),
+        (new(@"https?://([a-z0-9-]+\.fa(?:\.[a-z0-9-]+)*\.oraclecloud\.com)/hcmUI/CandidateExperience/[A-Za-z-]+/sites/([A-Za-z0-9_]+)", RegexOptions.IgnoreCase), "oracle"),
     ];
 }

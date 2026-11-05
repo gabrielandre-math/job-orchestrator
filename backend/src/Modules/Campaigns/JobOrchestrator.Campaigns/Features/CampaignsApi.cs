@@ -79,6 +79,15 @@ internal sealed class CampaignRuns(CampaignsDbContext db, TimeProvider time) : I
         return added;
     }
 
+    public async Task<int> RemoveSourcesAsync(Guid campaignId, IReadOnlyList<string> sources, CancellationToken ct)
+    {
+        var campaign = await db.Campaigns.FirstOrDefaultAsync(c => c.Id == campaignId, ct);
+        if (campaign is null) return 0;
+        var removed = campaign.RemoveSources(sources, time.GetUtcNow().UtcDateTime);
+        await db.SaveChangesAsync(ct);
+        return removed;
+    }
+
     public async Task<bool> RequestSourcesAsync(Guid campaignId, IReadOnlyList<string> sources, string trigger, CancellationToken ct)
     {
         var campaign = await db.Campaigns.FirstOrDefaultAsync(c => c.Id == campaignId, ct);

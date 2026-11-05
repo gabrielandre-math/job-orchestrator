@@ -104,6 +104,9 @@ internal sealed class JobPosting : AggregateRoot
     }
 
     /// <summary>Stack pedida e domínio da empresa (para a logo), tirados do texto da vaga.</summary>
+    /// <summary>Recalcula a chave de duplicidade com a regra atual (as vagas antigas ganham a chave nova uma vez, na subida).</summary>
+    public void Rekey() => CanonicalKey = Fingerprint.For(Company, Title, Location, ApplyUrl);
+
     public void Enrich()
     {
         Stack = Domain.Stack.Detect(Title, Description);
@@ -181,9 +184,41 @@ internal static partial class Fingerprint
     {
         if (Uri.TryCreate(applyUrl, UriKind.Absolute, out var uri) && AtsJob().Match(uri.AbsolutePath) is { Success: true } m)
             return $"ats:{uri.Authority.ToLowerInvariant()}:{m.Groups[1].Value}";
-        var basis = $"{Normalize(company)}|{Normalize(title)}|{Normalize(location)}";
-        return "fp:" + Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(basis)))[..32];
+        // A mesma vaga chega por quadros diferentes com a empresa, o cargo e o local escritos de jeitos diferentes ("Acme Tecnologia Ltda" e
+        // "Acme"; "Desenvolvedor .NET Sr (Remoto)" e "Desenvolvedor .NET Sênior"; "Rio de Janeiro, RJ, BR" e "Rio de Janeiro"): a chave usa a forma curta.
+        var basis = $"{Company(company)}|{Title(title)}|{City(location)}";
+        return "fp2:" + Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(basis)))[..32];
     }
+
+    /// <summary>Nome da empresa sem sufixo jurídico, país e palavras genéricas de ramo ("Accenture do Brasil Ltda" e "Accenture" dão "accenture").</summary>
+    internal static string Company(string company)
+    {
+        var words = Normalize(company).Split(" ", StringSplitOptions.RemoveEmptyEntries).Where(w => !CompanyNoise.Contains(w.Replace(".", ""))).ToList();
+        return words.Count == 0 ? Normalize(company) : string.Join(' ', words.Take(2));
+    }
+
+    /// <summary>Cargo sem modalidade, parênteses e marcas de anúncio; nível escrito de um jeito só (sr, sênior e senior dão "senior").</summary>
+    internal static string Title(string title)
+    {
+        var text = Normalize(Bracketed().Replace(title, " "));
+        var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries).Select(w => Level.TryGetValue(w.Trim('.'), out var l) ? l : w).Where(w => !TitleNoise.Contains(w)).ToList();
+        return string.Join(' ', words);
+    }
+
+    /// <summary>Só a cidade (o que vem antes da vírgula); remoto em qualquer língua vira "remoto".</summary>
+    internal static string City(string location)
+    {
+        var text = Normalize(location);
+        if (text.Length == 0 || Remote().IsMatch(text)) return text.Length == 0 ? "" : "remoto";
+        return Normalize(location.Split([',', '-', '/', '|', ';', '('], 2)[0]);
+    }
+
+    private static readonly HashSet<string> CompanyNoise = ["ltda", "ltd", "sa", "s", "a", "inc", "llc", "gmbh", "eireli", "me", "epp", "corp", "corporation", "co", "the",
+        "do", "da", "de", "brasil", "brazil", "br", "tecnologia", "technology", "technologies", "tech", "solutions", "solucoes", "servicos", "services", "consultoria",
+        "consulting", "digital", "software", "sistemas", "systems", "group", "grupo", "holding", "company", "labs"];
+    private static readonly HashSet<string> TitleNoise = ["remoto", "remote", "hibrido", "hybrid", "presencial", "onsite", "vaga", "oportunidade", "afirmativa", "pcd",
+        "home", "office", "100%", "temporaria", "urgente", "para", "-", "|", "/"];
+    private static readonly Dictionary<string, string> Level = new() { ["sr"] = "senior", ["pl"] = "pleno", ["jr"] = "junior", ["mid"] = "pleno", ["middle"] = "pleno" };
 
     internal static string Normalize(string text)
     {
@@ -193,6 +228,8 @@ internal static partial class Fingerprint
     }
 
     [GeneratedRegex(@"/jobs/(\d+)")] private static partial Regex AtsJob();
+    [GeneratedRegex(@"\([^)]*\)|\[[^\]]*\]")] private static partial Regex Bracketed();
+    [GeneratedRegex(@"\b(remot[oa]|remote|home office|anywhere|qualquer lugar|teletrabalho)\b")] private static partial Regex Remote();
     [GeneratedRegex(@"[^a-z0-9#+.]+")] private static partial Regex NonWord();
     [GeneratedRegex(@"\s+")] private static partial Regex Spaces();
 }

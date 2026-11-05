@@ -241,3 +241,107 @@ internal sealed partial class WorkdaySource(IHttpClientFactory http) : PublicSou
     [GeneratedRegex(@"remot[oa]|remote|home ?office|100% remoto", RegexOptions.IgnoreCase)] private static partial Regex Remote();
     [GeneratedRegex(@"h[íi]brid[oa]|hybrid", RegexOptions.IgnoreCase)] private static partial Regex Hybrid();
 }
+
+/// <summary>
+/// Oracle Recruiting Cloud (oracle:empresa.fa.região.oraclecloud.com/Site): a API pública que o próprio site de carreira usa, com busca pela
+/// palavra e o detalhe de cada vaga. Usado por bancos e multinacionais; sem robots.txt que feche a API.
+/// </summary>
+internal sealed partial class OracleSource(IHttpClientFactory http) : PublicSource(http, "oracle", "oraclecloud.com"), IHintedSource
+{
+    public override string Id => "oracle-rc";
+    public override string Name => "Oracle Recruiting Cloud";
+
+    public override Task<IReadOnlyList<DiscoveredPosting>> DiscoverAsync(string source, CancellationToken ct) => DiscoverAsync(source, [], ct);
+
+    public async Task<IReadOnlyList<DiscoveredPosting>> DiscoverAsync(string source, IReadOnlyList<string> hints, CancellationToken ct)
+    {
+        var key = Key(source);
+        var host = key.Split('/')[0];
+        var site = key.Split('/', StringSplitOptions.RemoveEmptyEntries).Last();
+        var api = $"https://{host}/hcmRestApi/resources/latest";
+        var found = new Dictionary<string, JsonElement>();
+        foreach (var text in hints.Count > 0 ? hints.Take(2) : [""])
+        {
+            var keyword = text.Length > 0 ? $",keyword={Uri.EscapeDataString(text)}" : "";
+            using var doc = await Json.GetAsync(Client, $"{api}/recruitingCEJobRequisitions?onlyData=true&expand=requisitionList.secondaryLocations&finder=findReqs;siteNumber={site}{keyword},limit=25,offset=0,sortBy=POSTING_DATES_DESC", ct);
+            foreach (var item in doc.RootElement.GetProperty("items").EnumerateArray())
+                foreach (var r in item.GetProperty("requisitionList").EnumerateArray())
+                    if (r.Str("Id") is { Length: > 0 } id) found.TryAdd(id, r.Clone());
+            await Task.Delay(400, ct);
+        }
+        var company = Json.Company(host.Split('.')[0]);
+        var list = new List<DiscoveredPosting>();
+        foreach (var (id, r) in found.Take(20))
+        {
+            var description = "";
+            try
+            {
+                using var detail = await Json.GetAsync(Client, $"{api}/recruitingCEJobRequisitionDetails?onlyData=true&expand=all&finder=ById;Id=%22{id}%22,siteNumber={site}", ct);
+                var d = detail.RootElement.GetProperty("items").EnumerateArray().FirstOrDefault();
+                if (d.ValueKind == JsonValueKind.Object)
+                    description = Json.Plain($"{d.Str("ExternalDescriptionStr")}\n{d.Str("ExternalResponsibilitiesStr")}\n{d.Str("ExternalQualificationsStr")}");
+            }
+            catch (Exception ex) when (ex is HttpRequestException or JsonException or KeyNotFoundException) { /* sem detalhe: fica o título */ }
+            var mode = r.Str("WorkplaceTypeCode").ToUpperInvariant();
+            list.Add(new DiscoveredPosting(source, id, company, r.Str("Title"), r.Str("PrimaryLocation"), $"https://{host}/hcmUI/CandidateExperience/en/sites/{site}/job/{id}",
+                description.Length > 0 ? description : r.Str("Title"), r.Date("PostedDate"), r.GetRawText(),
+                Workplace: mode.Contains("REMOTE") ? "remote" : mode.Contains("HYBRID") ? "hybrid" : mode.Contains("ON_SITE") ? "onsite" : null, ListedAsOpen: true));
+            await Task.Delay(250, ct);
+        }
+        return list;
+    }
+}
+
+/// <summary>
+/// SAP SuccessFactors (successfactors:site.da.empresa): a busca pública dos sites de carreira (/search/?q=) e a página de cada vaga, que
+/// marca título, data, local e descrição em microdata. O robots.txt desses sites fecha só candidatura e cadastro, que nunca são abertos.
+/// </summary>
+internal sealed partial class SuccessFactorsSource(IHttpClientFactory http) : PublicSource(http, "successfactors"), IHintedSource
+{
+    public override string Id => "successfactors-rmk";
+    public override string Name => "SAP SuccessFactors";
+
+    public override Task<IReadOnlyList<DiscoveredPosting>> DiscoverAsync(string source, CancellationToken ct) => DiscoverAsync(source, [], ct);
+
+    public async Task<IReadOnlyList<DiscoveredPosting>> DiscoverAsync(string source, IReadOnlyList<string> hints, CancellationToken ct)
+    {
+        var host = Key(source).Split('/')[0];
+        var cards = new Dictionary<string, (string Title, string Place)>();
+        foreach (var text in hints.Count > 0 ? hints.Take(2) : [""])
+        {
+            var html = await Client.GetStringAsync($"https://{host}/search/?q={Uri.EscapeDataString(text)}&startrow=0", ct);
+            // O link da vaga aparece com href antes ou depois da classe, conforme o tema do site.
+            foreach (var m in HrefFirst().Matches(html).Concat(ClassFirst().Matches(html)))
+                cards.TryAdd(m.Groups[1].Value, (System.Net.WebUtility.HtmlDecode(m.Groups[2].Value).Trim(), ""));
+            await Task.Delay(400, ct);
+        }
+        var list = new List<DiscoveredPosting>();
+        foreach (var (path, card) in cards.Take(20))
+        {
+            var url = $"https://{host}{path}";
+            try
+            {
+                var page = await Client.GetStringAsync(url, ct);
+                var title = ItemText(page, "title") is { Length: > 0 } t ? t : card.Title;
+                var at = page.IndexOf("itemprop=\"description\"", StringComparison.Ordinal);
+                var description = at >= 0 ? Json.Plain(page[at..Math.Min(page.Length, at + 20000)]) : title;
+                var place = Geo().Match(page) is { Success: true } g ? System.Net.WebUtility.HtmlDecode(g.Groups[1].Value).Trim() : card.Place;
+                DateTime? posted = Posted().Match(page) is { Success: true } p && DateTime.TryParseExact(p.Groups[1].Value, "ddd MMM dd HH:mm:ss 'UTC' yyyy", CultureInfo.InvariantCulture,
+                    DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var d) ? d : null;
+                list.Add(new DiscoveredPosting(source, path.TrimEnd('/').Split('/').Last(), Json.Company(host.Split('.').Reverse().Skip(1).FirstOrDefault() ?? host), title, place, url,
+                    description[..Math.Min(description.Length, 8000)], posted, $"{{\"url\":{JsonSerializer.Serialize(url)}}}", ListedAsOpen: true));
+            }
+            catch (HttpRequestException) { /* vaga que saiu entre a busca e a página */ }
+            await Task.Delay(300, ct);
+        }
+        return list;
+    }
+
+    private static string ItemText(string html, string prop) =>
+        Regex.Match(html, $"itemprop=\"{prop}\"[^>]*>([^<]+)<") is { Success: true } m ? System.Net.WebUtility.HtmlDecode(m.Groups[1].Value).Trim() : "";
+
+    [GeneratedRegex(@"<a[^>]*href=""(/job/[^""]+/\d+/)""[^>]*class=""jobTitle-link[^""]*""[^>]*>([^<]+)</a>")] private static partial Regex HrefFirst();
+    [GeneratedRegex(@"<a[^>]*class=""jobTitle-link[^""]*""[^>]*href=""(/job/[^""]+/\d+/)""[^>]*>([^<]+)</a>")] private static partial Regex ClassFirst();
+    [GeneratedRegex(@"class=""jobGeoLocation""[^>]*>([^<]+)<")] private static partial Regex Geo();
+    [GeneratedRegex(@"itemprop=""datePosted""[^>]*content=""([^""]+)""")] private static partial Regex Posted();
+}

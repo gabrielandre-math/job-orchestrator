@@ -143,22 +143,23 @@ internal sealed partial class ScrapyRunner(ScraperEnv env, IIntelligenceApi ai, 
             $"{postings.Count} vagas com dado estruturado (JSON-LD), {candidates.Count} páginas com cara de vaga sem esse dado, {boards.Distinct().Count()} quadros de ATS, {emails.Count} e-mails de candidatura."
             + (blocked > 0 ? $"\n{blocked} páginas não lidas: o robots.txt proíbe ou o site recusou (403). Não contornamos." : ""), "Extrator", true, ct);
 
-        // Página que só monta com JavaScript: o Scrapy leu (o robots.txt já foi respeitado) e não achou nada. Com o Firecrawl configurado,
-        // ele renderiza a mesma página e o texto segue para o Extrator e o Conferente como os outros. Sem Firecrawl, nada muda.
-        if (postings.Count == 0 && candidates.Count == 0 && boards.Count == 0 && blocked == 0 && pages > 0 && await FirecrawlAsync(ct) is { } firecrawl)
-            foreach (var seed in seeds.Take(3))
-                if (await RenderAsync(firecrawl, seed.StartsWith("http") ? seed : $"https://{seed}", ct) is { } page)
-                {
-                    candidates.Add(page);
-                    await ai.NoteAsync(thread, "Coletor", $"Página com JavaScript lida pelo Firecrawl: {seed}", $"{page.Text.Length} caracteres para o Extrator.", "Extrator", true, ct);
-                }
+        // Site que não deu nada no Scrapy (página que só monta com JavaScript): o Firecrawl, quando está no ar, lê primeiro; o navegador de
+        // leitura fica com o que sobrar. Os dois conferem o robots.txt antes; o que o site recusa não é lido.
+        bool Empty(string s) => !postings.Any(p => Leads.Under(Leads.PageOf(p), s)) && !candidates.Any(c => Leads.Under(c.Url, s)) && !hits.Any(h => Leads.Under(h.Page, s));
+        if (seeds.Any(Empty) && await FirecrawlAsync(ct) is { } firecrawl)
+            foreach (var seed in seeds.Where(Empty).Take(3).ToList())
+            {
+                var start = seed.StartsWith("http", StringComparison.Ordinal) ? seed : $"https://{seed}";
+                if (!await reader.AllowedAsync(start, ct) || await RenderAsync(firecrawl, start, ct) is not { } page) continue;
+                candidates.Add(page);
+                await ai.NoteAsync(thread, "Coletor", $"Página com JavaScript lida pelo Firecrawl: {seed}", $"{page.Text.Length} caracteres para o Extrator.", "Extrator", true, ct);
+            }
 
         // Site que não deu nada no Scrapy (página que só monta com JavaScript): o navegador de leitura abre, com o robots.txt conferido.
         // Quadro de ATS em link ou iframe, vaga em dado estruturado e o texto da página seguem o mesmo caminho do que o Scrapy leu.
         if (config.GetValue("Scraper:Browser:Enabled", true))
         {
-            var empty = seeds.Where(s => !postings.Any(p => Leads.Under(Leads.PageOf(p), s)) && !candidates.Any(c => Leads.Under(c.Url, s)) && !hits.Any(h => Leads.Under(h.Page, s)))
-                .Take(config.GetValue("Scraper:Browser:MaxSites", 4)).ToList();
+            var empty = seeds.Where(Empty).Take(config.GetValue("Scraper:Browser:MaxSites", 4)).ToList();
             foreach (var seed in empty)
             {
                 var start = seed.StartsWith("http", StringComparison.Ordinal) ? seed : $"https://{seed}";
@@ -186,12 +187,24 @@ internal sealed partial class ScrapyRunner(ScraperEnv env, IIntelligenceApi ai, 
         // Extrator: a IA lê as páginas sem dado estruturado (até 8 por varredura) e o Conferente confere cada vaga contra a página.
         var fromAi = 0;
         var rejected = 0;
+        // Página igual à da última leitura (mesmo texto) reaproveita a extração: a IA só lê o que mudou.
+        var cache = ExtractCache.Load();
+        var reused = 0;
         foreach (var c in candidates.Take(aiPages ?? config.GetValue("Scraper:MaxAiPages", 8)))
         {
-            var r = await ai.CompleteAsync(LlmRequest.For(LlmTasks.PageJobs, LocalTaskSpecs.PageJobsSystem, LocalTaskSpecs.PageJobsPrompt(c.Url, c.Title, c.Text),
-                LocalTaskSpecs.PageJobsSchema, timeoutSeconds: 240, thread: thread, agent: "Extrator"), ct);
-            if (!r.Ok) continue;
-            var jobs = Jobs(r.Json!).ToList();
+            // Sem números ("há 2 minutos", contadores): a mesma lista de vagas dá a mesma chave mesmo com a página mudando o relógio.
+            var key = Hash(Digits().Replace(c.Text.ToLowerInvariant(), "").ReplaceLineEndings(" "));
+            string json;
+            if (cache.TryGetValue(key, out var hit) && DateTime.UtcNow - hit.At < TimeSpan.FromDays(14)) { json = hit.Json; reused++; }
+            else
+            {
+                var r = await ai.CompleteAsync(LlmRequest.For(LlmTasks.PageJobs, LocalTaskSpecs.PageJobsSystem, LocalTaskSpecs.PageJobsPrompt(c.Url, c.Title, c.Text),
+                    LocalTaskSpecs.PageJobsSchema, timeoutSeconds: 240, thread: thread, agent: "Extrator"), ct);
+                if (!r.Ok || r.Json is null) continue;
+                json = r.Json;
+                cache[key] = new ExtractCache.Entry(json, DateTime.UtcNow);
+            }
+            var jobs = Jobs(json).ToList();
             foreach (var job in jobs)
             {
                 var page = Fold(c.Text);
@@ -203,7 +216,7 @@ internal sealed partial class ScrapyRunner(ScraperEnv env, IIntelligenceApi ai, 
                 postings.Add(new DiscoveredPosting(source, Hash(c.Url + job.Title), job.Company is { Length: > 0 } co ? co : Host(c.Url), job.Title, job.Location,
                     Uri.TryCreate(job.ApplyUrl, UriKind.Absolute, out _) ? job.ApplyUrl : c.Url, job.Summary.Length > 0 ? job.Summary : c.Text[..Math.Min(c.Text.Length, 4000)],
                     // Data e salário escritos na página valem quando a página é de uma vaga só (página de vaga, não lista).
-                    c.Posted, $"{{\"page\":{JsonSerializer.Serialize(c.Url)},\"extraction\":{r.Json}}}", Workplace: job.Modality is "remote" or "hybrid" or "onsite" ? job.Modality : null,
+                    c.Posted, $"{{\"page\":{JsonSerializer.Serialize(c.Url)},\"extraction\":{json}}}", Workplace: job.Modality is "remote" or "hybrid" or "onsite" ? job.Modality : null,
                     Compensation: jobs.Count == 1 ? c.Salary : null, ApplyEmail: email, ListedAsOpen: true));
                 fromAi++;
             }
@@ -219,7 +232,8 @@ internal sealed partial class ScrapyRunner(ScraperEnv env, IIntelligenceApi ai, 
         postings = [.. postings.GroupBy(p => (Claims: Fold(p.Title), p.ApplyUrl)).Select(g => g.First())];
         fromAi = Math.Min(fromAi, postings.Count);
         var jsonLd = postings.Count - fromAi;
-        await ai.NoteAsync(thread, "Conferente", $"{postings.Count} vagas aceitas ({jsonLd} do JSON-LD, {fromAi} pela IA){(rejected > 0 ? $"; {rejected} recusadas" : "")}",
+        ExtractCache.Save(cache);
+        await ai.NoteAsync(thread, "Conferente", $"{postings.Count} vagas aceitas ({jsonLd} do JSON-LD, {fromAi} pela IA){(rejected > 0 ? $"; {rejected} recusadas" : "")}{(reused > 0 ? $"; {reused} páginas sem mudança, sem IA de novo" : "")}",
             rejected > 0 ? "Recusada: o título ou o trecho citado não está escrito na página." : "Toda vaga aceita tem o título escrito na página.", "Analista", true, ct);
         log.LogInformation("Varredura {Source}: {Pages} páginas, {JsonLd} JSON-LD, {Ai} pela IA, {Boards} quadros", source, pages, jsonLd, fromAi, boards.Count);
         return (postings, new CrawlSummary(pages, jsonLd, fromAi, rejected, boards.Distinct().Count(), emails.Count, blocked, [.. boards.Distinct()], null, clock.Elapsed.TotalSeconds, hits));
@@ -270,6 +284,7 @@ internal sealed partial class ScrapyRunner(ScraperEnv env, IIntelligenceApi ai, 
     }
 
     [GeneratedRegex(@"\s+")] private static partial Regex Spaces();
+    [GeneratedRegex(@"[\d\s]+")] private static partial Regex Digits();
 }
 
 /// <summary>
@@ -304,3 +319,20 @@ internal sealed class WebSource(ScrapyRunner runner, IIntelligenceApi ai, IServi
         return postings;
     }
 }
+
+/// <summary>Extrações da IA por texto de página (hash), por 14 dias: página que não mudou não volta para o modelo.</summary>
+internal static class ExtractCache
+{
+    internal sealed record Entry(string Json, DateTime At);
+    private static string File => Path.Combine(AppPaths.In(AppPaths.Data, "scraper"), "extractions.json");
+
+    public static Dictionary<string, Entry> Load()
+    {
+        try { return System.IO.File.Exists(File) ? JsonSerializer.Deserialize<Dictionary<string, Entry>>(System.IO.File.ReadAllText(File)) ?? [] : []; }
+        catch (JsonException) { return []; }
+    }
+
+    public static void Save(Dictionary<string, Entry> cache) =>
+        System.IO.File.WriteAllText(File, JsonSerializer.Serialize(cache.Where(c => DateTime.UtcNow - c.Value.At < TimeSpan.FromDays(14)).OrderByDescending(c => c.Value.At).Take(3000).ToDictionary()));
+}
+

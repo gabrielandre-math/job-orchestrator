@@ -35,6 +35,8 @@ public interface ICampaignRuns
     Task<int> AddSourcesAsync(Guid campaignId, IReadOnlyList<string> sources, CancellationToken ct);
     /// <summary>Rodada só com estas fontes, na hora: as vagas das fontes novas chegam sem esperar a próxima rodada completa.</summary>
     Task<bool> RequestSourcesAsync(Guid campaignId, IReadOnlyList<string> sources, string trigger, CancellationToken ct);
+    /// <summary>Tira da campanha as fontes que saíram do ar (404 em várias rodadas seguidas).</summary>
+    Task<int> RemoveSourcesAsync(Guid campaignId, IReadOnlyList<string> sources, CancellationToken ct);
 }
 
 public interface ICampaignsApi

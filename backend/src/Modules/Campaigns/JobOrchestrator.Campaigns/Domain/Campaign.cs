@@ -77,6 +77,18 @@ internal sealed class Campaign : AggregateRoot
         return fresh.Count;
     }
 
+    /// <summary>Tira fontes que saíram do ar; devolve quantas saíram.</summary>
+    public int RemoveSources(IEnumerable<string> sources, DateTime now)
+    {
+        var gone = sources.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var kept = Sources.Where(s => !gone.Contains(s)).ToList();
+        var removed = Sources.Count - kept.Count;
+        if (removed == 0) return 0;
+        Sources = kept;
+        UpdatedAt = now;
+        return removed;
+    }
+
     /// <summary>Busca da noite: o timer só pede rodada de campanha ligada.</summary>
     public void Schedule(bool enabled, DateTime now) { Enabled = enabled; UpdatedAt = now; }
 

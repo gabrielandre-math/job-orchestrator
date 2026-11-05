@@ -11,7 +11,7 @@ namespace JobOrchestrator.Jobs.Features;
 /// Cada etapa é narrada no fio "search" com números (Data), para a Busca ao vivo desenhar o progresso.
 /// </summary>
 internal sealed class RunRequestedConsumer(
-    JobsDbContext db, ICampaignsApi campaigns, IAutomationApi automation, IIntelligenceApi ai, TimeProvider time, ILogger<RunRequestedConsumer> log) : IEventConsumer
+    JobsDbContext db, ICampaignsApi campaigns, ICampaignRuns runs, IAutomationApi automation, IIntelligenceApi ai, TimeProvider time, ILogger<RunRequestedConsumer> log) : IEventConsumer
 {
     public string EventType => RunRequestedV1.EventType;
 
@@ -28,6 +28,7 @@ internal sealed class RunRequestedConsumer(
         var thread = AgentThread.New("search", run.Only is { Count: > 0 } ? $"Busca nas fontes novas: {campaign.Name}" : $"Busca: {campaign.Name}");
         await SayAsync(thread, "Batedor", $"{sources.Count} {(sources.Count == 1 ? "fonte" : "fontes")} para consultar{(run.Only is { Count: > 0 } ? " (achadas agora pelo Explorador)" : "")}", string.Join("\n", sources.Select(Label)),
             new { stage = "start", runId = run.RunId, sources, cut = campaign.MinFitScore, partial = run.Only is { Count: > 0 } }, "Normalizador", true, ct);
+        var health = SourceHealth.Load();
         foreach (var source in sources)
         {
             var watch = Stopwatch.StartNew();
@@ -44,17 +45,29 @@ internal sealed class RunRequestedConsumer(
                     kept++;
                     found.Add((p, p.ListedAsOpen ? new PostingStatus(true, "Listada agora pela API oficial.") : await automation.CheckOpenAsync(p.ApplyUrl, ct)));
                 }
+                health.Remove(source);
                 await SayAsync(thread, "Batedor", $"{Label(source)}: {listed} {(listed == 1 ? "vaga" : "vagas")}, {kept} da sua área", null,
                     new { stage = "source", source, state = "done", listed, kept, seconds = Math.Round(watch.Elapsed.TotalSeconds, 1) }, "Normalizador", true, ct);
             }
             catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException or JsonException)
             {
-                // Uma fonte fora do ar não derruba a rodada.
+                // Uma fonte fora do ar não derruba a rodada. Só "não existe mais" (404, 410) conta para tirar a fonte; queda passageira não.
                 log.LogWarning("Source {Source} failed: {Error}", source, ex.Message);
+                if (ex is HttpRequestException { StatusCode: System.Net.HttpStatusCode.NotFound or System.Net.HttpStatusCode.Gone }) health[source] = health.GetValueOrDefault(source) + 1;
                 await SayAsync(thread, "Batedor", $"{Label(source)} não respondeu", ex.Message,
                     new { stage = "source", source, state = "failed", listed, kept, error = ex.Message.Length > 200 ? ex.Message[..200] : ex.Message, seconds = Math.Round(watch.Elapsed.TotalSeconds, 1) }, "Normalizador", false, ct);
             }
         }
+
+        // Quadro morto: a mesma fonte sumiu (404) em 5 rodadas seguidas. Sai da campanha e a tela diz qual.
+        var dead = health.Where(h => h.Value >= 5).Select(h => h.Key).ToList();
+        if (dead.Count > 0 && await runs.RemoveSourcesAsync(campaign.Id, dead, ct) > 0)
+        {
+            foreach (var d in dead) health.Remove(d);
+            await SayAsync(thread, "Batedor", $"{dead.Count} {(dead.Count == 1 ? "fonte saiu do ar e foi tirada" : "fontes saíram do ar e foram tiradas")} da campanha",
+                string.Join("\n", dead.Select(Label)), new { stage = "pruned", sources = dead }, null, false, ct);
+        }
+        SourceHealth.Save(health);
 
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         var now = time.GetUtcNow().UtcDateTime;
@@ -130,3 +143,18 @@ internal sealed class RunRequestedConsumer(
         db.Snapshots.Add(new JobSnapshot { Id = Guid.CreateVersion7(), JobId = jobId, FetchedAt = now, PayloadHash = hash, Payload = raw });
     }
 }
+
+/// <summary>Quantas rodadas seguidas cada fonte respondeu "não existe" (404 ou 410); uma resposta boa zera.</summary>
+internal static class SourceHealth
+{
+    private static string File => Path.Combine(AppPaths.In(AppPaths.Data, "jobs"), "source-health.json");
+
+    public static Dictionary<string, int> Load()
+    {
+        try { return System.IO.File.Exists(File) ? JsonSerializer.Deserialize<Dictionary<string, int>>(System.IO.File.ReadAllText(File)) ?? [] : []; }
+        catch (JsonException) { return []; }
+    }
+
+    public static void Save(Dictionary<string, int> health) => System.IO.File.WriteAllText(File, JsonSerializer.Serialize(health));
+}
+

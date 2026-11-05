@@ -35,7 +35,10 @@ public static class JobsModule
         await db.Database.ExecuteSqlRawAsync("select pg_advisory_xact_lock(4747003)");
         var pending = await db.Postings.Where(p => p.Stack.Count == 0 && p.CompanyDomain == null && !p.Enriched).Take(5000).ToListAsync();
         foreach (var p in pending) p.Enrich();
-        if (pending.Count > 0) await db.SaveChangesAsync();
+        // Chave de duplicidade da regra antiga ("fp:") vira a nova uma vez: a mesma vaga vinda de outro quadro passa a se encontrar com estas.
+        var stale = await db.Postings.Where(p => p.CanonicalKey.StartsWith("fp:")).Take(20000).ToListAsync();
+        foreach (var p in stale) p.Rekey();
+        if (pending.Count > 0 || stale.Count > 0) await db.SaveChangesAsync();
         await tx.CommitAsync();
     }
 }

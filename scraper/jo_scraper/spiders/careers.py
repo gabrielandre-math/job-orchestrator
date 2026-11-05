@@ -59,6 +59,7 @@ BOARDS = [
     (re.compile(r"https?://([\w-]+)\.pandape\.(?:infojobs|catho)\.com\.br", re.I), "pandape"),
 ]
 WORKDAY = re.compile(r"https?://([\w-]+\.wd\d+\.myworkdayjobs\.com)/(?:[a-z]{2}-[A-Z]{2}/)?([\w-]+)", re.I)
+ORACLE = re.compile(r"https?://([\w-]+\.fa(?:\.[\w-]+)*\.oraclecloud\.com)/hcmUI/CandidateExperience/[A-Za-z-]+/sites/(\w+)", re.I)
 PATHS = ["", "/careers", "/carreiras", "/vagas", "/jobs", "/trabalhe-conosco", "/work-with-us", "/join-us"]
 
 
@@ -112,6 +113,17 @@ class CareersSpider(scrapy.Spider):
                     yield item
 
         html = response.text
+        for m in ORACLE.finditer(html):
+            source = f"oracle:{m.group(1).lower()}/{m.group(2)}"
+            if source not in self.seen_boards:
+                self.seen_boards.add(source)
+                yield {"type": "board", "source": source, "url": response.url}
+        # Site de carreira do SuccessFactors (tema RMK): o quadro é o próprio host.
+        if "rmkcdn.successfactors.com" in html or "jobs2web" in html:
+            source = f"successfactors:{urlparse(response.url).netloc.lower()}"
+            if source not in self.seen_boards:
+                self.seen_boards.add(source)
+                yield {"type": "board", "source": source, "url": response.url}
         for m in WORKDAY.finditer(html):
             # Workday: host do cliente mais o nome do site, com a caixa do site preservada.
             source = f"workday:{m.group(1).lower()}/{m.group(2)}"
