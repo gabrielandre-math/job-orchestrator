@@ -24,3 +24,4 @@ __pycache__/
 
 # executável gerado por scripts/package.sh
 dist/
+*.egg-info/

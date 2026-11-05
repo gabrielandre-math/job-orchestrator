@@ -1,3 +1,6 @@
+using System.Formats.Tar;
+using System.IO.Compression;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text.Json.Nodes;
 using JobOrchestrator.Intelligence.Providers;
@@ -18,7 +21,8 @@ internal sealed record InstallRequest(string[] Models, string? Fast, string? Str
 
 /// <summary>
 /// Modelo local sem sofrimento: detecta placa de vídeo, CPU, memória e disco; recomenda o modelo rápido e o forte que cabem;
-/// instala o Ollama na pasta do usuário (sem sudo, com o SHA-256 conferido) e baixa os modelos com progresso.
+/// instala o Ollama na pasta do usuário (sem sudo nem senha de administrador, com o SHA-256 conferido) e baixa os modelos com progresso.
+/// Vale para Linux (NVIDIA, AMD ou só CPU), macOS (o chip da Apple usa a memória unificada pelo Metal) e Windows.
 /// As escolhas vão para settings.json no diretório de configuração, que a API e o Worker leem sem reiniciar.
 /// </summary>
 internal sealed class LocalSetup(IHttpClientFactory http, IConfiguration config, ILogger<LocalSetup> log)
@@ -43,7 +47,7 @@ internal sealed class LocalSetup(IHttpClientFactory http, IConfiguration config,
 
     private string Url => config["Llm:Ollama:Url"] ?? "http://127.0.0.1:11434";
     private static string Home => Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-    private static string OllamaDir => Path.Combine(Home, ".local", "opt", "ollama");
+    private static string OllamaDir => OllamaHost.Dir;
 
     public async Task<Hardware> HardwareAsync(CancellationToken ct)
     {
@@ -57,7 +61,7 @@ internal sealed class LocalSetup(IHttpClientFactory http, IConfiguration config,
                 if (c.Length == 4) gpus.Add(new GpuInfo("nvidia", c[0], Int(c[1]), Int(c[2]), Int(c[3])));
             }
         }
-        // AMD: a VRAM vem do sysfs do amdgpu.
+        // AMD no Linux: a VRAM vem do sysfs do amdgpu.
         foreach (var card in Directory.Exists("/sys/class/drm") ? Directory.GetDirectories("/sys/class/drm", "card?") : [])
         {
             var total = Path.Combine(card, "device", "mem_info_vram_total");
@@ -67,14 +71,13 @@ internal sealed class LocalSetup(IHttpClientFactory http, IConfiguration config,
             var u = File.Exists(used) ? (int)(long.Parse(File.ReadAllText(used).Trim()) / 1048576) : 0;
             gpus.Add(new GpuInfo("amd", "Placa AMD", t, u, t - u));
         }
-        var cpuinfo = File.Exists("/proc/cpuinfo") ? File.ReadAllText("/proc/cpuinfo") : "";
-        var model = cpuinfo.Split('\n').FirstOrDefault(l => l.StartsWith("model name", StringComparison.Ordinal))?.Split(':', 2)[1].Trim() ?? "CPU";
-        var flags = cpuinfo.Split('\n').FirstOrDefault(l => l.StartsWith("flags", StringComparison.Ordinal)) ?? "";
-        var mem = File.Exists("/proc/meminfo") ? File.ReadAllLines("/proc/meminfo") : [];
-        int Mem(string key) => mem.FirstOrDefault(l => l.StartsWith(key + ":", StringComparison.Ordinal)) is { } l ? Int(l.Split(':')[1].Replace("kB", "")) / 1024 : 0;
+        var (model, ramTotal, ramFree) = Machine.Describe();
+        // Chip da Apple: a GPU usa a memória unificada, e o Metal deixa uns dois terços dela para o modelo.
+        if (OperatingSystem.IsMacOS() && RuntimeInformation.OSArchitecture == Architecture.Arm64)
+            gpus.Add(new GpuInfo("apple", $"{model} (GPU integrada)", ramTotal * 2 / 3, 0, ramTotal * 2 / 3));
         var models = Path.Combine(Home, ".ollama");
         var disk = new DriveInfo(Directory.Exists(models) ? models : Home).AvailableFreeSpace / 1e9;
-        var binary = CliRunner.Find("ollama") ?? (File.Exists(Path.Combine(OllamaDir, "bin", "ollama")) ? Path.Combine(OllamaDir, "bin", "ollama") : null);
+        var binary = OllamaHost.Binary();
         string? version = null;
         try
         {
@@ -82,8 +85,8 @@ internal sealed class LocalSetup(IHttpClientFactory http, IConfiguration config,
             version = doc.RootElement.GetProperty("version").GetString();
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException) { }
-        return new Hardware(gpus, model, Environment.ProcessorCount, flags.Contains(" avx2"), flags.Contains(" avx512f"), Mem("MemTotal"), Mem("MemAvailable"), Math.Round(disk, 1),
-            binary is not null, version, version is not null);
+        return new Hardware(gpus, model, Environment.ProcessorCount, System.Runtime.Intrinsics.X86.Avx2.IsSupported, System.Runtime.Intrinsics.X86.Avx512F.IsSupported,
+            ramTotal, ramFree, Math.Round(disk, 1), binary is not null || OllamaHost.MacApp() is not null, version, version is not null);
     }
 
     public async Task<LocalCatalog> CatalogAsync(CancellationToken ct)
@@ -194,24 +197,25 @@ internal sealed class LocalSetup(IHttpClientFactory http, IConfiguration config,
     }
 
     /// <summary>
-    /// Ollama na pasta do usuário: baixa o pacote oficial da última versão no GitHub, confere o SHA-256 publicado junto,
-    /// extrai em ~/.local/opt/ollama e liga o serviço de usuário (systemd) na fatia de recursos do orquestrador.
+    /// Ollama na pasta do usuário: baixa o pacote oficial da última versão no GitHub para este sistema (Linux, macOS ou Windows, x64 ou
+    /// arm64), confere o SHA-256 publicado junto e extrai. No Linux com systemd, vira um serviço de usuário na fatia de recursos do
+    /// orquestrador; no macOS e no Windows, o próprio app liga o Ollama quando sobe (OllamaHost). O app oficial do Ollama, se já
+    /// estiver instalado no Mac, é aberto em vez de baixar outro.
     /// </summary>
     private async Task EnsureOllamaAsync()
     {
         var hw = await HardwareAsync(CancellationToken.None);
         if (hw.OllamaRunning) { Update("Ollama", "done", $"Já instalado e no ar (versão {hw.OllamaVersion}).", 100); return; }
         var client = http.CreateClient("api");
-        if (!hw.OllamaInstalled)
+        if (OllamaHost.Binary() is null && OllamaHost.MacApp() is null)
         {
             Update("Ollama", "running", "Procurando a última versão oficial.", 2);
             using var req = new HttpRequestMessage(HttpMethod.Get, "https://api.github.com/repos/ollama/ollama/releases/latest");
             req.Headers.UserAgent.ParseAdd("job-orchestrator");
             using var release = JsonDocument.Parse(await (await client.SendAsync(req)).Content.ReadAsStringAsync());
             var assets = release.RootElement.GetProperty("assets").EnumerateArray().Select(a => (Name: a.GetProperty("name").GetString()!, Url: a.GetProperty("browser_download_url").GetString()!)).ToList();
-            var amd = hw.Gpus.Any(g => g.Vendor == "amd");
-            var wanted = new List<string> { assets.First(a => a.Name is "ollama-linux-amd64.tar.zst" or "ollama-linux-amd64.tgz").Name };
-            if (amd && assets.FirstOrDefault(a => a.Name.StartsWith("ollama-linux-amd64-rocm", StringComparison.Ordinal)) is { Name: not null } rocm) wanted.Add(rocm.Name);
+            var wanted = OllamaHost.Assets(assets.Select(a => a.Name).ToList(), hw.Gpus.Any(g => g.Vendor == "amd"));
+            if (wanted.Count == 0) throw new InvalidOperationException($"O Ollama não publica pacote para {Platform.Os} {Platform.Arch}.");
             var sums = assets.First(a => a.Name == "sha256sum.txt");
             var checksums = (await client.GetStringAsync(sums.Url)).Split('\n', StringSplitOptions.RemoveEmptyEntries)
                 .Select(l => l.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries)).Where(p => p.Length == 2).ToDictionary(p => p[1].Trim().TrimStart('.', '/'), p => p[0]);
@@ -226,39 +230,59 @@ internal sealed class LocalSetup(IHttpClientFactory http, IConfiguration config,
                     if (!checksums.TryGetValue(name, out var expected) || !string.Equals(Convert.ToHexStringLower(await SHA256.HashDataAsync(s)), expected, StringComparison.OrdinalIgnoreCase))
                         throw new InvalidOperationException($"O SHA-256 de {name} não confere com o publicado. Nada foi instalado.");
                 Update("Ollama", "running", $"Extraindo {name}.", 88);
-                var tar = await CliRunner.RunAsync("tar", ["-C", OllamaDir, "-xf", file], null, TimeSpan.FromMinutes(10), null, CancellationToken.None);
-                if (tar.Exit != 0) throw new InvalidOperationException($"Não foi possível extrair: {tar.Stderr.Trim()}");
+                await ExtractAsync(file, OllamaDir);
                 File.Delete(file);
             }
         }
-        Update("Ollama", "running", "Ligando o serviço de usuário.", 94);
-        var units = Path.Combine(Home, ".config", "systemd", "user");
-        Directory.CreateDirectory(units);
-        await File.WriteAllTextAsync(Path.Combine(units, "jobs.slice"), "[Unit]\nDescription=Job Orchestrator (recursos limitados)\n\n[Slice]\nMemoryHigh=6G\nMemoryMax=8G\nCPUWeight=20\nIOWeight=20\n");
-        await File.WriteAllTextAsync(Path.Combine(units, "job-orchestrator-ollama.service"), $"""
-            [Unit]
-            Description=Ollama do Job Orchestrator (modelos locais)
-            After=network-online.target
+        if (OperatingSystem.IsLinux() && OllamaHost.Systemd && OllamaHost.Binary() is { } bin && bin.StartsWith(OllamaDir, StringComparison.Ordinal))
+        {
+            Update("Ollama", "running", "Ligando o serviço de usuário.", 94);
+            var units = Path.Combine(Home, ".config", "systemd", "user");
+            Directory.CreateDirectory(units);
+            await File.WriteAllTextAsync(Path.Combine(units, "jobs.slice"), "[Unit]\nDescription=Job Orchestrator (recursos limitados)\n\n[Slice]\nMemoryHigh=6G\nMemoryMax=8G\nCPUWeight=20\nIOWeight=20\n");
+            await File.WriteAllTextAsync(Path.Combine(units, OllamaHost.Unit), $"""
+                [Unit]
+                Description=Ollama do Job Orchestrator (modelos locais)
+                After=network-online.target
 
-            [Service]
-            ExecStart={Path.Combine(OllamaDir, "bin", "ollama")} serve
-            Environment=OLLAMA_HOST=127.0.0.1:11434
-            Environment=OLLAMA_KEEP_ALIVE=5m
-            Environment=OLLAMA_MAX_LOADED_MODELS=1
-            Environment=OLLAMA_NUM_PARALLEL=1
-            Environment=OLLAMA_CONTEXT_LENGTH=8192
-            Slice=jobs.slice
-            Restart=on-failure
+                [Service]
+                ExecStart={bin} serve
+                {string.Join("\n", OllamaHost.Env.Select(e => $"Environment={e.Key}={e.Value}"))}
+                Slice=jobs.slice
+                Restart=on-failure
 
-            [Install]
-            WantedBy=default.target
+                [Install]
+                WantedBy=default.target
 
-            """);
-        await CliRunner.RunAsync("systemctl", ["--user", "daemon-reload"], null, TimeSpan.FromSeconds(30), null, CancellationToken.None);
-        var start = await CliRunner.RunAsync("systemctl", ["--user", "enable", "--now", "job-orchestrator-ollama.service"], null, TimeSpan.FromSeconds(60), null, CancellationToken.None);
-        if (start.Exit != 0) throw new InvalidOperationException($"O serviço não subiu: {start.Stderr.Trim()}");
-        for (var i = 0; i < 30 && !(await HardwareAsync(CancellationToken.None)).OllamaRunning; i++) await Task.Delay(1000);
-        Update("Ollama", "done", "Instalado na sua pasta, sem sudo, e no ar.", 100);
+                """);
+            await CliRunner.RunAsync("systemctl", ["--user", "daemon-reload"], null, TimeSpan.FromSeconds(30), null, CancellationToken.None);
+            var start = await CliRunner.RunAsync("systemctl", ["--user", "enable", "--now", OllamaHost.Unit], null, TimeSpan.FromSeconds(60), null, CancellationToken.None);
+            if (start.Exit != 0) throw new InvalidOperationException($"O serviço não subiu: {start.Stderr.Trim()}");
+        }
+        else
+        {
+            Update("Ollama", "running", "Ligando o Ollama.", 94);
+            if (!OllamaHost.Start()) throw new InvalidOperationException("O Ollama foi instalado, mas não abriu. Abra o app do Ollama e tente de novo.");
+        }
+        for (var i = 0; i < 40 && !(await HardwareAsync(CancellationToken.None)).OllamaRunning; i++) await Task.Delay(1000);
+        if (!(await HardwareAsync(CancellationToken.None)).OllamaRunning) throw new InvalidOperationException("O Ollama não respondeu em 127.0.0.1:11434.");
+        Update("Ollama", "done", "Instalado na sua pasta, sem senha de administrador, e no ar.", 100);
+    }
+
+    /// <summary>.tgz e .zip pelo próprio .NET (funciona igual nos três sistemas); .tar.zst pelo tar do sistema, que só o Linux publica.</summary>
+    internal static async Task ExtractAsync(string file, string dir)
+    {
+        Directory.CreateDirectory(dir);
+        if (file.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)) { ZipFile.ExtractToDirectory(file, dir, overwriteFiles: true); return; }
+        if (file.EndsWith(".tgz", StringComparison.OrdinalIgnoreCase) || file.EndsWith(".tar.gz", StringComparison.OrdinalIgnoreCase))
+        {
+            await using var input = File.OpenRead(file);
+            await using var gz = new GZipStream(input, CompressionMode.Decompress);
+            await TarFile.ExtractToDirectoryAsync(gz, dir, overwriteFiles: true);
+            return;
+        }
+        var tar = await CliRunner.RunAsync("tar", ["-C", dir, "-xf", file], null, TimeSpan.FromMinutes(10), null, CancellationToken.None);
+        if (tar.Exit != 0) throw new InvalidOperationException($"Não foi possível extrair: {tar.Stderr.Trim()}");
     }
 
     private static async Task DownloadAsync(HttpClient client, string url, string file, string label)

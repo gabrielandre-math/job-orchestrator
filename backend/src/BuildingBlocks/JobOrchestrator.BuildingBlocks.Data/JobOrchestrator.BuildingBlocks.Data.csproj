@@ -5,6 +5,7 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="EFCore.NamingConventions" />
+    <PackageReference Include="SharpCompress" />
     <ProjectReference Include="../JobOrchestrator.BuildingBlocks/JobOrchestrator.BuildingBlocks.csproj" />
   </ItemGroup>
 </Project>

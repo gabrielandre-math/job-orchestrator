@@ -8,13 +8,28 @@ using JobOrchestrator.Intelligence.Contracts;
 
 namespace JobOrchestrator.Automation.Adapters;
 
-/// <summary>Onde está o coletor: o ambiente virtual com o Scrapy e o projeto com os nossos spiders.</summary>
+/// <summary>
+/// Onde está o coletor: o ambiente virtual com o Scrapy (bin/ no Linux e no macOS, Scripts\ no Windows) e o projeto com os nossos
+/// spiders. O instalador copia o projeto para a pasta de dados, que é gravável; o que vem com o app fica como está (no macOS, dentro
+/// do pacote assinado).
+/// </summary>
 internal sealed class ScraperEnv(IConfiguration config)
 {
-    public string Venv => config["Scraper:Venv"] is { Length: > 0 } v ? v
-        : Path.Combine(Environment.GetEnvironmentVariable("XDG_DATA_HOME") is { Length: > 0 } x ? x : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "share"), "job-orchestrator", "scraper-venv");
-    public string Project => config["Scraper:Project"] is { Length: > 0 } p ? p : Path.Combine(AppContext.BaseDirectory, "scraper");
-    public string Scrapy => Path.Combine(Venv, "bin", "scrapy");
+    public string Venv => config["Scraper:Venv"] is { Length: > 0 } v ? v : DefaultVenv();
+    public string Project => config["Scraper:Project"] is { Length: > 0 } p ? p
+        : Directory.Exists(Path.Combine(AppPaths.Data, "scraper")) ? Path.Combine(AppPaths.Data, "scraper") : Path.Combine(AppPaths.Resources, "scraper");
+    public string Scrapy => ScrapyIn(Venv);
+
+    public static string ScrapyIn(string venv) => OperatingSystem.IsWindows() ? Path.Combine(venv, "Scripts", "scrapy.exe") : Path.Combine(venv, "bin", "scrapy");
+
+    /// <summary>O ambiente da pasta de dados; no Linux, se só existir o do caminho XDG (modo de desenvolvimento com JO_DATA_DIR), ele.</summary>
+    private static string DefaultVenv()
+    {
+        var own = Path.Combine(AppPaths.Data, "scraper-venv");
+        if (File.Exists(ScrapyIn(own)) || !OperatingSystem.IsLinux()) return own;
+        var xdg = Path.Combine(Environment.GetEnvironmentVariable("XDG_DATA_HOME") is { Length: > 0 } x ? x : Path.Combine(Platform.Home, ".local", "share"), "job-orchestrator", "scraper-venv");
+        return File.Exists(ScrapyIn(xdg)) ? xdg : own;
+    }
     public bool Installed => File.Exists(Scrapy) && Directory.Exists(Project);
     public string Cache => AppPaths.In(AppPaths.Data, "scraper-cache");
 }
@@ -87,10 +102,13 @@ internal sealed partial class ScrapyRunner(ScraperEnv env, IIntelligenceApi ai, 
             $"Sementes: {string.Join(", ", seeds)}.\nEntram também as rotas de carreira comuns (/carreiras, /vagas, /jobs) e o sitemap de cada site.", "Robots", true, ct);
         await ai.NoteAsync(thread, "Robots", "robots.txt obedecido em cada site", "Página proibida não é lida. Uma conexão por domínio, com o atraso ajustado sozinho (AutoThrottle). Sem disfarce de navegador.", "Coletor", true, ct);
 
-        var info = new ProcessStartInfo(env.Scrapy) { WorkingDirectory = env.Project, UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true };
+        var info = new ProcessStartInfo(env.Scrapy) { WorkingDirectory = env.Project, UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true };
         foreach (var a in new[] { "crawl", "careers", "-a", $"seeds={string.Join(',', seeds)}", "-o", "-:jsonlines" }) info.ArgumentList.Add(a);
         info.Environment.Clear();
-        foreach (var key in new[] { "PATH", "HOME", "LANG", "LC_ALL" }) if (Environment.GetEnvironmentVariable(key) is { Length: > 0 } v) info.Environment[key] = v;
+        foreach (var key in Platform.BaseEnvironment) if (Environment.GetEnvironmentVariable(key) is { Length: > 0 } v) info.Environment[key] = v;
+        // O bytecode do Python vai para a pasta de dados: o projeto pode estar num lugar só de leitura (o pacote do macOS).
+        info.Environment["PYTHONPYCACHEPREFIX"] = AppPaths.In(AppPaths.Data, "pycache");
+        info.Environment["PYTHONUTF8"] = "1";
         info.Environment["JO_MAX_PAGES"] = maxPages.ToString(CultureInfo.InvariantCulture);
         info.Environment["JO_MAX_SECONDS"] = maxSeconds.ToString(CultureInfo.InvariantCulture);
         info.Environment["JO_SCRAPER_CACHE"] = env.Cache;

@@ -1,13 +1,35 @@
 namespace JobOrchestrator.BuildingBlocks;
 
-/// <summary>Pastas do usuário (XDG). Nada de dado pessoal dentro do repositório.</summary>
+/// <summary>
+/// Pastas do usuário, no lugar de costume de cada sistema: XDG no Linux (~/.local/share e ~/.config), ~/Library/Application Support
+/// no macOS e %LOCALAPPDATA% no Windows. Nada de dado pessoal dentro do repositório nem dentro da pasta do app.
+/// </summary>
 public static class AppPaths
 {
     private static string Xdg(string variable, string fallback) =>
         Environment.GetEnvironmentVariable(variable) is { Length: > 0 } dir ? dir : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), fallback);
 
-    public static string Data => Ensure(Environment.GetEnvironmentVariable("JO_DATA_DIR") is { Length: > 0 } d ? d : Path.Combine(Xdg("XDG_DATA_HOME", ".local/share"), "job-orchestrator"));
-    public static string Config => Ensure(Environment.GetEnvironmentVariable("JO_CONFIG_DIR") is { Length: > 0 } d ? d : Path.Combine(Xdg("XDG_CONFIG_HOME", ".config"), "job-orchestrator"));
+    private static string Root(string part) => OperatingSystem.IsWindows()
+        ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "JobOrchestrator", part)
+        : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library", "Application Support", "JobOrchestrator", part);
+
+    public static string Data => Ensure(Environment.GetEnvironmentVariable("JO_DATA_DIR") is { Length: > 0 } d ? d
+        : OperatingSystem.IsLinux() || OperatingSystem.IsFreeBSD() ? Path.Combine(Xdg("XDG_DATA_HOME", ".local/share"), "job-orchestrator") : Root("Data"));
+    public static string Config => Ensure(Environment.GetEnvironmentVariable("JO_CONFIG_DIR") is { Length: > 0 } d ? d
+        : OperatingSystem.IsLinux() || OperatingSystem.IsFreeBSD() ? Path.Combine(Xdg("XDG_CONFIG_HOME", ".config"), "job-orchestrator") : Root("Config"));
+
+    /// <summary>
+    /// Os arquivos que vêm com o app (painel, coletor, abertura, extensão, driver do Playwright): ao lado do executável; no pacote do
+    /// macOS, em Contents/Resources/app, que é onde a assinatura do pacote espera o que não é código.
+    /// </summary>
+    public static string Resources { get; } = FindResources();
+
+    private static string FindResources()
+    {
+        var bundled = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "Resources", "app"));
+        return OperatingSystem.IsMacOS() && Directory.Exists(bundled) ? bundled + Path.DirectorySeparatorChar : AppContext.BaseDirectory;
+    }
+
     public static string In(string root, params string[] parts) => Ensure(Path.Combine([root, .. parts]));
 
     private static string Ensure(string dir)

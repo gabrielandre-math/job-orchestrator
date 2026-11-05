@@ -9,7 +9,8 @@ namespace JobOrchestrator.Profile.Import;
 internal sealed record ExtractedText(string Kind, string Text, int Pages, IReadOnlyDictionary<string, IReadOnlyList<string[]>>? Tables = null);
 
 /// <summary>
-/// Tira o texto do documento sem IA: PDF pelo pdftotext (poppler), DOCX lendo o XML do Word, texto puro como veio e o
+/// Tira o texto do documento sem IA: PDF pelo pdftotext (poppler) quando ele existe, senão pelo PdfPig dentro do próprio app (o caso
+/// comum no macOS e no Windows), DOCX lendo o XML do Word, texto puro como veio e o
 /// export do LinkedIn (ZIP com CSVs) como tabelas. Nada sai da máquina nesta etapa.
 /// </summary>
 internal static class TextExtractor
@@ -32,7 +33,7 @@ internal static class TextExtractor
     private static async Task<ExtractedText> PdfAsync(string path, CancellationToken ct)
     {
         // Sem -layout: a ordem de leitura do PDF mantém colunas separadas, e os trechos citados batem.
-        var text = await RunAsync("pdftotext", ["-enc", "UTF-8", "-eol", "unix", path, "-"], ct);
+        var text = Platform.Which("pdftotext") is { } tool ? await RunAsync(tool, ["-enc", "UTF-8", "-eol", "unix", path, "-"], ct) : PdfPigText(path);
         var pages = text.Split('\f').Length;
         if (text.EndsWith('\f')) pages--;
         if (string.IsNullOrWhiteSpace(text.Replace("\f", "")))
@@ -83,9 +84,26 @@ internal static class TextExtractor
         return new ExtractedText("linkedin", sb.ToString(), 1, tables);
     }
 
+    /// <summary>As páginas na ordem de leitura do conteúdo, separadas por form feed como o pdftotext.</summary>
+    internal static string PdfPigText(string path)
+    {
+        try
+        {
+            using var doc = UglyToad.PdfPig.PdfDocument.Open(path);
+            var sb = new StringBuilder();
+            foreach (var page in doc.GetPages())
+                sb.Append(UglyToad.PdfPig.DocumentLayoutAnalysis.TextExtractor.ContentOrderTextExtractor.GetText(page).Replace("\r\n", "\n", StringComparison.Ordinal)).Append('\f');
+            return sb.ToString();
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException and not OutOfMemoryException)
+        {
+            throw new NotSupportedException($"Não foi possível ler o PDF: {ex.Message}");
+        }
+    }
+
     private static async Task<string> RunAsync(string file, IEnumerable<string> args, CancellationToken ct)
     {
-        var info = new ProcessStartInfo(file) { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };
+        var info = new ProcessStartInfo(file) { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
         foreach (var a in args) info.ArgumentList.Add(a);
         using var p = Process.Start(info) ?? throw new InvalidOperationException($"{file} não iniciou.");
         var output = p.StandardOutput.ReadToEndAsync(ct);

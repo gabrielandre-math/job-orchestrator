@@ -55,7 +55,8 @@ internal sealed class AutomationOptions
 
 internal sealed class BrowserOptions
 {
-    public string? ExecutablePath { get; set; } = File.Exists("/usr/bin/chromium") ? "/usr/bin/chromium" : null;
+    /// <summary>Chrome, Edge, Chromium ou Brave instalado (Platform.Browser); vazio, o Playwright tenta o dele.</summary>
+    public string? ExecutablePath { get; set; } = Platform.Browser();
     public bool Headless { get; set; } = true;
     public int MaxContexts { get; set; } = 2;
     public int TimeoutSeconds { get; set; } = 15;

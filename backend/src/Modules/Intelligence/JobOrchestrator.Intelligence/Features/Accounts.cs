@@ -168,12 +168,12 @@ internal sealed partial class LoginJob
         var claude = a.Kind == "claude-cli";
         var info = new ProcessStartInfo(CliRunner.Find(claude ? "claude" : "codex") ?? (claude ? "claude" : "codex"))
         {
-            UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true, RedirectStandardInput = true, WorkingDirectory = a.ConfigDir!
+            UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true, RedirectStandardInput = true, WorkingDirectory = a.ConfigDir!, CreateNoWindow = true
         };
         foreach (var arg in claude ? new[] { "auth", "login", "--claudeai" } : ["login"]) info.ArgumentList.Add(arg);
         info.Environment.Clear();
         // Ambiente limpo mais o necessário para abrir o navegador da sessão.
-        foreach (var key in new[] { "PATH", "HOME", "USER", "LANG", "TERM", "XDG_RUNTIME_DIR", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "DBUS_SESSION_BUS_ADDRESS", "DISPLAY", "WAYLAND_DISPLAY", "BROWSER" })
+        foreach (var key in Platform.BaseEnvironment.Concat(["XDG_RUNTIME_DIR", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "DBUS_SESSION_BUS_ADDRESS", "DISPLAY", "WAYLAND_DISPLAY", "BROWSER"]))
             if (Environment.GetEnvironmentVariable(key) is { Length: > 0 } v) info.Environment[key] = v;
         info.Environment[claude ? "CLAUDE_CONFIG_DIR" : "CODEX_HOME"] = a.ConfigDir!;
         var p = new Process { StartInfo = info, EnableRaisingEvents = true };
