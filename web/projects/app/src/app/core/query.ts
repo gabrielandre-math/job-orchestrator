@@ -1,6 +1,12 @@
 import { DestroyRef, Signal, effect, inject, signal, untracked } from '@angular/core';
 import { get, isProblem, Problem } from './api';
 
+/**
+ * Cache em memória por caminho: ao voltar para uma tela, o último dado aparece na hora e a consulta atualiza por trás
+ * (stale-while-revalidate). Assim trocar de página não pisca nem mostra a tela vazia.
+ */
+const cache = new Map<string, unknown>();
+
 /** Consulta (CQRS) no cliente: lê, guarda o último valor e relê no intervalo enquanto a aba está visível. */
 export interface Query<T> {
   readonly value: Signal<T | undefined>;
@@ -24,6 +30,7 @@ export function query<T>(path: () => string | null, every = 0): Query<T> {
     controller = new AbortController();
     try {
       const data = await get<T>(p, controller.signal);
+      cache.set(p, data);
       if (p === current) { value.set(data); problem.set(null); }
     } catch (e) {
       if (e instanceof DOMException && e.name === 'AbortError') return;
@@ -36,7 +43,12 @@ export function query<T>(path: () => string | null, every = 0): Query<T> {
   effect(() => {
     const p = path();
     untracked(() => {
-      if (p !== current) { current = p; loading.set(true); value.set(undefined); }
+      if (p !== current) {
+        current = p;
+        const known = p ? (cache.get(p) as T | undefined) : undefined;
+        value.set(known);
+        loading.set(known === undefined);
+      }
       void load();
     });
   });

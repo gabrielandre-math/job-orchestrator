@@ -70,6 +70,9 @@ input[type="checkbox"]:focus, input[type="radio"]:focus { box-shadow: 0 0 0 3px 
 
 /* Troca de página e de filtro (View Transitions): esmaecido curto e cartões que deslizam para o lugar novo. */
 ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 180ms; animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1); }
+/* A barra lateral e a superior ficam fixas na troca de página: só o conteúdo faz a transição. */
+::view-transition-old(sidebar), ::view-transition-new(sidebar), ::view-transition-old(topbar), ::view-transition-new(topbar) { animation: none; }
+::view-transition-group(sidebar), ::view-transition-group(topbar) { animation: none; }
 ::view-transition-group(*) { animation-duration: 260ms; animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1); }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }

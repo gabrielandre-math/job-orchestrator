@@ -14,19 +14,19 @@
     <div class="charts">
       <article class="panel chart wide">
         <header><h2>Funil</h2><span class="faint small num"><jo-count [value]="st.total" /> no total</span></header>
-        <jo-iso-bars class="bars" [data]="funnel()" />
+        <jo-hbars class="body" [data]="funnel()" />
       </article>
       <article class="panel chart">
         <header><h2>Por fonte</h2></header>
-        <jo-iso-bars class="bars" [data]="sources()" />
+        <jo-hbars class="body" [data]="sources()" />
       </article>
       <article class="panel chart">
-        <header><h2>Notas</h2><span class="faint small">corte em 80</span></header>
-        <jo-iso-bars class="bars" [data]="scores()" [max]="50" />
+        <header><h2>Notas</h2><span class="faint small">de 0 a 100</span></header>
+        <jo-columns class="body" [data]="scores()" [cutAt]="8" cutLabel="corte 80" />
       </article>
       <article class="panel chart">
         <header><h2>Novas por dia</h2><span class="faint small">últimos 14 dias</span></header>
-        <jo-iso-bars class="bars" [data]="days()" [max]="50" />
+        <jo-area class="body" [data]="days()" />
       </article>
       <article class="panel chart wide">
         <header><h2>Stack mais pedida</h2>@if (profile.value()?.facts?.length) { <span class="faint small">verde: você tem</span> }</header>

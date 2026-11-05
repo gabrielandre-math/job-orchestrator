@@ -1,6 +1,6 @@
 :host { display: grid; grid-template-columns: 232px minmax(0, 1fr); height: 100vh; transition: grid-template-columns 160ms ease; }
 :host(.collapsed) { grid-template-columns: 60px minmax(0, 1fr); }
-.side { display: flex; flex-direction: column; gap: 6px; padding: 12px 10px; border-right: 1px solid var(--line); background: var(--surface); min-width: 0; overflow: hidden; }
+.side { view-transition-name: sidebar; display: flex; flex-direction: column; gap: 6px; padding: 12px 10px; border-right: 1px solid var(--line); background: var(--surface); min-width: 0; overflow: hidden; }
 .head { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 2px 0 12px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
 .brand { display: flex; align-items: center; gap: 10px; min-width: 0; text-decoration: none; }
 .mark { display: grid; place-items: center; width: 32px; height: 32px; color: var(--accent); }
@@ -44,7 +44,7 @@ main { overflow: auto; min-width: 0; background: var(--bg); }
 @keyframes toast-in { from { opacity: 0; transform: translateY(10px) scale(0.98); } }
 
 /* Celular e tablet em pé: barra superior com a marca e o menu; a barra lateral vira gaveta por cima do conteúdo. */
-.topbar { display: none; }
+.topbar { display: none; view-transition-name: topbar; }
 .scrim { display: none; }
 @media (max-width: 760px) {
   :host, :host(.collapsed) { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }

@@ -6,7 +6,7 @@ import { Count } from '@jo/ui/count';
 import { Empty } from '@jo/ui/empty';
 import { Icon } from '@jo/ui/icon';
 import { Iso } from '@jo/ui/iso';
-import { IsoBar, IsoBars } from '@jo/ui/iso-bars';
+import { Area, ChartRow, Columns, HBars } from '@jo/ui/charts';
 import { Score } from '@jo/ui/score';
 import { Tech } from '@jo/ui/tech';
 import { JobDetail, JobRow, Profile, send } from '../../core/api';
@@ -31,7 +31,7 @@ const PIPELINE = ['Seletor', 'Redator', 'Conferente', 'Revisor', 'Renderizador',
  */
 @Component({
   selector: 'app-jobs',
-  imports: [Badge, Company, Count, Empty, Icon, Iso, IsoBars, Score, Tech],
+  imports: [Area, Badge, Columns, Company, Count, Empty, HBars, Icon, Iso, Score, Tech],
   templateUrl: './jobs.page.html',
   styleUrl: './jobs.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -84,27 +84,27 @@ export class JobsPage {
   });
 
   // Gráficos: funil, fontes, notas, novas por dia, stack e o perfil das vagas.
-  protected readonly funnel = computed<IsoBar[]>(() => {
+  protected readonly funnel = computed<ChartRow[]>(() => {
     const st = this.stats.value();
     if (!st) return [];
     const by = (k: string) => st.byStatus.find((x) => x.key === k)?.value ?? 0;
     const unique = st.total - by('Duplicate');
     const eligible = unique - by('Rejected') - by('Expired');
     return [
-      { label: 'Encontradas', value: st.total }, { label: 'Únicas', value: unique }, { label: 'Elegíveis', value: eligible },
+      { label: 'Encontradas', value: st.total, tone: 'muted' }, { label: 'Únicas', value: unique, tone: 'muted' }, { label: 'Elegíveis', value: eligible },
       { label: 'Na fila', value: by('Shortlisted'), tone: 'accent' },
     ];
   });
-  protected readonly sources = computed<IsoBar[]>(() => (this.stats.value()?.bySource ?? []).map((s) => ({
+  protected readonly sources = computed<ChartRow[]>(() => (this.stats.value()?.bySource ?? []).map((s) => ({
     label: s.key === 'hn' ? 'Hacker News' : s.key.charAt(0).toUpperCase() + s.key.slice(1), value: s.value,
     logo: SOURCE_LOGO[s.key] ? `/logos/${SOURCE_LOGO[s.key].file}.svg` : null, mono: SOURCE_LOGO[s.key]?.mono,
   })));
-  protected readonly scores = computed<IsoBar[]>(() => {
+  protected readonly scores = computed<ChartRow[]>(() => {
     const by = new Map((this.stats.value()?.scores ?? []).map((s) => [Number(s.key), s.value]));
-    return Array.from({ length: 10 }, (_, i) => ({ label: String(i * 10), value: by.get(i * 10) ?? 0, tone: i >= 8 ? 'accent' as const : 'base' as const, hint: `nota de ${i * 10} a ${i * 10 + 9}` }));
+    return Array.from({ length: 10 }, (_, i) => ({ label: String(i * 10), value: by.get(i * 10) ?? 0, tone: i >= 8 ? 'accent' as const : undefined, hint: `nota de ${i * 10} a ${i * 10 + 9}` }));
   });
-  protected readonly days = computed<IsoBar[]>(() => (this.stats.value()?.perDay ?? []).map((d, i, all) => ({
-    label: i === all.length - 1 ? 'hoje' : d.day.slice(8, 10), value: d.value, tone: i === all.length - 1 ? 'accent' as const : 'base' as const, hint: `${d.day.split('-').reverse().join('/')}: ${d.value} vagas`,
+  protected readonly days = computed<ChartRow[]>(() => (this.stats.value()?.perDay ?? []).map((d, i, all) => ({
+    label: i === all.length - 1 ? 'hoje' : d.day.split('-').reverse().slice(0, 2).join('/'), value: d.value, hint: `${d.day.split('-').reverse().join('/')}: ${d.value} vagas`,
   })));
   protected readonly stack = computed(() => {
     const top = this.stats.value()?.topStack ?? [];

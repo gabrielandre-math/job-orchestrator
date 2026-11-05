@@ -1,9 +1,9 @@
 .small { font-size: 12px; }
 .charts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
-.chart { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 230px; }
+.chart { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 210px; }
 .chart.wide { grid-column: span 2; }
 .chart > header { padding: 10px 14px; }
-.bars { padding: 10px 12px 12px; --bar-h: 130px; }
+.body { padding: 14px 14px 14px; align-self: center; }
 .stack { list-style: none; margin: 0; padding: 10px 14px 14px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 16px; }
 .stack li { display: grid; grid-template-columns: minmax(0, 150px) minmax(0, 1fr) 28px; gap: 8px; align-items: center; }
 .track { height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
