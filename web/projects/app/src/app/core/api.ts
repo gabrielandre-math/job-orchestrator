@@ -57,3 +57,21 @@ export interface BenchRow { model: string; valid: number; total: number; jobExtr
 export interface TaskUsage { task: string; rung: string; privacy: string; cloud: number; budget: number; local: number; cached: number; failed: number; }
 export interface LlmCall { at: string; task: string; providerId: string; model: string; effort: string; ok: boolean; error: string | null; seconds: number; degraded: boolean; cached: boolean; }
 export interface Provider { id: string; name: string; family: string; order: number; installed: boolean; version: string | null; login: string; plan: string | null; usage: UsageWindow[]; available: boolean; status: string; detail: string; lastTest: LlmResult | null; }
+
+export interface Identity { fullName: string; email: string | null; phone: string | null; location: string | null; linkedIn: string | null; gitHub: string | null; website: string | null; }
+export interface Confirmations {
+  authorizedCountries: string[]; needsSponsorship: boolean; floorCltBrl: number | null; floorPjBrl: number | null; floorUsdMonth: number | null;
+  modalities: string[]; cities: string[]; relocate: boolean; startAvailability: string | null; englishLevel: string | null; selfIdDefault: string; openAnswersPolicy: string; confirmedAt: string | null;
+}
+export interface ProfileDocument { id: string; fileName: string; kind: string; pages: number; status: 'Stored' | 'Extracting' | 'Ready' | 'Failed'; error: string | null; extractedBy: string | null; importedAt: string; extractedAt: string | null; }
+export interface ProfileFact { id: string; documentId: string | null; kind: string; statement: string; parentId: string | null; organization: string | null; role: string | null; start: string | null; end: string | null; technologies: string[]; level: string | null; quote: string | null; page: number | null; note: string | null; status: 'Verified' | 'Inferred' | 'Confirmed' | 'Rejected'; }
+export interface Profile { id: string | null; version: number; status: 'Empty' | 'Extracting' | 'NeedsConfirmation' | 'Ready'; synthetic: boolean; identity: Identity; confirmations: Confirmations; confirmedAt: string | null; updatedAt: string | null; documents: ProfileDocument[]; facts: ProfileFact[]; pending: number; }
+
+/** Envio de arquivo (multipart). */
+export async function upload<T>(path: string, file: File): Promise<T> {
+  const body = new FormData();
+  body.append('file', file);
+  const r = await fetch(API + path, { method: 'POST', body, headers: { accept: 'application/json' } });
+  if (!r.ok) throw await toProblem(r);
+  return r.json() as Promise<T>;
+}

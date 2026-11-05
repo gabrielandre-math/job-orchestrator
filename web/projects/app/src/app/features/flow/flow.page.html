@@ -12,7 +12,7 @@
 
   @if (flow.problem(); as p) { <p class="problem">{{ p.detail }}</p> }
 
-  <div #viewport class="canvas" tabindex="0" role="application" aria-label="Fluxo dos agentes. Arraste para mover, pinça ou Ctrl e roda para zoom, setas para andar, 0 para ajustar e 1 para 100%."
+  <div #viewport class="canvas" tabindex="0" role="application" aria-label="Fluxo dos agentes. Arraste para mover; pinça, Ctrl ou Option com a roda, ou duplo clique para zoom; setas para andar; 0 para ajustar e 1 para 100%."
        [class.live]="live()" [style.background-size]="grid().size" [style.background-position]="grid().pos"
        (wheel)="wheel($event)" (pointerdown)="down($event)" (pointermove)="move($event)" (pointerup)="up($event)" (pointercancel)="up($event)" (lostpointercapture)="up($event)" (keydown)="key($event)">
     <div class="world" [style.transform]="transform()">
@@ -128,6 +128,10 @@
       <button type="button" class="zoom num" (click)="animateZoom(1 / k())" title="Voltar para 100%">{{ (k() * 100).toFixed(0) }}%</button>
       <button type="button" class="btn" (click)="animateZoom(1.25)" aria-label="Aumentar zoom"><jo-icon name="plus" [size]="14" /></button>
       <button type="button" class="btn" (click)="animateFit()"><jo-icon name="corners-out" [size]="14" />Ajustar</button>
+      <button type="button" class="btn" [class.on]="wheelZooms()" [attr.aria-pressed]="wheelZooms()" (click)="toggleWheel()"
+              title="Ligado: rolar com dois dedos amplia e Shift + rolar move. Útil pela área de trabalho remota, onde a pinça do trackpad não chega.">
+        <jo-icon name="magnifying-glass" [size]="14" />Rolar dá zoom
+      </button>
     </div>
 
     <svg class="mini" [attr.width]="mini().w" [attr.height]="mini().h" (pointerdown)="miniDown($event)" (pointermove)="miniMove($event)" (pointerup)="miniUp()" (pointercancel)="miniUp()" role="img" aria-label="Minimapa. Arraste para mover a vista.">

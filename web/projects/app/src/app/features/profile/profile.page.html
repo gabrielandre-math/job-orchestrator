@@ -1,0 +1,226 @@
+<section class="page">
+  <header class="page-head">
+    <div>
+      <h1>Perfil</h1>
+      <p>Tudo o que entra no currículo e nos formulários sai daqui. Cada fato mostra o trecho do documento de onde veio.</p>
+    </div>
+    @if (profile.value(); as p) {
+      <div class="actions">
+        @if (p.synthetic) { <jo-badge label="Perfil de teste" tone="warn" /> }
+        <jo-badge [label]="statusLabel(p.status)" [tone]="statusTone(p.status)" />
+        @if (p.version > 0) { <span class="faint mono">versão {{ p.version }}</span> }
+      </div>
+    }
+  </header>
+  @if (profile.problem(); as e) { <p class="problem">{{ e.detail }}</p> }
+  @if (sending.problem(); as e) { <p class="problem">{{ e.detail }}</p> }
+
+  @if (profile.value(); as p) {
+    <div class="layout">
+      <div class="main">
+        <article class="panel drop" [class.over]="dragging()" [class.big]="p.status === 'Empty' || p.synthetic"
+                 (dragover)="$event.preventDefault(); dragging.set(true)" (dragleave)="dragging.set(false)" (drop)="drop($event)">
+          @if (p.status === 'Empty' || p.synthetic) {
+            <div class="hero">
+              <jo-iso name="reader" [size]="132" />
+              <div>
+                <h2>Jogue o seu currículo aqui</h2>
+                <p class="muted">PDF, DOCX ou o ZIP do export do LinkedIn. O Leitor tira nome, e-mail, telefone e links antes de qualquer modelo ler; o Extrator monta os fatos e o Conferente só aceita o que tiver o trecho no documento.</p>
+                <label class="btn primary file">
+                  <jo-icon name="upload-simple" [size]="16" />{{ sending.running() ? 'Enviando…' : 'Escolher arquivo' }}
+                  <input type="file" accept=".pdf,.docx,.txt,.md,.zip" (change)="pick($event)" [disabled]="sending.running()" />
+                </label>
+                @if (p.synthetic) { <p class="faint small">Hoje o perfil é o de teste. O primeiro documento seu apaga o de teste inteiro.</p> }
+              </div>
+            </div>
+          } @else {
+            <header>
+              <h2>Documentos</h2>
+              <label class="btn file">
+                <jo-icon name="upload-simple" [size]="14" />{{ sending.running() ? 'Enviando…' : 'Enviar outro' }}
+                <input type="file" accept=".pdf,.docx,.txt,.md,.zip" (change)="pick($event)" [disabled]="sending.running()" />
+              </label>
+            </header>
+          }
+          @if (p.documents.length > 0) {
+            <ul class="docs">
+              @for (d of p.documents; track d.id) {
+                <li>
+                  <jo-icon name="file-text" [size]="18" />
+                  <span class="d-name">{{ d.fileName }}</span>
+                  <span class="faint small">{{ d.kind === 'linkedin' ? 'export do LinkedIn' : d.pages + (d.pages === 1 ? ' página' : ' páginas') }}</span>
+                  @if (d.extractedBy) { <span class="faint small mono">{{ d.extractedBy }}</span> }
+                  <jo-badge [label]="docLabel(d.status)" [tone]="docTone(d.status)" />
+                  @if (d.status === 'Failed') {
+                    <span class="d-error">{{ d.error }}</span>
+                    <button type="button" class="btn" (click)="retry(d.id)" [disabled]="retrying.running()"><jo-icon name="arrows-clockwise" [size]="14" />Ler de novo</button>
+                  }
+                </li>
+              }
+            </ul>
+          }
+          @if (reading()) { <p class="reading"><span class="live-dot on" aria-hidden="true"></span>Lendo o documento. A conversa dos agentes aparece no Fluxo, ao vivo.<a routerLink="/fluxo">Ver no Fluxo</a></p> }
+        </article>
+
+        @if (!p.synthetic && p.status !== 'Empty' && form(); as f) {
+          @if (!p.confirmedAt || p.pending > 0) {
+            <article class="panel confirm">
+              <header>
+                <div>
+                  <h2>Confirmar uma vez</h2>
+                  <p class="faint small">O que o currículo não diz e só você pode afirmar. Depois disso, o sistema roda sozinho.</p>
+                </div>
+              </header>
+              <div class="sections">
+                @if (inferred().length > 0) {
+                  <section class="sec wide">
+                    <h3>O modelo leu, mas o trecho não bate <span class="faint">({{ undecided() }} para decidir)</span></h3>
+                    <ul class="inferred">
+                      @for (x of inferred(); track x.id) {
+                        <li>
+                          <div>
+                            <p>{{ x.statement }}</p>
+                            <p class="faint small">{{ x.note }}</p>
+                          </div>
+                          <div class="chips">
+                            <button type="button" class="chip" [attr.aria-pressed]="decisions()[x.id] === true" (click)="decide(x.id, true)">É verdade</button>
+                            <button type="button" class="chip" [attr.aria-pressed]="decisions()[x.id] === false" (click)="decide(x.id, false)">Descartar</button>
+                          </div>
+                        </li>
+                      }
+                    </ul>
+                  </section>
+                }
+                <section class="sec">
+                  <h3>Onde você pode trabalhar</h3>
+                  <div class="chips">
+                    @for (c of countries; track c[0]) {
+                      <button type="button" class="chip" [attr.aria-pressed]="f.authorizedCountries.includes(c[0])" (click)="toggleIn('authorizedCountries', c[0])">{{ c[1] }}</button>
+                    }
+                  </div>
+                  <label class="check"><input type="checkbox" [checked]="f.needsSponsorship" (change)="set('needsSponsorship', $any($event.target).checked)" />Preciso de visto patrocinado pela empresa</label>
+                </section>
+                <section class="sec">
+                  <h3>Pisos, por vínculo</h3>
+                  <div class="money">
+                    <label class="field">CLT, R$ por mês<input inputmode="numeric" [value]="f.floorCltBrl ?? ''" (input)="money('floorCltBrl', $any($event.target).value)" placeholder="ex.: 12000" /></label>
+                    <label class="field">PJ, R$ por mês<input inputmode="numeric" [value]="f.floorPjBrl ?? ''" (input)="money('floorPjBrl', $any($event.target).value)" placeholder="ex.: 16000" /></label>
+                    <label class="field">Dólar, US$ por mês<input inputmode="numeric" [value]="f.floorUsdMonth ?? ''" (input)="money('floorUsdMonth', $any($event.target).value)" placeholder="ex.: 5000" /></label>
+                  </div>
+                </section>
+                <section class="sec">
+                  <h3>Modalidade e cidades</h3>
+                  <div class="chips">
+                    <button type="button" class="chip" [attr.aria-pressed]="f.modalities.includes('remote')" (click)="toggleIn('modalities', 'remote')">Remoto</button>
+                    <button type="button" class="chip" [attr.aria-pressed]="f.modalities.includes('hybrid')" (click)="toggleIn('modalities', 'hybrid')">Híbrido</button>
+                    <button type="button" class="chip" [attr.aria-pressed]="f.modalities.includes('onsite')" (click)="toggleIn('modalities', 'onsite')">Presencial</button>
+                  </div>
+                  <label class="field">Cidades para híbrido ou presencial, separadas por vírgula<input [value]="f.cities.join(', ')" (input)="set('cities', $any($event.target).value.split(','))" placeholder="ex.: São Paulo, Campinas" /></label>
+                  <label class="check"><input type="checkbox" [checked]="f.relocate" (change)="set('relocate', $any($event.target).checked)" />Aceito me mudar pela vaga certa</label>
+                </section>
+                <section class="sec">
+                  <h3>Disponibilidade e inglês</h3>
+                  <label class="field">Quando pode começar
+                    <select [value]="f.startAvailability ?? ''" (change)="set('startAvailability', $any($event.target).value || null)">
+                      <option value="">Escolha</option><option>Imediata</option><option>15 dias</option><option>30 dias</option><option>45 dias</option><option>60 dias</option>
+                    </select>
+                  </label>
+                  <label class="field">Nível de inglês
+                    <select [value]="f.englishLevel ?? ''" (change)="set('englishLevel', $any($event.target).value || null)">
+                      <option value="">Escolha</option><option value="basic">Básico</option><option value="intermediate">Intermediário</option><option value="advanced">Avançado</option><option value="fluent">Fluente</option><option value="native">Nativo</option>
+                    </select>
+                  </label>
+                </section>
+                <section class="sec">
+                  <h3>Respostas sensíveis e abertas</h3>
+                  <label class="check"><input type="radio" name="selfid" [checked]="f.selfIdDefault === 'prefer_not'" (change)="set('selfIdDefault', 'prefer_not')" />Autoidentificação (gênero, raça, deficiência): prefiro não informar</label>
+                  <label class="check"><input type="radio" name="selfid" [checked]="f.selfIdDefault === 'answer_case_by_case'" (change)="set('selfIdDefault', 'answer_case_by_case')" />Autoidentificação: perguntar a mim a cada vez</label>
+                  <label class="check"><input type="radio" name="open" [checked]="f.openAnswersPolicy === 'review'" (change)="set('openAnswersPolicy', 'review')" />Respostas abertas passam pela minha revisão</label>
+                  <label class="check"><input type="radio" name="open" [checked]="f.openAnswersPolicy === 'auto_after_check'" (change)="set('openAnswersPolicy', 'auto_after_check')" />Respostas abertas vão sozinhas depois da checagem fato a fato</label>
+                </section>
+                <section class="sec wide note">
+                  <p class="faint small">Envio automático continua desligado e tem tela própria. Hoje a campanha só prepara: nada é enviado sem você. <a routerLink="/campanha">Ver campanha</a></p>
+                </section>
+              </div>
+              @if (confirming.problem(); as e) { <p class="problem">{{ e.detail }}</p> }
+              <footer>
+                <span class="faint small">{{ undecided() > 0 ? 'Decida os fatos acima para confirmar.' : 'Tudo pronto para confirmar.' }}</span>
+                <button type="button" class="btn primary" (click)="confirm()" [disabled]="confirming.running() || undecided() > 0">{{ confirming.running() ? 'Confirmando…' : 'Confirmar perfil' }}</button>
+              </footer>
+            </article>
+          }
+        }
+
+        @if (p.facts.length > 0) {
+          <article class="panel facts">
+            <header><h2>Fatos</h2><span class="faint small">{{ p.facts.length }} no total</span></header>
+            @if (headline() || summary()) {
+              <div class="lead">
+                @if (headline(); as h) { <p class="h-line">{{ h.statement }}</p> }
+                @if (summary(); as s) { <p class="muted">{{ s.statement }}</p> }
+              </div>
+            }
+            @for (g of groups(); track g.kind) {
+              <section class="group">
+                <h3>{{ g.title }}</h3>
+                @for (x of g.facts; track x.id) {
+                  <div class="fact" [class.inferred]="x.status === 'Inferred'">
+                    <div class="f-head">
+                      <strong>{{ x.statement }}</strong>
+                      <span class="faint small num">{{ period(x) }}</span>
+                    </div>
+                    @if (x.technologies.length > 0) { <div class="tech">@for (t of x.technologies; track t) { <span class="tag">{{ t }}</span> }</div> }
+                    @if (x.children.length > 0) {
+                      <ul class="wins">
+                        @for (c of x.children; track c.id) {
+                          <li [class.inferred]="c.status === 'Inferred'">
+                            <span>{{ c.statement }}</span>
+                            @if (c.quote) { <span class="ev mono">{{ evidence(c) }}: “{{ c.quote }}”</span> }
+                          </li>
+                        }
+                      </ul>
+                    }
+                    <p class="ev mono">{{ evidence(x) }}@if (x.quote && x.children.length === 0) {: “{{ x.quote }}”}</p>
+                  </div>
+                }
+              </section>
+            }
+            @if (skills().length > 0) {
+              <section class="group">
+                <h3>Competências</h3>
+                <div class="tech">@for (s of skills(); track s.id) { <span class="tag" [title]="evidence(s)">{{ s.statement }}</span> }</div>
+              </section>
+            }
+          </article>
+        }
+      </div>
+
+      <aside class="side">
+        <article class="panel">
+          <header><h2>Dados pessoais</h2></header>
+          <div class="pad">
+            <p class="faint small">Ficam só nesta máquina. Entram no PDF e no formulário, nunca no prompt de um modelo.</p>
+            <label class="field">Nome completo<input [value]="identity().fullName" (input)="setId('fullName', $any($event.target).value)" /></label>
+            <label class="field">E-mail<input type="email" [value]="identity().email ?? ''" (input)="setId('email', $any($event.target).value)" /></label>
+            <label class="field">Telefone<input [value]="identity().phone ?? ''" (input)="setId('phone', $any($event.target).value)" /></label>
+            <label class="field">Cidade<input [value]="identity().location ?? ''" (input)="setId('location', $any($event.target).value)" /></label>
+            <label class="field">LinkedIn<input [value]="identity().linkedIn ?? ''" (input)="setId('linkedIn', $any($event.target).value)" placeholder="https://linkedin.com/in/…" /></label>
+            <label class="field">GitHub<input [value]="identity().gitHub ?? ''" (input)="setId('gitHub', $any($event.target).value)" placeholder="https://github.com/…" /></label>
+            <label class="field">Site ou portfólio<input [value]="identity().website ?? ''" (input)="setId('website', $any($event.target).value)" /></label>
+            @if (savingIdentity.problem(); as e) { <p class="problem">{{ e.detail }}</p> }
+            <button type="button" class="btn" (click)="saveIdentity()" [disabled]="savingIdentity.running() || p.synthetic">{{ savingIdentity.running() ? 'Salvando…' : 'Salvar dados pessoais' }}</button>
+          </div>
+        </article>
+        @if (answerRows().length > 0) {
+          <article class="panel">
+            <header><h2>Banco de respostas</h2><span class="faint small">vaga CLT, em português</span></header>
+            <dl class="bank">
+              @for (a of answerRows(); track a[0]) { <dt>{{ keyLabel(a[0]) }}</dt><dd>{{ a[1] }}</dd> }
+            </dl>
+            <p class="faint small pad-x">Testes técnicos e desafios nunca são respondidos por você. Perguntas abertas são escritas por vaga e conferidas fato a fato.</p>
+          </article>
+        }
+      </aside>
+    </div>
+  }
+</section>

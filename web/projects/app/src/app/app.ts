@@ -34,6 +34,7 @@ export class App {
       { path: '/revisao', label: 'Revisão', icon: 'check-square-offset', count: 'review' },
     ] },
     { group: 'Dados', items: [
+      { path: '/perfil', label: 'Perfil', icon: 'identification-card' },
       { path: '/vagas', label: 'Vagas', icon: 'briefcase' },
       { path: '/candidaturas', label: 'Candidaturas', icon: 'paper-plane-tilt' },
     ] },

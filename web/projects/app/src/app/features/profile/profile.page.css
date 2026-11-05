@@ -1,0 +1,60 @@
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+.main, .side { display: grid; gap: 16px; min-width: 0; }
+.panel > header { gap: 12px; }
+.pad { display: grid; gap: 12px; padding: 14px 16px 16px; }
+.pad-x { padding: 0 16px 14px; margin: 0; }
+.small { font-size: 12px; }
+.drop { transition: border-color 140ms ease, background 140ms ease; }
+.drop.over { border-color: var(--accent); background: color-mix(in oklch, var(--accent) 6%, var(--surface)); }
+.hero { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 24px; align-items: center; padding: 22px 24px; }
+.hero h2 { font-size: 16px; margin-bottom: 6px; }
+.hero p { margin: 0 0 14px; max-width: 62ch; line-height: 1.5; }
+.file { position: relative; overflow: hidden; cursor: pointer; }
+.file input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.docs { list-style: none; margin: 0; padding: 4px 16px 10px; display: grid; gap: 2px; }
+.docs li { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.docs li:last-child { border-bottom: 0; }
+.d-name { font-weight: 600; }
+.d-error { flex-basis: 100%; color: var(--warn); font-size: 12px; }
+.reading { display: flex; align-items: center; gap: 8px; margin: 0; padding: 10px 16px 14px; color: var(--text-2); font-size: 12.5px; }
+.reading a { margin-left: auto; color: var(--accent); }
+.live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-3); flex: none; }
+.live-dot.on { background: var(--accent); animation: ping 1.6s ease-out infinite; }
+@keyframes ping { 0% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--accent) 60%, transparent); } 100% { box-shadow: 0 0 0 8px transparent; } }
+.confirm .sections { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; }
+.sec { display: grid; gap: 10px; align-content: start; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.sec:nth-child(odd):not(.wide) { border-right: 1px solid var(--line); }
+.sec.wide { grid-column: 1 / -1; }
+.sec h3 { font-size: 12.5px; font-weight: 600; }
+.money { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.check { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-2); cursor: pointer; }
+.check input { width: 16px; height: 16px; accent-color: var(--accent); }
+.inferred { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.inferred li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); }
+.inferred p { margin: 0; }
+.confirm footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; }
+.note p { margin: 0; }
+.note a, .bank a { color: var(--accent); }
+.facts .lead { padding: 14px 16px 4px; display: grid; gap: 4px; }
+.h-line { margin: 0; font-weight: 600; font-size: 14px; }
+.group { padding: 12px 16px; border-top: 1px solid var(--line); display: grid; gap: 10px; }
+.group h3 { font: 500 11px var(--font-ui); text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-3); }
+.fact { display: grid; gap: 6px; }
+.f-head { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+.tech { display: flex; flex-wrap: wrap; gap: 4px; }
+.tag { padding: 1px 7px; border-radius: 3px; background: var(--surface-3); color: var(--text-2); font: 500 11.5px var(--font-mono); }
+.wins { margin: 0; padding-left: 16px; display: grid; gap: 6px; }
+.wins li { line-height: 1.45; }
+.wins li span:first-child { display: block; }
+.ev { display: block; margin: 0; color: var(--text-3); font-size: 11px; line-height: 1.45; }
+.inferred .ev, .fact.inferred > .f-head strong, .wins li.inferred > span:first-child { color: var(--warn); }
+.bank { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 8px 12px; margin: 0; padding: 14px 16px; font-size: 12.5px; }
+.bank dt { color: var(--text-3); }
+.bank dd { margin: 0; color: var(--text); word-break: break-word; }
+@media (max-width: 1100px) { .layout { grid-template-columns: 1fr; } }
+@media (max-width: 720px) {
+  .hero { grid-template-columns: 1fr; justify-items: start; }
+  .confirm .sections { grid-template-columns: 1fr; }
+  .sec:nth-child(odd):not(.wide) { border-right: 0; }
+  .money { grid-template-columns: 1fr; }
+}

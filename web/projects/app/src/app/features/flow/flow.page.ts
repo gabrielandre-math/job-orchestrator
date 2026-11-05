@@ -352,13 +352,26 @@ export class FlowPage implements AfterViewInit {
     this.k.set(next);
   }
 
+  /** Rolagem dá zoom: para quem usa o PC por área de trabalho remota (Moonlight), onde a pinça do trackpad não chega. */
+  protected readonly wheelZooms = signal(read('jo.canvas.wheelZooms') === '1');
+  protected toggleWheel() {
+    this.wheelZooms.update((v) => !v);
+    write('jo.canvas.wheelZooms', this.wheelZooms() ? '1' : '0');
+  }
+
   protected wheel(e: WheelEvent) {
     e.preventDefault();
     this.moved = true;
+    cancelAnimationFrame(this.frame);
     const r = this.viewport().nativeElement.getBoundingClientRect();
-    // Como no n8n e no Figma: roda rola, Ctrl + roda (ou pinça) dá zoom, Shift + roda rola de lado.
-    if (e.ctrlKey || e.metaKey) this.zoom(Math.exp(-e.deltaY * 0.004), e.clientX - r.left, e.clientY - r.top);
-    else if (e.shiftKey) this.tx.update((x) => x - e.deltaY);
+    // Como no n8n e no Figma: roda rola, pinça (Ctrl + roda no navegador), Ctrl ou Option + roda dão zoom, Shift + roda rola de lado.
+    // Com "Rolar dá zoom" ligado, a roda amplia e Shift + roda move.
+    const zoom = e.ctrlKey || e.metaKey || e.altKey || (this.wheelZooms() && !e.shiftKey);
+    if (zoom) {
+      // Pinça manda deltas pequenos e contínuos; roda de mouse manda degraus de 100. Os dois viram um zoom suave.
+      const delta = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY;
+      this.zoom(Math.exp(-clamp(delta, -120, 120) * (e.ctrlKey && !this.wheelZooms() ? 0.006 : 0.0035)), e.clientX - r.left, e.clientY - r.top);
+    } else if (e.shiftKey) this.tx.update((x) => x - (e.deltaY || e.deltaX));
     else { this.tx.update((x) => x - e.deltaX); this.ty.update((y) => y - e.deltaY); }
   }
 
@@ -461,7 +474,11 @@ export class FlowPage implements AfterViewInit {
     if (quick) {
       const double = now - this.lastTap.t < 320 && Math.hypot(e.clientX - this.lastTap.x, e.clientY - this.lastTap.y) < 36;
       this.lastTap = double ? { t: 0, x: 0, y: 0 } : { t: now, x: e.clientX, y: e.clientY };
-      if (double) { if (this.k() >= 1.5) this.animateFit(); else this.animateZoom(1.6, at.x, at.y); }
+      if (double) {
+        if (e.shiftKey || e.altKey) this.animateZoom(1 / 1.6, at.x, at.y);
+        else if (this.k() >= 1.5) this.animateFit();
+        else this.animateZoom(1.6, at.x, at.y);
+      }
       return;
     }
     this.glide();
@@ -570,6 +587,8 @@ export class FlowPage implements AfterViewInit {
 
 function clamp(v: number, min: number, max: number) { return Math.min(max, Math.max(min, v)); }
 function now() { return performance.now(); }
+function read(key: string) { try { return localStorage.getItem(key); } catch { return null; } }
+function write(key: string, value: string) { try { localStorage.setItem(key, value); } catch { /* armazenamento bloqueado */ } }
 function short(s: string, n: number) { return s.length > n ? s.slice(0, n - 1).trimEnd() + '…' : s; }
 
 /** Pontos de uma aresta em ângulo reto. "Embaixo" sai abaixo do nome e do subtítulo, para não cortar o texto. */

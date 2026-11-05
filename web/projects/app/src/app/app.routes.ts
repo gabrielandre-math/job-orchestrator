@@ -5,6 +5,7 @@ export const routes: Routes = [
   { path: 'fluxo', title: 'Fluxo', loadComponent: () => import('./features/flow/flow.page').then((m) => m.FlowPage) },
   { path: 'atencao', title: 'Atenção', loadComponent: () => import('./features/attention/attention.page').then((m) => m.AttentionPage) },
   { path: 'revisao', title: 'Revisão', loadComponent: () => import('./features/review/review.page').then((m) => m.ReviewPage) },
+  { path: 'perfil', title: 'Perfil', loadComponent: () => import('./features/profile/profile.page').then((m) => m.ProfilePage) },
   { path: 'vagas', title: 'Vagas', loadComponent: () => import('./features/jobs/jobs.page').then((m) => m.JobsPage) },
   { path: 'candidaturas', title: 'Candidaturas', loadComponent: () => import('./features/applications/applications.page').then((m) => m.ApplicationsPage) },
   { path: 'candidaturas/:id', title: 'Candidatura', loadComponent: () => import('./features/applications/application.page').then((m) => m.ApplicationPage) },
