@@ -66,6 +66,13 @@ public sealed class TruthTests
     }
 
     [Fact]
+    public void Nome_no_pdf_do_linkedin_vem_antes_do_titulo()
+    {
+        const string cv = "Contact\n+55 (11) 98888-7777 (Mobile)\nmaria.teste@example.com\nTop Skills\nGestão de Projetos\nAtendimento ao Cliente\nLanguages\nInglês (Professional Working)\n\nMaria Souza Teste\n\nEnfermeira | UTI | Gestão de Leitos\nSão Paulo, São Paulo, Brazil\nSummary";
+        Assert.Equal("Maria Souza Teste", Redactor.Detect(cv).FullName);
+    }
+
+    [Fact]
     public void Dados_pessoais_nao_chegam_ao_modelo()
     {
         const string cv = "Bruno Teste Ficticio\nSão Paulo, SP | bruno.teste@example.com | (11) 98888-7777 | linkedin.com/in/bruno-teste | github.com/brunoteste\nCPF: 123.456.789-09\nEngenheiro de Software (03/2022 - 2024), salário 2019-2022";

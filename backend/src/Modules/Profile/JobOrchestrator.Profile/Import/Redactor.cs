@@ -10,13 +10,19 @@ namespace JobOrchestrator.Profile.Import;
 internal static partial class Redactor
 {
     private static readonly HashSet<string> Particles = new(StringComparer.OrdinalIgnoreCase) { "de", "da", "do", "dos", "das", "e", "van", "von", "del", "di" };
-    private static readonly string[] Headings = ["curriculo", "curriculum", "resume", "cv", "perfil", "profile", "sobre", "about", "contato", "contact"];
+    private static readonly string[] Headings = ["curriculo", "curriculum", "resume", "cv", "perfil", "profile", "sobre", "about", "contato", "contact", "top", "principais", "skills",
+        "competencias", "languages", "idiomas", "certifications", "certificacoes", "summary", "resumo", "experience", "experiencia", "education", "formacao", "honors", "publications",
+        "publicacoes", "projetos", "projects", "objetivo", "objective", "habilidades", "dados"];
 
     /// <summary>O que dá para achar sem IA: nome (primeira linha que parece um nome), e-mail, telefone e links.</summary>
     public static Identity Detect(string text)
     {
-        var lines = text.Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-        var name = lines.Take(12).Select(l => l.Trim('•', '-', ' ', '\t')).FirstOrDefault(LooksLikeName) ?? "";
+        var lines = text.Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Take(60).Select(l => l.Trim('•', '-', ' ', '\t')).ToList();
+        // O nome vem logo antes do título profissional (a linha com "|", como no PDF do LinkedIn, que põe a coluna de contato e competências antes).
+        var name = "";
+        var headline = lines.FindIndex(l => l.Contains('|'));
+        for (var i = headline - 1; headline > 0 && i >= Math.Max(0, headline - 3) && name.Length == 0; i--) if (LooksLikeName(lines[i])) name = lines[i];
+        if (name.Length == 0) name = lines.Take(12).FirstOrDefault(LooksLikeName) ?? "";
         if (name.Length > 0 && name == name.ToUpperInvariant()) name = CultureInfo.GetCultureInfo("pt-BR").TextInfo.ToTitleCase(name.ToLowerInvariant());
         var urls = Url().Matches(text).Select(m => m.Value.TrimEnd('.', ',', ';', ')')).ToList();
         return new Identity(

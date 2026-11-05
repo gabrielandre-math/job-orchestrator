@@ -1,0 +1,47 @@
+:host { display: contents; }
+.hello { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 20px; align-items: center; }
+.hello jo-mark { color: var(--accent); }
+.hello h2 { font-size: 19px; margin-bottom: 6px; }
+.hello p { margin: 0; line-height: 1.55; max-width: 64ch; }
+.promise { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 10px; }
+.promise li { display: grid; gap: 4px; justify-items: start; padding: 14px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface-2); animation: wz-rise 0.36s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.promise li:nth-child(2) { animation-delay: 60ms; } .promise li:nth-child(3) { animation-delay: 120ms; }
+.small { font-size: 12px; }
+.ready { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.ready li { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 6px; border: 1px solid color-mix(in oklch, var(--ok) 35%, var(--line)); background: var(--surface-2); }
+.ready .logo img { width: 22px; height: 22px; display: block; }
+.ready .logo img.mono { filter: invert(1); }
+:host-context([data-theme="light"]) .ready .logo img.mono { filter: none; }
+.ready .ok { display: inline-flex; align-items: center; gap: 4px; color: var(--ok); font-size: 12px; }
+.have { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px 14px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface-2); }
+.what { display: grid; min-width: 0; }
+.what strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.drop { position: relative; display: grid; justify-items: center; gap: 6px; padding: 28px 18px; border-radius: 8px; border: 1.5px dashed var(--line-strong); background: var(--surface-2); text-align: center; cursor: pointer; color: var(--text-2);
+  transition: border-color 200ms ease, background-color 200ms ease, transform 160ms ease; }
+.drop:hover, .drop.over { border-color: var(--accent); background: color-mix(in oklch, var(--accent) 6%, var(--surface-2)); color: var(--text); }
+.drop.over { transform: scale(1.01); }
+.drop.busy { cursor: progress; border-style: solid; border-color: color-mix(in oklch, var(--accent) 50%, var(--line)); }
+.drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.drop jo-icon { color: var(--accent); }
+.feed { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.feed li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; align-items: center; font-size: 12.5px; animation: wz-rise 0.3s ease-out both; }
+.facts { display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; }
+.facts .tag { max-width: min(320px, 100%); overflow: hidden; text-overflow: ellipsis; display: inline-block; line-height: 20px; }
+.wz-step > * { min-width: 0; }
+.plan { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 20px; }
+.plan section { display: grid; gap: 8px; align-content: start; }
+.plan h3 { font-size: 12.5px; color: var(--text-2); font-weight: 600; margin-top: 6px; display: flex; gap: 8px; align-items: baseline; }
+.plan .accent { color: var(--accent); font-size: 13px; }
+.pill { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 4px 0 9px; border-radius: 4px; background: var(--surface-3); font-size: 12px; animation: wz-rise 0.26s ease-out both; }
+.pill.key { background: var(--accent-weak); color: var(--accent); }
+.pill button { border: 0; background: none; color: inherit; opacity: 0.6; cursor: pointer; font-size: 14px; line-height: 1; padding: 0 3px; }
+.pill button:hover { opacity: 1; }
+.add { width: 110px; height: 26px; font-size: 12px; }
+input[type="range"] { padding: 0; height: 20px; accent-color: var(--accent); border: 0; background: transparent; box-shadow: none !important; }
+.picks { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-height: 360px; overflow-y: auto; }
+.picks li { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface-2); transition: opacity 200ms ease; animation: wz-rise 0.3s ease-out both; }
+.picks li.off { opacity: 0.55; }
+.test { min-width: 70px; text-align: right; font-size: 12px; }
+.ok { color: var(--ok); }
+.warn { color: var(--warn); }
+@media (max-width: 760px) { .plan { grid-template-columns: 1fr; } .hello { grid-template-columns: 1fr; } }

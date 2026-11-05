@@ -1,0 +1,185 @@
+<jo-wizard [steps]="['Boas-vindas', 'Sua IA', 'Seu currículo', 'Sua busca', 'Pronto']" [step]="step()" label="Primeiro contato" [wide]="step() === 4" (close)="later()">
+  @switch (step()) {
+    @case (1) {
+      <div class="wz-step">
+        <div class="hello">
+          <jo-mark [size]="64" [animated]="true" [active]="true" />
+          <div>
+            <h2>Vamos montar a sua busca de emprego</h2>
+            <p class="muted">Em quatro passos: você conecta a sua IA, envia o currículo e o assistente propõe a busca inteira a partir dele, para qualquer área. Nada é enviado a empresa nenhuma sem o seu ok.</p>
+          </div>
+        </div>
+        <ol class="promise">
+          <li><jo-iso name="radar" [size]="64" /><strong>Vagas de todas as áreas</strong><span class="muted small">Quadros oficiais das empresas, APIs públicas e sites de carreira, sempre pela porta oficial.</span></li>
+          <li><jo-iso name="writer" [size]="64" /><strong>Currículo sob medida</strong><span class="muted small">Um currículo por vaga, perfeito para ATS, só com fatos do seu currículo conferidos palavra por palavra.</span></li>
+          <li><jo-iso name="gate" [size]="64" /><strong>Você no controle</strong><span class="muted small">Revisão antes de cada envio, limites por dia e uma tela que mostra cada passo ao vivo.</span></li>
+        </ol>
+      </div>
+    }
+    @case (2) {
+      <div class="wz-step">
+        <div class="intro">
+          <jo-iso name="router" [size]="96" />
+          <div>
+            <h2>Conecte a sua IA</h2>
+            <p class="muted">Use a assinatura que você já paga (Claude ou ChatGPT), uma chave de API ou um modelo local de graça na sua placa de vídeo. Pode conectar mais de uma: a pergunta difícil sobe para o modelo mais forte.</p>
+          </div>
+        </div>
+        @if (readyAccounts().length > 0) {
+          <ul class="ready">
+            @for (p of readyAccounts(); track p.id) {
+              <li><span class="logo">@if (providerLogo(p); as l) { <img [src]="'/logos/' + l + '.svg'" alt="" [class.mono]="l === 'openai' || l === 'ollama'" /> }</span><strong>{{ p.name }}</strong><span class="faint small">{{ p.plan ?? p.login }}</span><span class="ok"><jo-icon name="check" [size]="14" />pronta</span></li>
+            }
+          </ul>
+        } @else {
+          <p class="notice">Nenhuma conta pronta ainda. Sem IA o app funciona, mas o currículo sai só com os fatos, sem texto adaptado à vaga.</p>
+        }
+        <div class="done-actions">
+          <button type="button" class="btn" (click)="connecting.set(true)"><jo-icon name="plus" [size]="14" />{{ readyAccounts().length ? 'Conectar outra conta' : 'Conectar uma conta' }}</button>
+          <button type="button" class="btn ghost" (click)="go('/provedores')"><jo-icon name="cpu" [size]="14" />Instalar um modelo local</button>
+        </div>
+      </div>
+    }
+    @case (3) {
+      <div class="wz-step">
+        <div class="intro">
+          <jo-iso name="reader" [size]="96" />
+          <div>
+            <h2>Envie o seu currículo</h2>
+            <p class="muted">PDF, DOCX, TXT ou o ZIP do export de dados do LinkedIn. Os agentes leem, tiram os fatos e conferem cada um no texto original. Nome, e-mail e telefone ficam só na sua máquina.</p>
+          </div>
+        </div>
+        @if (realProfile() && !reading()) {
+          <div class="have">
+            <jo-iso name="identity" [size]="56" />
+            <span class="what"><strong>{{ profile()!.identity.fullName || 'Perfil atual' }}</strong><span class="faint small">{{ profile()!.facts.length }} fatos de {{ doc()?.fileName ?? 'documentos enviados' }}</span></span>
+            <span class="faint small">Um currículo novo substitui este perfil inteiro.</span>
+          </div>
+        }
+        <label class="drop" [class.over]="dragging()" [class.busy]="reading() || importing.running()" (dragover)="$event.preventDefault(); dragging.set(true)" (dragleave)="dragging.set(false)" (drop)="drop($event)">
+          <input type="file" accept=".pdf,.docx,.txt,.zip" (change)="choose($event)" [disabled]="reading() || importing.running()" />
+          @if (reading() || importing.running()) {
+            <span class="spinner" aria-hidden="true"></span>
+            <strong>Lendo {{ doc()?.fileName ?? 'o currículo' }}</strong>
+            <span class="muted small">Pode levar até um minuto. Os agentes conversam aqui embaixo.</span>
+          } @else if (doc()?.status === 'Ready' && realProfile()) {
+            <jo-icon name="seal-check" [size]="28" />
+            <strong>{{ profile()!.facts.length }} fatos verificados</strong>
+            <span class="muted small">Solte outro arquivo aqui para trocar.</span>
+          } @else {
+            <jo-icon name="upload-simple" [size]="28" />
+            <strong>Solte o arquivo aqui ou clique para escolher</strong>
+            <span class="muted small">Um arquivo por vez. O ZIP do LinkedIn sai em Configurações, Privacidade, Obter uma cópia dos seus dados.</span>
+          }
+        </label>
+        @if (doc()?.status === 'Failed') { <p class="problem">{{ doc()?.error ?? 'Não deu para ler o arquivo.' }}</p> }
+        @if (readingFeed().length > 0 && (reading() || importing.running())) {
+          <ol class="feed">
+            @for (l of readingFeed(); track l.message.id) {
+              <li><jo-iso [name]="icons[l.message.agent] ?? 'router'" [size]="28" /><span><strong>{{ l.message.agent }}</strong> {{ l.message.title }}</span></li>
+            }
+          </ol>
+        }
+        @if (realProfile() && !reading()) {
+          <div class="facts">
+            @for (f of profile()!.facts.slice(0, 8); track f.id) { <span class="tag">{{ f.kind === 'experience' ? (f.role + ' · ' + f.organization) : f.statement }}</span> }
+            @if (profile()!.facts.length > 8) { <span class="tag faint">+{{ profile()!.facts.length - 8 }}</span> }
+          </div>
+        }
+      </div>
+    }
+    @case (4) {
+      <div class="wz-step">
+        <div class="intro">
+          <jo-iso name="selector" [size]="96" />
+          <div>
+            @if (proposing.running()) {
+              <h2>O assistente está montando a sua busca</h2>
+              <p class="muted"><span class="spinner sm" aria-hidden="true"></span>Lendo os fatos do currículo para escolher cargos, palavras, locais e fontes.</p>
+            } @else if (proposal(); as p) {
+              <h2>{{ p.area || 'Sua busca' }}</h2>
+              <p class="muted">{{ p.summary }}</p>
+              <p class="faint small">Proposta {{ p.fromAi ? 'feita por ' + p.model : 'montada pelo próprio perfil' }}. Ajuste o que quiser antes de salvar.</p>
+            }
+          </div>
+        </div>
+        @if (proposal(); as p) {
+          <div class="plan">
+            <section>
+              <h3>Cargos</h3>
+              <div class="chips">@for (t of titles(); track t) { <span class="pill">{{ t }}<button type="button" (click)="drop1('titles', t)" [attr.aria-label]="'Tirar ' + t">×</button></span> }</div>
+              <h3>Palavras-chave <span class="faint small">as duas primeiras são essenciais</span></h3>
+              <div class="chips">
+                @for (k of keywords(); track k; let i = $index) { <span class="pill" [class.key]="i < 2">{{ k }}<button type="button" (click)="drop1('keywords', k)" [attr.aria-label]="'Tirar ' + k">×</button></span> }
+                <input class="add" [value]="newKeyword()" (input)="newKeyword.set($any($event.target).value)" (keydown.enter)="addKeyword()" placeholder="+ palavra" aria-label="Nova palavra-chave" />
+              </div>
+              <h3>Onde</h3>
+              <div class="chips">
+                @for (l of locations(); track l) { <span class="pill">{{ l }}<button type="button" (click)="drop1('locations', l)" [attr.aria-label]="'Tirar ' + l">×</button></span> }
+                <input class="add" [value]="newPlace()" (input)="newPlace.set($any($event.target).value)" (keydown.enter)="addPlace()" placeholder="+ cidade" aria-label="Novo local" />
+              </div>
+              <h3>Nota mínima <span class="num accent">{{ minScore() }}</span></h3>
+              <input type="range" min="50" max="95" step="5" [value]="minScore()" (input)="minScore.set(+$any($event.target).value)" aria-label="Nota mínima" />
+              <p class="faint small">Só vaga com nota a partir daqui vai para a fila do currículo.</p>
+            </section>
+            <section>
+              <h3>Fontes <span class="faint small">testadas agora, uma a uma</span></h3>
+              <ul class="picks">
+                @for (s of picks(); track s.source) {
+                  <li [class.off]="!s.on">
+                    <input type="checkbox" [checked]="s.on" (change)="toggle(s.source)" [attr.aria-label]="describe(s.source).label" />
+                    <jo-company [name]="describe(s.source).company ?? describe(s.source).platformName" [domain]="describe(s.source).companyDomain ?? describe(s.source).platformDomain" [size]="26" />
+                    <span class="what"><strong>{{ describe(s.source).label }}</strong><span class="faint small">{{ s.why }}</span></span>
+                    <span class="test">
+                      @if (s.testing) { <span class="spinner sm" aria-hidden="true"></span> }
+                      @else if (s.test?.ok) { <span class="ok num">{{ s.test!.count }} vagas</span> }
+                      @else { <span class="warn small">sem resposta</span> }
+                    </span>
+                  </li>
+                }
+              </ul>
+              <button type="button" class="btn ghost" (click)="go('/fontes')"><jo-icon name="plus" [size]="14" />Mais fontes depois, em Fontes</button>
+            </section>
+          </div>
+        }
+      </div>
+    }
+    @case (5) {
+      <div class="wz-step">
+        <div class="intro">
+          <jo-iso name="send" [size]="96" />
+          <div>
+            <h2>Tudo pronto{{ state()?.firstName ? ', ' + state()!.firstName : '' }}</h2>
+            <p class="muted">A primeira busca já começou. Na Busca ao vivo você vê cada fonte, o que é da sua área, a nota e o que vai para a fila. Depois, confirme o perfil para os currículos saírem com tudo.</p>
+          </div>
+        </div>
+        <div class="done-actions">
+          <button type="button" class="btn primary" (click)="go('/busca')"><jo-icon name="magnifying-glass" [size]="14" />Ver a busca ao vivo</button>
+          <button type="button" class="btn" (click)="go('/perfil')"><jo-icon name="identification-card" [size]="14" />Confirmar o perfil</button>
+          <button type="button" class="btn ghost" (click)="go('/assistente')"><jo-icon name="chats" [size]="14" />Conversar com o assistente</button>
+        </div>
+      </div>
+    }
+  }
+  @if (step() < 5) {
+    <footer class="wz-foot" wz-foot>
+      @if (step() > 1) { <button type="button" class="btn ghost" (click)="step.set(step() - 1)"><jo-icon name="arrow-left" [size]="14" />Voltar</button> }
+      @else { <button type="button" class="btn ghost" (click)="later()">Agora não</button> }
+      <span class="end">
+        @switch (step()) {
+          @case (1) { <button type="button" class="btn primary" (click)="step.set(2)">Começar<jo-icon name="arrow-right" [size]="14" /></button> }
+          @case (2) { <button type="button" class="btn primary" (click)="step.set(3)">{{ readyAccounts().length ? 'Continuar' : 'Continuar sem IA' }}<jo-icon name="arrow-right" [size]="14" /></button> }
+          @case (3) { <button type="button" class="btn primary" (click)="propose()" [disabled]="!realProfile() || reading()">Montar a minha busca<jo-icon name="arrow-right" [size]="14" /></button> }
+          @case (4) {
+            <button type="button" class="btn" (click)="redo()" [disabled]="proposing.running()"><jo-icon name="arrows-clockwise" [size]="14" />Refazer a proposta</button>
+            <button type="button" class="btn primary" (click)="finish()" [disabled]="!proposal() || applying.running() || keywords().length === 0">Salvar e buscar agora</button>
+          }
+        }
+      </span>
+    </footer>
+  }
+</jo-wizard>
+
+@if (connecting()) {
+  <app-connect [accounts]="accounts()" [providers]="providers()" (close)="connecting.set(false); connected()" (changed)="connected()" (local)="connecting.set(false); go('/provedores')" />
+}

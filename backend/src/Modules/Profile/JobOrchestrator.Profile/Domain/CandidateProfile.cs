@@ -211,6 +211,22 @@ internal sealed class CandidateProfile : AggregateRoot
     }
 
     /// <summary>Perfil de teste, montado de um arquivo: nunca vai para vaga real (o Guardião confere o host).</summary>
+    /// <summary>Recomeça do zero: fatos, documentos, identidade e confirmações saem; a versão sobe.</summary>
+    public IReadOnlyList<string> Reset(DateTime now)
+    {
+        var files = _documents.Select(d => d.StoredPath).ToList();
+        _facts.Clear();
+        _documents.Clear();
+        FullName = "";
+        Email = Phone = Location = LinkedIn = GitHub = Website = null;
+        ConfirmationsJson = "{}";
+        ConfirmedAt = null;
+        Synthetic = false;
+        Status = ProfileStatus.Empty;
+        Touch(now);
+        return files;
+    }
+
     public void Seed(Identity id, IEnumerable<VerifiedFact> facts, Confirmations c, DateTime now)
     {
         SetIdentity(id, now);

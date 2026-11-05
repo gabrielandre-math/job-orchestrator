@@ -62,8 +62,12 @@ public static class LlmTasks
     public static readonly LlmTask QuestionDraft = new("question.draft", Rung.Light, true, 30, "perfil minimizado + pergunta");
     public static readonly LlmTask InterviewPrep = new("interview.prep", Rung.Medium, false, 5, "perfil minimizado + vaga");
     public static readonly LlmTask PageJobs = new("page.jobs", Rung.Local, false, 0, "página pública de carreira");
+    public static readonly LlmTask AssistantTriage = new("assistant.triage", Rung.Local, false, 0, "pergunta, fica na máquina");
+    public static readonly LlmTask AssistantChat = new("assistant.chat", Rung.Light, true, 80, "perfil minimizado + pergunta");
+    public static readonly LlmTask AssistantSetup = new("assistant.setup", Rung.Medium, true, 8, "currículo sem dados pessoais");
 
-    public static IReadOnlyList<LlmTask> All { get; } = [JobExtract, QuestionMap, EmailClassify, ProfileExtract, ResumeTailor, ResumeFactcheck, CoverWrite, QuestionDraft, InterviewPrep, PageJobs];
+    public static IReadOnlyList<LlmTask> All { get; } = [JobExtract, QuestionMap, EmailClassify, ProfileExtract, ResumeTailor, ResumeFactcheck, CoverWrite, QuestionDraft, InterviewPrep, PageJobs,
+        AssistantTriage, AssistantChat, AssistantSetup];
 
     public static LlmTask? Find(string name) => All.FirstOrDefault(t => t.Name == name);
 }
@@ -92,6 +96,8 @@ public interface IIntelligenceApi
     Task<LlmResult> CompleteAsync(LlmRequest request, CancellationToken ct);
     Task<LlmResult> TestAsync(string providerId, CancellationToken ct);
     Task<IReadOnlyList<LocalModelView>> LocalModelsAsync(CancellationToken ct);
+    Task<IReadOnlyList<AgentThreadView>> ThreadsAsync(int limit, CancellationToken ct);
+    Task<IReadOnlyList<AgentMessageView>> ThreadAsync(Guid id, CancellationToken ct);
 
     /// <summary>Nota de um agente sem IA no fio: o que conferiu, o que passou adiante e para quem.</summary>
     Task NoteAsync(AgentThread thread, string agent, string title, string? body, string? to = null, bool ok = true, CancellationToken ct = default);

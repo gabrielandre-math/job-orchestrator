@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using Carter;
 using JobOrchestrator.Applications;
+using JobOrchestrator.Assistant;
 using JobOrchestrator.Automation;
 using JobOrchestrator.BuildingBlocks;
 using JobOrchestrator.BuildingBlocks.Web;
@@ -16,9 +17,9 @@ var builder = WebApplication.CreateBuilder(args);
 var config = builder.Configuration;
 // Escolhas feitas na tela (modelos locais e afins) ficam em settings.json no diretório de configuração e recarregam sozinhas.
 config.AddJsonFile(Path.Combine(AppPaths.Config, "settings.json"), optional: true, reloadOnChange: true);
-var modules = new[] { CampaignsModule.Assembly, JobsModule.Assembly, ApplicationsModule.Assembly, AutomationModule.Assembly, IntelligenceModule.Assembly, ProfileModule.Assembly, MaterialsModule.Assembly };
+var modules = new[] { CampaignsModule.Assembly, JobsModule.Assembly, ApplicationsModule.Assembly, AutomationModule.Assembly, IntelligenceModule.Assembly, ProfileModule.Assembly, MaterialsModule.Assembly, AssistantModule.Assembly };
 builder.Services.AddJoBlocks(modules).AddJoWeb(modules)
-    .AddCampaignsModule(config).AddJobsModule(config).AddApplicationsModule(config).AddAutomationModule(config).AddIntelligenceModule(config).AddProfileModule(config).AddMaterialsModule(config);
+    .AddCampaignsModule(config).AddJobsModule(config).AddApplicationsModule(config).AddAutomationModule(config).AddIntelligenceModule(config).AddProfileModule(config).AddMaterialsModule(config).AddAssistantModule();
 builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
 builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));

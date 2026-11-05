@@ -2,20 +2,21 @@ import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, afterNextRe
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { Icon } from '@jo/ui/icon';
 import { Mark } from '@jo/ui/mark';
-import { Overview } from './core/api';
+import { OnboardingView, Overview, get } from './core/api';
 import { query } from './core/query';
 import { modeLabel } from './core/format';
 import { Theme } from './core/theme';
 import { Live } from './core/live';
 import { Toasts } from './core/toast';
 import { SearchRun } from './core/search';
+import { Welcome } from './features/welcome/welcome';
 
 interface NavItem { path: string; label: string; icon: string; exact?: boolean; count?: 'review' | 'attention'; }
 
 /** Shell: barra lateral recolhível (lembrada neste navegador), contadores reais e o estado da API. */
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icon, Mark],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icon, Mark, Welcome],
   templateUrl: './app.html',
   styleUrl: './app.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -39,6 +40,7 @@ export class App {
   protected readonly nav: { group: string; items: NavItem[] }[] = [
     { group: 'Operação', items: [
       { path: '/', label: 'Visão geral', icon: 'house', exact: true },
+      { path: '/assistente', label: 'Assistente', icon: 'chats' },
       { path: '/busca', label: 'Busca ao vivo', icon: 'magnifying-glass' },
       { path: '/atencao', label: 'Atenção', icon: 'bell-simple', count: 'attention' },
       { path: '/revisao', label: 'Revisão', icon: 'check-square-offset', count: 'review' },
@@ -55,7 +57,12 @@ export class App {
     ] },
   ];
 
+  /** Primeiro contato: abre sozinho enquanto o ambiente não foi montado; "Agora não" vale até recarregar a página. */
+  protected readonly welcome = signal(false);
+  openWelcome() { this.welcome.set(true); }
+
   constructor() {
+    void get<OnboardingView>('/onboarding').then((o) => { if (!o.done && sessionStorageGet('jo.welcome') !== 'later') this.welcome.set(true); }).catch(() => undefined);
     const destroy = inject(DestroyRef);
     const sub = this.router.events.subscribe((e) => { if (e instanceof NavigationEnd) requestAnimationFrame(() => this.measure()); });
     const resize = () => this.measure();
@@ -76,6 +83,8 @@ export class App {
     return kind === 'review' ? d.applications.awaitingApproval : d.pendingTasks;
   }
 
+  protected closeWelcome() { this.welcome.set(false); sessionStorageSet('jo.welcome', 'later'); }
+
   protected toggle() {
     this.collapsed.update((c) => !c);
     write('jo.sidebar', this.collapsed() ? 'collapsed' : 'open');
@@ -83,5 +92,7 @@ export class App {
   }
 }
 
+function sessionStorageGet(key: string): string | null { try { return sessionStorage.getItem(key); } catch { return null; } }
+export function sessionStorageSet(key: string, value: string) { try { sessionStorage.setItem(key, value); } catch { /* sem armazenamento */ } }
 function read(key: string): string | null { try { return localStorage.getItem(key); } catch { return null; } }
 function write(key: string, value: string) { try { localStorage.setItem(key, value); } catch { /* armazenamento indisponível */ } }

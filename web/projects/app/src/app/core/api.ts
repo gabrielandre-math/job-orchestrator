@@ -91,3 +91,14 @@ export async function remove(path: string): Promise<void> {
 
 export interface ScraperStatus { installed: boolean; version: string | null; venv: string; project: string; cacheMb: number; installing: boolean; installLog: string | null; maxPages: number; maxSeconds: number; maxAiPages: number; assist: string; collectEmails: boolean; }
 export interface CrawlFound { title: string; company: string; location: string; applyUrl: string; applyEmail: string | null; source: string; }
+
+// Assistente e primeiro contato.
+export interface OnboardingView { done: boolean; aiReady: boolean; accounts: string[]; localReady: boolean; facts: number; profileConfirmed: boolean; firstName: string; campaign: boolean; keywords: number; sources: number; }
+export interface ProposedSource { source: string; why: string; }
+export interface SetupProposal { ok: boolean; error: string | null; area: string; summary: string; titles: string[]; keywords: string[]; locations: string[]; remote: boolean; seniority: string; minFitScore: number; sources: ProposedSource[]; providerId: string; model: string; fromAi: boolean; }
+export interface AssistantAction { type: string; title: string; values: string[]; number: number | null; }
+export interface AssistantAnswer { ok: boolean; reply: string; actions: AssistantAction[]; providerId: string; model: string; rung: string; seconds: number; escalatedFrom: string | null; error: string | null; }
+export interface AskResponse { conversationId: string; rung: string; why: string; answers: AssistantAnswer[]; }
+export interface ChatTurn { id: string; at: string; role: 'user' | 'assistant' | 'route'; text: string; data: string | null; }
+export interface ConversationView { id: string; subject: string; startedAt: string; lastAt: string; messages: number; }
+export interface SourceTestResult { ok: boolean; count: number; seconds: number; sample: { title: string; company: string; location: string; applyUrl: string; applyEmail: string | null }[]; error: string | null; }

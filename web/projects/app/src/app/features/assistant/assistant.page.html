@@ -1,0 +1,78 @@
+<div class="chat">
+  <aside class="history" aria-label="Conversas">
+    <button type="button" class="btn primary new" (click)="newChat()"><jo-icon name="plus" [size]="14" />Nova conversa</button>
+    <ul>
+      @for (c of conversations.value() ?? []; track c.id) {
+        <li><button type="button" [class.on]="current() === c.id" (click)="open(c.id)"><span class="subject">{{ c.subject || 'Conversa' }}</span><span class="faint small">{{ ago(c.lastAt) }}</span></button></li>
+      } @empty { <li class="faint small empty">As conversas ficam aqui.</li> }
+    </ul>
+  </aside>
+
+  <section class="main">
+    <div class="scroll" #scroller>
+      @if (bubbles().length === 0) {
+        <div class="welcome">
+          <jo-mark [size]="52" [animated]="true" [active]="asking.running()" />
+          <h1>Como posso ajudar na sua busca?</h1>
+          <p class="muted">Respondo com os seus modelos. Pergunta simples fica no modelo local; a difícil sobe sozinha para o mais forte. Anexe o currículo pelo clipe e eu proponho a busca inteira.</p>
+          <div class="suggest">@for (s of suggestions; track s) { <button type="button" (click)="ask(s)">{{ s }}<jo-icon name="arrow-right" [size]="13" /></button> }</div>
+        </div>
+      }
+      <div class="thread">
+        @for (b of bubbles(); track b.id; let bi = $index) {
+          @switch (b.role) {
+            @case ('user') { <div class="msg user"><p>{{ b.text }}</p></div> }
+            @case ('route') { <div class="route"><jo-icon name="arrow-up" [size]="12" />{{ b.text }}</div> }
+            @case ('error') { <div class="msg bad"><jo-icon name="warning" [size]="14" />{{ b.text }}</div> }
+            @default {
+              <article class="msg bot" [class.side]="b.compare">
+                <header>
+                  @if (logo(b.provider); as l) { <img class="plogo" [class.mono]="l === 'openai' || l === 'ollama'" [src]="'/logos/' + l + '.svg'" alt="" /> } @else { <jo-iso name="router" [size]="22" /> }
+                  <span class="who">{{ b.model || b.provider }}</span>
+                  @if (b.rung) { <span class="rung">{{ rungLabel(b.rung) }}</span> }
+                  @if (b.escalatedFrom) { <span class="up" title="A pergunta subiu de degrau"><jo-icon name="arrow-up" [size]="11" />de {{ rungLabel(b.escalatedFrom) }}</span> }
+                  @if (b.seconds) { <span class="faint small">{{ b.seconds.toLocaleString('pt-BR') }} s</span> }
+                </header>
+                <div class="md" [innerHTML]="b.html"></div>
+                @if (b.actions.length > 0) {
+                  <div class="actions">
+                    @for (a of b.actions; track $index; let ai = $index) {
+                      <div class="action" [class.done]="applied().has(b.id + ':' + ai)">
+                        <span class="what"><strong>{{ a.title }}</strong><span class="faint small">{{ actionText(a) }}</span></span>
+                        @if (applied().has(b.id + ':' + ai)) { <span class="ok"><jo-icon name="check" [size]="14" />{{ a.type === 'navigate' ? 'aberto' : 'aplicado' }}</span> }
+                        @else { <button type="button" class="btn" (click)="run(b, a, ai)" [disabled]="applying.running()">{{ actionVerb(a) }}</button> }
+                      </div>
+                    }
+                  </div>
+                }
+              </article>
+            }
+          }
+        }
+        @if (working(); as w) {
+          <div class="thinking"><jo-iso [name]="w.agent === 'Roteador' ? 'router' : 'writer'" [size]="30" /><span><strong>{{ w.agent }}</strong> {{ w.text }}</span><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span></div>
+        }
+        @if (reading()) {
+          <div class="thinking"><jo-iso name="reader" [size]="30" /><span><strong>Leitor</strong> lendo o currículo e conferindo cada fato</span><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span></div>
+        }
+      </div>
+    </div>
+
+    <div class="composer">
+      <div class="box">
+        <label class="clip" title="Anexar o currículo">
+          <input type="file" accept=".pdf,.docx,.txt,.zip" (change)="attach($event)" [disabled]="reading() || asking.running()" />
+          <jo-icon name="paperclip" [size]="18" />
+        </label>
+        <textarea rows="1" [value]="draft()" (input)="draft.set($any($event.target).value)" (keydown)="key($event)" placeholder="Pergunte sobre vagas, currículo, fontes ou a sua busca" aria-label="Mensagem"></textarea>
+        <button type="button" class="btn primary send" (click)="ask()" [disabled]="!draft().trim() || asking.running()" aria-label="Enviar"><jo-icon name="paper-plane-right" [size]="16" /></button>
+      </div>
+      <div class="opts">
+        <div class="seg" role="radiogroup" aria-label="Degrau">
+          @for (r of rungs; track r.label) { <button type="button" role="radio" [attr.aria-checked]="rung() === r.key" (click)="rung.set(r.key)">{{ r.label }}</button> }
+        </div>
+        <label class="cmp"><input type="checkbox" class="switch" [checked]="compare()" (change)="compare.set($any($event.target).checked)" />Comparar modelos lado a lado</label>
+      </div>
+    </div>
+  </section>
+</div>

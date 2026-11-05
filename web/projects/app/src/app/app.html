@@ -44,6 +44,8 @@
   <router-outlet />
 </main>
 
+@if (welcome()) { <app-welcome (close)="closeWelcome()" /> }
+
 <div class="toasts" aria-live="polite">
   @for (t of toasts.list(); track t.id) {
     <div [class]="'toast ' + t.tone" role="status">

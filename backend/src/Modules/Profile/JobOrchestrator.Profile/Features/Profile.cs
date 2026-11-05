@@ -114,6 +114,21 @@ internal sealed class SetIdentityHandler(ProfileDbContext db, TimeProvider time)
     }
 }
 
+/// <summary>Comando: recomeçar o perfil. Apaga fatos, documentos e os arquivos guardados na pasta de dados.</summary>
+internal sealed record ResetProfileCommand : ICommand<Done>, IProfileCommand;
+
+internal sealed class ResetProfileHandler(ProfileDbContext db, TimeProvider time) : ICommandHandler<ResetProfileCommand, Done>
+{
+    public async Task<Result<Done>> Handle(ResetProfileCommand c, CancellationToken ct)
+    {
+        var profile = await db.CurrentAsync(ct);
+        if (profile is null) return new Done();
+        foreach (var file in profile.Reset(time.GetUtcNow().UtcDateTime))
+            try { if (File.Exists(file)) File.Delete(file); } catch (IOException) { /* o arquivo some na próxima limpeza */ }
+        return new Done();
+    }
+}
+
 /// <summary>Comando: a tela única. Decide cada fato inferido e responde o que só você pode afirmar.</summary>
 internal sealed record ConfirmProfileCommand(Confirmations Confirmations, Dictionary<Guid, bool>? Decisions) : ICommand<Done>, IProfileCommand;
 
@@ -167,6 +182,7 @@ internal sealed class ProfileEndpoints : ICarterModule
         }).DisableAntiforgery();
         group.MapPost("documents/{id:guid}/retry", async (Guid id, ISender sender, CancellationToken ct) =>
             (await sender.Send(new RetryDocumentCommand(id), ct)).ToHttp(_ => Results.Accepted()));
+        group.MapDelete("", async (ISender sender, CancellationToken ct) => (await sender.Send(new ResetProfileCommand(), ct)).ToHttp(_ => Results.NoContent()));
         group.MapPut("identity", async (SetIdentityCommand body, ISender sender, CancellationToken ct) =>
             (await sender.Send(body, ct)).ToHttp(_ => Results.NoContent()));
         group.MapPut("confirmations", async (ConfirmProfileCommand body, ISender sender, CancellationToken ct) =>

@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 
 export const routes: Routes = [
   { path: '', title: 'Visão geral', loadComponent: () => import('./features/overview/overview.page').then((m) => m.OverviewPage) },
+  { path: 'assistente', title: 'Assistente', loadComponent: () => import('./features/assistant/assistant.page').then((m) => m.AssistantPage) },
   { path: 'busca', title: 'Busca ao vivo', loadComponent: () => import('./features/search/search.page').then((m) => m.SearchPage) },
   { path: 'fluxo', title: 'Mapa ao vivo', loadComponent: () => import('./features/flow/flow.page').then((m) => m.FlowPage) },
   { path: 'atencao', title: 'Atenção', loadComponent: () => import('./features/attention/attention.page').then((m) => m.AttentionPage) },
