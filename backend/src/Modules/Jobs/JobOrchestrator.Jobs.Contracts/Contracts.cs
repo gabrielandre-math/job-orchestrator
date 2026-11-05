@@ -58,4 +58,7 @@ public interface IJobsApi
     Task<IReadOnlyList<SourceCount>> SourcesAsync(CancellationToken ct);
     Task<JobText?> TextAsync(Guid jobId, CancellationToken ct);
     Task<IReadOnlyList<EmailTarget>> EmailTargetsAsync(CancellationToken ct);
+    /// <summary>Links de candidatura e domínios de empresa das vagas recentes: onde o Explorador garimpa quadros de ATS e sites de carreira.</summary>
+    Task<IReadOnlyList<string>> ApplyLinksAsync(int limit, CancellationToken ct);
+    Task<IReadOnlyList<string>> CompanyDomainsAsync(int limit, CancellationToken ct);
 }

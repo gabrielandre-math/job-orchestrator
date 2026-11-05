@@ -1,16 +1,44 @@
 <section class="page">
   <jo-page-hero title="Configurações e segurança" [scene]="['guardian', 'gate', 'identity']"
-    lead="A busca da noite, o que pode sair para a nuvem, por quanto tempo os registros ficam e os atalhos de segurança: exportar, revogar e apagar." />
+    lead="A busca sozinha e a da noite, o que pode sair para a nuvem, por quanto tempo os registros ficam e os atalhos de segurança: exportar, revogar e apagar." />
 
   <section class="panel">
-    <header><h2>Busca da noite</h2><span class="faint small">rodadas às 23h05, 1h35 e 4h05; resumo às 7h45; backup às 7h55</span></header>
+    <header><h2>Busca sozinha</h2><span class="faint small">nada disso envia candidatura por conta própria: vale o modo da campanha</span></header>
     <div class="rows">
-      <label class="row">
-        <input type="checkbox" class="switch" [checked]="campaign()?.enabled" (change)="night($any($event.target).checked)" [disabled]="!campaign() || nightSaving.running()" />
-        <span><strong>Rodar a campanha durante a noite</strong><p class="muted">O timer do systemd pede as rodadas; o modo da campanha continua valendo (só descobrir, só preparar, revisão sua ou automático autorizado).</p></span>
-      </label>
+      <div class="row">
+        <label class="sw">
+          <input type="checkbox" class="switch" [checked]="campaign()?.enabled" (change)="night($any($event.target).checked)" [disabled]="!campaign() || nightSaving.running()" />
+          <span><strong>Buscar vagas sozinho</strong><p class="muted">Rodada completa em todas as fontes enquanto o painel estiver no ar, e as rodadas da noite quando os timers estiverem ligados.</p></span>
+        </label>
+        <select (change)="continuous({ searchIntervalMinutes: +$any($event.target).value })" [disabled]="!campaign()?.enabled || exploreSaving.running()" aria-label="Intervalo da busca">
+          @for (m of [30, 60, 120, 240]; track m) { <option [value]="m" [selected]="m === (explore.value()?.searchIntervalMinutes ?? 60)">a cada {{ every(m) }}</option> }
+        </select>
+      </div>
+      <div class="row">
+        <label class="sw">
+          <input type="checkbox" class="switch" [checked]="explore.value()?.enabled" (change)="continuous({ enabled: $any($event.target).checked })" [disabled]="!explore.value() || exploreSaving.running()" />
+          <span><strong>Explorador: procurar fontes novas sozinho</strong><p class="muted">Links das vagas que chegam, Gupy e APIs pelas suas palavras, repositórios de vaga do GitHub, listas de empresas e a varredura dos sites (Scrapy, com o robots.txt de cada um). Entra só fonte com vaga recente da sua área.</p></span>
+        </label>
+        <select (change)="continuous({ intervalMinutes: +$any($event.target).value })" [disabled]="!explore.value()?.enabled || exploreSaving.running()" aria-label="Intervalo do Explorador">
+          @for (m of [5, 10, 15, 30, 60]; track m) { <option [value]="m" [selected]="m === (explore.value()?.intervalMinutes ?? 10)">a cada {{ every(m) }}</option> }
+        </select>
+      </div>
+      <div class="row">
+        <span><strong>Timers da noite</strong>
+          @if (units.value(); as u) {
+            @if (u.available) {
+              <ul class="timers">
+                @for (t of u.timers; track t.name) { <li [class.on]="t.enabled"><span class="dot" aria-hidden="true"></span>{{ t.label }}<span class="faint">{{ t.enabled ? (t.next ? 'próximo: ' + when(t.next) : 'ligado') : 'desligado' }}</span></li> }
+              </ul>
+            } @else { <p class="muted">{{ u.reason }}</p> }
+          }
+        </span>
+        @if (units.value()?.available) {
+          <button type="button" class="btn" [class.primary]="!nightAll()" (click)="timers(!nightAll())" [disabled]="unitsSaving.running()"><jo-icon name="moon" [size]="14" />{{ nightAll() ? 'Desligar' : 'Ligar os timers' }}</button>
+        }
+      </div>
       <div class="row install">
-        <span><strong>Serviços de usuário</strong><p class="muted">Para a noite funcionar com o PC ligado e você longe, instale e ligue os serviços e timers (API, Worker, rodadas, resumo e backup):</p>
+        <span><strong>API e Worker como serviços</strong><p class="muted">Para o painel subir sozinho com o computador (sem o terminal aberto), instale os serviços de usuário:</p>
           <code class="mono">{{ install }}</code></span>
         <button type="button" class="btn" (click)="copy()"><jo-icon [name]="copied() ? 'check' : 'copy'" [size]="14" />{{ copied() ? 'Copiado' : 'Copiar' }}</button>
       </div>

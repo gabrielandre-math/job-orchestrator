@@ -6,6 +6,7 @@ import { Count } from '@jo/ui/count';
 import { Icon } from '@jo/ui/icon';
 import { Iso } from '@jo/ui/iso';
 import { get } from '../../core/api';
+import { Explorer } from '../sources/explorer';
 import { ago } from '../../core/format';
 import { markdown } from '../../core/markdown';
 import { query } from '../../core/query';
@@ -21,7 +22,7 @@ interface Station { key: string; iso: string; label: string; value: number | nul
  */
 @Component({
   selector: 'app-search',
-  imports: [RouterLink, Columns, Company, Count, Icon, Iso],
+  imports: [RouterLink, Columns, Company, Count, Icon, Iso, Explorer],
   templateUrl: './search.page.html',
   styleUrl: './search.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

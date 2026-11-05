@@ -12,3 +12,11 @@ code { display: inline-block; margin-top: 8px; padding: 6px 10px; border-radius:
 .danger-btn:not(:disabled) { color: var(--danger); border-color: color-mix(in oklch, var(--danger) 45%, var(--line-strong)); }
 .danger-btn:not(:disabled):hover { background: var(--danger-weak); }
 @media (max-width: 760px) { .row { grid-template-columns: 1fr; } }
+.sw { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: start; cursor: pointer; }
+.sw input { margin-top: 2px; }
+.row .sw + select { width: 150px; }
+.timers { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 4px; font-size: 12.5px; color: var(--text-2); }
+.timers li { display: flex; align-items: center; gap: 8px; }
+.timers .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--line-strong); transition: background-color 200ms ease; }
+.timers li.on .dot { background: var(--ok); }
+.timers .faint { margin-left: auto; }

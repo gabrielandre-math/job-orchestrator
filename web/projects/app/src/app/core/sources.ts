@@ -6,7 +6,7 @@ export const PLATFORMS: Record<string, { name: string; domain: string; kind: Sou
   ashby: { name: 'Ashby', domain: 'ashbyhq.com', kind: 'ats' }, smartrecruiters: { name: 'SmartRecruiters', domain: 'smartrecruiters.com', kind: 'ats' },
   recruitee: { name: 'Recruitee', domain: 'recruitee.com', kind: 'ats' }, breezy: { name: 'Breezy HR', domain: 'breezy.hr', kind: 'ats' },
   personio: { name: 'Personio', domain: 'personio.com', kind: 'ats' }, workable: { name: 'Workable', domain: 'workable.com', kind: 'ats' },
-  gupy: { name: 'Gupy', domain: 'gupy.io', kind: 'ats' },
+  gupy: { name: 'Gupy', domain: 'gupy.io', kind: 'ats' }, getonbrd: { name: 'GetOnBoard', domain: 'getonbrd.com', kind: 'api' },
   remotive: { name: 'Remotive', domain: 'remotive.com', kind: 'api' }, arbeitnow: { name: 'Arbeitnow', domain: 'arbeitnow.com', kind: 'api' },
   himalayas: { name: 'Himalayas', domain: 'himalayas.app', kind: 'api' }, jobicy: { name: 'Jobicy', domain: 'jobicy.com', kind: 'api' },
   themuse: { name: 'The Muse', domain: 'themuse.com', kind: 'api' }, remoteok: { name: 'RemoteOK', domain: 'remoteok.com', kind: 'api' },

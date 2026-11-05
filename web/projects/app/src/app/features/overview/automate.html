@@ -1,0 +1,233 @@
+<jo-wizard [steps]="steps" [step]="step()" label="Automatizar tudo" [wide]="true" (close)="close.emit()">
+  @switch (step()) {
+    @case (1) {
+      <div class="wz-step">
+        <div class="intro">
+          <jo-iso name="router" [size]="96" />
+          <div>
+            <h2>Tudo no automático, com você no controle</h2>
+            <p class="muted">Em poucos passos: confirmar o perfil, escolher como as candidaturas saem, ligar a busca sozinha e, se quiser, o e-mail. Cada passo mostra o que já está pronto; é só seguir.</p>
+          </div>
+        </div>
+        @if (loading()) {
+          <div class="waiting"><span class="spin" aria-hidden="true"></span><p>Conferindo o que já está pronto…</p></div>
+        } @else {
+          <ol class="checks">
+            @for (c of checks(); track c.label) {
+              <li [class.done]="c.done" [class.opt]="c.optional && !c.done">
+                <span class="mark" aria-hidden="true">@if (c.done) { <jo-icon name="check" [size]="12" /> }</span>
+                <span class="what"><strong>{{ c.label }}@if (c.optional) { <span class="badge">opcional</span> }</strong><span class="faint small">{{ c.hint }}</span></span>
+                @if (c.step) { <button type="button" class="btn ghost" (click)="step.set(c.step)">{{ c.done ? 'Rever' : 'Resolver' }}</button> }
+              </li>
+            }
+          </ol>
+          @if (!onboarding()?.aiReady) {
+            <div class="waiting bad"><jo-icon name="robot" [size]="18" /><div><p>Sem IA conectada, o currículo por vaga e as respostas não saem. Conecte a sua assinatura ou o modelo local em Provedores de IA.</p></div></div>
+          }
+        }
+      </div>
+    }
+    @case (2) {
+      <div class="wz-step">
+        <div class="intro">
+          <jo-iso name="identity" [size]="96" />
+          <div>
+            <h2>Seu perfil</h2>
+            <p class="muted">O que vai para os formulários e para os e-mails. Os fatos saem do seu currículo; isto aqui só você pode dizer.@if (ready()) { Confirmado em {{ date(profile()?.confirmedAt) }}: mude só se precisar. }</p>
+          </div>
+        </div>
+        @if (form(); as f) {
+          <div class="form">
+            <div class="field">Pode trabalhar em
+              <div class="chips">@for (c of countries; track c[0]) { <button type="button" class="chip" [attr.aria-pressed]="f.authorizedCountries.includes(c[0])" (click)="toggleIn('authorizedCountries', c[0])">{{ c[1] }}</button> }</div>
+            </div>
+            <div class="field">Modalidade
+              <div class="chips">
+                <button type="button" class="chip" [attr.aria-pressed]="f.modalities.includes('remote')" (click)="toggleIn('modalities', 'remote')">Remoto</button>
+                <button type="button" class="chip" [attr.aria-pressed]="f.modalities.includes('hybrid')" (click)="toggleIn('modalities', 'hybrid')">Híbrido</button>
+                <button type="button" class="chip" [attr.aria-pressed]="f.modalities.includes('onsite')" (click)="toggleIn('modalities', 'onsite')">Presencial</button>
+              </div>
+            </div>
+            <div class="row3">
+              <label class="field">Piso CLT, R$ por mês<input inputmode="numeric" [value]="f.floorCltBrl ?? ''" (input)="money('floorCltBrl', $any($event.target).value)" placeholder="opcional" /></label>
+              <label class="field">Piso PJ, R$ por mês<input inputmode="numeric" [value]="f.floorPjBrl ?? ''" (input)="money('floorPjBrl', $any($event.target).value)" placeholder="opcional" /></label>
+              <label class="field">Piso em dólar, US$ por mês<input inputmode="numeric" [value]="f.floorUsdMonth ?? ''" (input)="money('floorUsdMonth', $any($event.target).value)" placeholder="opcional" /></label>
+            </div>
+            <div class="row3">
+              <label class="field">Quando pode começar
+                <select (change)="set('startAvailability', $any($event.target).value || null)">
+                  <option value="" [selected]="!f.startAvailability">Escolha</option>
+                  @for (o of ['Imediata', '15 dias', '30 dias', '45 dias', '60 dias']; track o) { <option [value]="o" [selected]="f.startAvailability === o">{{ o }}</option> }
+                </select>
+              </label>
+              <label class="field">Nível de inglês
+                <select (change)="set('englishLevel', $any($event.target).value || null)">
+                  <option value="" [selected]="!f.englishLevel">Escolha</option>
+                  @for (o of [['basic', 'Básico'], ['intermediate', 'Intermediário'], ['advanced', 'Avançado'], ['fluent', 'Fluente'], ['native', 'Nativo']]; track o[0]) { <option [value]="o[0]" [selected]="f.englishLevel === o[0]">{{ o[1] }}</option> }
+                </select>
+              </label>
+              <label class="check"><input type="checkbox" class="switch" [checked]="f.relocate" (change)="set('relocate', $any($event.target).checked)" />Aceito me mudar pela vaga certa</label>
+            </div>
+            @if (inferred().length) {
+              <div class="field">Deduzido do currículo: confirme antes de usar
+                <ul class="facts">
+                  @for (x of inferred(); track x.id) {
+                    <li>
+                      <span>{{ x.statement }}</span>
+                      <span class="seg" role="group" [attr.aria-label]="x.statement">
+                        <button type="button" [attr.aria-pressed]="decisions()[x.id] === true" (click)="decide(x.id, true)">É verdade</button>
+                        <button type="button" [attr.aria-pressed]="decisions()[x.id] === false" (click)="decide(x.id, false)">Não é</button>
+                      </span>
+                    </li>
+                  }
+                </ul>
+              </div>
+            }
+            <p class="faint small">Autoidentificação fica como "prefiro não informar" e respostas abertas passam pela sua revisão, a não ser que você mude em Perfil.</p>
+          </div>
+        } @else {
+          <div class="waiting bad"><jo-icon name="robot" [size]="18" /><div><p>Ainda não há currículo lido. Envie o PDF ou o export do LinkedIn em Perfil e volte aqui.</p></div></div>
+        }
+        @if (confirming.problem(); as p) { <p class="problem">{{ p.detail }}</p> }
+      </div>
+    }
+    @case (3) {
+      <div class="wz-step">
+        <div class="intro">
+          <jo-iso name="gate" [size]="96" />
+          <div>
+            <h2>Como as candidaturas saem</h2>
+            <p class="muted">Para cada vaga boa, o sistema monta o currículo só com fatos seus e prepara o formulário. Você escolhe se aprova uma por uma ou se ele envia sozinho dentro de limites.</p>
+          </div>
+        </div>
+        <div class="cards" role="radiogroup" aria-label="Como as candidaturas saem">
+          <button type="button" class="card" role="radio" [attr.aria-checked]="sendMode() === 'ReviewRequired'" (click)="sendMode.set('ReviewRequired')">
+            <span class="dot"></span><strong>Eu aprovo cada envio <span class="badge rec">bom para começar</span></strong>
+            <span class="muted small">Tudo pronto em Revisão: o formulário exato, o currículo e as respostas. Um clique envia.</span>
+          </button>
+          <button type="button" class="card" role="radio" [attr.aria-checked]="sendMode() === 'AutoSubmit'" (click)="sendMode.set('AutoSubmit')">
+            <span class="dot"></span><strong>Automático, dentro de limites</strong>
+            <span class="muted small">Envia sozinho só com nota alta, teto por dia, uma empresa por dia e pelos formulários conhecidos. CAPTCHA, login, MFA e pergunta nova sempre param para você.</span>
+          </button>
+          <button type="button" class="card" role="radio" [attr.aria-checked]="sendMode() === 'DiscoveryOnly'" (click)="sendMode.set('DiscoveryOnly')">
+            <span class="dot"></span><strong>Só buscar por enquanto</strong>
+            <span class="muted small">Busca e dá nota às vagas; não prepara nem envia nada.</span>
+          </button>
+        </div>
+        @if (sendMode() === 'AutoSubmit') {
+          @if (active(); as a) {
+            <div class="locked"><jo-icon name="lock-simple" [size]="15" /><span>Autorização ativa até {{ date(a.expiresAt) }}: até {{ a.maxPerDay }} por dia, nota a partir de {{ a.minScore }}. Para mudar os limites, revogue em Campanha e autorize de novo.</span></div>
+          } @else {
+            @if (!ready()) { <div class="waiting bad"><jo-icon name="lock-simple" [size]="18" /><div><p>O envio automático só usa dados confirmados. Confirme o perfil no passo anterior.</p></div></div> }
+            <div class="limits">
+              <label class="field">Validade <span class="num accent">{{ days() }} {{ days() === 1 ? 'dia' : 'dias' }}</span><input type="range" min="1" max="30" [value]="days()" (input)="days.set(num($event))" /></label>
+              <label class="field">Teto por dia <span class="num accent">{{ perDay() }}</span><input type="range" min="1" [max]="maxCap()" [value]="perDay()" (input)="perDay.set(num($event))" /></label>
+              <label class="field">Nota mínima <span class="num accent">{{ minScore() }}</span><input type="range" [min]="campaign()?.minFitScore ?? 60" max="100" [value]="minScore()" (input)="minScore.set(num($event))" /></label>
+            </div>
+            <label class="consent" [class.on]="accepted()">
+              <input type="checkbox" [checked]="accepted()" (change)="accepted.set($any($event.target).checked)" />
+              <span><strong>Autorizo</strong><p>{{ authText() }}</p></span>
+            </label>
+          }
+        }
+        @if (granting.problem() ?? saving.problem(); as p) { <p class="problem">{{ p.detail }}</p> }
+      </div>
+    }
+    @case (4) {
+      <div class="wz-step">
+        <div class="intro">
+          <jo-iso name="radar" [size]="96" />
+          <div>
+            <h2>A busca anda sozinha</h2>
+            <p class="muted">Com o painel no ar, a campanha roda de tempos em tempos e o Explorador vai atrás de fontes novas sem você passar link. De madrugada, os timers do sistema pedem as rodadas da noite.</p>
+          </div>
+        </div>
+        <div class="opts">
+          <div class="opt">
+            <label class="sw"><input type="checkbox" class="switch" [checked]="searchOn()" (change)="searchOn.set($any($event.target).checked)" /><span><strong>Buscar vagas sozinho</strong><span class="muted small">Rodada completa em todas as fontes da campanha.</span></span></label>
+            <select [disabled]="!searchOn()" (change)="searchEvery.set(+$any($event.target).value)" aria-label="Intervalo da busca">
+              @for (m of [30, 60, 120, 240]; track m) { <option [value]="m" [selected]="m === searchEvery()">a cada {{ every(m) }}</option> }
+            </select>
+          </div>
+          <div class="opt">
+            <label class="sw"><input type="checkbox" class="switch" [checked]="explorerOn()" (change)="explorerOn.set($any($event.target).checked)" /><span><strong>Explorador</strong><span class="muted small">Links das vagas, Gupy e APIs pelas suas palavras, repositórios do GitHub, listas de empresas e a varredura dos sites.</span></span></label>
+            <select [disabled]="!explorerOn()" (change)="explorerEvery.set(+$any($event.target).value)" aria-label="Intervalo do Explorador">
+              @for (m of [5, 10, 15, 30, 60]; track m) { <option [value]="m" [selected]="m === explorerEvery()">a cada {{ every(m) }}</option> }
+            </select>
+          </div>
+          <div class="opt">
+            <label class="sw"><input type="checkbox" class="switch" [checked]="nightOn()" (change)="nightOn.set($any($event.target).checked)" [disabled]="!units()?.available" />
+              <span><strong>Rodadas da noite</strong><span class="muted small">@if (units()?.available) { Timers do systemd do seu usuário: rodadas às 23h05, 1h35 e 4h05, resumo às 7h45 e backup às 7h55. } @else { {{ units()?.reason ?? 'Conferindo o systemd…' }} }</span></span></label>
+            @if (nightAll()) { <span class="badge free">ligados</span> }
+          </div>
+        </div>
+        <p class="faint small">Nada disso envia candidatura por conta própria: vale o que você escolheu no passo anterior.</p>
+        @if (saving.problem(); as p) { <p class="problem">{{ p.detail }}</p> }
+      </div>
+    }
+    @case (5) {
+      <div class="wz-step">
+        <div class="intro">
+          <jo-iso name="send" [size]="96" />
+          <div>
+            <h2>E-mail de candidatura</h2>
+            <p class="muted">Opcional, para as vagas que pedem currículo por e-mail. Só para o endereço que a vaga publicou para candidatura, com um lembrete no máximo.</p>
+          </div>
+        </div>
+        @if (mail()?.connected) {
+          <div class="cards row" role="radiogroup" aria-label="Como os e-mails saem">
+            <button type="button" class="card" role="radio" [attr.aria-checked]="mailMode() === 'Review'" (click)="mailMode.set('Review')">
+              <span class="dot"></span><strong>Eu aprovo cada e-mail</strong><span class="muted small">A IA escreve com o anexo; você lê e aprova.</span>
+            </button>
+            <button type="button" class="card" role="radio" [attr.aria-checked]="mailMode() === 'Auto'" (click)="mailMode.set('Auto')">
+              <span class="dot"></span><strong>Automático</strong><span class="muted small">Sai sozinho dentro do teto e do horário, depois da checagem fato a fato.</span>
+            </button>
+          </div>
+          @if (mailMode() === 'Auto') {
+            <label class="consent" [class.on]="mailConsent()">
+              <input type="checkbox" [checked]="mailConsent()" (change)="mailConsent.set($any($event.target).checked)" />
+              <span><strong>Autorizo</strong><p>{{ mailConsentText() }}</p></span>
+            </label>
+          }
+        } @else {
+          <div class="waiting"><jo-icon name="envelope-simple" [size]="18" /><div><p>Nenhum e-mail conectado. A conexão usa senha de app (Gmail, Outlook, iCloud, Zoho ou qualquer SMTP) e testa o envio antes de salvar.</p><button type="button" class="btn" (click)="goMail()">Conectar agora</button></div></div>
+        }
+        @if (saving.problem(); as p) { <p class="problem">{{ p.detail }}</p> }
+      </div>
+    }
+    @case (6) {
+      <div class="wz-step">
+        <div class="intro">
+          <jo-iso name="you" [size]="96" />
+          <div>
+            <h2>Pronto</h2>
+            <p class="muted">É isto que fica ligado. Tudo muda depois em Campanha e Configurações, e Revogar tudo desliga os envios automáticos de uma vez.</p>
+          </div>
+        </div>
+        <ul class="summary">
+          @for (l of summary(); track l.label) {
+            <li [class.on]="l.on"><span class="mark" aria-hidden="true"><jo-icon [name]="l.on ? 'check' : 'minus'" [size]="12" /></span><strong>{{ l.label }}</strong><span class="muted">{{ l.text }}</span></li>
+          }
+        </ul>
+        <div class="done-actions">
+          <button type="button" class="btn primary big" (click)="start()"><jo-icon name="play" [size]="15" />Começar agora</button>
+          <button type="button" class="btn" (click)="close.emit()">Fechar</button>
+        </div>
+      </div>
+    }
+  }
+  @if (step() < 6) {
+    <footer class="wz-foot" wz-foot>
+      @if (step() > 1) { <button type="button" class="btn ghost" (click)="back()" [disabled]="busy()"><jo-icon name="arrow-left" [size]="14" />Voltar</button> } @else { <span></span> }
+      <span class="end">
+        @if (step() === 1) {
+          <button type="button" class="btn primary" (click)="step.set(2)" [disabled]="loading()">{{ missing() > 0 ? 'Resolver o que falta' : 'Rever e ligar' }}<jo-icon name="arrow-right" [size]="14" /></button>
+        } @else {
+          <button type="button" class="btn primary" (click)="next()" [disabled]="busy() || !canNext()">
+            @if (busy()) { <span class="spin" aria-hidden="true"></span>Salvando } @else { {{ step() === 2 && form() && (!ready() || dirty()) ? 'Confirmar e continuar' : step() === 3 && sendMode() === 'AutoSubmit' && !active() ? 'Autorizar e continuar' : 'Continuar' }}<jo-icon name="arrow-right" [size]="14" /> }
+          </button>
+        }
+      </span>
+    </footer>
+  }
+</jo-wizard>

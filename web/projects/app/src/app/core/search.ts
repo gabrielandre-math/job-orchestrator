@@ -10,6 +10,8 @@ export interface SearchState {
   threadId: string; startedAt: string; lastAt: string; running: boolean; stage: 'start' | 'source' | 'dedupe' | 'score' | 'done';
   sources: SourceState[]; listed: number; kept: number; fresh: number | null; again: number | null; duplicates: number | null; ignored: number;
   scored: number | null; above: number | null; shortlisted: number | null; cut: number; bands: number[] | null; seconds: number | null; top: TopJob[]; messages: AgentMessage[];
+  /** Rodada só com as fontes que o Explorador acabou de achar. */
+  partial: boolean;
 }
 
 /**
@@ -21,6 +23,7 @@ export class SearchRun {
   private readonly live = inject(Live);
   private readonly toasts = inject(Toasts);
   private readonly history = signal<{ threadId: string; messages: AgentMessage[] } | null>(null);
+  private readonly fullHistory = signal<{ threadId: string; messages: AgentMessage[] } | null>(null);
   /** Pedido feito e a primeira mensagem ainda não chegou. */
   readonly starting = signal(false);
   private told = new Set<string>();
@@ -47,7 +50,10 @@ export class SearchRun {
     try {
       const threads = await get<AgentThread[]>('/agents/threads?limit=40');
       const last = threads.find((t) => t.kind === 'search');
-      this.history.set(last ? { threadId: last.id, messages: await get<AgentMessage[]>(`/agents/threads/${last.id}`) } : null);
+      const full = threads.find((t) => t.kind === 'search' && !t.subject.startsWith('Busca nas fontes novas'));
+      const latest = last ? { threadId: last.id, messages: await get<AgentMessage[]>(`/agents/threads/${last.id}`) } : null;
+      this.history.set(latest);
+      this.fullHistory.set(full && full.id !== last?.id ? { threadId: full.id, messages: await get<AgentMessage[]>(`/agents/threads/${full.id}`) } : latest);
     } catch { /* sem API: a tela mostra o estado vazio */ }
   }
 
@@ -73,6 +79,14 @@ export class SearchRun {
     return fold(threadId, [...base, ...extra].sort((a, b) => a.at.localeCompare(b.at)));
   });
 
+  /** A última rodada completa: a de agora, ou a anterior quando a de agora é só das fontes novas do Explorador. */
+  readonly lastFull = computed<SearchState | null>(() => {
+    const s = this.state();
+    if (s && !s.partial) return s;
+    const h = this.fullHistory();
+    return h ? fold(h.threadId, h.messages) : null;
+  });
+
   /** De 0 a 1: fontes pesam 80% e as três etapas finais o resto. */
   readonly progress = computed(() => {
     const s = this.state();
@@ -92,7 +106,7 @@ function parse(data: string | null | undefined): Record<string, unknown> | null 
 function fold(threadId: string, messages: AgentMessage[]): SearchState {
   const s: SearchState = {
     threadId, startedAt: messages[0]?.at ?? '', lastAt: messages.at(-1)?.at ?? '', running: true, stage: 'start', sources: [], listed: 0, kept: 0,
-    fresh: null, again: null, duplicates: null, ignored: 0, scored: null, above: null, shortlisted: null, cut: 0, bands: null, seconds: null, top: [], messages,
+    fresh: null, again: null, duplicates: null, ignored: 0, scored: null, above: null, shortlisted: null, cut: 0, bands: null, seconds: null, top: [], messages, partial: false,
   };
   const bySource = new Map<string, SourceState>();
   const ensure = (source: string) => {
@@ -107,6 +121,7 @@ function fold(threadId: string, messages: AgentMessage[]): SearchState {
     switch (d['stage']) {
       case 'start':
         s.cut = num('cut');
+        s.partial = d['partial'] === true;
         for (const src of (d['sources'] as string[] | undefined) ?? []) ensure(src);
         break;
       case 'source': {

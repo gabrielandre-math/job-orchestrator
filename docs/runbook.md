@@ -25,6 +25,14 @@ Parar o Worker no meio de um envio é seguro. A intenção é gravada antes do c
 
 `scripts/docker.sh up | down | logs | build | ps`. API e Worker usam a mesma base, com Chromium do Playwright, poppler, Scrapy, as CLIs do Claude e do Codex e o login de assinatura montado do host (`~/.claude`, `~/.claude.json`, `~/.codex`, `~/.config/job-orchestrator/accounts`). O gnome-keyring chega pelo D-Bus do usuário. O Firecrawl é opcional: rode `scripts/firecrawl.sh` e defina `JO_FIRECRAWL_URL=http://127.0.0.1:3002`. Os sensores da GPU no contêiner precisam do NVIDIA Container Toolkit (`nvidia-container-toolkit` e `sudo nvidia-ctk runtime configure --runtime=docker`); com ele, `JO_GPU=1 scripts/docker.sh up`.
 
+## Busca sozinha e Explorador
+
+- Campanha ligada: rodada completa a cada `Search:IntervalMinutes` (60 por padrão), pedida pelo Worker.
+- Explorador: um ciclo a cada `Explorer:IntervalMinutes` (10), com `Explorer:Enabled`, `Explorer:BoardsPerCycle` (10), `Explorer:ReposPerCycle` (3), `Explorer:GupyPerCycle` (4), `Explorer:SitesPerCycle` (6), `Explorer:MaxSources` (300), `Explorer:FreshDays` (120) e `Explorer:Lists` (READMEs de listas de empresas).
+- Estado em `$JO_DATA/explorer`: `frontier.json` (fila de pistas), `explored.json` (o que foi testado, revisto depois de 7 dias), `lists.json` (quando cada lista foi lida) e `last.json` (o último ciclo).
+- Endpoints: `GET /api/explore/status`, `POST /api/explore/run`, `POST /api/explore/evaluate {"sources": [...]}`, `PUT /api/explore/settings`.
+- Timers da noite pelo painel: `GET /api/units` e `PUT /api/units/night {"on": true}` (só os timers; API e Worker como serviço seguem no `install-units.sh`).
+
 ## Backup e restauração
 
 - Backup diário às 7h55 (`job-orchestrator-backup.timer`) ou na hora: `scripts/backup.sh`. Os arquivos ficam em `~/.local/share/job-orchestrator/backups`, com os 14 mais novos.
@@ -48,6 +56,7 @@ Rode os E2E um de cada vez e com teto de memória (`systemd-run --user --scope -
 | Provedor "sem login" | sessão da CLI expirou | Provedores › Conectar, ou `claude auth login` na pasta da conta |
 | Restore do .NET trava | IPv6 sem rota | `DOTNET_SYSTEM_NET_DISABLEIPV6=1` |
 | Fonte "não respondeu" | site fora do ar ou 403 | não há contorno; troque a fonte |
+| Explorador não acha repositório | limite da API do GitHub (60 por hora sem token) | espera a hora virar; ele segue com as outras pistas |
 | Envio incerto | confirmação não apareceu a tempo | Atenção › "O envio chegou?" depois de conferir o e-mail |
 | E-mail recusa login | senha normal em vez de senha de app | crie a senha de app no provedor |
 | Modelo local lento | modelo maior que a VRAM | Provedores › use a recomendação para a sua placa |

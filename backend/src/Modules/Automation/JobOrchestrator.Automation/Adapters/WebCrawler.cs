@@ -20,7 +20,10 @@ internal sealed class ScraperEnv(IConfiguration config)
 }
 
 /// <summary>O que uma varredura achou, para a tela e para o fio dos agentes.</summary>
-internal sealed record CrawlSummary(int Pages, int FromJsonLd, int FromAi, int Rejected, int Boards, int Emails, int Blocked, IReadOnlyList<string> BoardSources, string? Error, double Seconds);
+internal sealed record CrawlSummary(int Pages, int FromJsonLd, int FromAi, int Rejected, int Boards, int Emails, int Blocked, IReadOnlyList<string> BoardSources, string? Error, double Seconds, IReadOnlyList<BoardHit>? Hits = null);
+
+/// <summary>Quadro de ATS achado na varredura e a página onde estava o link.</summary>
+internal sealed record BoardHit(string Source, string Page);
 
 /// <summary>
 /// Executor do Scrapy (por baixo dos panos): roda o spider careers com robots.txt obedecido, AutoThrottle e uma conexão por domínio,
@@ -51,7 +54,7 @@ internal sealed partial class ScrapyRunner(ScraperEnv env, IIntelligenceApi ai, 
     }
     private sealed record Email(string Address, string Url, string Context);
 
-    public async Task<(List<DiscoveredPosting> Postings, CrawlSummary Summary)> CrawlAsync(string source, IReadOnlyList<string> seeds, AgentThread thread, CancellationToken ct)
+    public async Task<(List<DiscoveredPosting> Postings, CrawlSummary Summary)> CrawlAsync(string source, IReadOnlyList<string> seeds, AgentThread thread, CancellationToken ct, int? pageBudget = null, int? aiPages = null)
     {
         var clock = Stopwatch.StartNew();
         if (!env.Installed)
@@ -59,7 +62,7 @@ internal sealed partial class ScrapyRunner(ScraperEnv env, IIntelligenceApi ai, 
             await ai.NoteAsync(thread, "Semeador", "O coletor ainda não está instalado", "Instale pela tela Varredura (um clique): cria o ambiente do Scrapy na sua pasta.", "Você", false, ct);
             return ([], new CrawlSummary(0, 0, 0, 0, 0, 0, 0, [], "Coletor não instalado", 0));
         }
-        var maxPages = config.GetValue("Scraper:MaxPages", 60);
+        var maxPages = pageBudget ?? config.GetValue("Scraper:MaxPages", 60);
         var maxSeconds = config.GetValue("Scraper:MaxSeconds", 240);
         await ai.NoteAsync(thread, "Semeador", $"{seeds.Count} {(seeds.Count == 1 ? "site" : "sites")} para varrer, até {maxPages} páginas",
             $"Sementes: {string.Join(", ", seeds)}.\nEntram também as rotas de carreira comuns (/carreiras, /vagas, /jobs) e o sitemap de cada site.", "Robots", true, ct);
@@ -78,6 +81,7 @@ internal sealed partial class ScrapyRunner(ScraperEnv env, IIntelligenceApi ai, 
         var candidates = new List<Candidate>();
         var emails = new List<Email>();
         var boards = new List<string>();
+        var hits = new List<BoardHit>();
         var pages = 0;
         var stderr = new StringBuilder();
         using (var p = new Process { StartInfo = info })
@@ -101,7 +105,7 @@ internal sealed partial class ScrapyRunner(ScraperEnv env, IIntelligenceApi ai, 
                             if (pages % 20 == 0) await ai.NoteAsync(thread, "Coletor", $"{pages} páginas lidas", null, null, true, ct);
                             break;
                         case "posting": postings.Add(FromJsonLd(source, item)); break;
-                        case "board": boards.Add(item.Str("source")); break;
+                        case "board": boards.Add(item.Str("source")); hits.Add(new BoardHit(item.Str("source"), item.Str("url"))); break;
                         case "email": emails.Add(new Email(item.Str("email"), item.Str("url"), item.Str("context"))); break;
                         case "candidate": candidates.Add(new Candidate(item.Str("url"), item.Str("title"), item.Str("text"))); break;
                     }
@@ -133,7 +137,7 @@ internal sealed partial class ScrapyRunner(ScraperEnv env, IIntelligenceApi ai, 
         // Extrator: a IA lê as páginas sem dado estruturado (até 8 por varredura) e o Conferente confere cada vaga contra a página.
         var fromAi = 0;
         var rejected = 0;
-        foreach (var c in candidates.Take(config.GetValue("Scraper:MaxAiPages", 8)))
+        foreach (var c in candidates.Take(aiPages ?? config.GetValue("Scraper:MaxAiPages", 8)))
         {
             var r = await ai.CompleteAsync(LlmRequest.For(LlmTasks.PageJobs, LocalTaskSpecs.PageJobsSystem, LocalTaskSpecs.PageJobsPrompt(c.Url, c.Title, c.Text),
                 LocalTaskSpecs.PageJobsSchema, timeoutSeconds: 240, thread: thread, agent: "Extrator"), ct);
@@ -146,7 +150,7 @@ internal sealed partial class ScrapyRunner(ScraperEnv env, IIntelligenceApi ai, 
                 var email = job.ApplyEmail is { Length: > 3 } e && c.Text.Contains(e, StringComparison.OrdinalIgnoreCase) ? e : null;
                 postings.Add(new DiscoveredPosting(source, Hash(c.Url + job.Title), job.Company is { Length: > 0 } co ? co : Host(c.Url), job.Title, job.Location,
                     Uri.TryCreate(job.ApplyUrl, UriKind.Absolute, out _) ? job.ApplyUrl : c.Url, job.Summary.Length > 0 ? job.Summary : c.Text[..Math.Min(c.Text.Length, 4000)],
-                    null, r.Json!, Workplace: job.Modality is "remote" or "hybrid" or "onsite" ? job.Modality : null, ApplyEmail: email, ListedAsOpen: true));
+                    null, $"{{\"page\":{JsonSerializer.Serialize(c.Url)},\"extraction\":{r.Json}}}", Workplace: job.Modality is "remote" or "hybrid" or "onsite" ? job.Modality : null, ApplyEmail: email, ListedAsOpen: true));
                 fromAi++;
             }
         }
@@ -164,7 +168,7 @@ internal sealed partial class ScrapyRunner(ScraperEnv env, IIntelligenceApi ai, 
         await ai.NoteAsync(thread, "Conferente", $"{postings.Count} vagas aceitas ({jsonLd} do JSON-LD, {fromAi} pela IA){(rejected > 0 ? $"; {rejected} recusadas" : "")}",
             rejected > 0 ? "Recusada: o título ou o trecho citado não está escrito na página." : "Toda vaga aceita tem o título escrito na página.", "Analista", true, ct);
         log.LogInformation("Varredura {Source}: {Pages} páginas, {JsonLd} JSON-LD, {Ai} pela IA, {Boards} quadros", source, pages, jsonLd, fromAi, boards.Count);
-        return (postings, new CrawlSummary(pages, jsonLd, fromAi, rejected, boards.Distinct().Count(), emails.Count, blocked, [.. boards.Distinct()], null, clock.Elapsed.TotalSeconds));
+        return (postings, new CrawlSummary(pages, jsonLd, fromAi, rejected, boards.Distinct().Count(), emails.Count, blocked, [.. boards.Distinct()], null, clock.Elapsed.TotalSeconds, hits));
     }
 
     private sealed record PageJob(string Title, string Company, string Location, string Modality, string Summary, string ApplyUrl, string ApplyEmail, string Quote);

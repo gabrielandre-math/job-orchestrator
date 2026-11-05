@@ -67,6 +67,16 @@ internal sealed class Campaign : AggregateRoot
         UpdatedAt = now;
     }
 
+    /// <summary>Fontes achadas pelo Explorador: entram no fim da lista, sem repetir.</summary>
+    public int AddSources(IEnumerable<string> sources, DateTime now)
+    {
+        var fresh = sources.Select(s => s.Trim()).Where(s => s.Length > 0 && !Sources.Contains(s, StringComparer.Ordinal)).Distinct(StringComparer.Ordinal).ToList();
+        if (fresh.Count == 0) return 0;
+        Sources = [.. Sources, .. fresh];
+        UpdatedAt = now;
+        return fresh.Count;
+    }
+
     /// <summary>Busca da noite: o timer só pede rodada de campanha ligada.</summary>
     public void Schedule(bool enabled, DateTime now) { Enabled = enabled; UpdatedAt = now; }
 

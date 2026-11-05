@@ -119,6 +119,12 @@ internal sealed class JobsApi(IReadDb<JobsDbContext> db) : IJobsApi
         order by score desc nulls last, first_seen_at desc limit 200
         """, null, ct);
 
+    public Task<IReadOnlyList<string>> ApplyLinksAsync(int limit, CancellationToken ct) => db.ListAsync<string>(
+        "select apply_url from (select apply_url, max(first_seen_at) as seen from jobs.postings where apply_url <> '' group by apply_url) t order by seen desc limit @limit", new { limit }, ct);
+
+    public Task<IReadOnlyList<string>> CompanyDomainsAsync(int limit, CancellationToken ct) => db.ListAsync<string>(
+        "select company_domain from (select company_domain, count(*) as n from jobs.postings where company_domain is not null and status <> 'Duplicate' group by company_domain) t order by n desc limit @limit", new { limit }, ct);
+
     public Task<IReadOnlyList<SourceCount>> SourcesAsync(CancellationToken ct) => db.ListAsync<SourceCount>(
         "select source, count(*)::int as postings, count(*) filter (where status = 'Shortlisted')::int as shortlisted from jobs.postings group by source order by source",
         null, ct);

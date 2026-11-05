@@ -17,3 +17,7 @@ obj/
 node_modules/
 web/dist/
 web/.angular/
+
+# Python
+__pycache__/
+*.pyc

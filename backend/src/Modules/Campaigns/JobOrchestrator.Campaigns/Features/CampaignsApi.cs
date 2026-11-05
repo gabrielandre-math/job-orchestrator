@@ -49,4 +49,48 @@ internal sealed class CampaignRuns(CampaignsDbContext db, TimeProvider time) : I
         await transaction.CommitAsync(ct);
         return count;
     }
+
+    public async Task<int> RequestDueAsync(TimeSpan every, string trigger, CancellationToken ct)
+    {
+        var now = time.GetUtcNow().UtcDateTime;
+        var limit = now - every;
+        var due = await db.Campaigns.Where(c => c.Enabled && c.Sources.Count > 0)
+            // A rodada parcial do Explorador (só as fontes novas) não conta: a completa segue no horário dela.
+            .Where(c => !db.Runs.Any(r => r.CampaignId == c.Id && r.RequestedAt > limit && r.Trigger != "explorer")).ToListAsync(ct);
+        if (due.Count == 0) return 0;
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        foreach (var campaign in due)
+        {
+            var run = campaign.RequestRun(trigger, now);
+            db.Runs.Add(run);
+            db.Publish(RunRequestedV1.EventType, new RunRequestedV1(run.Id, campaign.Id, now), now);
+        }
+        await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
+        return due.Count;
+    }
+
+    public async Task<int> AddSourcesAsync(Guid campaignId, IReadOnlyList<string> sources, CancellationToken ct)
+    {
+        var campaign = await db.Campaigns.FirstOrDefaultAsync(c => c.Id == campaignId, ct);
+        if (campaign is null) return 0;
+        var added = campaign.AddSources(sources, time.GetUtcNow().UtcDateTime);
+        await db.SaveChangesAsync(ct);
+        return added;
+    }
+
+    public async Task<bool> RequestSourcesAsync(Guid campaignId, IReadOnlyList<string> sources, string trigger, CancellationToken ct)
+    {
+        var campaign = await db.Campaigns.FirstOrDefaultAsync(c => c.Id == campaignId, ct);
+        var only = sources.Where(s => campaign?.Sources.Contains(s, StringComparer.OrdinalIgnoreCase) == true).ToList();
+        if (campaign is null || only.Count == 0) return false;
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        var now = time.GetUtcNow().UtcDateTime;
+        var run = campaign.RequestRun(trigger, now);
+        db.Runs.Add(run);
+        db.Publish(RunRequestedV1.EventType, new RunRequestedV1(run.Id, campaign.Id, now, only), now);
+        await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
+        return true;
+    }
 }

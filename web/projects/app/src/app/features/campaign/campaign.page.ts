@@ -1,4 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { Automate } from '../overview/automate';
+import { Icon } from '@jo/ui/icon';
 import { HeroStat, PageHero } from '@jo/ui/page-hero';
 import { DomSanitizer } from '@angular/platform-browser';
 import { AuthorizationItem, Campaign, send } from '../../core/api';
@@ -10,7 +12,7 @@ import { ago } from '../../core/format';
 /** Campanha: critérios, limites e até onde o sistema pode ir sozinho. Envio automático só com autorização (fase 6). */
 @Component({
   selector: 'app-campaign',
-  imports: [PageHero, Authorize],
+  imports: [PageHero, Authorize, Automate, Icon],
   templateUrl: './campaign.page.html',
   styleUrl: './campaign.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -52,6 +54,8 @@ export class CampaignPage {
   }
 
   /** Automático não se escolhe como os outros modos: abre a autorização (ou mantém a ativa). */
+  protected readonly automating = signal(false);
+
   protected pick(key: string) {
     if (key === 'AutoSubmit' && !this.active()) { this.authorizing.set(true); return; }
     this.set('mode', key);

@@ -24,7 +24,8 @@
       }
       <div class="hero-actions">
         @if (data.value()?.campaign; as c) {
-          <button class="btn primary" type="button" [disabled]="search.state()?.running || search.starting()" (click)="search.start()"><jo-icon name="magnifying-glass" [size]="14" />{{ search.state()?.running || search.starting() ? 'Buscando…' : 'Buscar agora' }}</button>
+          <button class="btn primary" type="button" (click)="automating.set(true)"><jo-icon name="lightning" [size]="14" />Automatizar tudo</button>
+          <button class="btn" type="button" [disabled]="search.state()?.running || search.starting()" (click)="search.start()"><jo-icon name="magnifying-glass" [size]="14" />{{ search.state()?.running || search.starting() ? 'Buscando…' : 'Buscar agora' }}</button>
         }
         <a class="btn" routerLink="/vagas">Ver vagas</a>
         <a class="btn ghost" routerLink="/fluxo"><jo-icon name="flow-arrow" [size]="14" />Mapa ao vivo</a>
@@ -132,3 +133,5 @@
     </section>
   </div>
 </section>
+
+@if (automating()) { <app-automate (close)="automating.set(false); data.reload()" /> }

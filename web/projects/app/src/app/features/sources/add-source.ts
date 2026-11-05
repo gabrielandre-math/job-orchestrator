@@ -18,7 +18,7 @@ const ATS = [
 ];
 /** APIs públicas com o que cada uma espera depois dos dois pontos. */
 const APIS = [
-  { key: 'remotive', what: 'Palavra de busca', example: 'enfermagem, vendas, .net' }, { key: 'arbeitnow', what: 'Palavra de busca', example: 'marketing' },
+  { key: 'getonbrd', what: 'Palavra de busca', example: '.net, react, dados' }, { key: 'remotive', what: 'Palavra de busca', example: 'enfermagem, vendas, .net' }, { key: 'arbeitnow', what: 'Palavra de busca', example: 'marketing' },
   { key: 'himalayas', what: 'Palavra de busca', example: 'designer' }, { key: 'jobicy', what: 'Tag', example: 'marketing, dev, finance' },
   { key: 'themuse', what: 'Categoria', example: '', options: ['Software Engineering', 'Data and Analytics', 'Design and UX', 'Sales', 'Marketing', 'Customer Service', 'Healthcare', 'Education', 'Accounting and Finance', 'Human Resources and Recruitment', 'Project Management', 'Administration and Office', 'Law', 'Retail', 'Manufacturing and Warehouse'] },
   { key: 'remoteok', what: 'Tag', example: 'dev, design, marketing' },

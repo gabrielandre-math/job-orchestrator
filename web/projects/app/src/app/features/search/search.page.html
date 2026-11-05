@@ -5,9 +5,9 @@
       @if (s(); as st) {
         @if (st.running) {
           <h1>{{ stations()[0].value }} de {{ st.sources.length }} fontes consultadas <span class="faint">· {{ elapsed() }}</span></h1>
-          <p class="lead">Cada fonte é consultada pela API oficial ou pelo coletor, uma de cada vez. Você pode sair desta tela: a busca continua e avisa quando terminar.</p>
+          <p class="lead">@if (st.partial) { Rodada só com as fontes novas que o Explorador acabou de achar: as vagas delas chegam agora, sem esperar a próxima rodada completa. } @else { Cada fonte é consultada pela API oficial ou pelo coletor, uma de cada vez. Você pode sair desta tela: a busca continua e avisa quando terminar. }</p>
         } @else {
-          <h1>Busca concluída {{ ago(st.lastAt) }}</h1>
+          <h1>{{ st.partial ? 'Fontes novas consultadas' : 'Busca concluída' }} {{ ago(st.lastAt) }}</h1>
           <p class="lead">{{ st.kept }} vagas da sua área em {{ st.sources.length }} fontes, {{ st.fresh ?? 0 }} novas e {{ st.shortlisted ?? 0 }} na fila, em {{ elapsed() }}. As rodadas seguem no horário da campanha; aqui você acompanha cada uma.</p>
         }
       } @else {
@@ -109,6 +109,8 @@
       </div>
     }
   }
+
+  <jo-explorer [compact]="true" />
 
   @if ((reports.value() ?? []).length > 0) {
     <section class="panel">

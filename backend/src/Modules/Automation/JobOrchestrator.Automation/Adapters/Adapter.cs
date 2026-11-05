@@ -23,6 +23,12 @@ internal interface ISourceConnector : IAdapter
     Task<PostingStatus> CheckOpenAsync(string applyUrl, CancellationToken ct);
 }
 
+/// <summary>Fonte que aproveita as palavras da campanha para escolher o que ler primeiro.</summary>
+internal interface IHintedSource
+{
+    Task<IReadOnlyList<DiscoveredPosting>> DiscoverAsync(string source, IReadOnlyList<string> hints, CancellationToken ct);
+}
+
 /// <summary>Formulário de candidatura: prepara sem enviar, envia só com token, reconcilia só lendo.</summary>
 internal interface IFormAdapter : IAdapter
 {

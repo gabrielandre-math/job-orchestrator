@@ -24,17 +24,18 @@ internal sealed class RunRequestedConsumer(
         var found = new List<(DiscoveredPosting Posting, PostingStatus Status)>();
         var ignored = 0;
         var clock = Stopwatch.StartNew();
-        var thread = AgentThread.New("search", $"Busca: {campaign.Name}");
-        await SayAsync(thread, "Batedor", $"{campaign.Sources.Count} {(campaign.Sources.Count == 1 ? "fonte" : "fontes")} para consultar", string.Join("\n", campaign.Sources.Select(Label)),
-            new { stage = "start", runId = run.RunId, sources = campaign.Sources, cut = campaign.MinFitScore }, "Normalizador", true, ct);
-        foreach (var source in campaign.Sources)
+        var sources = run.Only is { Count: > 0 } only ? [.. campaign.Sources.Where(x => only.Contains(x, StringComparer.OrdinalIgnoreCase))] : campaign.Sources;
+        var thread = AgentThread.New("search", run.Only is { Count: > 0 } ? $"Busca nas fontes novas: {campaign.Name}" : $"Busca: {campaign.Name}");
+        await SayAsync(thread, "Batedor", $"{sources.Count} {(sources.Count == 1 ? "fonte" : "fontes")} para consultar{(run.Only is { Count: > 0 } ? " (achadas agora pelo Explorador)" : "")}", string.Join("\n", sources.Select(Label)),
+            new { stage = "start", runId = run.RunId, sources, cut = campaign.MinFitScore, partial = run.Only is { Count: > 0 } }, "Normalizador", true, ct);
+        foreach (var source in sources)
         {
             var watch = Stopwatch.StartNew();
             await SayAsync(thread, "Batedor", $"Consultando {Label(source)}", null, new { stage = "source", source, state = "working" }, null, true, ct);
             int listed = 0, kept = 0;
             try
             {
-                var postings = await automation.DiscoverAsync(source, ct);
+                var postings = await automation.DiscoverAsync(source, [.. campaign.Technologies, .. campaign.Titles ?? []], ct);
                 listed = postings.Count;
                 foreach (var p in postings)
                 {

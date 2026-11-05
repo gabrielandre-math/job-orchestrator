@@ -16,6 +16,12 @@ public sealed record DiscoveredPosting(
     string Source, string ExternalId, string Company, string Title, string Location, string ApplyUrl, string Description, DateTime? UpdatedAt, string RawJson,
     string? Workplace = null, string? Compensation = null, string? Employment = null, string? ApplyEmail = null, bool ListedAsOpen = false);
 
+/// <summary>Pista de fonte achada pelo Explorador (greenhouse:x, gupy:y, github:dono/repo, web:empresa.com) e de onde ela veio.</summary>
+public sealed record SourceLead(string Source, string Origin);
+
+/// <summary>O que a varredura achou num site: quadros de ATS linkados e vagas publicadas no próprio site.</summary>
+public sealed record SiteFinding(string Domain, IReadOnlyList<string> Boards, IReadOnlyList<DiscoveredPosting> Postings);
+
 /// <summary>Se a vaga segue aberta na fonte oficial.</summary>
 public sealed record PostingStatus(bool Open, string Detail);
 
@@ -72,6 +78,16 @@ public sealed record SubmitToken(Guid IntentId, Guid ApplicationId, string Paylo
 public interface IAutomationApi
 {
     Task<IReadOnlyList<DiscoveredPosting>> DiscoverAsync(string source, CancellationToken ct);
+    /// <summary>Mesma descoberta com as palavras da campanha: fonte que só lê parte das descrições (Gupy) lê primeiro as da sua área.</summary>
+    Task<IReadOnlyList<DiscoveredPosting>> DiscoverAsync(string source, IReadOnlyList<string> hints, CancellationToken ct);
+    /// <summary>Busca pública do portal da Gupy (o robots.txt libera): os nomes das empresas com vagas do termo, para o Explorador.</summary>
+    Task<IReadOnlyList<string>> SearchGupyAsync(string term, CancellationToken ct);
+    /// <summary>Repositórios do GitHub com issues de vaga abertas no último mês (busca oficial de issues).</summary>
+    Task<IReadOnlyList<SourceLead>> JobReposAsync(string query, CancellationToken ct);
+    /// <summary>Lista de empresas mantida num README do GitHub: cada link vira quadro de ATS (gupy:x, lever:y) ou site para a varredura.</summary>
+    Task<IReadOnlyList<SourceLead>> CompanyListAsync(string repo, CancellationToken ct);
+    /// <summary>Varre vários sites numa rodada só do coletor (robots.txt, uma conexão por domínio) e separa o que achou por site.</summary>
+    Task<IReadOnlyList<SiteFinding>> SweepSitesAsync(IReadOnlyList<string> domains, CancellationToken ct);
     Task<PostingStatus> CheckOpenAsync(string applyUrl, CancellationToken ct);
     Task<AutomationOutcome<PreparedForm>> PrepareAsync(ApplyTarget target, MaterialBundle materials, CancellationToken ct);
     Task<AutomationOutcome<SubmissionReceipt>> SubmitAsync(ApplyTarget target, MaterialBundle materials, SubmitToken token, string adapterId, CancellationToken ct);

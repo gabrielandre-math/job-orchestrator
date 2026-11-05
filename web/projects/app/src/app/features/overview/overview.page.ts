@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { Automate } from './automate';
 import { RouterLink } from '@angular/router';
 import { Badge } from '@jo/ui/badge';
 import { ChartRow, HBars } from '@jo/ui/charts';
@@ -21,7 +22,7 @@ import { WelcomeHub } from '../../core/welcome-hub';
  */
 @Component({
   selector: 'app-overview',
-  imports: [RouterLink, Badge, Count, Empty, HBars, Icon, Iso, RouteHero],
+  imports: [RouterLink, Badge, Count, Empty, HBars, Icon, Iso, RouteHero, Automate],
   templateUrl: './overview.page.html',
   styleUrl: './overview.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -30,6 +31,7 @@ export class OverviewPage {
   protected readonly live = inject(Live);
   protected readonly search = inject(SearchRun);
   protected readonly hub = inject(WelcomeHub);
+  protected readonly automating = signal(false);
   /** Configuração pendente: o que falta para a busca andar sozinha. */
   protected readonly setup = computed(() => {
     const o = this.hub.state();

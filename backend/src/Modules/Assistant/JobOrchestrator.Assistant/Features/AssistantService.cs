@@ -366,7 +366,7 @@ internal sealed partial class AssistantService(IIntelligenceApi ai, IServiceScop
         return line.Length > 90 ? line[..90] + "…" : line;
     }
 
-    [GeneratedRegex(@"^(greenhouse|lever|ashby|smartrecruiters|recruitee|breezy|personio|gupy|remotive|arbeitnow|himalayas|jobicy|themuse|remoteok|wwr|github|hn|web):[^\s]{2,120}$")]
+    [GeneratedRegex(@"^(greenhouse|lever|ashby|smartrecruiters|recruitee|breezy|personio|gupy|getonbrd|remotive|arbeitnow|himalayas|jobicy|themuse|remoteok|wwr|github|hn|web):[^\s]{2,120}$")]
     private static partial Regex SourceFormat();
 
     [GeneratedRegex(@"analis|compar|estrat|plano|revis|melhor|por que|porque|como (posso|devo|fa[çc]o)|carta|curr[ií]culo|entrevista|negoci|sal[aá]ri|transi[çc][aã]o|carreira", RegexOptions.IgnoreCase)]

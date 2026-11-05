@@ -38,7 +38,7 @@ export class Live {
 export const AGENT_ICON: Record<string, string> = {
   Leitor: 'reader', Extrator: 'extractor', Conferente: 'checker', Seletor: 'selector', Redator: 'writer', Revisor: 'reviewer',
   Renderizador: 'renderer', 'Inspetor ATS': 'ats', 'Guardião': 'guardian', Roteador: 'router', 'Você': 'you', Supervisor: 'router',
-  Batedor: 'radar', Normalizador: 'reader', Juiz: 'chart', Analista: 'queue', Semeador: 'selector', Robots: 'guardian', Coletor: 'radar', Assistente: 'router',
+  Batedor: 'radar', Normalizador: 'reader', Juiz: 'chart', Analista: 'queue', Semeador: 'selector', Robots: 'guardian', Coletor: 'radar', Assistente: 'router', Garimpeiro: 'radar', Curador: 'checker',
 };
 export const PROVIDER_LOGO: Record<string, { file: string; mono: boolean }> = {
   'claude-pro': { file: 'claude', mono: false }, 'claude-max': { file: 'claude', mono: false }, codex: { file: 'openai', mono: true }, ollama: { file: 'ollama', mono: true },

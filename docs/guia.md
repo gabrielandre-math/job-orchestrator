@@ -14,6 +14,21 @@ Na primeira vez, o assistente abre sozinho e passa por cinco passos:
 
 "Agora não" fecha o assistente até recarregar a página. O cartão do Início reabre quando quiser.
 
+## Automatizar tudo
+
+O botão **Automatizar tudo** (no Início e na Campanha) abre um assistente que mostra o que já está pronto e guia o resto, um passo por vez:
+
+1. **O que falta:** IA, perfil, busca, envios, busca sozinha, noite e e-mail, cada um com o estado e um atalho.
+2. **Seu perfil:** países, modalidade, pisos salariais, início, inglês e os fatos deduzidos do currículo para confirmar.
+3. **Envio:** você aprova cada envio, automático dentro de limites (validade, teto por dia, nota mínima, com o consentimento escrito) ou só buscar.
+4. **Busca sozinha:** a campanha de tempos em tempos, o Explorador e os timers da noite.
+5. **E-mail:** aprovação sua ou automático com consentimento, se houver conta conectada.
+6. **Pronto:** o resumo do que ficou ligado e "Começar agora", que dispara a primeira rodada e abre a Busca ao vivo.
+
+## O Explorador
+
+Vai atrás de fonte nova sem você passar link, a cada 10 minutos. Lê os links de candidatura das vagas que chegam (o agregador aponta para o quadro da empresa), busca na Gupy e nas APIs públicas pelas suas palavras e cargos, acha repositórios do GitHub com vagas recentes, percorre listas de empresas e manda o coletor aos sites delas, respeitando o robots.txt de cada um. Entra só a fonte com vaga recente da sua área que ainda não chegava por outra, confirmada pelo modelo local, e as vagas dela chegam na mesma hora. Acompanhe em Fontes (as fontes testadas, com o motivo) e na Busca ao vivo.
+
 ## O dia a dia
 
 - **Início:** o que falta configurar, a busca em miniatura, os números e quem está trabalhando.
@@ -26,7 +41,7 @@ Na primeira vez, o assistente abre sozinho e passa por cinco passos:
 - **Fontes:** de onde vêm as vagas. "Adicionar fonte" guia por plataforma (Gupy, Greenhouse, Lever, Ashby e outras), API pública, site de carreiras ou um link colado, e testa antes de salvar. As abas mostram a Varredura da internet e os conectores.
 - **Provedores de IA:** contas, ordem de gasto, uso, modelo local com instalador e os sensores ao vivo da máquina (temperatura, uso e clocks de GPU e CPU).
 - **Campanha:** critérios, cargos-alvo, palavras-chave, locais, limites e o modo (só descobrir, só preparar, revisão sua ou automático com autorização).
-- **Configurações:** busca da noite, modo privado, retenção, exportar, revogar tudo e apagar tudo.
+- **Configurações:** busca sozinha (intervalo da campanha e do Explorador), timers da noite com um botão, modo privado, retenção, exportar, revogar tudo e apagar tudo.
 
 ## Envio automático
 
@@ -34,7 +49,7 @@ Nada é enviado sem o seu ok até você criar uma **autorização** em Campanha 
 
 ## A noite
 
-Ligue "Rodar a campanha durante a noite" em Configurações e instale os serviços de usuário com `scripts/install-units.sh --enable`. Os timers pedem rodadas às 23h05, 1h35 e 4h05, geram o resumo às 7h45 (com aviso na área de trabalho) e fazem o backup às 7h55. `scripts/night-sim.sh` simula uma noite em minutos.
+Ligue "Buscar vagas sozinho" e "Ligar os timers" em Configurações (ou no Automatizar tudo). Os timers pedem rodadas às 23h05, 1h35 e 4h05, geram o resumo às 7h45 (com aviso na área de trabalho) e fazem o backup às 7h55; quem atende é o painel em 127.0.0.1:7410. Para o painel subir sozinho com o computador, instale os serviços com `scripts/install-units.sh --enable`. `scripts/night-sim.sh` simula uma noite em minutos.
 
 ## O que o app nunca faz
 

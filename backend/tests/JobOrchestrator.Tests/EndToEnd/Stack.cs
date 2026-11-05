@@ -141,6 +141,8 @@ internal sealed class Stack : IAsyncDisposable
             ["Seed__Sources__0"] = $"greenhouse:{Ats}/boards/demo", ["Seed__Sources__1"] = $"greenhouse:{Ats}/boards/agregador",
             ["Seed__Keywords__0"] = "C#", ["Seed__Keywords__1"] = ".NET", ["Seed__Keywords__2"] = "ASP.NET Core", ["Seed__Keywords__3"] = "AWS", ["Seed__Keywords__4"] = "PostgreSQL",
             ["Workflow__ReconcileDelaySeconds"] = "1", ["Workflow__ReconcileRetrySeconds"] = "2",
+            // O Explorador e a busca contínua saem para a internet: no teste ponta a ponta ficam desligados.
+            ["Explorer__Enabled"] = "false", ["Search__IntervalMinutes"] = "1440",
             ["Logging__LogLevel__Default"] = "Warning"
         };
         foreach (var (k, v) in extra) env[k] = v;

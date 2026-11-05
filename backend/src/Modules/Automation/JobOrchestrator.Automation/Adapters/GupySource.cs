@@ -6,13 +6,19 @@ namespace JobOrchestrator.Automation.Adapters;
 /// Gupy (gupy:empresa): a página pública de carreiras da empresa em empresa.gupy.io, que o robots.txt libera. A lista vem do JSON da
 /// própria página; a descrição, da página de cada vaga, uma de cada vez e no máximo 40 por rodada. Cobre empresas de todas as áreas no Brasil.
 /// </summary>
-internal sealed partial class GupySource(IHttpClientFactory http) : PublicSource(http, "gupy", "gupy.io")
+internal sealed partial class GupySource(IHttpClientFactory http) : PublicSource(http, "gupy", "gupy.io"), IHintedSource
 {
     private const int MaxDetails = 40;
     public override string Id => "gupy-careers";
     public override string Name => "Gupy";
 
-    public override async Task<IReadOnlyList<DiscoveredPosting>> DiscoverAsync(string source, CancellationToken ct)
+    public override Task<IReadOnlyList<DiscoveredPosting>> DiscoverAsync(string source, CancellationToken ct) => DiscoverAsync(source, [], ct);
+
+    /// <summary>
+    /// Com dicas (palavras e cargos da campanha), as vagas cujo título ou área cita alguma delas ganham a descrição completa primeiro:
+    /// empresa grande (bancos, varejo) tem centenas de vagas e só 40 descrições cabem por rodada.
+    /// </summary>
+    public async Task<IReadOnlyList<DiscoveredPosting>> DiscoverAsync(string source, IReadOnlyList<string> hints, CancellationToken ct)
     {
         var company = Key(source).Replace("https://", "").Replace("http://", "").Split('.', '/')[0].Trim().ToLowerInvariant();
         if (!Slug().IsMatch(company)) throw new InvalidOperationException("Nome de empresa inválido para a Gupy.");
@@ -21,8 +27,11 @@ internal sealed partial class GupySource(IHttpClientFactory http) : PublicSource
         var name = page.TryGetProperty("careerPage", out var cp) && cp.Str("name") is { Length: > 0 } n ? n : Json.Company(company);
         var list = new List<DiscoveredPosting>();
         if (!page.TryGetProperty("jobs", out var jobs) || jobs.ValueKind != JsonValueKind.Array) return list;
+        var words = hints.SelectMany(h => Fold(h).Split(' ', StringSplitOptions.RemoveEmptyEntries)).Where(w => w.Length >= 2).Distinct().ToList();
+        int Match(JsonElement j) { var t = Fold($"{j.Str("title")} {j.Str("department")}"); return words.Count(w => t.Contains(w, StringComparison.Ordinal)); }
+        var ordered = words.Count == 0 ? jobs.EnumerateArray().ToList() : [.. jobs.EnumerateArray().OrderByDescending(Match)];
         var i = 0;
-        foreach (var j in jobs.EnumerateArray())
+        foreach (var j in ordered)
         {
             var id = j.GetProperty("id").ToString();
             var url = $"{root}/jobs/{id}";
@@ -50,6 +59,16 @@ internal sealed partial class GupySource(IHttpClientFactory http) : PublicSource
         return list;
     }
 
+    /// <summary>Busca do portal (portal.gupy.io, robots.txt libera tudo): os subdomínios das empresas que aparecem na primeira página do termo.</summary>
+    public async Task<IReadOnlyList<string>> SearchAsync(string term, CancellationToken ct)
+    {
+        var html = await Client.GetStringAsync($"https://portal.gupy.io/job-search/term={Uri.EscapeDataString(term)}", ct);
+        return [.. Company().Matches(html).Select(m => m.Groups[1].Value.ToLowerInvariant()).Where(c => !Reserved.Contains(c)).Distinct()];
+    }
+
+    private static readonly HashSet<string> Reserved = ["attachments", "suporte-candidatos", "www", "login", "portal", "help", "blog", "static", "cdn", "assets", "api", "employability-portal", "app"];
+    private static string Fold(string s) => new string(s.ToLowerInvariant().Normalize(System.Text.NormalizationForm.FormD).Where(c => System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c) != System.Globalization.UnicodeCategory.NonSpacingMark).ToArray());
+
     /// <summary>O JSON que a página Next.js da Gupy traz embutido (props.pageProps).</summary>
     private async Task<JsonElement> PagePropsAsync(string url, CancellationToken ct)
     {
@@ -62,4 +81,5 @@ internal sealed partial class GupySource(IHttpClientFactory http) : PublicSource
 
     [GeneratedRegex(@"<script id=""__NEXT_DATA__"" type=""application/json"">(.*?)</script>", RegexOptions.Singleline)] private static partial Regex NextData();
     [GeneratedRegex(@"^[a-z0-9-]{2,60}$")] private static partial Regex Slug();
+    [GeneratedRegex(@"https://([a-z0-9-]{2,60})\.gupy\.io")] private static partial Regex Company();
 }

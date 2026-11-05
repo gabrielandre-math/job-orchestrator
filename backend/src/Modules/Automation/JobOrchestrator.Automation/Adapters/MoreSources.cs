@@ -198,3 +198,43 @@ internal sealed class PersonioSource(IHttpClientFactory http) : PublicSource(htt
         })];
     }
 }
+
+/// <summary>
+/// GetOnBoard (getonbrd:termo): API pública de vagas de tecnologia da América Latina, com a empresa expandida. O robots.txt libera o
+/// agente geral (search=yes). Até 3 páginas de 50 por rodada, com pausa entre elas.
+/// </summary>
+internal sealed class GetOnBoardSource(IHttpClientFactory http) : PublicSource(http, "getonbrd", "getonbrd.com", "www.getonbrd.com")
+{
+    public override string Id => "getonbrd-api";
+    public override string Name => "GetOnBoard";
+
+    public override async Task<IReadOnlyList<DiscoveredPosting>> DiscoverAsync(string source, CancellationToken ct)
+    {
+        var term = Key(source);
+        var list = new List<DiscoveredPosting>();
+        for (var page = 1; page <= 3; page++)
+        {
+            using var doc = await Json.GetAsync(Client, $"https://www.getonbrd.com/api/v0/search/jobs?query={Uri.EscapeDataString(term)}&per_page=50&page={page}&expand=%5B%22company%22%5D", ct);
+            foreach (var j in doc.RootElement.GetProperty("data").EnumerateArray())
+            {
+                var a = j.GetProperty("attributes");
+                var company = a.TryGetProperty("company", out var c) && c.TryGetProperty("data", out var cd) && cd.TryGetProperty("attributes", out var ca) ? ca.Str("name") : "";
+                var url = j.TryGetProperty("links", out var l) ? l.Str("public_url") : "";
+                var countries = a.TryGetProperty("countries", out var co) && co.ValueKind == JsonValueKind.Array ? co.EnumerateArray().Select(x => x.GetString() ?? "").Where(x => x.Length > 0) : [];
+                DateTime? published = Num(a, "published_at") is { } ts and > 0 ? DateTimeOffset.FromUnixTimeSeconds(ts).UtcDateTime : null;
+                var min = Num(a, "min_salary") ?? 0;
+                var max = Num(a, "max_salary") ?? 0;
+                list.Add(new DiscoveredPosting(source, j.GetProperty("id").GetString() ?? url, company.Length > 0 ? company : "GetOnBoard", a.Str("title"), string.Join(", ", countries), url,
+                    Json.Plain($"{a.Str("description")}\n{a.Str("functions")}\n{a.Str("desirable")}\n{a.Str("benefits")}"), published, j.GetRawText(),
+                    Workplace: a.Str("remote_modality") is "fully_remote" or "remote_local" ? "remote" : null, Compensation: min > 0 ? $"USD {min} - {max} por mês" : null, ListedAsOpen: true));
+            }
+            var pages = doc.RootElement.TryGetProperty("meta", out var m) ? Num(m, "total_pages") ?? 1 : 1;
+            if (page >= pages) break;
+            await Task.Delay(500, ct);
+        }
+        return list;
+    }
+
+    /// <summary>Número do JSON ou nada: salário e datas vêm null quando a empresa não informa.</summary>
+    private static long? Num(JsonElement e, string name) => e.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Number && v.TryGetInt64(out var n) ? n : null;
+}

@@ -36,9 +36,11 @@ public static class AutomationModule
         s.AddScoped<ISourceConnector, RecruiteeSource>();
         s.AddScoped<ISourceConnector, BreezySource>();
         s.AddScoped<ISourceConnector, GupySource>();
+        s.AddScoped<ISourceConnector, GetOnBoardSource>();
         s.AddScoped<ISourceConnector, PersonioSource>();
         s.AddSingleton<ScraperEnv>();
         s.AddScoped<ScrapyRunner>();
+        s.AddScoped<Leads>();
         s.AddScoped<ISourceConnector, WebSource>();
         s.AddScoped<Features.ScraperApi>();
         s.AddScoped<CareerPageReader>();

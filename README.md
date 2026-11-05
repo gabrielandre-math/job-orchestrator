@@ -1,6 +1,6 @@
 # Job Orchestrator
 
-Orquestrador local de candidaturas, para qualquer área. Descobre vagas nas fontes oficiais (Gupy, Greenhouse, Lever, Ashby e outros quadros, APIs públicas, sites de carreira pelo coletor), avalia com nota explicada, gera um currículo por vaga só com fatos do seu currículo e perfeito para ATS, prepara formulários e envia só com a sua aprovação ou com uma autorização válida. Toda candidatura tem histórico append-only e prova de envio.
+Orquestrador local de candidaturas, para qualquer área. Descobre vagas nas fontes oficiais (Gupy, Greenhouse, Lever, Ashby e outros quadros, APIs públicas como GetOnBoard e Himalayas, repositórios de vagas do GitHub, sites de carreira pelo coletor) e acha fontes novas sozinho com o Explorador, avalia com nota explicada, gera um currículo por vaga só com fatos do seu currículo e perfeito para ATS, prepara formulários e envia só com a sua aprovação ou com uma autorização válida. Toda candidatura tem histórico append-only e prova de envio.
 
 Como usar: `docs/guia.md`. Como operar: `docs/runbook.md`. Plano em `docs/PLANO.md`, arquitetura em `docs/architecture.md`, progresso e como retomar em `docs/PROGRESS.md`.
 
@@ -15,6 +15,7 @@ scripts/install-units.sh --enable  # serviços de usuário do systemd, com a bus
 - Painel e API: http://127.0.0.1:7410
 - ATS falso: http://127.0.0.1:5470 (os 10 cenários de teste, sem tocar em site real)
 - Na primeira vez, o primeiro contato guia: conectar a sua IA, enviar o currículo e montar a busca.
+- Depois, **Automatizar tudo** (Início) liga o resto num caminho só: perfil, envio, busca sozinha, Explorador, noite e e-mail.
 
 ## Testes
 

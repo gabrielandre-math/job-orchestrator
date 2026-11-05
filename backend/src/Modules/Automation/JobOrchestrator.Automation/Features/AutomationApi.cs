@@ -5,10 +5,23 @@ namespace JobOrchestrator.Automation.Features;
 /// <summary>A porta do módulo para os outros: fontes, formulários pelo roteador, PDF e o registro de adapters.</summary>
 internal sealed class AutomationApi(
     IEnumerable<ISourceConnector> sources, IEnumerable<IFormAdapter> forms, Router router, BrowserPool browsers,
-    IReadDb<AutomationDbContext> read, CareerPageReader careers) : IAutomationApi
+    IReadDb<AutomationDbContext> read, CareerPageReader careers, Leads leads) : IAutomationApi
 {
     public Task<IReadOnlyList<DiscoveredPosting>> DiscoverAsync(string source, CancellationToken ct) =>
         (sources.FirstOrDefault(s => s.Accepts(source)) ?? throw new InvalidOperationException($"Fonte desconhecida: {source}")).DiscoverAsync(source, ct);
+
+    public Task<IReadOnlyList<DiscoveredPosting>> DiscoverAsync(string source, IReadOnlyList<string> hints, CancellationToken ct)
+    {
+        var connector = sources.FirstOrDefault(s => s.Accepts(source)) ?? throw new InvalidOperationException($"Fonte desconhecida: {source}");
+        return connector is IHintedSource hinted && hints.Count > 0 ? hinted.DiscoverAsync(source, hints, ct) : connector.DiscoverAsync(source, ct);
+    }
+
+    public Task<IReadOnlyList<string>> SearchGupyAsync(string term, CancellationToken ct) =>
+        sources.OfType<GupySource>().FirstOrDefault()?.SearchAsync(term, ct) ?? Task.FromResult<IReadOnlyList<string>>([]);
+
+    public Task<IReadOnlyList<SourceLead>> JobReposAsync(string query, CancellationToken ct) => leads.JobReposAsync(query, ct);
+    public Task<IReadOnlyList<SourceLead>> CompanyListAsync(string repo, CancellationToken ct) => leads.CompanyListAsync(repo, ct);
+    public Task<IReadOnlyList<SiteFinding>> SweepSitesAsync(IReadOnlyList<string> domains, CancellationToken ct) => leads.SweepSitesAsync(domains, ct);
 
     public Task<PostingStatus> CheckOpenAsync(string applyUrl, CancellationToken ct)
     {

@@ -18,8 +18,8 @@ public sealed record CampaignSettings(
     IReadOnlyList<string> Technologies, IReadOnlyList<string> Locations, IReadOnlyList<string> Sources, string TimeZone,
     SubmitAuthorizationView? Authorization = null, IReadOnlyList<string>? Titles = null);
 
-/// <summary>Evento de integração: alguém pediu uma rodada de descoberta.</summary>
-public sealed record RunRequestedV1(Guid RunId, Guid CampaignId, DateTime RequestedAt)
+/// <summary>Evento de integração: alguém pediu uma rodada de descoberta. Only limita a rodada a essas fontes (as que o Explorador acabou de achar).</summary>
+public sealed record RunRequestedV1(Guid RunId, Guid CampaignId, DateTime RequestedAt, IReadOnlyList<string>? Only = null)
 {
     public const string EventType = "campaigns.run-requested.v1";
 }
@@ -29,6 +29,12 @@ public sealed record RunRequestedV1(Guid RunId, Guid CampaignId, DateTime Reques
 public interface ICampaignRuns
 {
     Task<int> RequestEnabledAsync(string trigger, CancellationToken ct);
+    /// <summary>Busca contínua: pede rodada das campanhas ligadas cuja última rodada passou do intervalo.</summary>
+    Task<int> RequestDueAsync(TimeSpan every, string trigger, CancellationToken ct);
+    /// <summary>O Explorador acrescenta fontes descobertas (sem duplicar) e devolve quantas entraram.</summary>
+    Task<int> AddSourcesAsync(Guid campaignId, IReadOnlyList<string> sources, CancellationToken ct);
+    /// <summary>Rodada só com estas fontes, na hora: as vagas das fontes novas chegam sem esperar a próxima rodada completa.</summary>
+    Task<bool> RequestSourcesAsync(Guid campaignId, IReadOnlyList<string> sources, string trigger, CancellationToken ct);
 }
 
 public interface ICampaignsApi

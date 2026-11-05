@@ -6,6 +6,8 @@
     <a class="btn" routerLink="/busca"><jo-icon name="magnifying-glass" [size]="14" />Ver a busca ao vivo</a>
   </jo-page-hero>
 
+  <jo-explorer />
+
   @for (g of groups(); track g.kind) {
     <section class="panel">
       <header><h2>{{ g.title }} <span class="faint num">{{ g.items.length }}</span></h2><span class="faint small">{{ g.hint }}</span></header>

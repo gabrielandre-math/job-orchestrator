@@ -113,3 +113,10 @@ export interface MailTarget { jobId: string; company: string; title: string; loc
 export interface OutgoingMail { id: string; jobId: string; company: string; jobTitle: string; to: string; subject: string; body: string; kind: 'first' | 'followup'; followsId: string | null; status: string; createdAt: string; approvedAt: string | null; sentAt: string | null; messageId: string | null; attachmentPath: string | null; attachmentName: string | null; error: string | null; draftedBy: string; checkNotes: string | null; repliedAt: string | null; replyClass: string | null; threadId: string | null; }
 export interface IncomingMail { id: string; messageId: string; from: string; subject: string; date: string; snippet: string; class: string | null; actionNeeded: boolean; outgoingId: string | null; receivedAt: string; }
 export interface AuthorizationItem { id: string; grantedAt: string; expiresAt: string; maxPerDay: number; minScore: number; adapters: string[]; revokedAt: string | null; status: 'ativa' | 'vencida' | 'revogada'; }
+
+export interface ExploreVerdict { source: string; origin: string; total: number; relevant: number; sample: string[]; fit: boolean; reason: string; at: string; }
+export interface ExploreLast { at: string; tested: number; added: string[]; frontier: number; swept: number; seconds: number; skipped: string | null; origins: Record<string, number> | null; }
+export interface ExploreStatus {
+  enabled: boolean; intervalMinutes: number; searchIntervalMinutes: number; running: boolean; last: ExploreLast | null; next: string | null;
+  frontier: number; queue: Record<string, number>; explored: number; fit: number; recent: ExploreVerdict[];
+}

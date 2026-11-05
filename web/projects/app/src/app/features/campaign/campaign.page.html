@@ -1,6 +1,7 @@
 <section class="page">
   @if (list.value()?.[0]; as c) {
     <jo-page-hero title="Campanha" [lead]="c.name + '. Última rodada ' + ago(c.lastRunAt) + '. Fuso ' + c.timeZone + ', janela ' + c.window + '.'" [scene]="['radar', 'gate', 'chart']" [stats]="heroStats(c)">
+        <button class="btn" type="button" (click)="automating.set(true)"><jo-icon name="lightning" [size]="14" />Automatizar tudo</button>
         <button class="btn" type="button" [disabled]="run.running()" (click)="run.run(c)">Rodar agora</button>
         <button class="btn primary" type="button" [disabled]="save.running()" (click)="submit(c)">{{ saved() ? 'Salvo' : 'Salvar' }}</button>
       </jo-page-hero>
@@ -50,3 +51,5 @@
 @if (authorizing() && list.value()?.[0]; as c) {
   <app-authorize [campaign]="c" (close)="authorizing.set(false)" (changed)="granted()" />
 }
+
+@if (automating()) { <app-automate (close)="automating.set(false); granted()" /> }

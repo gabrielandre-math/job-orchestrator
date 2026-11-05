@@ -10,6 +10,7 @@ import { SearchRun } from '../../core/search';
 import { SourceInfo, describeSource } from '../../core/sources';
 import { SOURCE_TABS, Tabs } from '../../shared/tabs';
 import { AddSource } from './add-source';
+import { Explorer } from './explorer';
 
 const GROUPS: { kind: SourceInfo['kind']; title: string; hint: string }[] = [
   { kind: 'ats', title: 'Empresas', hint: 'quadros de vagas oficiais (ATS)' },
@@ -21,7 +22,7 @@ const GROUPS: { kind: SourceInfo['kind']; title: string; hint: string }[] = [
 /** Fontes: de onde vêm as vagas da campanha, agrupadas, com o resultado da última rodada de cada uma e o assistente para adicionar. */
 @Component({
   selector: 'app-sources',
-  imports: [RouterLink, AddSource, Company, Icon, PageHero, Tabs],
+  imports: [RouterLink, AddSource, Company, Explorer, Icon, PageHero, Tabs],
   templateUrl: './sources.page.html',
   styleUrl: './sources.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -36,14 +37,14 @@ export class SourcesPage {
     mode: x.c.mode, minFitScore: x.c.minFitScore, maxSubmissionsPerDay: x.c.maxSubmissionsPerDay, technologies: x.c.technologies, locations: x.c.locations, sources: x.sources,
   }));
   protected readonly campaign = computed(() => this.campaigns.value()?.[0] ?? null);
-  protected readonly last = computed(() => new Map((this.search.state()?.sources ?? []).map((s) => [s.source, s])));
+  protected readonly last = computed(() => new Map((this.search.lastFull()?.sources ?? []).map((s) => [s.source, s])));
   protected readonly groups = computed(() => {
     const all = (this.campaign()?.sources ?? []).map(describeSource);
     return GROUPS.map((g) => ({ ...g, items: all.filter((s) => s.kind === g.kind) })).filter((g) => g.items.length > 0);
   });
   protected readonly stats = computed<HeroStat[]>(() => {
     const all = (this.campaign()?.sources ?? []).map(describeSource);
-    const run = this.search.state();
+    const run = this.search.lastFull();
     return [
       { label: 'Fontes na campanha', value: all.length, tone: 'accent' },
       { label: 'Empresas', value: all.filter((s) => s.kind === 'ats').length },
