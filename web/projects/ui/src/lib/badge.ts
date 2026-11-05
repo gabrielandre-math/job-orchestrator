@@ -6,7 +6,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `<span class="dot"></span><span>{{ label() }}</span>`,
   styles: `
-    :host { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; border-radius: 999px; font: 500 11.5px var(--font-ui); white-space: nowrap; background: var(--surface-3); color: var(--text-2); }
+    :host { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; border-radius: 4px; font: 500 11.5px var(--font-ui); white-space: nowrap; background: var(--surface-3); color: var(--text-2); }
     .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
     :host(.ok) { background: var(--ok-weak); color: var(--ok); }
     :host(.warn) { background: var(--warn-weak); color: var(--warn); }

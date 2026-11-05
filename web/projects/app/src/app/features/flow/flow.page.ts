@@ -2,7 +2,10 @@ import { AfterViewInit, ChangeDetectionStrategy, Component, DestroyRef, ElementR
 import { RouterLink } from '@angular/router';
 import { Badge } from '@jo/ui/badge';
 import { Icon } from '@jo/ui/icon';
-import { Flow, FlowEdge, FlowNode } from '../../core/api';
+import { Iso } from '@jo/ui/iso';
+import { Flow, FlowEdge, FlowNode, get } from '../../core/api';
+import { AGENT_ICON, AgentMessage, AgentThread, Live, LiveMessage, PROVIDER_LOGO } from '../../core/live';
+import { Conversation } from '../agents/conversation';
 import { query } from '../../core/query';
 import { clock } from '../../core/format';
 import { Theme } from '../../core/theme';
@@ -24,12 +27,33 @@ const ROW_A = 120;
 const ROW_B = 430;
 const ROW_C = 720;
 const BUS_X = X0 - 64;
+const ROW_D = ROW_C + 340;
+const ROW_E = ROW_D + 250;
+const STATION = 96;
+const SCOL = 232;
+
+/** As estações dos agentes de IA: a esteira do currículo da vaga e a da leitura do seu CV. Quem usa modelo mostra qual. */
+interface Station { id: string; agent: string; kind: 'resume' | 'profile'; x: number; y: number; sub: string; llm: boolean; }
+const STATIONS: Station[] = [
+  ...([['Seletor', 'fatos da vaga'], ['Redator', 'escreve'], ['Conferente', 'fato a fato'], ['Revisor', 'outra família'], ['Renderizador', 'PDF'],
+    ['Inspetor ATS', 'leitura de ATS'], ['Guardião', 'antes do envio']] as const)
+    .map(([agent, sub], i) => ({ id: `resume-${i}`, agent, kind: 'resume' as const, x: X0 + i * SCOL, y: ROW_D, sub, llm: agent === 'Redator' || agent === 'Revisor' })),
+  ...([['Leitor', 'tira dados pessoais'], ['Extrator', 'lê o currículo'], ['Conferente', 'trecho no documento']] as const)
+    .map(([agent, sub], i) => ({ id: `profile-${i}`, agent, kind: 'profile' as const, x: X0 + i * SCOL, y: ROW_E, sub, llm: agent === 'Extrator' })),
+];
+interface StationView extends Station { icon: string; status: 'working' | 'spoke' | 'done' | 'idle'; bubble: string | null; provider: { file: string; mono: boolean } | null; model: string | null; thread: string | null; }
+interface AiEdge { id: string; d: string; lx: number; ly: number; text: string; hot: boolean; }
 
 /** Onde cada agente fica. A topologia é fixa: o Guardião sempre fica no caminho do envio. */
 const POS: Record<string, Point> = {
   scout: [X0, ROW_A], normalizer: [X0 + COL, ROW_A], judge: [X0 + 2 * COL, ROW_A], analyst: [X0 + 3 * COL, ROW_A],
   writer: [X0, ROW_B], preparer: [X0 + COL, ROW_B], guard: [X0 + 2 * COL, ROW_B], sender: [X0 + 3 * COL, ROW_B], verifier: [X0 + 4 * COL, ROW_B],
   reviewer: [X0, ROW_C], attention: [X0 + 2 * COL, ROW_C], tracker: [X0 + 4 * COL, ROW_C],
+};
+/** Estação isométrica de cada agente (ui/lib/iso-art.ts). */
+const ISO: Record<string, string> = {
+  scout: 'radar', normalizer: 'identity', judge: 'gate', analyst: 'chart', writer: 'writer', reviewer: 'reviewer',
+  preparer: 'form', guard: 'guardian', sender: 'send', verifier: 'receipt', tracker: 'inbox', attention: 'queue',
 };
 const ICONS: Record<string, string> = {
   scout: 'binoculars', normalizer: 'fingerprint', judge: 'gavel', analyst: 'chart-line-up', writer: 'pen-nib', reviewer: 'seal-check',
@@ -81,7 +105,7 @@ const ABOUT: Record<string, { does: string; runs: string; link?: { label: string
 
 @Component({
   selector: 'app-flow',
-  imports: [RouterLink, Badge, Icon],
+  imports: [RouterLink, Badge, Icon, Iso, Conversation],
   templateUrl: './flow.page.html',
   styleUrl: './flow.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -99,6 +123,15 @@ export class FlowPage implements AfterViewInit {
   protected readonly k = signal(0.8);
   protected readonly size = signal({ w: 1200, h: 700 });
   protected readonly clock = clock;
+  protected readonly liveFeed = inject(Live);
+  protected readonly STATION = STATION;
+  protected readonly ISO = ISO;
+  protected readonly icons = AGENT_ICON;
+  protected readonly logos = PROVIDER_LOGO;
+  protected readonly feedOpen = signal(true);
+  protected readonly talking = signal<{ thread: string | null; focus: string | null } | null>(null);
+  private readonly baseline = signal<LiveMessage[]>([]);
+  private readonly now = signal(Date.now());
   private moved = false;
   private fitted = false;
   private drag: { x: number; y: number } | null = null;
@@ -134,6 +167,81 @@ export class FlowPage implements AfterViewInit {
     });
   });
 
+  /** O último fio de cada esteira mais o que chega ao vivo: cada estação mostra o que fez por último. */
+  protected readonly stations = computed<StationView[]>(() => {
+    const feed = [...this.baseline(), ...this.liveFeed.feed()];
+    const now = this.now();
+    return STATIONS.map((st) => {
+      const mine = feed.filter((l) => l.kind === st.kind && (l.message.agent === st.agent || (l.message.to === st.agent && (l.message.kind === 'working' || l.message.kind === 'answer' || l.message.kind === 'fail'))));
+      const last = mine.at(-1);
+      const age = last ? now - new Date(last.message.at).getTime() : Infinity;
+      const pending = last && (last.message.kind === 'working' || (last.message.kind === 'ask' && last.message.agent === st.agent)) && age < 10 * 60_000;
+      const said = [...mine].reverse().find((l) => l.message.agent === st.agent || l.message.kind === 'answer');
+      const answered = [...mine].reverse().find((l) => (l.message.kind === 'answer' || l.message.kind === 'working') && l.message.providerId);
+      const status = pending ? 'working' : age < 9000 ? 'spoke' : last ? 'done' : 'idle';
+      return {
+        ...st, icon: AGENT_ICON[st.agent] ?? 'model', status, thread: last?.threadId ?? null,
+        bubble: status === 'idle' || status === 'done' ? null : (said?.message.title ?? null),
+        provider: st.llm && answered?.message.providerId ? PROVIDER_LOGO[answered.message.providerId] ?? null : null,
+        model: st.llm && answered?.message.model ? `${answered.message.providerId?.startsWith('claude') ? 'Claude' : answered.message.providerId === 'codex' ? 'ChatGPT' : 'Llama'} · ${answered.message.model === 'padrão do CLI' ? 'Codex' : answered.message.model}` : null,
+      };
+    });
+  });
+
+  /** Arestas da esteira: o rótulo é a última passagem de uma estação para a próxima; acende por dez segundos. */
+  protected readonly aiEdges = computed<AiEdge[]>(() => {
+    const feed = [...this.baseline(), ...this.liveFeed.feed()];
+    const now = this.now();
+    const views = this.stations();
+    const out: AiEdge[] = [];
+    for (let i = 0; i < views.length - 1; i++) {
+      const a = views[i], b = views[i + 1];
+      if (a.kind !== b.kind) continue;
+      const hand = [...feed].reverse().find((l) => l.kind === a.kind && l.message.agent === a.agent && l.message.to === b.agent);
+      const y = a.y + STATION / 2;
+      const x1 = a.x + STATION, x2 = b.x - 3;
+      const text = hand ? short(hand.message.title, 20) : '';
+      out.push({ id: `${a.id}-${b.id}`, d: `M ${x1} ${y} L ${x2} ${y}`, lx: (x1 + x2) / 2, ly: y, text, hot: !!hand && now - new Date(hand.message.at).getTime() < 10_000 });
+    }
+    return out;
+  });
+
+  /** O painel ao vivo: as últimas mensagens de todas as esteiras, a mais nova embaixo. */
+  protected readonly ticker = computed(() => {
+    const feed = [...this.baseline(), ...this.liveFeed.feed()];
+    const seen = new Set<string>();
+    return feed.filter((l) => !seen.has(l.message.id) && seen.add(l.message.id)).slice(-9);
+  });
+
+  /** Pacotes de luz: cada passagem de uma estação para a próxima nos últimos 1,4 s corre pela aresta. */
+  protected readonly packets = computed(() => {
+    const now = this.now();
+    const edges = new Map(this.aiEdges().map((e) => [e.id, e]));
+    const views = this.stations();
+    return this.liveFeed.feed().filter((l) => l.message.to && now - new Date(l.message.at).getTime() < 1400).flatMap((l) => {
+      const i = views.findIndex((v) => v.kind === l.kind && v.agent === l.message.agent);
+      const next = views[i + 1];
+      const edge = i >= 0 && next && next.kind === l.kind && next.agent === l.message.to ? edges.get(`${views[i].id}-${next.id}`) : undefined;
+      return edge ? [{ id: l.message.id, d: edge.d }] : [];
+    });
+  });
+
+  protected ago(iso: string) {
+    const s = Math.max(0, Math.round((this.now() - new Date(iso).getTime()) / 1000));
+    return s < 60 ? `${s} s` : s < 3600 ? `${Math.round(s / 60)} min` : new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  }
+  protected isPending(l: LiveMessage) {
+    const t = this.ticker();
+    const i = t.indexOf(l);
+    return l.message.kind === 'working' && !t.slice(i + 1).some((n) => n.threadId === l.threadId && n.message.providerId === l.message.providerId && (n.message.kind === 'answer' || n.message.kind === 'fail'));
+  }
+
+  protected readonly aiFrame = computed<Frame>(() => {
+    const xs = STATIONS.map((s) => s.x), ys = STATIONS.map((s) => s.y);
+    const x = Math.min(...xs) - 30, y = Math.min(...ys) - 64;
+    return { id: 'ai', title: 'Agentes de IA', icon: 'cpu', x, y, w: Math.max(...xs) + STATION + 30 - x, h: Math.max(...ys) + STATION + LABEL + 24 - y, lane: 'ai' };
+  });
+
   protected readonly frames = computed<Frame[]>(() => {
     const n = this.nodes();
     const box = (id: string, title: string, icon: string, members: Placed[], lane: string): Frame[] => {
@@ -150,6 +258,7 @@ export class FlowPage implements AfterViewInit {
       ...box('discovery', 'Descoberta', 'magnifying-glass', pick(['scout', 'normalizer', 'judge', 'analyst']), 'discovery'),
       ...box('application', 'Candidatura', 'files', pick(['writer', 'preparer', 'guard', 'sender', 'verifier']), 'application'),
       ...box('you', 'Com você', 'user', pick(['attention']), 'you'),
+      ...(n.length > 0 ? [this.aiFrame()] : []),
     ];
   });
 
@@ -158,7 +267,7 @@ export class FlowPage implements AfterViewInit {
       ...this.frames().map((f) => ({ x: f.x, y: f.y, r: f.x + f.w, b: f.y + f.h })),
       ...this.nodes().map((p) => ({ x: p.x, y: p.y, r: p.x + p.size, b: p.y + p.size + LABEL })),
     ];
-    if (items.length === 0) return { x: 0, y: 0, w: 1, h: 1 };
+    if (this.nodes().length === 0) return { x: 0, y: 0, w: 1, h: 1 };
     const x = Math.min(...items.map((i) => i.x)) - 30;
     const y = Math.min(...items.map((i) => i.y)) - 30;
     return { x, y, w: Math.max(...items.map((i) => i.r)) + 30 - x, h: Math.max(...items.map((i) => i.b)) + 30 - y };
@@ -181,12 +290,16 @@ export class FlowPage implements AfterViewInit {
     const v = this.size();
     return {
       s, w: b.w * s, h: b.h * s,
-      nodes: this.nodes().map((n) => ({ id: n.id, status: n.status, x: (n.x - b.x) * s, y: (n.y - b.y) * s, w: n.size * s })),
+      nodes: [...this.nodes().map((n) => ({ id: n.id, status: n.status, x: (n.x - b.x) * s, y: (n.y - b.y) * s, w: n.size * s })),
+        ...this.stations().map((n) => ({ id: n.id, status: n.status === 'working' ? 'attention' : n.status === 'idle' ? 'idle' : 'active', x: (n.x - b.x) * s, y: (n.y - b.y) * s, w: STATION * s }))],
       view: { x: (-this.tx() / this.k() - b.x) * s, y: (-this.ty() / this.k() - b.y) * s, w: (v.w / this.k()) * s, h: (v.h / this.k()) * s },
     };
   });
 
   constructor() {
+    const tick = setInterval(() => this.now.set(Date.now()), 500);
+    this.destroy.onDestroy(() => clearInterval(tick));
+    void this.loadBaseline();
     effect(() => {
       if (!this.fitted && this.nodes().length > 0) {
         this.fitted = true;
@@ -233,7 +346,7 @@ export class FlowPage implements AfterViewInit {
   }
 
   protected down(e: PointerEvent) {
-    if ((e.target as HTMLElement).closest('.node, .mini, .controls, .drawer')) return;
+    if ((e.target as HTMLElement).closest('.node, .mini, .controls, .drawer, .feed, app-conversation')) return;
     this.drag = { x: e.clientX, y: e.clientY };
     this.moved = true;
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -252,7 +365,7 @@ export class FlowPage implements AfterViewInit {
     if (e.key === '+' || e.key === '=') this.zoom(1.2);
     else if (e.key === '-') this.zoom(1 / 1.2);
     else if (e.key === '0') this.fit();
-    else if (e.key === 'Escape') this.selected.set(null);
+    else if (e.key === 'Escape') { this.selected.set(null); this.talking.set(null); }
   }
 
   protected jump(e: MouseEvent) {
@@ -265,11 +378,24 @@ export class FlowPage implements AfterViewInit {
   }
 
   protected toggle(id: string) { this.selected.update((s) => (s === id ? null : id)); }
+
+  /** O último fio de cada esteira, para as estações mostrarem o que fizeram antes desta tela abrir. */
+  private async loadBaseline() {
+    try {
+      const threads = await get<AgentThread[]>('/agents/threads?limit=12');
+      const picks = ['resume', 'profile'].map((k) => threads.find((t) => t.kind === k)).filter((t): t is AgentThread => !!t);
+      const lists = await Promise.all(picks.map(async (t) => (await get<AgentMessage[]>(`/agents/threads/${t.id}`)).map((m) => ({ threadId: t.id, kind: t.kind, subject: t.subject, message: m }))));
+      this.baseline.set(lists.flat());
+    } catch { /* sem conversas ainda */ }
+  }
+
+  protected talk(s?: StationView) { this.talking.set({ thread: s?.thread ?? null, focus: s?.agent ?? null }); }
   protected statusLabel(s: string) { return ({ active: 'Com itens', idle: 'Parado', attention: 'Precisa de você', planned: 'Planejado' } as Record<string, string>)[s] ?? s; }
   protected statusTone(s: string) { return ({ active: 'ok', idle: 'neutral', attention: 'warn', planned: 'neutral' } as Record<string, string>)[s] ?? 'neutral'; }
 }
 
 function clamp(v: number, min: number, max: number) { return Math.min(max, Math.max(min, v)); }
+function short(s: string, n: number) { return s.length > n ? s.slice(0, n - 1).trimEnd() + '…' : s; }
 
 /** Pontos de uma aresta em ângulo reto. "Embaixo" sai abaixo do nome e do subtítulo, para não cortar o texto. */
 function path(route: Route, a: Placed, b: Placed): Point[] {

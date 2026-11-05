@@ -5,8 +5,8 @@
 :root {
   --font-ui: "Inter Variable", system-ui, sans-serif;
   --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
-  --radius: 10px;
-  --radius-sm: 7px;
+  --radius: 6px;
+  --radius-sm: 4px;
   color-scheme: dark;
   --bg: oklch(19% 0 0);
   --canvas: oklch(16% 0 0);
@@ -21,6 +21,14 @@
   --accent: oklch(78% 0.136 5);
   --accent-text: oklch(20% 0.04 5);
   --accent-weak: oklch(78% 0.136 5 / 0.14);
+
+  /* Isométricos: materiais (base, papel, escuro, marca) com topo claro, esquerda média e direita escura. Neon suave na aresta. */
+  --iso-edge: oklch(78% 0.136 5 / 0.26);
+  --iso-base-t: oklch(33% 0 0); --iso-base-l: oklch(26% 0 0); --iso-base-r: oklch(21% 0 0);
+  --iso-paper-t: oklch(46% 0.005 5); --iso-paper-l: oklch(37% 0.005 5); --iso-paper-r: oklch(31% 0.005 5);
+  --iso-dark-t: oklch(27% 0 0); --iso-dark-l: oklch(21% 0 0); --iso-dark-r: oklch(17% 0 0);
+  --iso-accent-t: oklch(80% 0.13 5); --iso-accent-l: oklch(66% 0.14 5); --iso-accent-r: oklch(56% 0.13 5);
+  --iso-ink: oklch(70% 0 0); --iso-soft: oklch(52% 0 0); --iso-accent-line: oklch(80% 0.13 5);
   --flow: oklch(68% 0.16 255);
   --flow-weak: oklch(68% 0.16 255 / 0.16);
   --ok: oklch(74% 0.15 155);
@@ -54,6 +62,13 @@
   --accent: oklch(59% 0.161 5);
   --accent-text: oklch(100% 0 0);
   --accent-weak: oklch(59% 0.161 5 / 0.1);
+
+  --iso-edge: oklch(0% 0 0 / 0.07);
+  --iso-base-t: oklch(97% 0 0); --iso-base-l: oklch(91% 0 0); --iso-base-r: oklch(86% 0 0);
+  --iso-paper-t: oklch(100% 0 0); --iso-paper-l: oklch(95% 0.004 5); --iso-paper-r: oklch(90% 0.004 5);
+  --iso-dark-t: oklch(88% 0.01 5); --iso-dark-l: oklch(81% 0.012 5); --iso-dark-r: oklch(75% 0.012 5);
+  --iso-accent-t: oklch(82% 0.1 5); --iso-accent-l: oklch(71% 0.13 5); --iso-accent-r: oklch(63% 0.14 5);
+  --iso-ink: oklch(62% 0 0); --iso-soft: oklch(80% 0 0); --iso-accent-line: oklch(62% 0.16 5);
   --flow: oklch(55% 0.19 258);
   --flow-weak: oklch(55% 0.19 258 / 0.12);
   --ok: oklch(55% 0.14 155);

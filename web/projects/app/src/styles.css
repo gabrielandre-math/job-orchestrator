@@ -48,11 +48,11 @@ table.grid tr:last-child td { border-bottom: 0; }
 .problem { padding: 10px 14px; border-radius: var(--radius-sm); background: var(--danger-weak); color: var(--danger); }
 .notice { padding: 10px 14px; border-radius: var(--radius-sm); background: var(--surface-2); color: var(--text-2); border: 1px solid var(--line); }
 .chips { display: flex; gap: 6px; flex-wrap: wrap; }
-.chip { height: 28px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--line-strong); background: transparent; color: var(--text-2); font: 500 12px var(--font-ui); cursor: pointer; }
+.chip { height: 28px; padding: 0 10px; border-radius: 4px; border: 1px solid var(--line-strong); background: transparent; color: var(--text-2); font: 500 12px var(--font-ui); cursor: pointer; }
 .chip[aria-pressed="true"] { background: var(--accent-weak); border-color: color-mix(in oklch, var(--accent) 55%, transparent); color: var(--accent); }
 .chip .n { font-family: var(--font-mono); margin-left: 6px; opacity: 0.7; }
 
 .tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
-.tag { height: 20px; padding: 0 7px; border-radius: 5px; display: inline-flex; align-items: center; background: var(--surface-3); color: var(--text-2); font: 500 11px var(--font-ui); white-space: nowrap; }
+.tag { height: 20px; padding: 0 7px; border-radius: 3px; display: inline-flex; align-items: center; background: var(--surface-3); color: var(--text-2); font: 500 11px var(--font-ui); white-space: nowrap; }
 .tag.money { font-family: var(--font-mono); }
 .tag.manual { color: var(--warn); background: var(--warn-weak); }

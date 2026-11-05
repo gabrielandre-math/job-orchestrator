@@ -1,0 +1,76 @@
+<div class="backdrop" (click)="close.emit()" aria-hidden="true"></div>
+<section class="modal" role="dialog" aria-modal="true" aria-labelledby="conv-title">
+  <header class="head">
+    <div>
+      <h2 id="conv-title">Conversa dos agentes</h2>
+      <p class="faint">Ao vivo. Cada pedido aos modelos, cada resposta e cada conferência, na ordem em que aconteceram.</p>
+    </div>
+    <button type="button" class="btn ghost" (click)="close.emit()" aria-label="Fechar"><jo-icon name="x" [size]="16" /></button>
+  </header>
+  <div class="body">
+    <nav class="threads" aria-label="Trabalhos recentes">
+      @for (t of threads(); track t.id) {
+        <button type="button" class="thread" [class.on]="t.id === selected()" [class.failed]="t.failed" (click)="pick(t.id)" [attr.aria-current]="t.id === selected() ? 'true' : null">
+          <span class="t-top">
+            <span class="t-kind">{{ kindLabel(t.kind) }}</span>
+            @if (live30(t)) { <span class="live-dot" aria-label="ao vivo"></span> }
+          </span>
+          <span class="t-subject">{{ t.subject }}</span>
+          <span class="t-meta">
+            <span class="num">{{ day(t.lastAt) }}</span><span>{{ t.messages }} mensagens</span>
+            <span class="t-logos">
+              @for (p of t.providers; track p) {
+                @if (logos[p]; as l) {
+                  @if (l.mono) { <span class="logo mono sm" [style.--logo]="'url(/logos/' + l.file + '.svg)'"></span> }
+                  @else { <img class="logo sm" [src]="'/logos/' + l.file + '.svg'" alt="" width="14" height="14" /> }
+                }
+              }
+            </span>
+          </span>
+        </button>
+      } @empty {
+        <p class="faint pad">Nenhuma conversa ainda. Envie o seu currículo na tela Perfil ou gere a prévia do currículo de uma vaga.</p>
+      }
+    </nav>
+
+    <div class="transcript" #scroller>
+      @if (current(); as t) {
+        <header class="t-head">
+          <h3>{{ t.subject }}</h3>
+          <span class="faint">{{ t.agents.join(', ') }}</span>
+        </header>
+      }
+      <ol class="messages">
+        @for (m of messages(); track m.id) {
+          <li [class]="'msg ' + m.kind" [class.bad]="!m.ok" [class.focus]="focus() === m.agent" [class.busy]="isWorking(m)">
+            <span class="avatar" [class.provider]="speaker(m) === 'provider'">
+              @if (speaker(m) === 'provider' && m.providerId && logos[m.providerId]; as l) {
+                @if (l.mono) { <span class="logo mono" [style.--logo]="'url(/logos/' + l.file + '.svg)'"></span> }
+                @else { <img class="logo" [src]="'/logos/' + l.file + '.svg'" alt="" width="22" height="22" /> }
+              } @else {
+                <jo-iso [name]="icons[m.agent] ?? 'model'" [size]="44" />
+              }
+            </span>
+            <div class="bubble">
+              <div class="meta">
+                <strong>{{ m.agent }}</strong>
+                @if (m.to) { <span class="arrow" aria-label="para"></span><span class="to">{{ m.to }}</span> }
+                <span class="when num">{{ time(m.at) }}</span>
+                @if (m.model) { <span class="chip mono">{{ m.model }}@if (m.effort) { · {{ m.effort }} }</span> }
+                @if (m.seconds > 0) { <span class="chip num">{{ m.seconds.toFixed(1) }} s</span> }
+              </div>
+              <p class="title">{{ m.title }}</p>
+              @if (isWorking(m)) { <p class="typing" aria-live="polite"><span></span><span></span><span></span>trabalhando há {{ elapsed(m.at) }} s</p> }
+              @if (m.body) {
+                <pre class="mono" [class.clamped]="long(m.body) && !open().has(m.id)">{{ pretty(m.body) }}</pre>
+                @if (long(m.body)) { <button type="button" class="more" (click)="toggle(m.id)">{{ open().has(m.id) ? 'Mostrar menos' : 'Ver tudo' }}</button> }
+              }
+            </div>
+          </li>
+        } @empty {
+          @if (current()) { <li class="faint pad">Sem mensagens.</li> }
+        }
+      </ol>
+    </div>
+  </div>
+</section>

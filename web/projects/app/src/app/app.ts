@@ -6,6 +6,7 @@ import { Overview } from './core/api';
 import { query } from './core/query';
 import { modeLabel } from './core/format';
 import { Theme } from './core/theme';
+import { Live } from './core/live';
 
 interface NavItem { path: string; label: string; icon: string; exact?: boolean; count?: 'review' | 'attention'; }
 
@@ -20,6 +21,7 @@ interface NavItem { path: string; label: string; icon: string; exact?: boolean; 
 })
 export class App {
   protected readonly theme = inject(Theme);
+  protected readonly live = inject(Live);
   protected readonly collapsed = signal(read('jo.sidebar') === 'collapsed');
   protected readonly overview = query<Overview>(() => '/overview', 5000);
   protected readonly online = computed(() => this.overview.problem() === null && this.overview.value() !== undefined);

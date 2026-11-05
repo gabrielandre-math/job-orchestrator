@@ -16,7 +16,7 @@ nav a:hover { color: var(--text); background: var(--surface-2); }
 nav a.active { color: var(--text); background: var(--surface-3); }
 nav a.active jo-icon { color: var(--accent); }
 .label { overflow: hidden; text-overflow: ellipsis; }
-.count { margin-left: auto; min-width: 20px; height: 18px; padding: 0 6px; border-radius: 9px; background: var(--warn-weak); color: var(--warn); font: 600 11px var(--font-mono); display: inline-grid; place-items: center; }
+.count { margin-left: auto; min-width: 20px; height: 18px; padding: 0 6px; border-radius: 4px; background: var(--warn-weak); color: var(--warn); font: 600 11px var(--font-mono); display: inline-grid; place-items: center; }
 footer { margin-top: auto; display: grid; gap: 2px; padding-top: 10px; border-top: 1px solid var(--line); }
 .status { display: flex; align-items: center; gap: 10px; height: 30px; padding: 0 12px; font-size: 12px; color: var(--danger); white-space: nowrap; }
 .status::before { content: ""; flex: none; width: 7px; height: 7px; margin: 0 5px 0 4px; border-radius: 50%; background: currentColor; }
