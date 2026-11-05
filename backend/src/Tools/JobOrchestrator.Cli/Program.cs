@@ -9,9 +9,13 @@ switch (command)
         return await Bench.RunAsync(models, Option("url") ?? "http://127.0.0.1:11434", Option("out"), Option("json"));
     case "sources probe":
         return await Sources.ProbeAsync(Option("api") ?? "http://127.0.0.1:7410", Option("json") ?? "data/source-registry.json", Option("md") ?? "docs/SOURCE_AUDIT.md");
+    case "sources coverage":
+        return await CoverageReport.WriteAsync(Option("api") ?? "http://127.0.0.1:7410", Option("md") ?? "docs/COVERAGE_GAPS.md");
     default:
         Console.WriteLine("""
             uso:
+              jo sources coverage [--api http://127.0.0.1:7410] [--md docs/COVERAGE_GAPS.md]
+                a cobertura dos 249 países, por continente e país, com o que existe e o que falta
               jo sources probe [--api http://127.0.0.1:7410] [--json data/source-registry.json] [--md docs/SOURCE_AUDIT.md]
                 sonda de verdade cada plataforma do registro pela API do app e escreve o registro tipado e a auditoria
               jo llm bench [--models a,b,c] [--out arquivo.md] [--json resultado.json] [--url http://127.0.0.1:11434]

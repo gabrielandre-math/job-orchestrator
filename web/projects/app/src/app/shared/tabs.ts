@@ -50,4 +50,5 @@ export const SOURCE_TABS: TabItem[] = [
   { path: '/fontes/varredura', label: 'Varredura da internet', icon: 'globe' },
   { path: '/fontes/adapters', label: 'Conectores', icon: 'plugs-connected' },
   { path: '/fontes/registro', label: 'Registro', icon: 'shield-check' },
+  { path: '/fontes/cobertura', label: 'Cobertura', icon: 'map-pin' },
 ];

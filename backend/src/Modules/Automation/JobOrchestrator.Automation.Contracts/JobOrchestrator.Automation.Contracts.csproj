@@ -1,4 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="../../../../../data/catalog/catalogo-fontes-v2-2026.json" LogicalName="catalogo-fontes-v2.json" />
+    <EmbeddedResource Include="../../../../../data/catalog/auditoria-249-paises-v2.csv" LogicalName="auditoria-249-paises.csv" />
+  </ItemGroup>
 </Project>

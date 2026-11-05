@@ -9,6 +9,14 @@ internal sealed class AutomationApi(
 {
     public Task<IReadOnlyList<DiscoveredPosting>> DiscoverAsync(string source, CancellationToken ct) => DiscoverAsync(source, [], ct);
 
+    public Task<IReadOnlyList<RegistryEntry>> RegistryAsync(CancellationToken ct)
+    {
+        var probe = SourcesRegistryEndpoints.LastProbe();
+        return Task.FromResult<IReadOnlyList<RegistryEntry>>([.. SourceRegistry.All.Select(p => new RegistryEntry(p.Prefix, p.Name, p.Lifecycle, p.Countries,
+            sources.Any(c => c.Accepts(p.Prefix + ":x")), SourcesRegistryEndpoints.Gate(p.Prefix + ":x", config, time) is null && p.Lifecycle is "ACTIVE" or "EXPERIMENTAL",
+            probe.TryGetValue(p.Prefix, out var r) && r.Source is not null ? r.Ok && r.Count > 0 : null, probe.TryGetValue(p.Prefix, out var c2) ? c2.Count : 0))]);
+    }
+
     public Task<IReadOnlyList<DiscoveredPosting>> DiscoverAsync(string source, IReadOnlyList<string> hints, CancellationToken ct)
     {
         // Fonte sem permissão não é coletada (bloqueada, só com parceria, desligada em Fontes ou experimental com as experimentais desligadas).

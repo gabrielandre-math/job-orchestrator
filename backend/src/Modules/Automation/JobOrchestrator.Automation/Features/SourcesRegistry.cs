@@ -16,12 +16,6 @@ internal sealed record ExperimentalInput(bool On);
 /// </summary>
 internal sealed class SourcesRegistryEndpoints : ICarterModule
 {
-    private static readonly Lazy<JsonDocument> Catalog = new(() =>
-    {
-        using var stream = typeof(SourcesRegistryEndpoints).Assembly.GetManifestResourceStream("catalogo-fontes-v2.json")!;
-        return JsonDocument.Parse(stream);
-    });
-
     public static string? Gate(string source, IConfiguration config, TimeProvider time) =>
         SourceRegistry.Gate(source, config.GetSection("Sources:Disabled").Get<string[]>() ?? [], config.GetValue("Sources:Experimental", true), time.GetUtcNow().UtcDateTime);
 
@@ -40,7 +34,7 @@ internal sealed class SourcesRegistryEndpoints : ICarterModule
     }
 
     /// <summary>Os registros do catálogo V2 (id, nome, categoria, método, escopo, país, url, status de verificação).</summary>
-    public static IEnumerable<JsonElement> CatalogRecords() => Catalog.Value.RootElement.GetProperty("sources").EnumerateArray();
+    public static IEnumerable<JsonElement> CatalogRecords() => SourceCatalog.Records;
 
     public void AddRoutes(IEndpointRouteBuilder app)
     {
@@ -59,7 +53,7 @@ internal sealed class SourcesRegistryEndpoints : ICarterModule
             }
             var records = CatalogRecords().ToList();
             var matched = SourceRegistry.All.SelectMany(p => p.CatalogIds).ToHashSet();
-            var root = Catalog.Value.RootElement;
+            var root = SourceCatalog.Root;
             var summary = new CatalogSummary(root.GetProperty("name").GetString() ?? "", root.GetProperty("compiled_on").GetString() ?? "", records.Count,
                 records.GroupBy(r => r.GetProperty("method").GetString() ?? "").ToDictionary(g => g.Key, g => g.Count()),
                 records.GroupBy(r => r.GetProperty("category").GetString() ?? "").ToDictionary(g => g.Key, g => g.Count()),

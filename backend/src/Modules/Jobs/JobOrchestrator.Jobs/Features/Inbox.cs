@@ -113,6 +113,30 @@ internal sealed class JobsApi(IReadDb<JobsDbContext> db) : IJobsApi
         "select id, title, company, location, description, source, seniority, modality, contract, english, salary_currency from jobs.postings where id = @jobId",
         new { jobId }, ct);
 
+    // Aberta e única: não duplicada e não encerrada (a vaga que some da fonte vira Expired, sem apagar o histórico).
+    private const string Open = "duplicate_of is null and status not in ('Expired', 'Duplicate')";
+
+    public Task<IReadOnlyList<LocationCount>> OpenLocationsAsync(CancellationToken ct) => db.ListAsync<LocationCount>(
+        $"""
+        select coalesce(location, '') as location, count(*)::int as open,
+               count(*) filter (where eligibility = 'BR_ELIGIBLE_CONFIRMED')::int as brazil_ok,
+               count(*) filter (where eligibility = 'BR_ELIGIBLE_POSSIBLE')::int as brazil_possible,
+               count(*) filter (where eligibility = 'BR_RESTRICTED')::int as restricted
+        from jobs.postings where {Open} group by coalesce(location, '')
+        """, null, ct);
+
+    public async Task<OpenSummary> OpenSummaryAsync(CancellationToken ct) => await db.FirstAsync<OpenSummary>(
+        $"""
+        select count(*)::int as open, count(distinct lower(company))::int as companies,
+               count(*) filter (where eligibility = 'BR_ELIGIBLE_CONFIRMED')::int as brazil_ok,
+               count(*) filter (where eligibility = 'BR_ELIGIBLE_POSSIBLE')::int as brazil_possible,
+               count(*) filter (where eligibility = 'BR_RESTRICTED')::int as restricted,
+               count(*) filter (where eligibility = 'REVIEW')::int as review,
+               count(*) filter (where eligibility is null or eligibility = 'UNKNOWN')::int as unknown,
+               count(*) filter (where source_updated_at is not null)::int as with_date
+        from jobs.postings where {Open}
+        """, null, ct) ?? new OpenSummary();
+
     public Task<IReadOnlyList<EmailTarget>> EmailTargetsAsync(CancellationToken ct) => db.ListAsync<EmailTarget>(
         """
         select id, company, title, location, apply_email, apply_url, company_domain, coalesce(score, 0) as score, first_seen_at

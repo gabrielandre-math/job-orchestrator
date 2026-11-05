@@ -75,8 +75,13 @@ public sealed record SubmitToken(Guid IntentId, Guid ApplicationId, string Paylo
 }
 
 /// <summary>Contrato público do módulo Automation.</summary>
+/// <summary>Uma plataforma do registro como está agora: estado, países, se há conector, se o portão está aberto e a última sondagem.</summary>
+public sealed record RegistryEntry(string Prefix, string Name, string Lifecycle, string[] Countries, bool Connector, bool GateOpen, bool? ProbeOk, int ProbeCount);
+
 public interface IAutomationApi
 {
+    /// <summary>O registro de fontes ao vivo, para a cobertura por país.</summary>
+    Task<IReadOnlyList<RegistryEntry>> RegistryAsync(CancellationToken ct);
     Task<IReadOnlyList<DiscoveredPosting>> DiscoverAsync(string source, CancellationToken ct);
     /// <summary>Mesma descoberta com as palavras da campanha: fonte que só lê parte das descrições (Gupy) lê primeiro as da sua área.</summary>
     Task<IReadOnlyList<DiscoveredPosting>> DiscoverAsync(string source, IReadOnlyList<string> hints, CancellationToken ct);

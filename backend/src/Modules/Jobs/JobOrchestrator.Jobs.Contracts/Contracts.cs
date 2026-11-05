@@ -51,6 +51,29 @@ public sealed record EmailTarget
     public DateTime FirstSeenAt { get; init; }
 }
 
+/// <summary>Quantas vagas abertas e únicas têm este texto de local, e quantas aceitam quem mora no Brasil (confirmado, possível, restrita).</summary>
+public sealed record LocationCount
+{
+    public string Location { get; init; } = "";
+    public int Open { get; init; }
+    public int BrazilOk { get; init; }
+    public int BrazilPossible { get; init; }
+    public int Restricted { get; init; }
+}
+
+/// <summary>Os números das vagas abertas, separados como a especificação V2 pede: únicas, empresas, e elegibilidade de quem mora no Brasil.</summary>
+public sealed record OpenSummary
+{
+    public int Open { get; init; }
+    public int Companies { get; init; }
+    public int BrazilOk { get; init; }
+    public int BrazilPossible { get; init; }
+    public int Restricted { get; init; }
+    public int Review { get; init; }
+    public int Unknown { get; init; }
+    public int WithDate { get; init; }
+}
+
 /// <summary>Contrato público do módulo Jobs.</summary>
 public interface IJobsApi
 {
@@ -58,6 +81,9 @@ public interface IJobsApi
     Task<IReadOnlyList<SourceCount>> SourcesAsync(CancellationToken ct);
     Task<JobText?> TextAsync(Guid jobId, CancellationToken ct);
     Task<IReadOnlyList<EmailTarget>> EmailTargetsAsync(CancellationToken ct);
+    /// <summary>Vagas abertas e únicas agrupadas pelo texto do local, com a elegibilidade de quem mora no Brasil.</summary>
+    Task<IReadOnlyList<LocationCount>> OpenLocationsAsync(CancellationToken ct);
+    Task<OpenSummary> OpenSummaryAsync(CancellationToken ct);
     /// <summary>Links de candidatura e domínios de empresa das vagas recentes: onde o Explorador garimpa quadros de ATS e sites de carreira.</summary>
     Task<IReadOnlyList<string>> ApplyLinksAsync(int limit, CancellationToken ct);
     Task<IReadOnlyList<string>> CompanyDomainsAsync(int limit, CancellationToken ct);
