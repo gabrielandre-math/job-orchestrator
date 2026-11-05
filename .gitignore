@@ -1,0 +1,11 @@
+# clones de terceiros (auditoria, nunca versionar)
+references/
+
+# segredos e dados do usuário
+.env
+.env.*
+!.env.example
+*.local.json
+user-data/
+data/
+*.log
