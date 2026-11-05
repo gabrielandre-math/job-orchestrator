@@ -73,6 +73,37 @@ Para que isso custe poucos minutos:
 - **Sessão assistida da manhã.** As candidaturas paradas em CAPTCHA ou login abrem uma por vez num navegador dedicado, já preenchidas até o ponto do bloqueio. Você resolve, clica em Enviar, o sistema detecta a confirmação e passa para a próxima.
 - **Copiloto para LinkedIn, Gupy e sites com login.** Os termos proíbem automação ou exigem conta nesses sites. Um painel lateral mostra o kit pronto (PDF, respostas com botão de copiar, carta). Você aplica no seu navegador, e o e-mail de confirmação move o card sozinho.
 
+### 3.1 Zero fricção
+
+O caminho de uso:
+1. Você joga o CV (ou o export do LinkedIn) no painel.
+2. O sistema extrai tudo: experiências, datas, stack, formação, idiomas e conquistas. Cada fato guarda o trecho do CV de onde saiu, e o que está escrito no documento já conta como verificado.
+3. Uma tela única, uma vez só, pergunta o que o CV não diz e só você pode afirmar:
+   - autorização de trabalho por país;
+   - pisos por moeda e vínculo (CLT, PJ, USD);
+   - modalidade e cidades;
+   - disponibilidade para começar;
+   - nível de inglês, se o CV não disser;
+   - resposta padrão para autoidentificação voluntária;
+   - autorização de envio (ATS, limite diário, validade).
+4. Você conecta o Gmail com um clique (OAuth).
+5. A partir daí roda sozinho:
+   - toda noite busca, avalia, gera CV e respostas, preenche e envia o que estiver dentro da autorização;
+   - de dia o e-mail atualiza o funil.
+
+O que ainda chega até você, e só isso:
+- CAPTCHA e login, em lote, na sessão assistida;
+- pergunta sensível nova (uma vez por tipo, depois a resposta entra no banco);
+- envio incerto que a reconciliação não fechou;
+- entrevistas.
+
+Para reduzir o que sobra:
+- o roteador prioriza fluxos de candidatura sem CAPTCHA, e o painel mostra a taxa de bloqueio por ATS;
+- o banco de respostas já nasce com as perguntas de triagem mais comuns respondidas a partir dos fatos: anos com cada tecnologia, autorização, sponsor, pretensão, aviso prévio, mudança, inglês;
+- a sessão assistida pode ser feita pelo celular, via Tailscale (opcional, desligado por padrão).
+
+CAPTCHA nunca é resolvido por máquina nem por serviço externo.
+
 ## 4. Os agentes
 
 Cada agente é um papel dentro do motor de fluxo, com entradas mínimas, saída validada por schema e sem poder sobre políticas.
@@ -277,11 +308,11 @@ Host, cinco repos, fontes, provedores. Resultado: núcleo próprio, os cinco com
 ### Fase 3: perfil verdadeiro, inteligência e currículos
 
 **Entregas:**
-1. **Onboarding:**
-   - importa CV (PDF, DOCX) ou export do LinkedIn e gera fatos candidatos;
-   - você confirma cada fato, que vira `VerifiedFact` com evidência;
-   - autorização de trabalho, preferências e pisos por moeda e vínculo, respostas padrão;
-   - nenhum consentimento ligado.
+1. **Onboarding de zero fricção (§3.1):**
+   - você joga o CV (PDF, DOCX) ou o export do LinkedIn;
+   - o que está escrito no documento vira `VerifiedFact` com evidência (página e trecho);
+   - só inferências e o que o CV não diz vão para a tela única de confirmação;
+   - o banco de respostas já sai preenchido a partir dos fatos e das confirmações.
 2. **Ollama:**
    - instalação com seu ok;
    - `jo llm bench` com os candidatos (JSON válido, acerto em 50 fixtures, latência, VRAM) e escolha dos padrões.
@@ -304,7 +335,7 @@ Host, cinco repos, fontes, provedores. Resultado: núcleo próprio, os cinco com
 - Claude indisponível cai para o Codex; os dois indisponíveis geram rascunho marcado ou pausa.
 - Nenhuma chamada paga.
 
-**Precisa de você:** ok para instalar o Ollama (sudo) e baixar os modelos; seu CV ou export do LinkedIn; confirmar os fatos.
+**Precisa de você:** ok para instalar o Ollama (sudo) e baixar os modelos; seu CV ou export do LinkedIn; a tela única de confirmação (uma vez).
 
 ### Fase 4: acompanhamento (CRM)
 
