@@ -8,17 +8,17 @@
   @if (list.problem(); as p) { <p class="problem">{{ p.detail }}</p> }
   @if (test.problem(); as p) { <p class="problem">{{ p.detail }}</p> }
 
-  <div class="grid">
+  <div class="cards">
     @for (p of list.value() ?? []; track p.id) {
       <article class="panel card" [class.dim]="!p.available">
         <header>
-          <span class="mark">
-            @if (logos[p.id]) { <span class="logo" [style.--logo]="'url(/logos/' + logos[p.id] + '.svg)'"></span> }
-            @else { <jo-icon name="chat-circle-text" [size]="22" /> }
-          </span>
+          @if (logos[p.id]; as l) {
+            @if (l.mono) { <span class="logo mono" [style.--logo]="'url(/logos/' + l.file + '.svg)'" role="img" [attr.aria-label]="p.name"></span> }
+            @else { <img class="logo" [src]="'/logos/' + l.file + '.svg'" [alt]="p.name" width="28" height="28" /> }
+          }
           <div class="title">
             <h2>{{ p.name }}</h2>
-            <p class="mono faint">{{ p.order === 0 ? 'local, tarefas leves' : p.order + 'º na ordem de gasto' }}</p>
+            <p class="mono faint">{{ p.order === 0 ? 'local, na RTX' : p.order + 'º na ordem de gasto' }}</p>
           </div>
           <jo-badge [label]="statusLabel(p.status)" [tone]="statusTone(p.status)" />
         </header>
@@ -54,4 +54,85 @@
       </article>
     }
   </div>
+
+  <article class="panel">
+    <header>
+      <h2>Modelos locais</h2>
+      <span class="faint">{{ benchAt() ? 'jo llm bench de ' + date(benchAt()!) + ' às ' + time(benchAt()!) + ', 50 casos' : 'rode jo llm bench para medir' }}</span>
+    </header>
+    <div class="scroll">
+      <table class="grid">
+        <thead>
+          <tr><th>Modelo</th><th>Vaga</th><th class="r">Tamanho</th><th class="r">Acerto</th><th class="r">Ler vaga</th><th class="r">E-mail</th><th class="r">Perguntas</th><th class="r">p50</th><th class="r">Na GPU</th><th>Agora</th></tr>
+        </thead>
+        <tbody>
+          @for (m of localRows(); track m.name) {
+            <tr [class.off]="!m.slot">
+              <td class="mono">{{ m.name }}</td>
+              <td>{{ m.slot ?? 'fora' }}</td>
+              <td class="r num">{{ m.sizeGb.toFixed(1) }} GB</td>
+              @if (m.bench; as b) {
+                <td class="r num strong">{{ pct(b.overall) }}</td>
+                <td class="r num">{{ pct(b.jobExtract) }}</td>
+                <td class="r num">{{ pct(b.emailClassify) }}</td>
+                <td class="r num">{{ pct(b.questionMap) }}</td>
+                <td class="r num">{{ b.p50.toFixed(1) }} s</td>
+                <td class="r num">{{ b.gpuPercent === null ? '?' : b.gpuPercent + '%' }}</td>
+              } @else {
+                <td class="r faint" colspan="6">sem medição</td>
+              }
+              <td>{{ m.loaded ? 'na VRAM' + (m.gpuPercent !== null ? ', ' + m.gpuPercent + '% na GPU' : '') : 'ocioso' }}</td>
+            </tr>
+          } @empty {
+            <tr><td colspan="10" class="faint">Ollama fora do ar ou sem modelos baixados.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </article>
+
+  <article class="panel">
+    <header><h2>Tarefas nas últimas 24 h</h2><span class="faint">teto vale só para a nuvem; local não conta</span></header>
+    <div class="scroll">
+      <table class="grid">
+        <thead><tr><th>Tarefa</th><th>Degrau</th><th>Privacidade</th><th class="r">Nuvem</th><th class="r">Local</th><th class="r">Cache</th><th class="r">Falhas</th></tr></thead>
+        <tbody>
+          @for (u of usage.value() ?? []; track u.task) {
+            <tr>
+              <td>{{ task(u.task) }} <span class="mono faint">{{ u.task }}</span></td>
+              <td>{{ rung(u.rung) }}</td>
+              <td class="faint">{{ u.privacy }}</td>
+              <td class="r num">{{ u.budget === 0 ? 'nunca' : u.cloud + ' de ' + u.budget }}</td>
+              <td class="r num">{{ u.local }}</td>
+              <td class="r num">{{ u.cached }}</td>
+              <td class="r num" [class.bad]="u.failed > 0">{{ u.failed }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </article>
+
+  <article class="panel">
+    <header><h2>Últimas chamadas</h2><span class="faint">cada chamada fica registrada</span></header>
+    <div class="scroll">
+      <table class="grid">
+        <thead><tr><th>Hora</th><th>Tarefa</th><th>Quem respondeu</th><th>Esforço</th><th class="r">Tempo</th><th>Resultado</th></tr></thead>
+        <tbody>
+          @for (c of calls.value() ?? []; track $index) {
+            <tr>
+              <td class="num">{{ date(c.at) }} {{ time(c.at) }}</td>
+              <td>{{ task(c.task) }}</td>
+              <td class="mono">{{ c.providerId }} · {{ c.model }}</td>
+              <td>{{ c.effort }}</td>
+              <td class="r num">{{ c.seconds.toFixed(1) }} s</td>
+              <td [class.bad]="!c.ok">{{ c.ok ? (c.cached ? 'do cache' : c.degraded ? 'rascunho local' : 'ok') : (c.error ?? 'falhou') }}</td>
+            </tr>
+          } @empty {
+            <tr><td colspan="6" class="faint">Nenhuma chamada ainda.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </article>
 </section>

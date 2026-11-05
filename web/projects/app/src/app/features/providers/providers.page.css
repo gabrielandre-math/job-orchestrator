@@ -1,9 +1,10 @@
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 16px; }
+.page { display: grid; gap: 16px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(380px, 100%), 1fr)); gap: 16px; }
 .card { display: flex; flex-direction: column; }
 .card.dim { opacity: 0.85; }
 .card header { display: flex; align-items: center; gap: 12px; }
-.mark { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: var(--surface-3); border: 1px solid var(--line-strong); color: var(--text-2); }
-.logo { width: 24px; height: 24px; background: var(--text); mask: var(--logo) center / contain no-repeat; -webkit-mask: var(--logo) center / contain no-repeat; }
+.logo { flex: none; display: block; width: 28px; height: 28px; }
+.logo.mono { background: var(--text); mask: var(--logo) center / contain no-repeat; -webkit-mask: var(--logo) center / contain no-repeat; }
 .title { flex: 1; min-width: 0; }
 .title p { margin: 2px 0 0; font-size: 12px; }
 .facts { display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: 6px 12px; margin: 0; padding: 14px 16px 4px; font-size: 12.5px; }
@@ -21,3 +22,9 @@
 .card footer { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-top: 1px solid var(--line); font-size: 12.5px; }
 .last { display: inline-flex; align-items: center; gap: 6px; color: var(--ok); }
 .last.bad { color: var(--warn); }
+.scroll { overflow-x: auto; }
+table.grid td, table.grid th { white-space: nowrap; }
+table.grid .r { text-align: right; }
+table.grid .strong { font-weight: 650; color: var(--text); }
+table.grid tr.off td { color: var(--text-3); }
+.bad { color: var(--warn); }

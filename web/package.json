@@ -26,6 +26,7 @@
     "@angular/build": "^22.2.6",
     "@angular/cli": "^22.2.6",
     "@angular/compiler-cli": "^22.2.0",
+    "@lobehub/icons-static-svg": "^1.102.0",
     "@phosphor-icons/core": "^2.1.1",
     "prettier": "^3.8.1",
     "simple-icons": "^16.36.0",

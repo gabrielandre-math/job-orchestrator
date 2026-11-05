@@ -16,10 +16,13 @@ for (const name of phosphor) {
   if (existsSync(from)) copyFileSync(from, `projects/app/public/icons/${name}.svg`); else missing.push(name);
 }
 
-const brands = { greenhouse: 'siGreenhouse', github: 'siGithub', hackernews: 'siYcombinator', postgresql: 'siPostgresql', claude: 'siClaude', ollama: 'siOllama', gmail: 'siGmail', dotnet: 'siDotnet', chrome: 'siGooglechrome' };
+const brands = { greenhouse: 'siGreenhouse', github: 'siGithub', hackernews: 'siYcombinator', postgresql: 'siPostgresql', gmail: 'siGmail', dotnet: 'siDotnet', chrome: 'siGooglechrome' };
 for (const [file, key] of Object.entries(brands)) {
   const icon = si[key];
   writeFileSync(`projects/app/public/logos/${file}.svg`, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img"><title>${icon.title}</title><path fill="#${icon.hex}" d="${icon.path}"/></svg>\n`);
 }
-writeFileSync('projects/app/public/icons/NOTICE.txt', 'Ícones: Phosphor Icons (MIT, phosphoricons.com). Logos: Simple Icons (CC0, simpleicons.org); as marcas pertencem aos donos e aparecem só para identificar o serviço. Marca do Job Orchestrator: forma 57 do shapes.gallery, de Monika Michalczyk, oferecida livre para projetos.\n');
-console.log(`ícones: ${phosphor.length - missing.length}, logos: ${Object.keys(brands).length}${missing.length ? `, faltando: ${missing.join(', ')}` : ''}`);
+// Marcas de IA oficiais (lobehub/icons, MIT): Claude na cor da marca; OpenAI e Ollama são monocromáticas por regra das marcas.
+const official = { claude: 'claude-color', openai: 'openai', ollama: 'ollama' };
+for (const [file, from] of Object.entries(official)) copyFileSync(`node_modules/@lobehub/icons-static-svg/icons/${from}.svg`, `projects/app/public/logos/${file}.svg`);
+writeFileSync('projects/app/public/icons/NOTICE.txt', 'Ícones: Phosphor Icons (MIT, phosphoricons.com). Logos: Simple Icons (CC0, simpleicons.org) e lobehub/icons (MIT) para Claude, OpenAI e Ollama; as marcas pertencem aos donos e aparecem só para identificar o serviço. Marca do Job Orchestrator: forma 57 do shapes.gallery, de Monika Michalczyk, oferecida livre para projetos.\n');
+console.log(`ícones: ${phosphor.length - missing.length}, logos: ${Object.keys(brands).length + Object.keys(official).length}${missing.length ? `, faltando: ${missing.join(', ')}` : ''}`);
