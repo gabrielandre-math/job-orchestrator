@@ -119,6 +119,7 @@ app.MapGet("/api/receipts", (int job, string email) =>
     store.Find(job, email.Trim().ToLowerInvariant()) is { } r ? Results.Ok(new { receiptId = r.ReceiptId, at = r.At }) : Results.NotFound());
 app.MapGet("/api/submissions", () => Results.Ok(store.All()));
 app.MapPost("/api/reset", () => { store.Reset(); return Results.NoContent(); });
+if (Environment.GetEnvironmentVariable("FAKEATS_CAPTCHA_LAB") == "1") new CaptchaLab().Map(app);
 app.Run();
 
 internal sealed record Job(int Id, string Title, string Company, string Location, string Scenario, string Description);

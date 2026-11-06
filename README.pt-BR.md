@@ -73,7 +73,7 @@ O Job Orchestrator se candidata em seu nome. Leia o que ele prepara antes de dei
 ## Dentro das regras
 
 - O LinkedIn nunca é automatizado, porque os termos dele proíbem. Importe a exportação de dados do LinkedIn para preencher o perfil e salve vagas do LinkedIn pelo link para acompanhar as candidaturas que você mesmo fizer.
-- Nada de resolvedor de CAPTCHA nem de truque para esconder o robô. Quando um site bloqueia acesso automático, a fonte fica de fora.
+- CAPTCHAs de sites externos ficam com você. Quando um site bloqueia acesso automático, a fonte fica de fora.
 - O coletor segue o robots.txt, espera entre as requisições e abre uma conexão por site.
 - Fontes cujos termos não permitem esse uso ficam no registro como bloqueadas (LinkedIn Jobs, France Travail) ou apenas com parceria (a API de empregador da Gupy e o MyCareersFuture de Singapura), com o motivo à vista.
 
@@ -254,6 +254,10 @@ docker compose -f infra/compose.test.yaml up -d --wait
 dotnet test backend/tests/JobOrchestrator.Tests --filter "Category!=E2E"
 scripts/package.sh all            # os pacotes das seis plataformas, em dist/
 ```
+
+### Laboratórios locais de CAPTCHA e vagas
+
+O ATS falso oferece desafios de imagem e aritmética e uma lista paginada de vagas. O roteador de vagas lê JSON-LD e cartões HTML, remove duplicatas e também aceita arquivos HTML locais. Veja o [guia do laboratório e os comandos de teste](docs/labs.md).
 
 ## Licença
 

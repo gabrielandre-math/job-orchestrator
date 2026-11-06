@@ -73,7 +73,7 @@ Job Orchestrator applies to jobs in your name. Read what it prepares before you 
 ## Plays by the rules
 
 - LinkedIn is never automated, because its terms forbid it. Import your LinkedIn data export to fill in your profile, and save LinkedIn jobs by link to keep track of the ones you apply to yourself.
-- There are no CAPTCHA solvers and no stealth tricks. When a site blocks automated access, that source is skipped.
+- CAPTCHAs on external sites are left to the user. When a site blocks automated access, that source is skipped.
 - The scraper follows robots.txt, waits between requests and opens one connection per site.
 - Sources whose terms do not allow this kind of use stay in the registry as blocked (LinkedIn Jobs, France Travail) or partner-only (the Gupy employer API and Singapore's MyCareersFuture), so you can see why they are off.
 
@@ -254,6 +254,10 @@ docker compose -f infra/compose.test.yaml up -d --wait
 dotnet test backend/tests/JobOrchestrator.Tests --filter "Category!=E2E"
 scripts/package.sh all            # the six platform builds, in dist/
 ```
+
+### Local CAPTCHA and jobs labs
+
+The Fake ATS includes image and arithmetic CAPTCHA challenges and a paginated job feed. The job router reads JSON-LD and HTML cards, deduplicates listings and can also process local HTML files. See the [lab guide and test commands](docs/labs.md).
 
 ## License
 
