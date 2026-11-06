@@ -16,6 +16,7 @@ import { ago, jobLabel, jobTone } from '../../core/format';
 import { AGENT_ICON, Live } from '../../core/live';
 import { query } from '../../core/query';
 import { Help } from '../../shared/help';
+import { Tip } from '@jo/ui/tip';
 import { PLATFORMS } from '../../core/sources';
 
 const FILTERS_OPEN = 'jo.vagas.filtros';
@@ -48,7 +49,7 @@ type Sort = 'score' | 'new' | 'company';
  */
 @Component({
   selector: 'app-jobs',
-  imports: [Area, Badge, Columns, Company, Count, Empty, HBars, Icon, Iso, PageHero, RouterLink, Score, Tech, Help],
+  imports: [Area, Badge, Columns, Company, Count, Empty, HBars, Icon, Iso, PageHero, RouterLink, Score, Tech, Help, Tip],
   templateUrl: './jobs.page.html',
   styleUrl: './jobs.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -270,19 +271,19 @@ export class JobsPage {
   protected readonly sources = computed<ChartRow[]>(() => {
     const all = this.stats.value()?.bySource ?? [];
     const rows: ChartRow[] = all.slice(0, 7).map((s) => ({
-      label: s.key === 'hn' ? 'Hacker News' : s.key.charAt(0).toUpperCase() + s.key.slice(1), value: s.value,
+      label: s.key === 'hn' ? 'Hacker News' : s.key.charAt(0).toUpperCase() + s.key.slice(1), value: s.value, hint: `${s.key === 'hn' ? 'Hacker News' : s.key.charAt(0).toUpperCase() + s.key.slice(1)}\n${vagas(s.value)} desta fonte`,
       logo: SOURCE_LOGO[s.key] ? `/logos/${SOURCE_LOGO[s.key].file}.svg` : null, mono: SOURCE_LOGO[s.key]?.mono,
     }));
     const rest = all.slice(7);
-    if (rest.length > 0) rows.push({ label: `Outras ${rest.length}`, value: rest.reduce((n, s) => n + s.value, 0), tone: 'muted' });
+    if (rest.length > 0) rows.push({ label: `Outras ${rest.length}`, value: rest.reduce((n, s) => n + s.value, 0), tone: 'muted', hint: `${rest.length} fontes menores\n${vagas(rest.reduce((n, s) => n + s.value, 0))} somadas: ${rest.slice(0, 6).map((s) => s.key).join(', ')}${rest.length > 6 ? '…' : ''}` });
     return rows;
   });
   protected readonly scores = computed<ChartRow[]>(() => {
     const by = new Map((this.stats.value()?.scores ?? []).map((s) => [Number(s.key), s.value]));
-    return Array.from({ length: 10 }, (_, i) => ({ label: String(i * 10), value: by.get(i * 10) ?? 0, tone: i >= 8 ? 'accent' as const : undefined, hint: `nota de ${i * 10} a ${i * 10 + 9}` }));
+    return Array.from({ length: 10 }, (_, i) => ({ label: String(i * 10), value: by.get(i * 10) ?? 0, tone: i >= 8 ? 'accent' as const : undefined, hint: `Nota de ${i * 10} a ${i * 10 + 9}\n${vagas(by.get(i * 10) ?? 0)}${i * 10 >= (this.campaigns.value()?.[0]?.minFitScore ?? 101) ? ', acima do corte' : ''}` }));
   });
   protected readonly days = computed<ChartRow[]>(() => (this.stats.value()?.perDay ?? []).map((d, i, all) => ({
-    label: i === all.length - 1 ? 'hoje' : d.day.split('-').reverse().slice(0, 2).join('/'), value: d.value, hint: `${d.day.split('-').reverse().join('/')}: ${d.value} vagas`,
+    label: i === all.length - 1 ? 'hoje' : d.day.split('-').reverse().slice(0, 2).join('/'), value: d.value, hint: `${d.day.split('-').reverse().join('/')}\n${vagas(d.value)} novas`,
   })));
   protected readonly stack = computed(() => {
     const top = this.stats.value()?.topStack ?? [];
@@ -361,3 +362,6 @@ function stored(key: string) {
 }
 
 function fold(s: string) { return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9#+]/g, ''); }
+
+/** "1 vaga", "1.067 vagas": o número das dicas dos gráficos. */
+function vagas(n: number) { return `${n.toLocaleString('pt-BR')} ${n === 1 ? 'vaga' : 'vagas'}`; }

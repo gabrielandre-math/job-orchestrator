@@ -129,3 +129,11 @@ main > * > .page > * { animation: page-in 260ms cubic-bezier(0.2, 0.8, 0.2, 1) b
 .seg { display: inline-flex; padding: 2px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); }
 .seg button { height: 26px; padding: 0 10px; border: 0; border-radius: 4px; background: transparent; color: var(--text-3); font: 500 12px var(--font-ui); cursor: pointer; }
 .seg button[aria-checked="true"] { background: var(--surface-3); color: var(--text); }
+
+/* Dica dos gráficos e etiquetas (diretiva joTip): caixa do tema, aparece na hora, primeira linha em destaque. */
+.jo-tip { position: fixed; top: 0; left: 0; z-index: 1000; display: grid; gap: 2px; max-width: 300px; padding: 8px 11px; border-radius: 6px; pointer-events: none;
+  border: 1px solid var(--line-strong); background: var(--surface); color: var(--text-2); font: 400 12px/1.45 var(--font-ui);
+  box-shadow: 0 14px 34px -12px oklch(0% 0 0 / 0.6); opacity: 0; transition: opacity 110ms ease; }
+.jo-tip.on { opacity: 1; }
+.jo-tip strong { color: var(--text); font-weight: 600; font-size: 12.5px; }
+.jo-tip span { font-variant-numeric: tabular-nums; }

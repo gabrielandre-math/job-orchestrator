@@ -108,5 +108,5 @@
   border: 1px solid color-mix(in oklch, var(--warn) 45%, var(--line)); background: color-mix(in oklch, var(--warn) 6%, var(--surface-2)); }
 .stale jo-icon { color: var(--warn); margin-top: 1px; flex: none; }
 .old { padding: 1px 6px; border-radius: 3px; font-size: 11px; color: var(--warn); background: color-mix(in oklch, var(--warn) 12%, transparent); }
-/* Logo do LinkedIn no botão: num quadrado claro, para ler bem também sobre o rosa do botão principal. */
-.li-logo { width: 15px; height: 15px; padding: 1px; border-radius: 3px; background: #fff; flex: none; }
+/* O "in" oficial do LinkedIn, do tamanho do ícone, sem moldura. */
+.li-logo { width: 16px; height: 16px; flex: none; display: block; }

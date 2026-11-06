@@ -1,14 +1,16 @@
+import { Tip } from './tip';
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
 export interface ChartRow { label: string; value: number; logo?: string | null; mono?: boolean; tone?: 'accent' | 'ok' | 'warn' | 'muted'; hint?: string }
 
 /** Barras horizontais: rótulo (com logo, se houver), trilho com a barra crescendo e o valor. A maior barra ocupa o trilho todo. */
 @Component({
+  imports: [Tip],
   selector: 'jo-hbars',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @for (r of rows(); track r.label; let i = $index) {
-      <div class="row" [attr.title]="r.hint ?? (r.label + ': ' + r.value)">
+      <div class="row" [joTip]="r.hint ?? (r.label + ': ' + r.value)">
         <span class="k">
           @if (r.logo) {
             @if (r.mono) { <span class="logo mono" [style.--logo]="'url(' + r.logo + ')'"></span> } @else { <img class="logo" [src]="r.logo" alt="" /> }
@@ -45,13 +47,14 @@ export class HBars {
 
 /** Colunas (histograma): barras finas, linha de corte opcional (índice da coluna onde o corte começa) e rótulos embaixo. */
 @Component({
+  imports: [Tip],
   selector: 'jo-columns',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="plot" [class.has-cut]="cutAt() !== null" [style.--n]="data().length">
       @if (cutAt() !== null) { <span class="cut" [style.left.%]="(cutAt()! / data().length) * 100"><span class="cut-label">{{ cutLabel() }}</span></span> }
       @for (c of cols(); track c.label; let i = $index) {
-        <div class="col" [attr.title]="c.hint ?? (c.label + ': ' + c.value)">
+        <div class="col" [joTip]="c.hint ?? (c.label + ': ' + c.value)">
           <span class="v num">{{ c.value || '' }}</span>
           <span class="bar" [class]="'bar ' + (c.tone ?? '')" [style.height.%]="c.pct" ></span>
         </div>
@@ -86,6 +89,7 @@ export class Columns {
 
 /** Série no tempo: linha suave, área em degradê, pontos e o último ponto em destaque. A linha se desenha ao aparecer. */
 @Component({
+  imports: [Tip],
   selector: 'jo-area',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -102,7 +106,7 @@ export class Columns {
     </svg>
     <div class="dots">
       @for (p of shape().points; track $index; let last = $last) {
-        <span class="dot" [class.last]="last" [style.left.%]="p.x / 3" [style.top.%]="(p.y / 110) * 100" [attr.title]="p.hint"></span>
+        <span class="dot" [class.last]="last" [style.left.%]="p.x / 3" [style.top.%]="(p.y / 110) * 100" [joTip]="p.hint"></span>
       }
     </div>
     <div class="axis"><span>{{ data()[0]?.label }}</span><span>{{ data().at(-1)?.label }}</span></div>`,
