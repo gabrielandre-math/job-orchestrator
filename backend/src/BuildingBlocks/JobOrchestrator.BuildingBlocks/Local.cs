@@ -43,14 +43,15 @@ public static class AppPaths
 
 /// <summary>
 /// Pontos de queda para os testes de caos: com JO_CRASH_AT igual ao nome do ponto, o processo morre na hora,
-/// sem finally nem desligamento limpo, como num kill -9.
+/// sem finally nem desligamento limpo, com um kill -9 de verdade (SIGKILL). O FailFast de antes gerava SIGABRT, um core dump
+/// de 30 MB por queda e o aviso de crash do sistema.
 /// </summary>
 public static class Chaos
 {
     private static readonly string? Target = Environment.GetEnvironmentVariable("JO_CRASH_AT");
     public static void Point(string name)
     {
-        if (string.Equals(Target, name, StringComparison.Ordinal)) Environment.FailFast($"chaos: {name}");
+        if (string.Equals(Target, name, StringComparison.Ordinal)) System.Diagnostics.Process.GetCurrentProcess().Kill();
     }
 }
 
