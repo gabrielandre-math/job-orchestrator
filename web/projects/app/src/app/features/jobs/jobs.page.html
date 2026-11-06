@@ -7,11 +7,20 @@
   @if (all.problem(); as p) { <p class="problem">{{ p.detail }}</p> }
 
   @if (stats.value(); as st) {
+    <article class="panel funnel" aria-label="Funil das vagas">
+      <header><h2>Funil</h2><span class="faint small num"><jo-count [value]="st.total" /> no total</span></header>
+      <ol class="steps">
+        @for (s of funnelSteps(); track s.label) {
+          <li [class.accent]="s.accent">
+            <span class="v num"><jo-count [value]="s.value" /></span>
+            <span class="l">{{ s.label }}</span>
+            <span class="track"><span class="fill" [style.width.%]="s.pct"></span></span>
+            <span class="faint small">{{ s.rate === null ? 'tudo o que as fontes trouxeram' : s.rate + '% da etapa anterior' }}</span>
+          </li>
+        }
+      </ol>
+    </article>
     <div class="charts">
-      <article class="panel chart wide">
-        <header><h2>Funil</h2><span class="faint small num"><jo-count [value]="st.total" /> no total</span></header>
-        <jo-hbars class="body" [data]="funnel()" />
-      </article>
       <article class="panel chart">
         <header><h2>Por fonte</h2></header>
         <jo-hbars class="body" [data]="sources()" />
@@ -24,7 +33,7 @@
         <header><h2>Novas por dia</h2><span class="faint small">últimos 14 dias</span></header>
         <jo-area class="body" [data]="days()" />
       </article>
-      <article class="panel chart wide">
+      <article class="panel chart full">
         <header><h2>Ferramentas mais pedidas</h2>@if (profile.value()?.facts?.length) { <span class="faint small">verde: você tem</span> }</header>
         <ul class="stack">
           @for (t of stack(); track t.key) {

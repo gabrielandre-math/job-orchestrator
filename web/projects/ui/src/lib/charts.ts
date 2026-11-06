@@ -48,7 +48,7 @@ export class HBars {
   selector: 'jo-columns',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="plot" [style.--n]="data().length">
+    <div class="plot" [class.has-cut]="cutAt() !== null" [style.--n]="data().length">
       @if (cutAt() !== null) { <span class="cut" [style.left.%]="(cutAt()! / data().length) * 100"><span class="cut-label">{{ cutLabel() }}</span></span> }
       @for (c of cols(); track c.label; let i = $index) {
         <div class="col" [attr.title]="c.hint ?? (c.label + ': ' + c.value)">
@@ -70,7 +70,8 @@ export class HBars {
     .labels { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 6px; font: 500 10.5px var(--font-mono); color: var(--text-3); text-align: center; }
     .labels span { overflow: hidden; text-overflow: clip; white-space: nowrap; }
     .cut { position: absolute; top: 0; bottom: 0; border-left: 1px dashed color-mix(in oklch, var(--accent) 70%, transparent); z-index: 1; pointer-events: none; }
-    .cut-label { position: absolute; top: -2px; left: 4px; font: 500 10.5px var(--font-ui); color: var(--accent); white-space: nowrap; }
+    .cut-label { position: absolute; top: -17px; left: 4px; font: 500 10.5px var(--font-ui); color: var(--accent); white-space: nowrap; }
+    .plot.has-cut { margin-top: 16px; }
   `,
 })
 export class Columns {

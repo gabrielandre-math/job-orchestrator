@@ -131,3 +131,15 @@
 .gaps .k { margin: 0 0 6px; font-size: 12px; color: var(--text-3); }
 .gaps .k.ok { color: var(--ok); }
 .d-sec h3 .faint { text-transform: none; letter-spacing: 0; font-weight: 400; margin-left: 6px; }
+.funnel > header { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 14px 0; }
+.steps { list-style: none; margin: 0; padding: 10px 14px 14px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.steps li { display: grid; gap: 4px; align-content: start; }
+.steps .v { font-size: 22px; font-weight: 600; line-height: 1.1; }
+.steps .l { font-size: 12.5px; color: var(--text-2); }
+.steps li.accent .v { color: var(--accent); }
+.steps li.accent .fill { background: var(--accent); }
+@media (max-width: 760px) { .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+.charts { grid-auto-flow: row dense; }
+.chart.full { grid-column: 1 / -1; }
+.chart.full .stack { grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); }

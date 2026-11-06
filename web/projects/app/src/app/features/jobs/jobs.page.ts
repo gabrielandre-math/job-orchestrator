@@ -229,10 +229,26 @@ export class JobsPage {
       { label: 'Na fila', value: by('Shortlisted'), tone: 'accent' },
     ];
   });
-  protected readonly sources = computed<ChartRow[]>(() => (this.stats.value()?.bySource ?? []).map((s) => ({
-    label: s.key === 'hn' ? 'Hacker News' : s.key.charAt(0).toUpperCase() + s.key.slice(1), value: s.value,
-    logo: SOURCE_LOGO[s.key] ? `/logos/${SOURCE_LOGO[s.key].file}.svg` : null, mono: SOURCE_LOGO[s.key]?.mono,
-  })));
+  /** O funil numa faixa só: cada etapa com o número, a barra sobre o total e quanto passou da etapa anterior. */
+  protected readonly funnelSteps = computed(() => {
+    const rows = this.funnel();
+    const total = rows[0]?.value || 1;
+    return rows.map((r, i) => ({
+      label: r.label, value: r.value, accent: r.tone === 'accent', pct: Math.round((r.value / total) * 100),
+      rate: i === 0 ? null : rows[i - 1].value ? Math.round((r.value / rows[i - 1].value) * 100) : 0,
+    }));
+  });
+  /** Por fonte: as 7 maiores e o resto somado numa linha, para o gráfico não esticar a fileira. */
+  protected readonly sources = computed<ChartRow[]>(() => {
+    const all = this.stats.value()?.bySource ?? [];
+    const rows: ChartRow[] = all.slice(0, 7).map((s) => ({
+      label: s.key === 'hn' ? 'Hacker News' : s.key.charAt(0).toUpperCase() + s.key.slice(1), value: s.value,
+      logo: SOURCE_LOGO[s.key] ? `/logos/${SOURCE_LOGO[s.key].file}.svg` : null, mono: SOURCE_LOGO[s.key]?.mono,
+    }));
+    const rest = all.slice(7);
+    if (rest.length > 0) rows.push({ label: `Outras ${rest.length}`, value: rest.reduce((n, s) => n + s.value, 0), tone: 'muted' });
+    return rows;
+  });
   protected readonly scores = computed<ChartRow[]>(() => {
     const by = new Map((this.stats.value()?.scores ?? []).map((s) => [Number(s.key), s.value]));
     return Array.from({ length: 10 }, (_, i) => ({ label: String(i * 10), value: by.get(i * 10) ?? 0, tone: i >= 8 ? 'accent' as const : undefined, hint: `nota de ${i * 10} a ${i * 10 + 9}` }));
