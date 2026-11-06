@@ -22,6 +22,30 @@ internal static class OllamaHost
         ["OLLAMA_HOST"] = "127.0.0.1:11434", ["OLLAMA_KEEP_ALIVE"] = "5m", ["OLLAMA_MAX_LOADED_MODELS"] = "1", ["OLLAMA_NUM_PARALLEL"] = "1", ["OLLAMA_CONTEXT_LENGTH"] = "8192",
     };
 
+    /// <summary>Written once every file of the package is out. Without it, an install of ours stopped halfway.</summary>
+    public static string Marker => Path.Combine(Dir, ".job-orchestrator-complete");
+
+    /// <summary>True while LocalSetup downloads or extracts Ollama, so the keeper does not start a half-written binary.</summary>
+    public static volatile bool Busy;
+
+    /// <summary>
+    /// Our own macOS install without the marker: before 1.0.4 the macOS package was extracted with .NET's TarFile, which stops at the
+    /// first code-signature header and left the MLX runtime out ("this model requires MLX support"). Linux and Windows packages extract whole.
+    /// </summary>
+    public static bool Incomplete() => OperatingSystem.IsMacOS() && Binary() is { } b && b.StartsWith(Dir, StringComparison.Ordinal) && !File.Exists(Marker);
+
+    /// <summary>Stops the "ollama serve" this app runs from its own folder, before replacing its files.</summary>
+    public static void StopOwn()
+    {
+        foreach (var p in System.Diagnostics.Process.GetProcessesByName("ollama"))
+            using (p)
+                try
+                {
+                    if (p.MainModule?.FileName is { } f && f.StartsWith(Dir, StringComparison.Ordinal)) { p.Kill(entireProcessTree: true); p.WaitForExit(5000); }
+                }
+                catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException) { }
+    }
+
     public static string? Binary()
     {
         var exe = OperatingSystem.IsWindows() ? "ollama.exe" : "ollama";
@@ -81,7 +105,7 @@ internal sealed class OllamaKeeper(IConfiguration config, ILogger<OllamaKeeper> 
         while (!stoppingToken.IsCancellationRequested)
         {
             var local = (config["Llm:Ollama:Url"] ?? "http://127.0.0.1:11434").Contains("127.0.0.1", StringComparison.Ordinal) || (config["Llm:Ollama:Url"] ?? "").Contains("localhost", StringComparison.Ordinal);
-            if (local && Consent.Accepted && config["Llm:Ollama:Models:Local"] is { Length: > 0 } && !await OllamaHost.UpAsync() && (OllamaHost.Binary() is not null || OllamaHost.MacApp() is not null))
+            if (local && Consent.Accepted && !OllamaHost.Busy && config["Llm:Ollama:Models:Local"] is { Length: > 0 } && !await OllamaHost.UpAsync() && (OllamaHost.Binary() is not null || OllamaHost.MacApp() is not null))
                 log.LogInformation("Ollama parado; ligando: {Started}", OllamaHost.Start());
             try { await Task.Delay(TimeSpan.FromMinutes(3), stoppingToken); } catch (OperationCanceledException) { return; }
         }

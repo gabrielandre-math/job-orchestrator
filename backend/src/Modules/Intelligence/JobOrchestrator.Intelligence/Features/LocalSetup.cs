@@ -205,34 +205,48 @@ internal sealed class LocalSetup(IHttpClientFactory http, IConfiguration config,
     private async Task EnsureOllamaAsync()
     {
         var hw = await HardwareAsync(CancellationToken.None);
-        if (hw.OllamaRunning) { Update("Ollama", "done", $"Já instalado e no ar (versão {hw.OllamaVersion}).", 100); return; }
+        var broken = OllamaHost.Incomplete();
+        if (hw.OllamaRunning && !broken) { Update("Ollama", "done", $"Já instalado e no ar (versão {hw.OllamaVersion}).", 100); return; }
         var client = http.CreateClient("api");
-        if (OllamaHost.Binary() is null && OllamaHost.MacApp() is null)
+        if ((OllamaHost.Binary() is null || broken) && OllamaHost.MacApp() is null)
         {
-            Update("Ollama", "running", "Procurando a última versão oficial.", 2);
-            using var req = new HttpRequestMessage(HttpMethod.Get, "https://api.github.com/repos/ollama/ollama/releases/latest");
-            req.Headers.UserAgent.ParseAdd("job-orchestrator");
-            using var release = JsonDocument.Parse(await (await client.SendAsync(req)).Content.ReadAsStringAsync());
-            var assets = release.RootElement.GetProperty("assets").EnumerateArray().Select(a => (Name: a.GetProperty("name").GetString()!, Url: a.GetProperty("browser_download_url").GetString()!)).ToList();
-            var wanted = OllamaHost.Assets(assets.Select(a => a.Name).ToList(), hw.Gpus.Any(g => g.Vendor == "amd"));
-            if (wanted.Count == 0) throw new InvalidOperationException($"O Ollama não publica pacote para {Platform.Os} {Platform.Arch}.");
-            var sums = assets.First(a => a.Name == "sha256sum.txt");
-            var checksums = (await client.GetStringAsync(sums.Url)).Split('\n', StringSplitOptions.RemoveEmptyEntries)
-                .Select(l => l.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries)).Where(p => p.Length == 2).ToDictionary(p => p[1].Trim().TrimStart('.', '/'), p => p[0]);
-            var downloads = AppPaths.In(AppPaths.Data, "downloads");
-            Directory.CreateDirectory(OllamaDir);
-            foreach (var name in wanted)
+            OllamaHost.Busy = true;
+            try
             {
-                var file = Path.Combine(downloads, name);
-                await DownloadAsync(client, assets.First(a => a.Name == name).Url, file, name);
-                Update("Ollama", "running", $"Conferindo o SHA-256 de {name}.", 80);
-                await using (var s = File.OpenRead(file))
-                    if (!checksums.TryGetValue(name, out var expected) || !string.Equals(Convert.ToHexStringLower(await SHA256.HashDataAsync(s)), expected, StringComparison.OrdinalIgnoreCase))
-                        throw new InvalidOperationException($"O SHA-256 de {name} não confere com o publicado. Nada foi instalado.");
-                Update("Ollama", "running", $"Extraindo {name}.", 88);
-                await ExtractAsync(file, OllamaDir);
-                File.Delete(file);
+                if (broken)
+                {
+                    Update("Ollama", "running", "A instalação anterior do Ollama ficou pela metade, sem o motor MLX. Instalando de novo.", 1);
+                    log.LogWarning("Ollama install in {Dir} has no completion marker; reinstalling", OllamaDir);
+                    OllamaHost.StopOwn();
+                    Directory.Delete(OllamaDir, recursive: true);
+                }
+                Update("Ollama", "running", "Procurando a última versão oficial.", 2);
+                using var req = new HttpRequestMessage(HttpMethod.Get, "https://api.github.com/repos/ollama/ollama/releases/latest");
+                req.Headers.UserAgent.ParseAdd("job-orchestrator");
+                using var release = JsonDocument.Parse(await (await client.SendAsync(req)).Content.ReadAsStringAsync());
+                var assets = release.RootElement.GetProperty("assets").EnumerateArray().Select(a => (Name: a.GetProperty("name").GetString()!, Url: a.GetProperty("browser_download_url").GetString()!)).ToList();
+                var wanted = OllamaHost.Assets(assets.Select(a => a.Name).ToList(), hw.Gpus.Any(g => g.Vendor == "amd"));
+                if (wanted.Count == 0) throw new InvalidOperationException($"O Ollama não publica pacote para {Platform.Os} {Platform.Arch}.");
+                var sums = assets.First(a => a.Name == "sha256sum.txt");
+                var checksums = (await client.GetStringAsync(sums.Url)).Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(l => l.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries)).Where(p => p.Length == 2).ToDictionary(p => p[1].Trim().TrimStart('.', '/'), p => p[0]);
+                var downloads = AppPaths.In(AppPaths.Data, "downloads");
+                Directory.CreateDirectory(OllamaDir);
+                foreach (var name in wanted)
+                {
+                    var file = Path.Combine(downloads, name);
+                    await DownloadAsync(client, assets.First(a => a.Name == name).Url, file, name);
+                    Update("Ollama", "running", $"Conferindo o SHA-256 de {name}.", 80);
+                    await using (var s = File.OpenRead(file))
+                        if (!checksums.TryGetValue(name, out var expected) || !string.Equals(Convert.ToHexStringLower(await SHA256.HashDataAsync(s)), expected, StringComparison.OrdinalIgnoreCase))
+                            throw new InvalidOperationException($"O SHA-256 de {name} não confere com o publicado. Nada foi instalado.");
+                    Update("Ollama", "running", $"Extraindo {name}.", 88);
+                    await ExtractAsync(file, OllamaDir);
+                    File.Delete(file);
+                }
+                await File.WriteAllTextAsync(OllamaHost.Marker, string.Join("\n", wanted) + "\n");
             }
+            finally { OllamaHost.Busy = false; }
         }
         if (OperatingSystem.IsLinux() && OllamaHost.Systemd && OllamaHost.Binary() is { } bin && bin.StartsWith(OllamaDir, StringComparison.Ordinal))
         {
@@ -269,11 +283,21 @@ internal sealed class LocalSetup(IHttpClientFactory http, IConfiguration config,
         Update("Ollama", "done", "Instalado na sua pasta, sem senha de administrador, e no ar.", 100);
     }
 
-    /// <summary>.tgz e .zip pelo próprio .NET (funciona igual nos três sistemas); .tar.zst pelo tar do sistema, que só o Linux publica.</summary>
+    /// <summary>
+    /// .zip by .NET (the Windows package); tar packages by the system tar on macOS and Linux. The macOS package carries code-signature
+    /// attributes in its tar headers, which .NET's TarFile rejects halfway ("The extended header contains invalid records"); .NET's
+    /// reader stays only as the fallback when there is no tar.
+    /// </summary>
     internal static async Task ExtractAsync(string file, string dir)
     {
         Directory.CreateDirectory(dir);
         if (file.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)) { ZipFile.ExtractToDirectory(file, dir, overwriteFiles: true); return; }
+        if (!OperatingSystem.IsWindows() && CliRunner.Find("tar") is { } system)
+        {
+            var run = await CliRunner.RunAsync(system, ["-C", dir, "-xf", file], null, TimeSpan.FromMinutes(10), null, CancellationToken.None);
+            if (run.Exit != 0) throw new InvalidOperationException($"Não foi possível extrair {Path.GetFileName(file)}: {run.Stderr.Trim()}");
+            return;
+        }
         if (file.EndsWith(".tgz", StringComparison.OrdinalIgnoreCase) || file.EndsWith(".tar.gz", StringComparison.OrdinalIgnoreCase))
         {
             await using var input = File.OpenRead(file);
