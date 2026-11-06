@@ -26,6 +26,14 @@ interface JobStats { byStatus: Tally[]; bySource: Tally[]; scores: Tally[]; byMo
 interface Resume { id: string; language: string; mode: string; writtenBy: string | null; reviewedBy: string | null; reviewed: boolean; pages: number; createdAt: string; fileName: string; threadId: string; profileVersion: number }
 interface Compose { ok: boolean; versionId: string | null; mode: string; reviewed: boolean; error: string | null; threadId: string | null }
 
+interface FitComparison {
+  jobId: string;
+  campaignScore: number;
+  evidenceScore: number;
+  model: string;
+  requirements: { requirement: string; match: 'direct' | 'adjacent' | 'gap'; evidence: { factId: string; statement: string }[] }[];
+}
+
 const SOURCE_LOGO: Record<string, { file: string; mono: boolean }> = {
   greenhouse: { file: 'greenhouse', mono: false }, github: { file: 'github', mono: true }, hn: { file: 'hackernews', mono: false },
 };
@@ -107,6 +115,13 @@ export class JobsPage {
   });
   protected readonly detail = query<JobDetail>(() => (this.open() ? `/jobs/${this.open()}` : null));
   protected readonly resumes = query<Resume[]>(() => (this.open() ? `/materials/resumes?applicationId=${this.open()}` : null), 0);
+  protected readonly fitComparison = signal<FitComparison | null>(null);
+  protected readonly comparing = command((id: string) => send<FitComparison>('POST', `/jobs/${id}/compare-fit`));
+  protected readonly fitLabels = { direct: 'Experiência direta', adjacent: 'Experiência adjacente', gap: 'Sem evidência no perfil' };
+  protected async compareFit(id: string) {
+    const result = await this.comparing.run(id);
+    if (result && this.open() === id) this.fitComparison.set(result);
+  }
   protected readonly composing = command((id: string) => send<Compose>('POST', `/materials/preview/${id}`), 'Currículo pronto. O PDF está na lista desta vaga.');
   protected readonly label = jobLabel;
   protected readonly tone = jobTone;

@@ -90,6 +90,8 @@ internal sealed class JobEndpoints : ICarterModule
         var group = app.MapGroup("/api/jobs").WithTags("Jobs");
         group.MapGet("", async (string? status, string? q, ISender sender, CancellationToken ct) => (await sender.Send(new ListJobsQuery(status, q), ct)).ToHttp(Results.Ok));
         group.MapGet("{id:guid}", async (Guid id, ISender sender, CancellationToken ct) => (await sender.Send(new GetJobQuery(id), ct)).ToHttp(Results.Ok));
+        group.MapPost("{id:guid}/compare-fit", async (Guid id, ISender sender, CancellationToken ct) =>
+            (await sender.Send(new CompareFitQuery(id), ct)).ToHttp(Results.Ok));
         group.MapGet("stats", async (ISender sender, CancellationToken ct) => (await sender.Send(new JobStatsQuery(), ct)).ToHttp(Results.Ok));
     }
 }

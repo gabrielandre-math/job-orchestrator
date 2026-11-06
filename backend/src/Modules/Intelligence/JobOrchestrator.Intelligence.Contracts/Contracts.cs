@@ -47,11 +47,12 @@ public sealed record LlmResult(bool Ok, string? Json, string ProviderId, string 
 }
 
 /// <summary>Uma tarefa do catálogo: degrau padrão, se aceita rascunho local com a nuvem fora e o teto de chamadas na nuvem por dia (0 = só local).</summary>
-public sealed record LlmTask(string Name, Rung Rung, bool LocalFallback, int DailyBudget, string Privacy);
+public sealed record LlmTask(string Name, Rung Rung, bool LocalFallback, int DailyBudget, string Privacy, bool LocalOnly = false);
 
 /// <summary>Catálogo de tarefas (docs/architecture.md §7). Degrau e teto mudam por Llm:Tasks:{nome}:Rung e Llm:Tasks:{nome}:Budget.</summary>
 public static class LlmTasks
 {
+    public static readonly LlmTask JobFit = new("job.fit", Rung.Local, false, 0, "fatos do perfil e vaga, no modelo local", LocalOnly: true);
     public static readonly LlmTask JobExtract = new("job.extract", Rung.Local, false, 0, "pública");
     public static readonly LlmTask QuestionMap = new("question.map", Rung.Local, false, 0, "perfil minimizado");
     public static readonly LlmTask EmailClassify = new("email.classify", Rung.Local, false, 0, "privada, nunca vai para a nuvem");
@@ -69,7 +70,7 @@ public static class LlmTasks
     public static readonly LlmTask PageNavigate = new("page.navigate", Rung.Local, false, 0, "rótulos de botões e links de página pública de carreira");
     public static readonly LlmTask ExploreHunt = new("explore.hunt", Rung.Local, false, 0, "palavras da campanha e do currículo, fica na máquina");
 
-    public static IReadOnlyList<LlmTask> All { get; } = [JobExtract, QuestionMap, EmailClassify, ProfileExtract, ResumeTailor, ResumeFactcheck, CoverWrite, QuestionDraft, InterviewPrep, PageJobs,
+    public static IReadOnlyList<LlmTask> All { get; } = [JobExtract, JobFit, QuestionMap, EmailClassify, ProfileExtract, ResumeTailor, ResumeFactcheck, CoverWrite, QuestionDraft, InterviewPrep, PageJobs,
         AssistantTriage, AssistantChat, AssistantSetup, ExploreJudge, ExploreHunt];
 
     public static LlmTask? Find(string name) => All.FirstOrDefault(t => t.Name == name);
