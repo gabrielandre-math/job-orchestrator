@@ -116,7 +116,7 @@ internal sealed class ResumeComposer(IProfileApi profiles, IJobsApi jobs, IIntel
             await automation.RenderPdfAsync(Template.Fill(html, profile.Identity), path, ct);
             check = await PdfCheck.RunAsync(path, profile.Identity, draft, s, s.Language, maxPages, ct);
             pages = check.Pages;
-            if (pages <= maxPages || trims >= 10 || !Trim(ref draft)) break;
+            if (pages <= maxPages || trims >= 10 || !Trim(ref draft, s)) break;
             trims++;
         }
         var sha = Convert.ToHexStringLower(SHA256.HashData(await File.ReadAllBytesAsync(path, ct)));
@@ -173,7 +173,7 @@ internal sealed class ResumeComposer(IProfileApi profiles, IJobsApi jobs, IIntel
             html = Template.Render(draft, s, lang, style);
             await automation.RenderPdfAsync(Template.Fill(html, profile.Identity), path, ct);
             check = await PdfCheck.RunAsync(path, profile.Identity, draft, s, lang, maxPages, ct);
-            if (check.Pages <= maxPages || trims >= 10 || !Trim(ref draft)) break;
+            if (check.Pages <= maxPages || trims >= 10 || !Trim(ref draft, s)) break;
             trims++;
         }
         if (check.Problems.Count > 0)
@@ -191,14 +191,33 @@ internal sealed class ResumeComposer(IProfileApi profiles, IJobsApi jobs, IIntel
         return new ComposeResult(true, version.Id, path, sha, lang, "base", false, null, false, thread.Id);
     }
 
-    /// <summary>Tira a última conquista da experiência com mais conquistas (mínimo de duas em cada).</summary>
-    private static bool Trim(ref Draft d)
+    /// <summary>Preserva a única evidência de um requisito e corta a conquista que menos acrescenta.</summary>
+    internal static bool Trim(ref Draft draft, Selection selection)
     {
-        var longest = d.Experiences.Select((e, i) => (e, i)).Where(x => x.e.Bullets.Length > 2).OrderByDescending(x => x.e.Bullets.Length).ThenByDescending(x => x.i).FirstOrDefault();
-        if (longest.e is null) return false;
-        var list = d.Experiences.ToArray();
-        list[longest.i] = longest.e with { Bullets = longest.e.Bullets[..^1] };
-        d = d with { Experiences = list };
+        var experiences = draft.Experiences;
+        var bullets = experiences.SelectMany((experience, i) => experience.Bullets.Select((claim, j) =>
+        {
+            var text = Claims.Fold(claim.Text);
+            var targets = selection.Matched.Where(term => Selector.Mentions(text, term)).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+            return new { Experience = i, Bullet = j, Targets = targets, Facts = claim.Facts.Distinct().ToArray() };
+        })).ToArray();
+        var targetUse = bullets.SelectMany(x => x.Targets).CountBy(x => x, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase);
+        var factUse = bullets.SelectMany(x => x.Facts).CountBy(x => x).ToDictionary();
+        var cut = bullets.Where(x => experiences[x.Experience].Bullets.Length > 2)
+            .OrderBy(x => x.Targets.Count(t => targetUse[t] == 1))
+            .ThenBy(x => x.Targets.Length)
+            .ThenBy(x => x.Facts.Count(f => factUse[f] == 1))
+            .ThenByDescending(x => experiences[x.Experience].Bullets.Length)
+            .ThenByDescending(x => x.Experience)
+            .ThenByDescending(x => x.Bullet)
+            .FirstOrDefault();
+        if (cut is null) return false;
+
+        var updated = experiences.ToArray();
+        var selected = updated[cut.Experience];
+        updated[cut.Experience] = selected with { Bullets = [.. selected.Bullets.Where((_, i) => i != cut.Bullet)] };
+        draft = draft with { Experiences = updated };
         return true;
     }
 
@@ -289,6 +308,9 @@ internal sealed record PdfCheck(int Pages, int Expected, int Found, List<string>
         Item("Título do PDF preenchido", title.Length > 0 && Flat(title).Contains(Flat(id.FullName), StringComparison.Ordinal), $"título: {title}");
         Item("Afirmações presentes no texto", found == claims.Count, $"{found} de {claims.Count}", critical: true);
         Item("Sem placeholder sobrando", !text.Contains("{{", StringComparison.Ordinal), "nenhum {{...}}", critical: true);
+        var layoutFindings = PdfLayout.Find(path, d.Experiences.Select(e => e.Title));
+        Item("Distribuição do texto nas páginas", layoutFindings.Count == 0,
+            layoutFindings.Count == 0 ? "sem espaços grandes, títulos isolados ou texto na margem" : string.Join(" · ", layoutFindings));
 
         var problems = items.Where(i => i.Critical && !i.Passed).Select(i => $"{i.Name}: {i.Detail}").ToList();
         return new PdfCheck(pages, claims.Count, found, problems, items);
