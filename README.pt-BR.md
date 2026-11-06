@@ -73,7 +73,7 @@ O Job Orchestrator se candidata em seu nome. Leia o que ele prepara antes de dei
 ## Dentro das regras
 
 - O LinkedIn nunca é automatizado, porque os termos dele proíbem. Importe a exportação de dados do LinkedIn para preencher o perfil e salve vagas do LinkedIn pelo link para acompanhar as candidaturas que você mesmo fizer.
-- Nada de resolvedor de CAPTCHA nem de truque para esconder o robô. Quando um site bloqueia acesso automático, a fonte fica de fora.
+- CAPTCHAs de sites externos ficam com você. Quando um site bloqueia acesso automático, a fonte fica de fora.
 - O coletor segue o robots.txt, espera entre as requisições e abre uma conexão por site.
 - Fontes cujos termos não permitem esse uso ficam no registro como bloqueadas (LinkedIn Jobs, France Travail) ou apenas com parceria (a API de empregador da Gupy e o MyCareersFuture de Singapura), com o motivo à vista.
 
@@ -254,6 +254,19 @@ docker compose -f infra/compose.test.yaml up -d --wait
 dotnet test backend/tests/JobOrchestrator.Tests --filter "Category!=E2E"
 scripts/package.sh all            # os pacotes das seis plataformas, em dist/
 ```
+
+### Laboratório local de CAPTCHA
+
+O ATS falso gera um CAPTCHA em imagem para liberar uma vaga fictícia. O script Python aprende o formato dos dez dígitos em uma imagem de referência, reconhece os cinco dígitos do desafio e envia a resposta ao servidor local. Cada desafio vence após dois minutos e aceita uma tentativa.
+
+Na raiz do repositório, rode os comandos em terminais separados. O laboratório só precisa do SDK do .NET 10 e do Python 3.11 ou mais novo.
+
+```sh
+FAKEATS_CAPTCHA_LAB=1 dotnet run --project backend/src/Tools/JobOrchestrator.FakeAts
+python3 scripts/captcha-lab.py
+```
+
+Para testar manualmente, abra [o desafio local](http://127.0.0.1:5470/lab/captcha). O laboratório vem desativado e usa apenas o ATS falso local.
 
 ## Licença
 
