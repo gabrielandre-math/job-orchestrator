@@ -158,3 +158,5 @@
 .charts { grid-auto-flow: row dense; }
 .chart.full { grid-column: 1 / -1; }
 .chart.full .stack { grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); }
+.lh { display: flex; align-items: center; gap: 6px; }
+.fb-label jo-help { margin-left: 4px; vertical-align: -3px; }

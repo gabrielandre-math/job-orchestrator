@@ -80,8 +80,26 @@
           }
         </div>
         <div class="limits">
-          <label class="field">Teto por dia <span class="num accent">{{ cap() }}</span><input type="range" min="1" max="15" [value]="cap()" (input)="cap.set(num($event))" /></label>
-          <label class="field">Lembrete depois de <span class="num accent">{{ followUp() }} dias</span><input type="range" min="3" max="21" [value]="followUp()" (input)="followUp.set(num($event))" /></label>
+          <div class="field">
+            <div class="lh"><label for="mail-cap">Teto por dia</label>
+              <jo-help term="Teto por dia" iso="queue">
+                <p>O máximo de e-mails de candidatura que saem num dia. O dia conta a partir da meia-noite, no horário de Brasília, e o lembrete entra na conta.</p>
+                <p>Passou do teto, o e-mail pronto não se perde: sai no dia seguinte.</p>
+                <p class="ex"><span>Com o valor escolhido</span>Teto {{ cap() }}: se 8 vagas pedirem e-mail hoje, {{ cap() < 8 ? cap() + ' saem hoje e as outras amanhã' : 'as 8 saem hoje' }}.</p>
+              </jo-help>
+              <span class="num accent">{{ cap() }}</span></div>
+            <input id="mail-cap" type="range" min="1" max="15" [value]="cap()" (input)="cap.set(num($event))" />
+          </div>
+          <div class="field">
+            <div class="lh"><label for="mail-follow">Lembrete depois de</label>
+              <jo-help term="Lembrete" iso="inbox">
+                <p>Se a empresa não responder, o app manda um lembrete curto depois desses dias, uma vez só, no mesmo fio do primeiro e-mail.</p>
+                <p>Se a empresa responder antes, o lembrete é cancelado. E-mail que não chegou na empresa não ganha lembrete.</p>
+                <p class="ex"><span>Com o valor escolhido</span>{{ followUp() }} dias: e-mail enviado hoje sem resposta ganha o lembrete daqui a {{ followUp() }} dias.</p>
+              </jo-help>
+              <span class="num accent">{{ followUp() }} dias</span></div>
+            <input id="mail-follow" type="range" min="3" max="21" [value]="followUp()" (input)="followUp.set(num($event))" />
+          </div>
           <div class="field when">Quando pode enviar
             <div class="cards row" role="radiogroup" aria-label="Quando pode enviar">
               <button type="button" class="card" role="radio" [attr.aria-checked]="always()" (click)="setAlways(true)">

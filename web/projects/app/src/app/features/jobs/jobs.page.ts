@@ -15,6 +15,7 @@ import { command } from '../../core/command';
 import { ago, jobLabel, jobTone } from '../../core/format';
 import { AGENT_ICON, Live } from '../../core/live';
 import { query } from '../../core/query';
+import { Help } from '../../shared/help';
 import { PLATFORMS } from '../../core/sources';
 
 const FILTERS_OPEN = 'jo.vagas.filtros';
@@ -47,7 +48,7 @@ type Sort = 'score' | 'new' | 'company';
  */
 @Component({
   selector: 'app-jobs',
-  imports: [Area, Badge, Columns, Company, Count, Empty, HBars, Icon, Iso, PageHero, RouterLink, Score, Tech],
+  imports: [Area, Badge, Columns, Company, Count, Empty, HBars, Icon, Iso, PageHero, RouterLink, Score, Tech, Help],
   templateUrl: './jobs.page.html',
   styleUrl: './jobs.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -16,9 +16,13 @@ let next = 0;
   encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <button type="button" class="jh-q" [attr.aria-label]="'O que é ' + term() + '?'" [attr.title]="'O que é ' + term() + '?'" (click)="box.showModal()">
-      <jo-icon name="question" [size]="13" />
-    </button>
+    @if (label(); as text) {
+      <button type="button" class="btn ghost jh-text" (click)="box.showModal()"><jo-icon name="question" [size]="14" />{{ text }}</button>
+    } @else {
+      <button type="button" class="jh-q" [attr.aria-label]="'O que é ' + term() + '?'" [attr.title]="'O que é ' + term() + '?'" (click)="box.showModal()">
+        <jo-icon name="question" [size]="13" />
+      </button>
+    }
     <dialog #box class="jh-box" [attr.aria-labelledby]="id" (click)="$event.target === box && box.close()" (keydown.escape)="$event.stopPropagation()">
       <div class="jh-in">
         <header class="jh-head" [class.bare]="!iso()">
@@ -36,6 +40,7 @@ let next = 0;
       color: var(--text-3); cursor: pointer; transition: color 140ms ease, border-color 140ms ease, background-color 140ms ease; }
     .jh-q:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-weak); }
     .jh-q:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .jh-text { gap: 6px; }
     .jh-box { width: min(540px, calc(100% - 32px)); max-height: min(680px, calc(100% - 32px)); padding: 0; border: 1px solid var(--line-strong); border-radius: 8px;
       background: var(--surface); color: var(--text); box-shadow: 0 30px 80px oklch(0% 0 0 / 0.45); overflow: auto; overscroll-behavior: contain;
       font: 400 13px var(--font-ui); text-align: left; text-transform: none; letter-spacing: normal; white-space: normal; }
@@ -52,6 +57,8 @@ let next = 0;
     .jh-body dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 14px; margin: 0; }
     .jh-body dt { color: var(--text); font-weight: 600; }
     .jh-body dd { margin: 0; }
+    .jh-body dl.stack { grid-template-columns: minmax(0, 1fr); row-gap: 2px; }
+    .jh-body dl.stack dd + dt { margin-top: 8px; }
     .jh-body .ex { display: grid; gap: 4px; padding: 10px 12px; border-radius: 6px; background: var(--surface-2); border: 1px solid var(--line); }
     .jh-body .ex > span:first-child { font: 500 11px var(--font-ui); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-3); }
     .jh-foot { display: flex; justify-content: flex-end; }
@@ -69,5 +76,7 @@ export class Help {
   readonly term = input.required<string>();
   /** Figura isométrica do cabeçalho, como nos assistentes. */
   readonly iso = input<string | null>(null);
+  /** Com texto, o gatilho vira um botão discreto ("Quem é quem") em vez do ícone sozinho. */
+  readonly label = input<string | null>(null);
   protected readonly id = `jh-${++next}`;
 }

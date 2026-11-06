@@ -20,6 +20,27 @@
         </button>
         <a class="btn" routerLink="/vagas"><jo-icon name="briefcase" [size]="14" />Ver as vagas</a>
         <a class="btn ghost" routerLink="/campanha"><jo-icon name="sliders-horizontal" [size]="14" />Ajustar a campanha</a>
+        <jo-help term="Quem faz o quê" iso="radar" label="Quem é quem">
+          <p>Cada nome nas falas é uma parte do sistema com uma tarefa só.</p>
+          <dl class="stack">
+            <dt>Batedor</dt><dd>Escolhe as fontes da rodada e consulta cada uma.</dd>
+            <dt>Normalizador</dt><dd>Põe as vagas de todas as fontes no mesmo formato.</dd>
+            <dt>Analista</dt><dd>Dá a nota a cada vaga e põe na fila as que passam do corte.</dd>
+            <dt>Juiz</dt><dd>Marca como encerradas as vagas que saíram do ar.</dd>
+            <dt>Explorador e Curador</dt><dd>Procuram fontes novas de vagas e põem na campanha as que funcionam.</dd>
+            <dt>Planejador, Garimpeiro e Caçador</dt><dd>O caçador com o Llama: o Planejador monta o plano e o Garimpeiro procura no Common Crawl e no Wikidata.</dd>
+            <dt>Semeador, Robots, Coletor e Extrator</dt><dd>A varredura de sites de carreira: os sites de partida, as regras do robots.txt, a coleta e a leitura das vagas.</dd>
+            <dt>Leitor</dt><dd>Lê os seus arquivos, como o currículo e o export do LinkedIn.</dd>
+            <dt>Seletor</dt><dd>Escolhe do seu perfil o que entra no currículo de cada vaga.</dd>
+            <dt>Redator</dt><dd>Escreve currículo, carta e e-mail.</dd>
+            <dt>Revisor e Conferente</dt><dd>Conferem se cada frase tem fonte no seu currículo e tiram o que não tiver.</dd>
+            <dt>Renderizador e Inspetor ATS</dt><dd>Montam o PDF e testam se um sistema de vagas consegue ler.</dd>
+            <dt>Guardião</dt><dd>Regras fixas, sem IA, que decidem se algo pode ser enviado.</dd>
+            <dt>Supervisor</dt><dd>Cuida da fila de trabalho e do que falhou.</dd>
+            <dt>Roteador</dt><dd>Escolhe qual IA faz cada tarefa.</dd>
+            <dt>Navegador</dt><dd>Lê a página da vaga e acha o caminho até o formulário.</dd>
+          </dl>
+        </jo-help>
       </div>
     </div>
     <div class="bar" role="progressbar" aria-label="Progresso da busca" [attr.aria-valuenow]="Math.round(run.progress() * 100)" aria-valuemin="0" aria-valuemax="100">

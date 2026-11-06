@@ -7,6 +7,7 @@ import { IncomingMail, MailAccountView, MailOverview, MailSettings, MailTarget, 
 import { command } from '../../core/command';
 import { ago } from '../../core/format';
 import { query } from '../../core/query';
+import { Help } from '../../shared/help';
 import { MailConnect } from './mail-connect';
 
 type Tab = 'targets' | 'review' | 'sent' | 'inbox' | 'template';
@@ -25,7 +26,7 @@ const MARKERS = ['{{empresa}}', '{{vaga}}', '{{experiencia}}', '{{competencias}}
  */
 @Component({
   selector: 'app-mail',
-  imports: [Company, Icon, Iso, MailConnect, PageHero],
+  imports: [Company, Icon, Iso, MailConnect, PageHero, Help],
   templateUrl: './mail.page.html',
   styleUrl: './mail.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

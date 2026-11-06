@@ -8,7 +8,20 @@
 
   @if (stats.value(); as st) {
     <article class="panel funnel" aria-label="Funil das vagas">
-      <header><h2>Funil</h2><span class="faint small num"><jo-count [value]="st.total" /> no total</span></header>
+      <header>
+        <div class="lh"><h2>Funil</h2>
+          <jo-help term="Funil" iso="queue">
+            <dl>
+              <dt>Encontradas</dt><dd>Tudo o que as fontes trouxeram, com as repetidas.</dd>
+              <dt>Únicas</dt><dd>Sem as repetidas: a mesma vaga em duas fontes conta uma vez.</dd>
+              <dt>Elegíveis</dt><dd>As únicas que não foram cortadas nem encerradas.</dd>
+              <dt>Na fila</dt><dd>As elegíveis com nota igual ou acima do corte da campanha. Para elas o sistema prepara currículo e candidatura.</dd>
+            </dl>
+            <p>A porcentagem embaixo de cada etapa é quanto passou da etapa anterior.</p>
+          </jo-help>
+        </div>
+        <span class="faint small num"><jo-count [value]="st.total" /> no total</span>
+      </header>
       <ol class="steps">
         @for (s of funnelSteps(); track s.label) {
           <li [class.accent]="s.accent">
@@ -26,7 +39,21 @@
         <jo-hbars class="body" [data]="sources()" />
       </article>
       <article class="panel chart">
-        <header><h2>Notas</h2><span class="faint small">de 0 a 100</span></header>
+        <header>
+          <div class="lh"><h2>Notas</h2>
+            <jo-help term="Nota" iso="chart">
+              <p>A nota vai de 0 a 100 e mede o quanto a vaga combina com a campanha, não a chance de contratação. Ela soma quatro partes:</p>
+              <dl>
+                <dt>Palavras-chave, até 45</dt><dd>Quantas das suas palavras-chave e competências a vaga cita.</dd>
+                <dt>Cargo, até 25</dt><dd>O quanto o título se parece com os seus cargos-alvo.</dd>
+                <dt>Nível, até 15</dt><dd>Se o nível do cargo parece perto do seu.</dd>
+                <dt>Modalidade, até 15</dt><dd>Remoto vale mais, depois híbrido, depois presencial.</dd>
+              </dl>
+              <p>A linha do <strong>corte</strong> é a nota mínima para entrar na fila, escolhida na Campanha.</p>
+            </jo-help>
+          </div>
+          <span class="faint small">de 0 a 100</span>
+        </header>
         <jo-columns class="body" [data]="scores()" [cutAt]="8" cutLabel="corte 80" />
       </article>
       <article class="panel chart">
@@ -81,6 +108,16 @@
           <button type="button" class="chip" [attr.aria-pressed]="status() === f.key" (click)="filter(f.key)">{{ f.label }}<span class="n">{{ count(f.key) }}</span></button>
         }
       </div>
+      <jo-help term="Situação das vagas" iso="selector">
+        <dl>
+          <dt>Todas</dt><dd>Todas as vagas que chegaram.</dd>
+          <dt>Na fila</dt><dd>Nota igual ou acima do corte: o sistema prepara a candidatura.</dd>
+          <dt>Abaixo do corte</dt><dd>Passou nas regras, mas a nota ficou abaixo do corte. Fica só na lista.</dd>
+          <dt>Cortadas</dt><dd>Saíram antes da nota: parece golpe, é só para quem mora em outro país, o local está fora dos aceitos ou não cita nenhuma das duas primeiras palavras-chave.</dd>
+          <dt>Duplicadas</dt><dd>A mesma vaga veio por outra fonte. Vale uma só.</dd>
+          <dt>Encerradas</dt><dd>A empresa tirou a vaga do ar.</dd>
+        </dl>
+      </jo-help>
       @if (activeCount() > 0) { <button type="button" class="btn ghost fb-clear" (click)="clearFilters()"><jo-icon name="x" [size]="13" />Limpar {{ activeCount() }}</button> }
     </div>
     @if (!more() && active().length > 0) {
@@ -94,7 +131,19 @@
       <div class="fb-panel" id="fb-panel">
         @if (facets().elig.length > 0) {
           <div class="fb-group">
-            <span class="fb-label">Para quem mora no Brasil</span>
+            <span class="fb-label">Para quem mora no Brasil
+              <jo-help term="Para quem mora no Brasil" iso="identity">
+                <dl>
+                  <dt>Aberta ao Brasil</dt><dd>A vaga é no Brasil, ou é remota e aceita Brasil, América Latina, Américas ou o mundo todo.</dd>
+                  <dt>Remota, a confirmar</dt><dd>Remota, sem dizer de onde se pode trabalhar. Vale conferir no anúncio.</dd>
+                  <dt>Visto ou mudança pagos</dt><dd>No exterior, e o anúncio diz que a empresa ajuda com visto ou mudança.</dd>
+                  <dt>No exterior, sem visto dito</dt><dd>Presencial ou híbrida fora do Brasil, sem falar de visto.</dd>
+                  <dt>Anúncio contraditório</dt><dd>O texto se contradiz, como "mundo todo" e "só EUA" no mesmo anúncio.</dd>
+                  <dt>Sem local</dt><dd>O anúncio não diz o local nem se é remota.</dd>
+                  <dt>Restrita a outro país</dt><dd>Só para quem mora em outro país. Fica escondida enquanto "Esconder as restritas" estiver ligado.</dd>
+                </dl>
+              </jo-help>
+            </span>
             <div class="chips" role="group" aria-label="Filtrar por elegibilidade">
               @for (e of facets().elig; track e.key) {
                 <button type="button" [class]="'chip elig ' + (eligibility[e.key]?.tone ?? '')" [attr.aria-pressed]="eligSel().has(e.key)" (click)="toggle(eligSel, e.key)">
@@ -155,7 +204,16 @@
           </div>
         }
         <div class="fb-group">
-          <span class="fb-label">Mais</span>
+          <span class="fb-label">Mais
+            <jo-help term="Como se candidatar" iso="ats">
+              <dl>
+                <dt>Formulário do ATS</dt><dd>ATS é o sistema de vagas que a empresa usa, como Greenhouse, Lever e Ashby. O app preenche o formulário de lá e, no automático, envia.</dd>
+                <dt>Pelo site, com você</dt><dd>LinkedIn, Gupy e outros sites onde quem envia é você. O app deixa o currículo e as respostas prontos.</dd>
+                <dt>Por e-mail</dt><dd>A vaga pede currículo por e-mail. O app escreve e manda pelo seu e-mail conectado.</dd>
+                <dt>Pelo link da vaga</dt><dd>O anúncio só tem um link. Você abre e se candidata por lá.</dd>
+              </dl>
+            </jo-help>
+          </span>
           <div class="chips">
             <button type="button" class="chip" [attr.aria-pressed]="withSalary()" (click)="withSalary.set(!withSalary())"><jo-icon name="currency-circle-dollar" [size]="13" />Com salário<span class="n">{{ facets().salary }}</span></button>
             <button type="button" class="chip" [attr.aria-pressed]="atsOnly()" (click)="atsOnly.set(!atsOnly())"><jo-icon name="cursor-click" [size]="13" />Formulário do ATS<span class="n">{{ facets().ats }}</span></button>

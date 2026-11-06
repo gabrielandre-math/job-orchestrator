@@ -5,6 +5,7 @@ import { Iso } from '@jo/ui/iso';
 import { MailPreset, MailSettings, get, send } from '../../core/api';
 import { command } from '../../core/command';
 import { Wizard } from '../../shared/wizard';
+import { Help } from '../../shared/help';
 
 interface Provider { id: string; name: string; domain: string; logo: string | null }
 const PROVIDERS: Provider[] = [
@@ -24,7 +25,7 @@ const MODES = [
  */
 @Component({
   selector: 'app-mail-connect',
-  imports: [Company, Icon, Iso, Wizard],
+  imports: [Company, Icon, Iso, Wizard, Help],
   templateUrl: './mail-connect.html',
   styleUrl: './mail-connect.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

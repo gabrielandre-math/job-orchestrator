@@ -6,6 +6,15 @@
         <button type="button" class="btn primary" (click)="wizard.set(1)"><jo-icon name="envelope-simple" [size]="14" />Conectar e-mail</button>
       } @else {
         <button type="button" class="btn primary" (click)="wizard.set(4)"><jo-icon name="sliders-horizontal" [size]="14" />Como os e-mails saem</button>
+        <jo-help term="Como o e-mail funciona" iso="send" label="Como funciona">
+          <dl>
+            <dt>Para quais vagas</dt><dd>Só as que pedem currículo por e-mail, e só para o endereço que a própria vaga publica. Um e-mail por vaga e, se não houver resposta, um lembrete.</dd>
+            <dt>Quem escreve</dt><dd>A IA escreve a partir dos fatos do seu currículo. O Conferente tira toda frase que não tenha fonte no currículo ou na vaga.</dd>
+            <dt>Quem libera</dt><dd>O Guardião, com regras fixas e sem IA: endereço certo, teto do dia, horário e, no automático, a sua autorização.</dd>
+            <dt>A caixa de entrada</dt><dd>É lida a cada 10 minutos, só o que é da busca: respostas e e-mails das empresas para onde você escreveu. Quem lê é o modelo do seu PC, nada vai para a nuvem.</dd>
+            <dt>Não entregue</dt><dd>Quando o e-mail volta, por endereço errado ou bloqueio do servidor da empresa, ele aparece como não entregue, com o motivo.</dd>
+          </dl>
+        </jo-help>
         <button type="button" class="btn" (click)="check()" [disabled]="checking.running()"><jo-icon name="arrows-clockwise" [size]="14" />{{ checking.running() ? 'Lendo a caixa…' : 'Ler a caixa agora' }}</button>
       }
     }
