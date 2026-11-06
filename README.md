@@ -176,6 +176,24 @@ Hiring with the recruiter side will be commercial use, so companies will need a 
 
 Each download is a single self-contained executable with the panel, the scraper and the browser extension inside. You do not need .NET installed.
 
+**Install with one command (recommended)**
+
+macOS and Linux:
+
+```sh
+curl -fsSL https://gabrielandre-math.github.io/job-orchestrator/install.sh | sh
+```
+
+Windows (PowerShell):
+
+```powershell
+irm https://gabrielandre-math.github.io/job-orchestrator/install.ps1 | iex
+```
+
+The command downloads the file for your system from the latest release, checks its SHA-256 against `SHA256SUMS.txt` and opens the app's installer. A file fetched this way is not marked as downloaded from the internet, so macOS and Windows open it without the warning they show for apps without a paid signature. Read the scripts first if you like: [`site/install.sh`](site/install.sh) and [`site/install.ps1`](site/install.ps1).
+
+**Or download the file**
+
 | System | Download | Notes |
 | --- | --- | --- |
 | **Linux** x64 | [Installer (.run)](https://github.com/gabrielandre-math/job-orchestrator/releases/latest/download/job-orchestrator-linux-x64.run) &nbsp; [Archive (.tar.gz)](https://github.com/gabrielandre-math/job-orchestrator/releases/latest/download/job-orchestrator-linux-x64.tar.gz) | `chmod +x` the installer and run it. No sudo. |
@@ -187,7 +205,7 @@ Each download is a single self-contained executable with the panel, the scraper 
 
 Every file has its SHA-256 in [SHA256SUMS.txt](https://github.com/gabrielandre-math/job-orchestrator/releases/latest/download/SHA256SUMS.txt).
 
-The builds are not signed with a paid certificate yet, so the first launch takes one extra step:
+The builds are not signed with a paid certificate yet, so a file downloaded in the browser takes one extra step on first launch:
 
 - **macOS:** the app is signed ad hoc. If macOS refuses to open it, go to System Settings, then Privacy & Security, and click Open Anyway. Or run `xattr -dr com.apple.quarantine "/Applications/Job Orchestrator.app"`.
 - **Windows:** SmartScreen shows "Windows protected your PC". Click More info, then Run anyway.

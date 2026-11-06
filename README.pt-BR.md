@@ -176,6 +176,24 @@ Contratar com o lado do recrutador vai ser uso comercial, então empresas vão p
 
 Cada download é um executável único e autocontido, com o painel, o coletor e a extensão do navegador dentro. Não precisa ter o .NET instalado.
 
+**Instalar com um comando (recomendado)**
+
+macOS e Linux:
+
+```sh
+curl -fsSL https://gabrielandre-math.github.io/job-orchestrator/install.sh | sh
+```
+
+Windows (PowerShell):
+
+```powershell
+irm https://gabrielandre-math.github.io/job-orchestrator/install.ps1 | iex
+```
+
+O comando baixa o arquivo do seu sistema na última versão, confere o SHA-256 com o `SHA256SUMS.txt` e abre o instalador do app. Um arquivo baixado assim não leva a marca de "baixado da internet", então o macOS e o Windows abrem sem o aviso que mostram para apps sem assinatura paga. Os scripts estão em [`site/install.sh`](site/install.sh) e [`site/install.ps1`](site/install.ps1), para você ler antes se quiser.
+
+**Ou baixe o arquivo**
+
 | Sistema | Download | Observações |
 | --- | --- | --- |
 | **Linux** x64 | [Instalador (.run)](https://github.com/gabrielandre-math/job-orchestrator/releases/latest/download/job-orchestrator-linux-x64.run) &nbsp; [Pacote (.tar.gz)](https://github.com/gabrielandre-math/job-orchestrator/releases/latest/download/job-orchestrator-linux-x64.tar.gz) | `chmod +x` no instalador e rode. Sem sudo. |
@@ -187,7 +205,7 @@ Cada download é um executável único e autocontido, com o painel, o coletor e 
 
 O SHA-256 de cada arquivo está em [SHA256SUMS.txt](https://github.com/gabrielandre-math/job-orchestrator/releases/latest/download/SHA256SUMS.txt).
 
-Os pacotes ainda não têm assinatura com certificado pago, então a primeira abertura pede um passo a mais:
+Os pacotes ainda não têm assinatura com certificado pago, então o arquivo baixado pelo navegador pede um passo a mais na primeira abertura:
 
 - **macOS:** o app tem assinatura ad hoc. Se o macOS recusar a abertura, vá em Ajustes do Sistema, depois Privacidade e Segurança, e clique em Abrir Mesmo Assim. Ou rode `xattr -dr com.apple.quarantine "/Applications/Job Orchestrator.app"`.
 - **Windows:** o SmartScreen mostra "O Windows protegeu o computador". Clique em Mais informações e depois em Executar assim mesmo.
