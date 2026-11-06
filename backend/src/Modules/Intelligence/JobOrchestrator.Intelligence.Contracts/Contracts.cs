@@ -61,7 +61,8 @@ public static class LlmTasks
     public static readonly LlmTask ResumeFactcheck = new("resume.factcheck", Rung.Light, true, 15, "perfil minimizado");
     public static readonly LlmTask CoverWrite = new("cover.write", Rung.Medium, true, 10, "perfil minimizado + vaga");
     public static readonly LlmTask QuestionDraft = new("question.draft", Rung.Light, true, 30, "perfil minimizado + pergunta");
-    public static readonly LlmTask InterviewPrep = new("interview.prep", Rung.Medium, false, 5, "perfil minimizado + vaga");
+    public static readonly LlmTask InterviewPrep = new("interview.prep", Rung.LocalStrong, false, 0, "currículo da candidatura e feedback, no modelo local", LocalOnly: true);
+    public static readonly LlmTask InterviewPractice = new("interview.practice", Rung.LocalStrong, false, 0, "resposta de treino, no modelo local", LocalOnly: true);
     public static readonly LlmTask PageJobs = new("page.jobs", Rung.Local, false, 0, "página pública de carreira");
     public static readonly LlmTask AssistantTriage = new("assistant.triage", Rung.Local, false, 0, "pergunta, fica na máquina");
     public static readonly LlmTask AssistantChat = new("assistant.chat", Rung.Light, true, 80, "perfil minimizado + pergunta");
@@ -70,7 +71,7 @@ public static class LlmTasks
     public static readonly LlmTask PageNavigate = new("page.navigate", Rung.Local, false, 0, "rótulos de botões e links de página pública de carreira");
     public static readonly LlmTask ExploreHunt = new("explore.hunt", Rung.Local, false, 0, "palavras da campanha e do currículo, fica na máquina");
 
-    public static IReadOnlyList<LlmTask> All { get; } = [JobExtract, JobFit, QuestionMap, EmailClassify, ProfileExtract, ResumeTailor, ResumeFactcheck, CoverWrite, QuestionDraft, InterviewPrep, PageJobs,
+    public static IReadOnlyList<LlmTask> All { get; } = [JobExtract, JobFit, QuestionMap, EmailClassify, ProfileExtract, ResumeTailor, ResumeFactcheck, CoverWrite, QuestionDraft, InterviewPrep, InterviewPractice, PageJobs,
         AssistantTriage, AssistantChat, AssistantSetup, ExploreJudge, ExploreHunt];
 
     public static LlmTask? Find(string name) => All.FirstOrDefault(t => t.Name == name);

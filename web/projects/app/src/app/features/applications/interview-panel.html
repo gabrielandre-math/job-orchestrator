@@ -1,0 +1,67 @@
+<section class="panel interview">
+  <header><h2>Preparar entrevista</h2></header>
+  <div class="interview-body">
+    <p class="muted">Crie um guia por etapa e pratique uma pergunta por vez. O modelo local usa a vaga, o currículo vinculado quando disponível e o feedback que você registrou.</p>
+    <label for="interview-stage">Etapa</label>
+    <select id="interview-stage" #step [value]="stage()" (change)="stage.set(step.value)">
+      @for (s of stages; track s.key) { <option [value]="s.key">{{ s.label }}</option> }
+    </select>
+    <label for="interview-previous-feedback">Feedback anterior (opcional)</label>
+    <textarea id="interview-previous-feedback" #previous rows="2" maxlength="3000" [value]="previousFeedback()" (input)="previousFeedback.set(previous.value)"></textarea>
+    <button type="button" class="btn primary" [disabled]="preparing.running()" (click)="prepare()">
+      {{ preparing.running() ? 'Preparando…' : 'Gerar guia' }}
+    </button>
+    @if (preparing.problem(); as p) { <p class="problem">{{ p.detail }}</p> }
+    @if (rounds.problem(); as p) { <p class="problem">{{ p.detail }}</p> }
+
+    @if ((rounds.value() ?? []).length > 1) {
+      <label for="interview-history">Guias salvos</label>
+      <select id="interview-history" #history [value]="round()?.id ?? ''" (change)="chooseRound((rounds.value() ?? [])[history.selectedIndex])">
+        @for (entry of rounds.value() ?? []; track entry.id) { <option [value]="entry.id">{{ stageLabel(entry.stage) }} · {{ date(entry.createdAt) }}</option> }
+      </select>
+    }
+
+    @if (round(); as current) {
+      <div class="interview-guide">
+        <h3>{{ stageLabel(current.stage) }} · {{ date(current.createdAt) }}</h3>
+        @if (current.pack.resumeVersionId) {
+          <p class="muted">Currículo vinculado conferido pelo hash.</p>
+        } @else {
+          <p class="muted">Guia montado com a descrição e os fatos do perfil disponíveis. Currículo vinculado indisponível.</p>
+        }
+        <ol class="interview-questions">
+          @for (q of current.pack.questions; track $index) {
+            <li>
+              <strong>{{ q.question }}</strong>
+              @if (q.focus) { <p class="muted">{{ q.focus }}</p> }
+              @for (fact of q.evidence; track fact.id) { <p>{{ fact.statement }}</p> }
+            </li>
+          }
+        </ol>
+        @if (current.pack.askEmployer.length > 0) {
+          <h4>Perguntas para a empresa</h4>
+          <ul>@for (q of current.pack.askEmployer; track $index) { <li>{{ q }}</li> }</ul>
+        }
+      </div>
+      <div class="interview-guide">
+        <h3>Simulação</h3>
+        <label for="interview-question">Pergunta</label>
+        <select id="interview-question" #question [value]="questionIndex()" (change)="chooseQuestion(question.selectedIndex)">
+          @for (q of current.pack.questions; track $index) { <option [value]="$index">{{ q.question }}</option> }
+        </select>
+        <label for="interview-answer">Sua resposta</label>
+        <textarea id="interview-answer" #response rows="4" maxlength="3000" [value]="answer()" (input)="answer.set(response.value)"></textarea>
+        <button type="button" class="btn" [disabled]="practicing.running() || !answer().trim()" (click)="practice(current)">
+          {{ practicing.running() ? 'Avaliando…' : 'Avaliar minha resposta' }}
+        </button>
+        @if (result(); as review) {
+          <p><strong>Ponto forte</strong> · {{ review.strength }}</p>
+          <p><strong>Como melhorar</strong> · {{ review.improve }}</p>
+        }
+      </div>
+      <label for="interview-feedback">Feedback recebido nesta etapa</label>
+      <textarea id="interview-feedback" #feedback rows="3" maxlength="3000" [value]="note() ?? current.feedback ?? ''" (input)="note.set(feedback.value)"></textarea>
+      <button type="button" class="btn" [disabled]="saving.running() || note() === null" (click)="save(current)">Salvar feedback</button>
+    }
+  </div>
+</section>

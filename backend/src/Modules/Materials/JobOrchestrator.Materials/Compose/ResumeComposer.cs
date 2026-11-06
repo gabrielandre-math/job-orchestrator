@@ -12,6 +12,25 @@ namespace JobOrchestrator.Materials.Compose;
 internal sealed class ResumeComposer(IProfileApi profiles, IJobsApi jobs, IIntelligenceApi ai, IAutomationApi automation, MaterialsDbContext db,
     IConfiguration config, TimeProvider time, ILogger<ResumeComposer> log) : IMaterialsApi
 {
+    public async Task<ResumeInterviewContext?> ResumeForInterviewAsync(Guid applicationId, string sha256, CancellationToken ct)
+    {
+        var archived = await db.Resumes.AsNoTracking().Where(r => r.ApplicationId == applicationId && r.Sha256 == sha256)
+            .OrderByDescending(r => r.CreatedAt).Select(r => new { r.Id, r.PdfPath, r.Html }).FirstOrDefaultAsync(ct);
+        if (archived is null || !await MatchesArchiveAsync(archived.PdfPath, sha256, ct)) return null;
+        return new(archived.Id, sha256, Template.InterviewText(archived.Html));
+    }
+
+    internal static async Task<bool> MatchesArchiveAsync(string path, string sha256, CancellationToken ct)
+    {
+        try
+        {
+            await using var stream = File.OpenRead(path);
+            return stream.Length <= 20_000_000
+                && Convert.ToHexStringLower(await SHA256.HashDataAsync(stream, ct)) == sha256;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { return false; }
+    }
+
     public async Task<ComposeResult> ComposeResumeAsync(ComposeRequest r, CancellationToken ct)
     {
         var profile = await profiles.CurrentAsync(ct);

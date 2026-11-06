@@ -71,9 +71,7 @@ internal sealed class IntelligenceApi(ProviderSet set, IntelligenceDbContext db,
     {
         if (config.GetValue("Llm:Disabled", false)) return new LlmResult(false, null, "nenhum", "", "", "IA desligada nesta instalação.", 0);
         var spec = LlmTasks.Find(request.Task);
-        var r = config[$"Llm:Tasks:{request.Task}:Rung"] is { } rung && Enum.TryParse<Rung>(rung, out var forced) ? request with { Rung = forced } : request;
-        // Modo privado (Configurações): nada vai para a nuvem; o pedido desce para o modelo local equivalente.
-        if ((spec?.LocalOnly == true || config.GetValue("Privacy:LocalOnly", false)) && r.Rung is not (Rung.Local or Rung.LocalStrong)) r = r with { Rung = r.Rung >= Rung.Medium ? Rung.LocalStrong : Rung.Local };
+        var r = request with { Rung = EffectiveRung(request.Task, request.Rung, spec?.LocalOnly == true) };
         var local = r.Rung is Rung.Local or Rung.LocalStrong;
 
         if (r.Thread is { } thread)
@@ -153,6 +151,13 @@ internal sealed class IntelligenceApi(ProviderSet set, IntelligenceDbContext db,
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException) { return []; }
     }
 
+    private Rung EffectiveRung(string task, Rung requested, bool localOnly)
+    {
+        var rung = Enum.TryParse<Rung>(config[$"Llm:Tasks:{task}:Rung"], out var forced) ? forced : requested;
+        if (rung is Rung.Local or Rung.LocalStrong || !(localOnly || config.GetValue("Privacy:LocalOnly", false))) return rung;
+        return rung >= Rung.Medium ? Rung.LocalStrong : Rung.Local;
+    }
+
     /// <summary>Uso das últimas 24 h por tarefa do catálogo.</summary>
     public async Task<IReadOnlyList<TaskUsageView>> UsageAsync(CancellationToken ct)
     {
@@ -161,9 +166,9 @@ internal sealed class IntelligenceApi(ProviderSet set, IntelligenceDbContext db,
         return [.. LlmTasks.All.Select(t =>
         {
             var mine = calls.Where(c => c.Task == t.Name).ToList();
-            var rung = config[$"Llm:Tasks:{t.Name}:Rung"] ?? t.Rung.ToString();
+            var rung = EffectiveRung(t.Name, t.Rung, t.LocalOnly).ToString();
             return new TaskUsageView(t.Name, rung, t.Privacy, mine.Count(c => c.Ok && !c.Cached && c.ProviderId != "ollama"),
-                config.GetValue($"Llm:Tasks:{t.Name}:Budget", t.DailyBudget), mine.Count(c => c.Ok && c.ProviderId == "ollama"), mine.Count(c => c.Cached), mine.Count(c => !c.Ok));
+                t.LocalOnly ? 0 : config.GetValue($"Llm:Tasks:{t.Name}:Budget", t.DailyBudget), mine.Count(c => c.Ok && c.ProviderId == "ollama"), mine.Count(c => c.Cached), mine.Count(c => !c.Ok));
         })];
     }
 
@@ -233,7 +238,7 @@ internal sealed class IntelligenceApi(ProviderSet set, IntelligenceDbContext db,
     private static string Label(string task) => task switch
     {
         "profile.extract" => "a leitura do currículo", "resume.tailor" => "o currículo para a vaga", "resume.factcheck" => "a revisão das afirmações",
-        "cover.write" => "a carta", "question.draft" => "a resposta aberta", "interview.prep" => "o guia de entrevista", "question.map" => "a ligação da pergunta",
+        "cover.write" => "a carta", "question.draft" => "a resposta aberta", "interview.prep" => "o guia de entrevista", "interview.practice" => "o feedback de treino", "question.map" => "a ligação da pergunta",
         "job.extract" => "a leitura da vaga", "email.classify" => "a classificação do e-mail", _ => task
     };
 

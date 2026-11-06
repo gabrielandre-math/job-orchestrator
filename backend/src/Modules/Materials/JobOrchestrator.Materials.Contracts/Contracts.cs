@@ -11,10 +11,14 @@ public sealed record ComposeRequest(Guid ApplicationId, Guid JobId, string Compa
 /// </summary>
 public sealed record ComposeResult(bool Ok, Guid? VersionId, string? PdfPath, string? Hash, string Language, string Mode, bool Reviewed, string? Error, bool Paused, Guid? ThreadId);
 
+/// <summary>Texto profissional do currículo final, encontrado pelo hash da candidatura.</summary>
+public sealed record ResumeInterviewContext(Guid VersionId, string Sha256, string Text);
+
 /// <summary>Contrato público do módulo Materials.</summary>
 public interface IMaterialsApi
 {
     Task<ComposeResult> ComposeResumeAsync(ComposeRequest request, CancellationToken ct);
+    Task<ResumeInterviewContext?> ResumeForInterviewAsync(Guid applicationId, string sha256, CancellationToken ct);
     /// <summary>Currículo base, sem vaga e sem IA: só os fatos do perfil (o ensaio dos formulários anexa este).</summary>
     Task<ComposeResult> ComposeBaseAsync(string language, string theme, CancellationToken ct);
 }

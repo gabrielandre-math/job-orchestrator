@@ -1,0 +1,9 @@
+.interview-body, .interview-guide { display: grid; gap: 10px; }
+.interview-body { padding: 16px; }
+.interview-guide { border-top: 1px solid var(--line); padding-top: 14px; }
+.interview-body h3, .interview-body h4, .interview-body p { margin: 0; }
+.interview-body select, .interview-body textarea { width: 100%; min-width: 0; }
+.interview-body textarea { resize: vertical; }
+.interview-body .btn { justify-self: start; }
+.interview-questions { display: grid; gap: 10px; }
+.interview-questions p { margin-top: 4px; }

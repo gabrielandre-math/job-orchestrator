@@ -7,6 +7,7 @@
     <ProjectReference Include="../../../BuildingBlocks/JobOrchestrator.BuildingBlocks.Web/JobOrchestrator.BuildingBlocks.Web.csproj" />
     <ProjectReference Include="../JobOrchestrator.Applications.Contracts/JobOrchestrator.Applications.Contracts.csproj" />
     <ProjectReference Include="../../Campaigns/JobOrchestrator.Campaigns.Contracts/JobOrchestrator.Campaigns.Contracts.csproj" />
+    <ProjectReference Include="../../Intelligence/JobOrchestrator.Intelligence.Contracts/JobOrchestrator.Intelligence.Contracts.csproj" />
     <ProjectReference Include="../../Jobs/JobOrchestrator.Jobs.Contracts/JobOrchestrator.Jobs.Contracts.csproj" />
     <ProjectReference Include="../../Automation/JobOrchestrator.Automation.Contracts/JobOrchestrator.Automation.Contracts.csproj" />
     <ProjectReference Include="../../Profile/JobOrchestrator.Profile.Contracts/JobOrchestrator.Profile.Contracts.csproj" />
