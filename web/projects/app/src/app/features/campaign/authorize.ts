@@ -3,6 +3,7 @@ import { Icon } from '@jo/ui/icon';
 import { Iso } from '@jo/ui/iso';
 import { Adapter, Campaign, get, send } from '../../core/api';
 import { command } from '../../core/command';
+import { Help } from '../../shared/help';
 import { Wizard } from '../../shared/wizard';
 
 /**
@@ -11,7 +12,7 @@ import { Wizard } from '../../shared/wizard';
  */
 @Component({
   selector: 'app-authorize',
-  imports: [Icon, Iso, Wizard],
+  imports: [Icon, Iso, Wizard, Help],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <jo-wizard [steps]="['O que muda', 'Limites', 'Consentimento', 'Pronto']" [step]="step()" label="Autorizar o envio automático" (close)="close.emit()">
@@ -40,11 +41,49 @@ import { Wizard } from '../../shared/wizard';
               <div><h2>Os limites</h2><p class="muted">Comece pequeno: dá para ampliar depois de ver os primeiros envios.</p></div>
             </div>
             <div class="limits">
-              <label class="field">Validade <span class="num accent">{{ days() }} {{ days() === 1 ? 'dia' : 'dias' }}</span><input type="range" min="1" max="30" [value]="days()" (input)="days.set(num($event))" /></label>
-              <label class="field">Teto por dia <span class="num accent">{{ perDay() }}</span><input type="range" min="1" [max]="maxCap()" [value]="perDay()" (input)="perDay.set(num($event))" /></label>
-              <label class="field">Nota mínima <span class="num accent">{{ minScore() }}</span><input type="range" [min]="campaign().minFitScore" max="100" [value]="minScore()" (input)="minScore.set(num($event))" /></label>
+              <div class="field">
+                <div class="lh"><label for="auth-days">Validade</label>
+                  <jo-help term="Validade" iso="receipt">
+                    <p>Por quantos dias o sistema pode enviar candidaturas sozinho, contando a partir de agora.</p>
+                    <p>Quando o prazo acaba, o envio automático desliga. As vagas continuam sendo preparadas, mas cada uma espera você aprovar. Para voltar ao automático, é só autorizar de novo.</p>
+                    <p>Você pode desligar antes, a qualquer hora, no botão <strong>Revogar</strong> da Campanha. As vagas que estavam prontas voltam para a sua aprovação.</p>
+                    <p class="ex"><span>Com o valor escolhido</span>{{ days() }} {{ days() === 1 ? 'dia' : 'dias' }}: o automático vale até {{ until() }}.</p>
+                  </jo-help>
+                  <span class="num accent">{{ days() }} {{ days() === 1 ? 'dia' : 'dias' }}</span></div>
+                <input id="auth-days" type="range" min="1" max="30" [value]="days()" (input)="days.set(num($event))" />
+              </div>
+              <div class="field">
+                <div class="lh"><label for="auth-cap">Teto por dia</label>
+                  <jo-help term="Teto por dia" iso="queue">
+                    <p>O máximo de candidaturas que podem sair num mesmo dia com o automático ligado. A conta do dia inclui as que você aprovou à mão.</p>
+                    <p>Quando o teto enche, as vagas prontas que sobraram não se perdem: ficam na fila e saem a partir da meia-noite, no fuso da campanha ({{ campaign().timeZone }}), dentro do teto do dia novo.</p>
+                    <p>No automático, cada empresa recebe no máximo uma candidatura a cada 24 horas.</p>
+                    <p>Fica dentro do limite geral da campanha ({{ campaign().maxSubmissionsPerDay }} por dia) e nunca passa de 15.</p>
+                    <p class="ex"><span>Com o valor escolhido</span>Teto {{ perDay() }}: se 20 vagas ficarem prontas hoje, {{ perDay() }} saem hoje e as outras saem nos próximos dias, {{ perDay() }} por dia.</p>
+                  </jo-help>
+                  <span class="num accent">{{ perDay() }}</span></div>
+                <input id="auth-cap" type="range" min="1" [max]="maxCap()" [value]="perDay()" (input)="perDay.set(num($event))" />
+              </div>
+              <div class="field">
+                <div class="lh"><label for="auth-score">Nota mínima</label>
+                  <jo-help term="Nota mínima" iso="chart">
+                    <p>Toda vaga ganha uma nota de 0 a 100. Quanto maior, mais ela combina com os cargos, as palavras-chave e os locais da campanha.</p>
+                    <p>No automático, só sai sozinha a vaga com nota igual ou maior que esta. A vaga com nota menor também é preparada, mas espera você aprovar.</p>
+                    <p>Não pode ficar abaixo da nota de corte da campanha ({{ campaign().minFitScore }}), que decide quais vagas entram na fila.</p>
+                    <p class="ex"><span>Exemplo</span>Corte da campanha 80 e nota mínima 90. A vaga com nota 95 sai sozinha. A vaga com 85 é preparada e espera você. A vaga com 70 nem entra na fila.</p>
+                  </jo-help>
+                  <span class="num accent">{{ minScore() }}</span></div>
+                <input id="auth-score" type="range" [min]="campaign().minFitScore" max="100" [value]="minScore()" (input)="minScore.set(num($event))" />
+              </div>
             </div>
-            <div class="field">Formulários que podem enviar
+            <div class="field">
+              <div class="lh">Formulários que podem enviar
+                <jo-help term="Formulários que podem enviar" iso="form">
+                  <p>Cada sistema de vagas que as empresas usam tem um formulário diferente, e o sistema tem um preenchedor para cada um.</p>
+                  <p>Aqui você escolhe por quais desses formulários o envio pode sair sozinho. O número embaixo de cada nome mostra quantos envios por ele já foram confirmados, para você escolher os que já provaram que funcionam.</p>
+                  <p>A vaga de um formulário que não está marcado também é preparada, mas espera você aprovar.</p>
+                  <p class="ex"><span>Com todos marcados</span>A autorização vale também para formulários novos que entrarem depois.</p>
+                </jo-help></div>
               <div class="grid">
                 @for (a of forms(); track a.id) {
                   <button type="button" class="tile" [attr.aria-pressed]="picked().has(a.id)" (click)="toggle(a.id)">
@@ -95,7 +134,10 @@ import { Wizard } from '../../shared/wizard';
     .rules li { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 6px; background: var(--surface-2); font-size: 13px; line-height: 1.5; }
     .rules jo-icon { color: var(--ok); margin-top: 2px; }
     .limits { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
-    .accent { color: var(--accent); margin-left: 6px; }
+    .limits .field { display: grid; gap: 6px; font-size: 12px; color: var(--text-2); }
+    .lh { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+    .limits .lh { margin-bottom: 0; }
+    .accent { color: var(--accent); margin-left: auto; }
     input[type="range"] { padding: 0; height: 20px; accent-color: var(--accent); border: 0; background: transparent; box-shadow: none !important; }
     .consent { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 6px; border: 1px solid color-mix(in oklch, var(--warn) 45%, var(--line)); background: color-mix(in oklch, var(--warn) 6%, var(--surface-2)); cursor: pointer; transition: border-color 200ms ease, background-color 200ms ease; }
     .consent.on { border-color: color-mix(in oklch, var(--ok) 50%, var(--line)); background: color-mix(in oklch, var(--ok) 6%, var(--surface-2)); }
@@ -118,6 +160,7 @@ export class Authorize {
   protected readonly picked = signal<Set<string>>(new Set());
   protected readonly forms = computed(() => this.adapters().filter((a) => a.capabilities.includes('SubmitApplication')));
   protected readonly maxCap = computed(() => Math.min(15, this.campaign().maxSubmissionsPerDay));
+  protected readonly until = computed(() => new Date(Date.now() + this.days() * 86_400_000).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' }));
   protected readonly granting = command((body: object) => send('POST', `/campaigns/${this.campaign().id}/authorizations`, body), 'Envio automático autorizado.');
 
   constructor() {

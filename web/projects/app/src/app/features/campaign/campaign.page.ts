@@ -5,6 +5,7 @@ import { HeroStat, PageHero } from '@jo/ui/page-hero';
 import { DomSanitizer } from '@angular/platform-browser';
 import { AuthorizationItem, Campaign, send } from '../../core/api';
 import { Authorize } from './authorize';
+import { Help } from '../../shared/help';
 import { command } from '../../core/command';
 import { query } from '../../core/query';
 import { ago } from '../../core/format';
@@ -12,7 +13,7 @@ import { ago } from '../../core/format';
 /** Campanha: critérios, limites e até onde o sistema pode ir sozinho. Envio automático só com autorização (fase 6). */
 @Component({
   selector: 'app-campaign',
-  imports: [PageHero, Authorize, Automate, Icon],
+  imports: [PageHero, Authorize, Automate, Icon, Help],
   templateUrl: './campaign.page.html',
   styleUrl: './campaign.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -31,6 +32,9 @@ export class CampaignPage {
   protected readonly save = command((c: Campaign) => send('PUT', `/campaigns/${c.id}`, this.payload()));
   protected readonly run = command((c: Campaign) => send('POST', `/campaigns/${c.id}/runs`));
   protected readonly ago = ago;
+  /** Exemplo da ajuda da nota de corte: uma nota acima e outra abaixo do valor no campo. */
+  protected readonly above = computed(() => Math.min(100, Number(this.form().minFitScore) + 5));
+  protected readonly below = computed(() => (Number(this.form().minFitScore) >= 10 ? Number(this.form().minFitScore) - 10 : null));
   protected heroStats(c: Campaign): HeroStat[] {
     return [
       { label: 'Fontes', value: c.sources.length },

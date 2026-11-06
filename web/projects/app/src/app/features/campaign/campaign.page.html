@@ -9,7 +9,26 @@
     @if (run.problem(); as p) { <p class="problem">{{ p.detail }}</p> }
 
     <section class="panel">
-      <header><h2>Até onde o sistema vai sozinho</h2></header>
+      <header>
+        <div class="lh"><h2>Até onde o sistema vai sozinho</h2>
+          <jo-help term="Os modos de envio" iso="guardian">
+            <dl>
+              <dt>Só descobrir</dt><dd>Busca vagas e dá nota. Não prepara nada.</dd>
+              <dt>Só preparar</dt><dd>Monta o currículo e preenche o formulário, mas nunca envia.</dd>
+              <dt>Revisão sua</dt><dd>Prepara tudo e espera você aprovar o formulário exato antes de enviar.</dd>
+              <dt>Automático</dt><dd>Envia sozinho, mas só dentro dos limites que você autorizou.</dd>
+            </dl>
+            <p>Os limites do automático, escolhidos na autorização:</p>
+            <dl>
+              <dt>Validade</dt><dd>Por quantos dias o automático vale. Depois disso, cada vaga volta a esperar você.</dd>
+              <dt>Teto por dia</dt><dd>Quantas candidaturas podem sair num mesmo dia. O que passar do teto sai no dia seguinte.</dd>
+              <dt>Nota mínima</dt><dd>Só sai sozinha a vaga com nota a partir deste valor. As outras esperam você.</dd>
+              <dt>Formulários</dt><dd>Por quais sistemas de candidatura o envio pode sair sozinho.</dd>
+            </dl>
+            <p>CAPTCHA, login, código de verificação, declaração legal e pergunta nova sempre param para você. Cada ícone ao lado dos limites, na autorização, explica o limite com exemplo.</p>
+          </jo-help>
+        </div>
+      </header>
       <div class="modes" role="radiogroup" aria-label="Modo de envio">
         @for (m of modes; track m.key) {
           <button type="button" role="radio" class="mode" [attr.aria-checked]="form().mode === m.key" [disabled]="m.locked" (click)="pick(m.key)">
@@ -28,8 +47,32 @@
     <section class="panel">
       <header><h2>Critérios e limites</h2></header>
       <div class="form">
-        <label class="field">Nota mínima para entrar na fila<input type="number" min="0" max="100" [value]="form().minFitScore" (input)="set('minFitScore', $any($event.target).value)" /></label>
-        <label class="field">Envios por dia, no máximo<input type="number" min="0" max="100" [value]="form().maxSubmissionsPerDay" (input)="set('maxSubmissionsPerDay', $any($event.target).value)" /></label>
+        <div class="field">
+          <div class="lh"><label for="c-cut">Nota mínima para entrar na fila</label>
+            <jo-help term="Nota mínima para entrar na fila" iso="selector">
+              <p>Cada vaga que as fontes trazem ganha uma nota de 0 a 100, somando quatro partes:</p>
+              <dl>
+                <dt>Palavras-chave, até 45</dt><dd>Quantas das suas palavras-chave e competências a vaga cita.</dd>
+                <dt>Cargo, até 25</dt><dd>O quanto o título da vaga se parece com os seus cargos-alvo.</dd>
+                <dt>Nível, até 15</dt><dd>Se o nível do cargo parece perto do seu.</dd>
+                <dt>Modalidade, até 15</dt><dd>Remoto vale mais, depois híbrido, depois presencial.</dd>
+              </dl>
+              <p>Só a vaga com nota igual ou maior que esta entra na fila, e o sistema prepara currículo e formulário para ela. As outras continuam na tela Vagas, sem nada preparado.</p>
+              <p>Antes da nota, a vaga fica de fora da fila se parecer golpe, se for só para quem mora em outro país, se o local estiver fora dos aceitos ou se não citar nenhuma das duas primeiras palavras-chave.</p>
+              <p class="ex"><span>Com o valor de agora</span>Nota {{ form().minFitScore }}: a vaga com {{ above() }} entra na fila@if (below() !== null) {; a vaga com {{ below() }} fica só na lista de Vagas}. Mais alta, menos vagas e mais certeiras. Mais baixa, mais vagas para revisar.</p>
+            </jo-help></div>
+          <input id="c-cut" type="number" min="0" max="100" [value]="form().minFitScore" (input)="set('minFitScore', $any($event.target).value)" />
+        </div>
+        <div class="field">
+          <div class="lh"><label for="c-day">Envios por dia, no máximo</label>
+            <jo-help term="Envios por dia, no máximo" iso="send">
+              <p>O limite de candidaturas enviadas por dia nesta campanha, somando as que você aprova e as do automático.</p>
+              <p>Quando enche, o que você aprovar depois continua pronto e sai a partir da meia-noite, no fuso da campanha ({{ c.timeZone }}).</p>
+              <p>O teto do automático, escolhido na autorização, fica dentro deste número e nunca passa de 15.</p>
+              <p class="ex"><span>Com o valor de agora</span>Limite {{ form().maxSubmissionsPerDay }}: depois de {{ form().maxSubmissionsPerDay }} envios no dia, o resto espera o dia seguinte.</p>
+            </jo-help></div>
+          <input id="c-day" type="number" min="0" max="100" [value]="form().maxSubmissionsPerDay" (input)="set('maxSubmissionsPerDay', $any($event.target).value)" />
+        </div>
         <label class="field wide">Cargos-alvo, separados por vírgula. A nota compara o título da vaga com eles.<input [value]="form().titles" (input)="set('titles', $any($event.target).value)" placeholder="ex.: Enfermeira de UTI, Analista de RH, Desenvolvedor .NET" /></label>
         <label class="field wide">Palavras-chave e competências, separadas por vírgula: ferramentas, especialidades, registros profissionais. A vaga precisa citar ao menos uma das duas primeiras.<input [value]="form().technologies" (input)="set('technologies', $any($event.target).value)" /></label>
         <label class="field wide">Locais aceitos, separados por vírgula<input [value]="form().locations" (input)="set('locations', $any($event.target).value)" /></label>
