@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, output, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Company } from '@jo/ui/company';
 import { Icon } from '@jo/ui/icon';
@@ -16,6 +16,8 @@ interface LinkedInStatus { connected: boolean; fileName: string | null; imported
 interface Compose { ok: boolean; versionId: string | null; error: string | null }
 
 const PAGE = 'https://www.linkedin.com/mypreferences/d/download-my-data';
+/** Quando você pediu a cópia (só neste navegador), para a tela dizer há quanto tempo e quando vale pedir de novo. */
+const ASKED = 'jo.linkedin.askedAt';
 const GROUPS: { kind: string; label: string }[] = [
   { kind: 'experience', label: 'Experiências' }, { kind: 'education', label: 'Formação' }, { kind: 'certification', label: 'Certificados' },
   { kind: 'language', label: 'Idiomas' }, { kind: 'project', label: 'Projetos' },
@@ -64,8 +66,8 @@ const GROUPS: { kind: string; label: string }[] = [
               <jo-iso name="inbox" [size]="96" />
               <div>
                 <h2>{{ latest() ? 'Achei o arquivo' : 'Agora o LinkedIn prepara o arquivo' }}</h2>
-                <p class="muted">Em cerca de 10 minutos chega um e-mail do LinkedIn avisando que os dados estão prontos. Clique em <strong>Baixar</strong> no e-mail:
-                  o ZIP cai na pasta de downloads e o app acha sozinho.</p>
+                <p class="muted">Quando o arquivo fica pronto, o LinkedIn manda um e-mail. Com dados específicos ele chega em minutos; o arquivo completo leva até 24 horas.
+                  Clique em <strong>Baixar</strong> no e-mail ou na página do LinkedIn: o ZIP cai na pasta de downloads e o app acha sozinho.</p>
               </div>
             </div>
             @if (latest(); as f) {
@@ -77,7 +79,17 @@ const GROUPS: { kind: string; label: string }[] = [
             } @else {
               <div class="watch" role="status">
                 <span class="pulse" aria-hidden="true"></span>
-                <span>Olhando a pasta <span class="mono">{{ status.value()?.folder ?? 'Downloads' }}</span> a cada poucos segundos. Pode fechar esta janela: quando você voltar, o app acha o arquivo.</span>
+                <span>Olhando a pasta <span class="mono">{{ status.value()?.folder ?? 'Downloads' }}</span> a cada poucos segundos.@if (askedLabel(); as a) { Pedido {{ a }}. } Pode fechar esta janela: quando você voltar, o app acha o arquivo.</span>
+              </div>
+              <div class="late">
+                <strong>Não chegou?</strong>
+                <ol class="how">
+                  <li>Abra de novo a página do LinkedIn. Quando o arquivo fica pronto, ela mostra o botão para baixar, sem depender do e-mail.</li>
+                  <li>Procure o e-mail do LinkedIn no endereço principal da sua conta de lá, inclusive em Spam, Promoções e Social.</li>
+                  <li>Dados específicos chegam em minutos. Se passou de uma hora, peça de novo: o pedido só vale depois que você confirma a senha.</li>
+                  <li>O arquivo completo leva até 24 horas. Pronto, ele fica disponível para baixar por 72 horas.</li>
+                </ol>
+                <a class="btn" [href]="page" target="_blank" rel="noopener" (click)="mark(false)"><jo-icon name="arrow-square-out" [size]="14" />Abrir a página do LinkedIn</a>
               </div>
             }
             <label class="other">
@@ -158,7 +170,7 @@ const GROUPS: { kind: string; label: string }[] = [
           @if (step() === 2) { <button type="button" class="btn ghost" (click)="step.set(1)"><jo-icon name="arrow-left" [size]="14" />Voltar</button> } @else { <span></span> }
           <span class="end">
             @switch (step()) {
-              @case (1) { <button type="button" class="btn" (click)="step.set(2)">Já pedi<jo-icon name="arrow-right" [size]="14" /></button> }
+              @case (1) { <button type="button" class="btn" (click)="mark(false); step.set(2)">Já pedi<jo-icon name="arrow-right" [size]="14" /></button> }
               @case (3) { <button type="button" class="btn primary" (click)="step.set(4)">Gerar currículos<jo-icon name="arrow-right" [size]="14" /></button> }
               @case (4) { <button type="button" class="btn primary" (click)="close.emit()">Concluir</button> }
             }
@@ -178,6 +190,8 @@ const GROUPS: { kind: string; label: string }[] = [
     .watch { display: flex; gap: 10px; align-items: center; padding: 12px 14px; border-radius: 6px; background: var(--surface-2); color: var(--text-2); font-size: 13px; line-height: 1.5; }
     .pulse { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 0 var(--accent-weak); animation: li-pulse 1.6s ease-out infinite; }
     @keyframes li-pulse { 0% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--accent) 45%, transparent); } 100% { box-shadow: 0 0 0 12px transparent; } }
+    .late { display: grid; gap: 8px; justify-items: start; padding: 12px 14px; border-radius: 6px; border: 1px solid var(--line); font-size: 13px; }
+    .late .how { font-size: 12.5px; }
     .other { position: relative; justify-self: start; display: inline-flex; gap: 6px; align-items: center; font-size: 12.5px; color: var(--text-2); cursor: pointer; }
     .other:hover { color: var(--text); }
     .other input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
@@ -228,8 +242,14 @@ export class LinkedInImport {
   protected readonly skills = computed(() => this.mine().filter((f) => f.kind === 'skill').map((f) => f.statement));
 
   private readonly openedAt = Date.now();
+  protected readonly askedAt = signal<string | null>(stored());
+  private readonly now = signal(Date.now());
+  /** "há 12 min", recalculado a cada 30 s enquanto o assistente está aberto. */
+  protected readonly askedLabel = computed(() => { this.now(); const a = this.askedAt(); return a ? ago(a) : null; });
 
   constructor() {
+    const tick = setInterval(() => this.now.set(Date.now()), 30_000);
+    inject(DestroyRef).onDestroy(() => clearInterval(tick));
     // O ZIP baixado com o assistente aberto (o clique em Baixar no e-mail do LinkedIn) é lido na hora; um export antigo da pasta espera o seu clique.
     effect(() => {
       const f = this.latest();
@@ -237,7 +257,14 @@ export class LinkedInImport {
     });
   }
 
-  protected asked() { setTimeout(() => this.step.set(2), 600); }
+  protected asked() { this.mark(true); setTimeout(() => this.step.set(2), 600); }
+  /** Guarda a hora do pedido. Reabrir a página para baixar não conta como pedido novo. */
+  protected mark(fresh: boolean) {
+    if (!fresh && this.askedAt()) return;
+    const at = new Date().toISOString();
+    this.askedAt.set(at);
+    try { localStorage.setItem(ASKED, at); } catch { /* sem armazenamento: a tela só não mostra há quanto tempo */ }
+  }
   protected size(bytes: number) { return bytes >= 1 << 20 ? `${(bytes / (1 << 20)).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`; }
 
   protected importFound(f: FoundExport) { void this.read(() => send<{ documentId: string }>('POST', '/profile/linkedin/import', { name: f.name })); }
@@ -285,4 +312,8 @@ export class LinkedInImport {
       this.writing.set(null);
     }
   }
+}
+
+function stored(): string | null {
+  try { return localStorage.getItem(ASKED); } catch { return null; }
 }
