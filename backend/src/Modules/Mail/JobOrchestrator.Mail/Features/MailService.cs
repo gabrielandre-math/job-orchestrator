@@ -50,7 +50,7 @@ internal sealed partial class MailService(
         var password = input.Password.Replace(" ", "").Trim();
         await TestSmtpAsync(account, password, ct);
         if (account.ImapHost.Length > 0) await TestImapAsync(account, password, ct);
-        if (!await Secrets.StoreAsync($"mail:{account.Id}", password, ct)) throw new MailRuleException("O gnome-keyring não aceitou guardar a senha. Confira se o chaveiro está desbloqueado.");
+        if (!await Secrets.StoreAsync($"mail:{account.Id}", password, ct)) throw new MailRuleException("O chaveiro do sistema não aceitou guardar a senha. Confira se ele está desbloqueado.");
         if (account.DisplayName.Length == 0 && await profile.CurrentAsync(ct) is { } p) account.DisplayName = p.Identity.FullName;
         account.CheckedAt = Now;
         db.Accounts.Add(account);
@@ -79,7 +79,7 @@ internal sealed partial class MailService(
 
     private static async Task TestSmtpAsync(MailAccount a, string password, CancellationToken ct)
     {
-        using var smtp = new SmtpClient { Timeout = 20000 };
+        using var smtp = MailTls.Secure(new SmtpClient { Timeout = 20000 });
         try
         {
             await smtp.ConnectAsync(a.SmtpHost, a.SmtpPort, a.SmtpSsl ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.StartTls, ct);
@@ -87,13 +87,14 @@ internal sealed partial class MailService(
             await smtp.DisconnectAsync(true, ct);
         }
         catch (AuthenticationException) { throw new MailRuleException("O servidor recusou o login. Confira se é uma senha de app, não a senha normal da conta."); }
-        catch (Exception ex) when (ex is IOException or SmtpCommandException or SmtpProtocolException or System.Net.Sockets.SocketException or SslHandshakeException)
-        { throw new MailRuleException($"Não deu para falar com {a.SmtpHost}:{a.SmtpPort}: {ex.Message}"); }
+        catch (SslHandshakeException) { throw new MailRuleException($"Não foi possível abrir uma conexão segura com {a.SmtpHost}:{a.SmtpPort}: o certificado do servidor não foi aceito."); }
+        catch (Exception ex) when (ex is IOException or SmtpCommandException or SmtpProtocolException or System.Net.Sockets.SocketException)
+        { throw new MailRuleException($"Não foi possível falar com {a.SmtpHost}:{a.SmtpPort}: {ex.Message}"); }
     }
 
     private static async Task TestImapAsync(MailAccount a, string password, CancellationToken ct)
     {
-        using var imap = new ImapClient { Timeout = 20000 };
+        using var imap = MailTls.Secure(new ImapClient { Timeout = 20000 });
         try
         {
             await imap.ConnectAsync(a.ImapHost, a.ImapPort, SecureSocketOptions.SslOnConnect, ct);
@@ -101,8 +102,9 @@ internal sealed partial class MailService(
             await imap.DisconnectAsync(true, ct);
         }
         catch (AuthenticationException) { throw new MailRuleException("O envio funcionou, mas a leitura (IMAP) recusou o login. No Gmail, confira se o IMAP está ligado nas configurações."); }
-        catch (Exception ex) when (ex is IOException or ImapCommandException or ImapProtocolException or System.Net.Sockets.SocketException or SslHandshakeException)
-        { throw new MailRuleException($"Não deu para ler a caixa em {a.ImapHost}:{a.ImapPort}: {ex.Message}"); }
+        catch (SslHandshakeException) { throw new MailRuleException($"Não foi possível abrir uma conexão segura com {a.ImapHost}:{a.ImapPort}: o certificado do servidor não foi aceito."); }
+        catch (Exception ex) when (ex is IOException or ImapCommandException or ImapProtocolException or System.Net.Sockets.SocketException)
+        { throw new MailRuleException($"Não foi possível ler a caixa em {a.ImapHost}:{a.ImapPort}: {ex.Message}"); }
     }
 
     // ---------- Configuração e modelo ----------
@@ -378,8 +380,8 @@ internal sealed partial class MailService(
 
     private static async Task SendAsync(MailAccount a, MimeMessage msg, CancellationToken ct)
     {
-        var password = await Secrets.GetAsync($"mail:{a.Id}", ct) ?? throw new MailRuleException("A senha da conta sumiu do gnome-keyring. Conecte a conta de novo.");
-        using var smtp = new SmtpClient { Timeout = 30000 };
+        var password = await Secrets.GetAsync($"mail:{a.Id}", ct) ?? throw new MailRuleException("A senha da conta não está mais no chaveiro do sistema. Conecte a conta de novo.");
+        using var smtp = MailTls.Secure(new SmtpClient { Timeout = 30000 });
         await smtp.ConnectAsync(a.SmtpHost, a.SmtpPort, a.SmtpSsl ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.StartTls, ct);
         await smtp.AuthenticateAsync(a.Address, password, ct);
         await smtp.SendAsync(msg, ct);
@@ -462,10 +464,10 @@ internal sealed partial class MailService(
         {
             if (a.ImapHost.Length == 0) continue;
             var password = await Secrets.GetAsync($"mail:{a.Id}", ct);
-            if (password is null) { a.LastError = "Senha fora do gnome-keyring."; continue; }
+            if (password is null) { a.LastError = "Senha fora do chaveiro do sistema."; continue; }
             try
             {
-                using var imap = new ImapClient { Timeout = 30000 };
+                using var imap = MailTls.Secure(new ImapClient { Timeout = 30000 });
                 await imap.ConnectAsync(a.ImapHost, a.ImapPort, SecureSocketOptions.SslOnConnect, ct);
                 await imap.AuthenticateAsync(a.Address, password, ct);
                 var inbox = imap.Inbox;
