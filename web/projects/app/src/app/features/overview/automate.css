@@ -24,7 +24,9 @@ li.opt .mark { border-style: dashed; }
 .seg button[aria-pressed="true"] { background: var(--accent-weak); color: var(--accent); }
 .limits { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 input[type="range"] { padding: 0; height: 20px; accent-color: var(--accent); border: 0; background: transparent; box-shadow: none !important; }
-.accent { color: var(--accent); margin-left: 6px; }
+.accent { color: var(--accent); margin-left: auto; }
+.limits .field { display: grid; gap: 6px; font-size: 12px; color: var(--text-2); }
+.lh { display: flex; align-items: center; gap: 6px; }
 .consent { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 6px; border: 1px solid color-mix(in oklch, var(--warn) 45%, var(--line)); background: color-mix(in oklch, var(--warn) 6%, var(--surface-2)); cursor: pointer; transition: border-color 200ms ease, background-color 200ms ease; }
 .consent.on { border-color: color-mix(in oklch, var(--ok) 50%, var(--line)); background: color-mix(in oklch, var(--ok) 6%, var(--surface-2)); }
 .consent input { width: auto; height: auto; margin-top: 3px; }

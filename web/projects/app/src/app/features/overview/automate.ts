@@ -6,6 +6,7 @@ import { AuthorizationItem, Campaign, Confirmations, ExploreStatus, MailOverview
 import { command } from '../../core/command';
 import { SearchRun } from '../../core/search';
 import { Wizard } from '../../shared/wizard';
+import { LimitHelp } from '../../shared/limit-help';
 
 interface TimerView { name: string; label: string; enabled: boolean; active: boolean; next: string | null; }
 interface UnitsView { available: boolean; reason: string | null; timers: TimerView[]; mode?: 'systemd' | 'app'; }
@@ -22,7 +23,7 @@ const MODE_LABEL: Record<string, string> = { DiscoveryOnly: 'só buscar', Prepar
  */
 @Component({
   selector: 'app-automate',
-  imports: [Icon, Iso, Wizard],
+  imports: [Icon, Iso, Wizard, LimitHelp],
   templateUrl: './automate.html',
   styleUrl: './automate.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
