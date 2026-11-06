@@ -33,6 +33,24 @@ public sealed record ApplyTarget(Guid ApplicationId, string ApplyUrl);
 /// <summary>Tudo que vai no formulário: contato, PDF do currículo e respostas aprovadas. Nunca vai para log.</summary>
 public sealed record MaterialBundle(string FirstName, string LastName, string Email, string Phone, string LinkedIn, string ResumePdfPath, IReadOnlyDictionary<string, string> Answers);
 
+/// <summary>Resposta sua a uma pergunta de formulário que o perfil não responde: a chave é o texto da pergunta sem acento, caixa ou pontuação.</summary>
+public static class CustomAnswer
+{
+    public static string Key(string question) => "custom:" + Normalize(question);
+
+    public static string Normalize(string question)
+    {
+        var sb = new StringBuilder();
+        foreach (var ch in question.Normalize(NormalizationForm.FormD))
+        {
+            if (System.Globalization.CharUnicodeInfo.GetUnicodeCategory(ch) == System.Globalization.UnicodeCategory.NonSpacingMark) continue;
+            sb.Append(char.IsLetterOrDigit(ch) ? char.ToLowerInvariant(ch) : ' ');
+        }
+        var words = string.Join(' ', sb.ToString().Split(' ', StringSplitOptions.RemoveEmptyEntries));
+        return words.Length > 200 ? words[..200] : words;
+    }
+}
+
 /// <summary>Um campo preenchido e de onde veio o valor.</summary>
 public sealed record FieldValue(string Label, string Value, string Source);
 

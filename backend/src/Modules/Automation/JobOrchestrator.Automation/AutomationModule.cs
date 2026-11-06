@@ -97,6 +97,7 @@ public static class AutomationModule
         s.AddScoped<IFormAdapter, GreenhouseLikeForm>();
         s.AddScoped<IFormAdapter, LeverForm>();
         s.AddScoped<IFormAdapter, AshbyForm>();
+        s.AddScoped<IFormAdapter, WorkableForm>();
         s.AddScoped<Router>();
         s.AddScoped<IAutomationApi, Features.AutomationApi>();
         return s;

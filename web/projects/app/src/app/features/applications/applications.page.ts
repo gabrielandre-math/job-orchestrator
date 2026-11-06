@@ -3,6 +3,7 @@ import { Router, RouterLink } from '@angular/router';
 import { Badge } from '@jo/ui/badge';
 import { Company } from '@jo/ui/company';
 import { HeroStat, PageHero } from '@jo/ui/page-hero';
+import { Rehearsal } from './rehearsal';
 import { Empty } from '@jo/ui/empty';
 import { Icon } from '@jo/ui/icon';
 import { Score } from '@jo/ui/score';
@@ -14,7 +15,7 @@ import { ago, evidenceLabel, stateLabel, stateTone } from '../../core/format';
 /** Candidaturas: cada vaga que entrou na fila, do currículo à confirmação. */
 @Component({
   selector: 'app-applications',
-  imports: [RouterLink, Badge, Empty, Icon, Score, Company, PageHero],
+  imports: [RouterLink, Badge, Empty, Icon, Score, Company, PageHero, Rehearsal],
   templateUrl: './applications.page.html',
   styleUrl: './applications.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

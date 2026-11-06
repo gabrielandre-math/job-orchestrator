@@ -1,5 +1,6 @@
 <section class="page">
   <jo-page-hero title="Candidaturas" lead="Cada vaga que entrou na fila, com o estado atual, quem mexeu por último e a prova de envio." [scene]="['form', 'guardian', 'send']" [stats]="heroStats()" />
+  <app-rehearsal />
   <div class="bar">
     <div class="seg-view" role="radiogroup" aria-label="Ver como">
       <button type="button" role="radio" [attr.aria-checked]="view() === 'board'" [class.on]="view() === 'board'" (click)="setView('board')"><jo-icon name="squares-four" [size]="14" />Quadro</button>

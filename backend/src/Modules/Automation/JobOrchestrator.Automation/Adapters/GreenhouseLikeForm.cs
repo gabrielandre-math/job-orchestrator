@@ -31,7 +31,7 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
 
     /// <summary>Pergunta conhecida: o padrão do rótulo e a chave da resposta aprovada.</summary>
     // Chaves do banco de respostas (Profile.Contracts.AnswerKeys). Anos com tecnologia: years_experience:{tecnologia}.
-    private static readonly (Regex Label, string Answer)[] Questions =
+    protected static readonly (Regex Label, string Answer)[] Questions =
     [
         (new Regex(@"authori[sz]ed to work|autoriza", RegexOptions.IgnoreCase), "work_authorization"),
         (new Regex(@"sponsorship|visto|patroc", RegexOptions.IgnoreCase), "needs_sponsorship"),
@@ -117,16 +117,20 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
         return AdapterResult<ReconcileResult>.Ok(new ReconcileResult(true, id, "O ATS confirma a candidatura."));
     }
 
-    private IReadOnlyCollection<string> Hosts(ApplyTarget target) => [new Uri(target.ApplyUrl).Authority, .. Domains];
+    /// <summary>Hosts de arquivos do próprio ATS (CDN, depósito de arquivos) que a página precisa para abrir o formulário; nunca o de verificação anti-robô.</summary>
+    protected virtual string[] AssetHosts => [];
+    private IReadOnlyCollection<string> Hosts(ApplyTarget target) => [new Uri(target.ApplyUrl).Authority, .. Domains, .. AssetHosts];
+    /// <summary>CAPTCHA e verificação anti-robô (reCAPTCHA, hCaptcha, Cloudflare Turnstile): o robô para e a vaga fica com você.</summary>
+    protected const string BotCheck = "[data-sitekey], .g-recaptcha, .h-captcha, .cf-turnstile, iframe[src*='captcha'], iframe[src*='challenges.cloudflare.com'], [data-captcha]";
 
     /// <summary>Abre, confere bloqueios, preenche por rótulo (em até três passadas, para campo condicional) e lê de volta. Mesmo caminho no preparo e no envio.</summary>
-    private async Task<AdapterResult<PreparedForm>> FillAsync(IPage page, ApplyTarget target, MaterialBundle m)
+    protected virtual async Task<AdapterResult<PreparedForm>> FillAsync(IPage page, ApplyTarget target, MaterialBundle m)
     {
         var response = await page.GotoAsync(target.ApplyUrl, new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded });
         if (response is null || response.Status is 404 or 410)
             return AdapterResult<PreparedForm>.Fail(AdapterResultKind.PermanentFailure, "posting-closed", "A vaga não está mais no ar.");
-        if (await page.Locator("[data-sitekey], .g-recaptcha, .h-captcha, iframe[src*='captcha'], [data-captcha]").CountAsync() > 0)
-            return AdapterResult<PreparedForm>.Fail(AdapterResultKind.NeedsHuman, "captcha", "A página pede CAPTCHA. Fica para a sessão assistida.");
+        if (await page.Locator(BotCheck).CountAsync() > 0)
+            return AdapterResult<PreparedForm>.Fail(AdapterResultKind.NeedsHuman, "captcha", "A página tem CAPTCHA ou verificação anti-robô: o app não passa por ela, o envio fica com você.");
         if (await page.Locator("input[autocomplete='one-time-code'], input[name*='otp' i], input[name*='mfa' i]").CountAsync() > 0 || await page.GetByText(Mfa()).CountAsync() > 0)
             return AdapterResult<PreparedForm>.Fail(AdapterResultKind.NeedsHuman, "mfa", "A página pede um código de verificação (MFA). Só você recebe e digita.");
         if (await page.Locator("input[type=password]").CountAsync() > 0)
@@ -138,6 +142,8 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
 
         var fields = new List<FieldValue>();
         var done = new HashSet<string>();
+        // Pergunta obrigatória sem resposta não para na primeira: o ensaio mostra todas de uma vez, para você responder numa ida só.
+        var missing = new List<string>();
         for (var pass = 0; pass < 3; pass++)
         {
             var before = done.Count;
@@ -155,7 +161,7 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
                 var (value, source) = Resolve(text, type, m);
                 if (value is null)
                 {
-                    if (required) return AdapterResult<PreparedForm>.Fail(AdapterResultKind.Unsupported, "unsupported-field", $"Campo obrigatório sem resposta aprovada: \"{text}\".");
+                    if (required) missing.Add(text);
                     continue;
                 }
                 if (type == "file")
@@ -183,12 +189,17 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
             // Uma resposta pode ter aberto outra pergunta: dá tempo de a página mostrar antes da próxima passada.
             await page.WaitForTimeoutAsync(150);
         }
+        if (missing.Count > 0) return Missing(missing);
         if (fields.Count == 0) return AdapterResult<PreparedForm>.Fail(AdapterResultKind.Unsupported, "no-fields", "Nenhum campo com rótulo foi reconhecido.");
         var hash = PayloadHash(fields);
         return AdapterResult<PreparedForm>.Ok(new PreparedForm(Id, Version, new Uri(target.ApplyUrl).Authority, hash, fields));
     }
 
-    private static (string? Value, string Source) Resolve(string label, string type, MaterialBundle m)
+    /// <summary>As perguntas obrigatórias sem resposta, todas no detalhe, entre aspas: a tela do ensaio abre um campo para cada uma.</summary>
+    protected static AdapterResult<PreparedForm> Missing(IReadOnlyList<string> questions) => AdapterResult<PreparedForm>.Fail(AdapterResultKind.Unsupported, "unsupported-field",
+        $"{(questions.Count == 1 ? "Pergunta obrigatória sem resposta aprovada" : "Perguntas obrigatórias sem resposta aprovada")}: {string.Join(" | ", questions.Select(q => $"\"{q}\""))}.");
+
+    protected static (string? Value, string Source) Resolve(string label, string type, MaterialBundle m)
     {
         if (type == "file") return Resume().IsMatch(label) ? (m.ResumePdfPath, "currículo") : (null, "");
         if (FullName().IsMatch(label)) return ($"{m.FirstName} {m.LastName}".Trim(), "perfil");
@@ -204,6 +215,7 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
                 && (string.Equals(k[17..], tech, StringComparison.OrdinalIgnoreCase) || tech.StartsWith(k[17..], StringComparison.OrdinalIgnoreCase)));
             return key is not null ? (m.Answers[key], "anos pelas datas das experiências") : (null, "");
         }
+        if (m.Answers.TryGetValue(CustomAnswer.Key(label), out var mine)) return (mine, "sua resposta");
         foreach (var (pattern, answer) in Questions)
             if (pattern.IsMatch(label)) return m.Answers.TryGetValue(answer, out var v) ? (v, "banco de respostas") : (null, "");
         return (null, "");
@@ -216,21 +228,21 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
         return Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(canonical)));
     }
 
-    private static string FileHash(string path) => Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(path)));
-    private static string Clean(string label) => Spaces().Replace(label.Replace("*", ""), " ").Trim();
+    protected static string FileHash(string path) => Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(path)));
+    protected static string Clean(string label) => Spaces().Replace(label.Replace("*", ""), " ").Trim();
 
     [GeneratedRegex(@"\s+")] private static partial Regex Spaces();
     [GeneratedRegex(@"^full name|^name$|^nome completo|^seu nome", RegexOptions.IgnoreCase)] private static partial Regex FullName();
     [GeneratedRegex(@"^first name|^nome$|^primeiro nome", RegexOptions.IgnoreCase)] private static partial Regex FirstName();
     [GeneratedRegex(@"^last name|sobrenome", RegexOptions.IgnoreCase)] private static partial Regex LastName();
     [GeneratedRegex(@"^e-?mail", RegexOptions.IgnoreCase)] private static partial Regex Email();
-    [GeneratedRegex(@"phone|telefone|celular", RegexOptions.IgnoreCase)] private static partial Regex Phone();
+    [GeneratedRegex(@"phone|telefone|celular", RegexOptions.IgnoreCase)] protected static partial Regex Phone();
     [GeneratedRegex(@"linkedin", RegexOptions.IgnoreCase)] private static partial Regex LinkedIn();
-    [GeneratedRegex(@"resume|cv|curr[ií]culo", RegexOptions.IgnoreCase)] private static partial Regex Resume();
+    [GeneratedRegex(@"resume|cv|curr[ií]culo", RegexOptions.IgnoreCase)] protected static partial Regex Resume();
     [GeneratedRegex(@"submit|send application|enviar candidatura", RegexOptions.IgnoreCase)] private static partial Regex SubmitButton();
     [GeneratedRegex(@"thank(s| you) for applying|application (was )?(received|submitted)|candidatura recebida", RegexOptions.IgnoreCase)] private static partial Regex Confirmation();
     [GeneratedRegex(@"already (applied|submitted)|j[aá] se candidatou", RegexOptions.IgnoreCase)] private static partial Regex AlreadyApplied();
-    [GeneratedRegex(@"verification code|c[oó]digo de verifica[cç][aã]o|two-factor|autentica[cç][aã]o em dois", RegexOptions.IgnoreCase)] private static partial Regex Mfa();
+    [GeneratedRegex(@"verification code|c[oó]digo de verifica[cç][aã]o|two-factor|autentica[cç][aã]o em dois", RegexOptions.IgnoreCase)] protected static partial Regex Mfa();
     [GeneratedRegex(@"application id:?\s*([A-Z0-9-]{4,})", RegexOptions.IgnoreCase)] private static partial Regex ReceiptId();
     [GeneratedRegex(@"/(\d+)(?:/[a-z]+)?/?$")] private static partial Regex JobId();
 }

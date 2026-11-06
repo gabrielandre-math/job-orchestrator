@@ -15,4 +15,6 @@ public sealed record ComposeResult(bool Ok, Guid? VersionId, string? PdfPath, st
 public interface IMaterialsApi
 {
     Task<ComposeResult> ComposeResumeAsync(ComposeRequest request, CancellationToken ct);
+    /// <summary>Currículo base, sem vaga e sem IA: só os fatos do perfil (o ensaio dos formulários anexa este).</summary>
+    Task<ComposeResult> ComposeBaseAsync(string language, string theme, CancellationToken ct);
 }
