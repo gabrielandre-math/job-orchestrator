@@ -6,6 +6,7 @@
         <button type="button" class="btn primary" (click)="wizard.set(1)"><jo-icon name="envelope-simple" [size]="14" />Conectar e-mail</button>
       } @else {
         <button type="button" class="btn primary" (click)="wizard.set(4)"><jo-icon name="sliders-horizontal" [size]="14" />Como os e-mails saem</button>
+        <button type="button" class="btn" (click)="wizard.set(1)"><jo-icon name="envelope-simple" [size]="14" />Conectar outra conta</button>
         <jo-help term="Como o e-mail funciona" iso="send" label="Como funciona">
           <dl>
             <dt>Para quais vagas</dt><dd>Só as que pedem currículo por e-mail, e só para o endereço que a própria vaga publica. Um e-mail por vaga e, se não houver resposta, um lembrete.</dd>
@@ -25,8 +26,10 @@
       <jo-iso [name]="settings.value()?.mode === 'Auto' ? 'send' : 'gate'" [size]="44" />
       <div class="what">
         <strong>{{ modeText() }}</strong>
+        @if (sending() > 1) { <span class="faint small">{{ sending() }} contas se revezam no envio, até {{ (settings.value()?.dailyCap ?? 0) * sending() }} e-mails por dia.</span> }
         @for (a of accounts.value() ?? []; track a.id) {
-          <span class="faint small">Conta {{ a.address }} · leitura {{ a.checkedAt ? ago(a.checkedAt) : 'ainda não' }}@if (a.lastError) { <span class="warn"> · {{ a.lastError }}</span> }
+          <span class="faint small">Conta {{ a.address }} · {{ a.sends ? a.sentToday + ' de ' + (settings.value()?.dailyCap ?? 0) + ' hoje' : 'só leitura' }} · leitura {{ a.checkedAt ? ago(a.checkedAt) : 'ainda não' }}@if (a.pausedUntil) { <span class="warn"> · pausada até amanhã: o provedor avisou o limite de envio</span> }@if (a.lastError) { <span class="warn"> · {{ a.lastError }}</span> }
+            <button type="button" class="link" (click)="toggling.run({ id: a.id, sends: !a.sends }).then(refresh.bind(this))">{{ a.sends ? 'só ler' : 'enviar por ela' }}</button>
             <button type="button" class="link" (click)="removing.run(a.id).then(refresh.bind(this))">desconectar</button></span>
         }
       </div>
@@ -162,5 +165,5 @@
 </section>
 
 @if (wizard(); as start) {
-  <app-mail-connect [start]="start" [settings]="settings.value() ?? null" (close)="wizard.set(null); refresh()" (changed)="refresh()" />
+  <app-mail-connect [start]="start" [senders]="sending() || 1" [settings]="settings.value() ?? null" (close)="wizard.set(null); refresh()" (changed)="refresh()" />
 }

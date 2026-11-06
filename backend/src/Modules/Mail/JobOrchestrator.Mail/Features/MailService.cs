@@ -50,12 +50,32 @@ internal sealed partial class MailService(
         var password = input.Password.Replace(" ", "").Trim();
         await TestSmtpAsync(account, password, ct);
         if (account.ImapHost.Length > 0) await TestImapAsync(account, password, ct);
-        if (!await Secrets.StoreAsync($"mail:{account.Id}", password, ct)) throw new MailRuleException("O chaveiro do sistema não aceitou guardar a senha. Confira se ele está desbloqueado.");
-        if (account.DisplayName.Length == 0 && await profile.CurrentAsync(ct) is { } p) account.DisplayName = p.Identity.FullName;
+        var lower = address.ToLowerInvariant();
+        var existing = await db.Accounts.FirstOrDefaultAsync(x => x.Address.ToLower() == lower, ct);
+        var id = existing?.Id ?? account.Id;
+        if (!await Secrets.StoreAsync($"mail:{id}", password, ct)) throw new MailRuleException("O chaveiro do sistema não aceitou guardar a senha. Confira se ele está desbloqueado.");
+        if (account.DisplayName.Length == 0) account.DisplayName = existing?.DisplayName is { Length: > 0 } kept ? kept : (await profile.CurrentAsync(ct))?.Identity.FullName ?? "";
+        if (existing is not null)
+        {
+            existing.Provider = account.Provider; existing.DisplayName = account.DisplayName;
+            existing.SmtpHost = account.SmtpHost; existing.SmtpPort = account.SmtpPort; existing.SmtpSsl = account.SmtpSsl;
+            existing.ImapHost = account.ImapHost; existing.ImapPort = account.ImapPort;
+            existing.CheckedAt = Now; existing.LastError = null; existing.PausedUntil = null; existing.PauseReason = null;
+            await db.SaveChangesAsync(ct);
+            return existing;
+        }
         account.CheckedAt = Now;
         db.Accounts.Add(account);
         await db.SaveChangesAsync(ct);
         return account;
+    }
+
+    /// <summary>Liga ou desliga o envio por uma conta; desligada, ela continua lendo a caixa.</summary>
+    public async Task SetSendsAsync(Guid id, bool sends, CancellationToken ct)
+    {
+        var a = await db.Accounts.FindAsync([id], ct) ?? throw new MailRuleException("Conta não encontrada.");
+        a.Sends = sends;
+        await db.SaveChangesAsync(ct);
     }
 
     public async Task RemoveAsync(Guid id, CancellationToken ct)
@@ -137,7 +157,7 @@ internal sealed partial class MailService(
         if (input.Mode == "Auto" && input.Consent) { s.AutoConsentAt = Now; s.AutoConsentText = ConsentText; }
         if (input.Mode != "Auto") s.AutoConsentAt = null;
         s.Mode = input.Mode;
-        s.DailyCap = Math.Clamp(input.DailyCap, 1, 15);
+        s.DailyCap = Math.Clamp(input.DailyCap, 1, 50);
         s.FollowUpDays = Math.Clamp(input.FollowUpDays, 3, 21);
         s.WindowStart = Math.Clamp(input.WindowStart, 0, 23);
         s.WindowEnd = Math.Clamp(input.WindowEnd, s.WindowStart + 1, 24);
@@ -309,38 +329,58 @@ internal sealed partial class MailService(
         await using var tx = await db.Database.BeginTransactionAsync(ct);
         if (!await db.Database.SqlQueryRaw<bool>("select pg_try_advisory_xact_lock(4747010) as \"Value\"").SingleAsync(ct)) return 0;
         var settings = await SettingsAsync(ct);
-        var account = await db.Accounts.OrderBy(a => a.CreatedAt).FirstOrDefaultAsync(ct);
+        var accounts = await db.Accounts.OrderBy(a => a.CreatedAt).ToListAsync(ct);
+        var sentToday = await SentTodayAsync(ct);
         var due = await db.Outgoing.Where(o => o.Status == "Scheduled").OrderBy(o => o.ApprovedAt).Take(10).ToListAsync(ct);
         var targets = due.Count == 0 ? [] : await jobs.EmailTargetsAsync(ct);
         var sent = 0;
         foreach (var m in due)
         {
-            var (ok, wait, reason) = await GuardAsync(m, settings, account, targets, ct);
-            if (!ok)
+            Guid? sameAs = m.FollowsId is { } f ? await db.Outgoing.AsNoTracking().Where(o => o.Id == f).Select(o => o.AccountId).FirstOrDefaultAsync(ct) : null;
+            for (var tries = 0; tries <= accounts.Count; tries++)
             {
-                m.Error = reason;
-                if (!wait) m.Status = "Failed";
-                continue;
-            }
-            m.Status = "Sending";
-            await db.SaveChangesAsync(ct);
-            try
-            {
-                var msg = await BuildAsync(m, account!, ct);
-                await SendAsync(account!, msg, ct);
-                m.MessageId = msg.MessageId;
-                m.Status = "Sent";
-                m.SentAt = Now;
-                m.Error = null;
-                sent++;
-                if (m.ThreadId is { } t) await ai.NoteAsync(new AgentThread(t, "mail", $"E-mail para {m.Company}: {m.JobTitle}"), "Guardião", $"Enviado para {m.To}", $"Message-ID {m.MessageId}",
-                    new { stage = "sent", mailId = m.Id }, "Você", true, ct);
-            }
-            catch (Exception ex) when (ex is MailRuleException or IOException or SmtpCommandException or SmtpProtocolException or AuthenticationException or System.Net.Sockets.SocketException)
-            {
-                m.Status = "Failed";
-                m.Error = ex.Message;
-                log.LogWarning("Mail send failed: {Error}", ex.Message);
+                var account = MailRotation.Pick(accounts, sentToday, settings.DailyCap, sameAs, Now);
+                var (ok, wait, reason) = await GuardAsync(m, settings, account, targets, ct, Unavailable(accounts, sameAs, settings.DailyCap));
+                if (!ok)
+                {
+                    m.Error = reason;
+                    if (!wait) m.Status = "Failed";
+                    break;
+                }
+                m.Status = "Sending";
+                m.AccountId = account!.Id;
+                await db.SaveChangesAsync(ct);
+                try
+                {
+                    var msg = await BuildAsync(m, account, ct);
+                    await SendAsync(account, msg, ct);
+                    m.MessageId = msg.MessageId;
+                    m.Status = "Sent";
+                    m.SentAt = Now;
+                    m.Error = null;
+                    sentToday[account.Id] = sentToday.GetValueOrDefault(account.Id) + 1;
+                    sent++;
+                    if (m.ThreadId is { } t) await ai.NoteAsync(new AgentThread(t, "mail", $"E-mail para {m.Company}: {m.JobTitle}"), "Guardião", $"Enviado para {m.To} por {account.Address}", $"Message-ID {m.MessageId}",
+                        new { stage = "sent", mailId = m.Id }, "Você", true, ct);
+                    break;
+                }
+                catch (Exception ex) when (MailRotation.QuotaHit(ex))
+                {
+                    account.PausedUntil = TimeZoneInfo.ConvertTimeToUtc(TimeZoneInfo.ConvertTimeFromUtc(Now, Zone).Date.AddDays(1), Zone);
+                    account.PauseReason = "O provedor avisou que esta conta chegou ao limite de envio. Volta amanhã.";
+                    m.Status = "Scheduled";
+                    m.AccountId = null;
+                    m.Error = $"{account.Address} chegou ao limite do provedor; o e-mail vai pela próxima conta.";
+                    log.LogWarning("Mail account {Address} hit the provider limit: {Error}", account.Address, ex.Message);
+                    await db.SaveChangesAsync(ct);
+                }
+                catch (Exception ex) when (ex is MailRuleException or IOException or SmtpCommandException or SmtpProtocolException or AuthenticationException or System.Net.Sockets.SocketException)
+                {
+                    m.Status = "Failed";
+                    m.Error = ex.Message;
+                    log.LogWarning("Mail send failed: {Error}", ex.Message);
+                    break;
+                }
             }
             await db.SaveChangesAsync(ct);
         }
@@ -349,10 +389,24 @@ internal sealed partial class MailService(
         return sent;
     }
 
-    /// <summary>As regras do envio. wait = true quando é só esperar (janela, teto do dia); false quando o envio não pode sair nunca.</summary>
-    private async Task<(bool Ok, bool Wait, string? Reason)> GuardAsync(OutgoingMail m, MailSettings s, MailAccount? account, IReadOnlyList<EmailTarget> targets, CancellationToken ct)
+    /// <summary>Quantos e-mails cada conta mandou hoje, no fuso da campanha.</summary>
+    internal async Task<Dictionary<Guid, int>> SentTodayAsync(CancellationToken ct)
     {
-        if (account is null) return (false, true, "Conecte uma conta de e-mail para enviar.");
+        var start = TimeZoneInfo.ConvertTimeToUtc(TimeZoneInfo.ConvertTimeFromUtc(Now, Zone).Date, Zone);
+        return await db.Outgoing.Where(o => o.SentAt >= start && o.AccountId != null).GroupBy(o => o.AccountId!.Value)
+            .Select(g => new { g.Key, N = g.Count() }).ToDictionaryAsync(x => x.Key, x => x.N, ct);
+    }
+
+    private static string Unavailable(IReadOnlyList<MailAccount> accounts, Guid? sameAs, int cap) =>
+        accounts.Count == 0 ? "Conecte uma conta de e-mail para enviar."
+        : sameAs is { } id && accounts.FirstOrDefault(a => a.Id == id) is { } owner ? $"O lembrete sai pela mesma conta do primeiro e-mail ({owner.Address}), que já chegou ao teto de hoje ou está pausada. Sai amanhã."
+        : accounts.All(a => !a.Sends) ? "Nenhuma conta está marcada para enviar."
+        : $"Todas as contas chegaram ao teto de {cap} e-mails por conta hoje ou estão pausadas. Sai amanhã.";
+
+    /// <summary>As regras do envio. wait = true quando é só esperar (janela, teto do dia); false quando o envio não pode sair nunca.</summary>
+    private async Task<(bool Ok, bool Wait, string? Reason)> GuardAsync(OutgoingMail m, MailSettings s, MailAccount? account, IReadOnlyList<EmailTarget> targets, CancellationToken ct, string unavailable)
+    {
+        if (account is null) return (false, true, unavailable);
         var target = targets.FirstOrDefault(t => t.Id == m.JobId);
         if (target is null || !string.Equals(target.ApplyEmail.Trim(), m.To, StringComparison.OrdinalIgnoreCase)) return (false, false, "O destino não é o e-mail que a vaga publica para candidatura.");
         if (m.Kind == "first" && await db.Outgoing.AnyAsync(o => o.JobId == m.JobId && o.Kind == "first" && o.Id != m.Id && (o.Status == "Sent" || o.Status == "Replied" || o.Status == "Sending"), ct))
@@ -365,9 +419,6 @@ internal sealed partial class MailService(
         }
         var local = TimeZoneInfo.ConvertTimeFromUtc(Now, Zone);
         if (local.Hour < s.WindowStart || local.Hour >= s.WindowEnd) return (false, true, $"Fora da janela de envio ({s.WindowStart}h às {s.WindowEnd}h). Sai na próxima.");
-        var startOfDay = TimeZoneInfo.ConvertTimeToUtc(local.Date, Zone);
-        var today = await db.Outgoing.CountAsync(o => o.SentAt >= startOfDay, ct);
-        if (today >= s.DailyCap) return (false, true, $"Teto de {s.DailyCap} e-mails por dia atingido. Sai amanhã.");
         if (m.ApprovedAt is null && !(s.Mode == "Auto" && s.AutoConsentAt is not null)) return (false, true, "Esperando a sua aprovação.");
         return (true, false, null);
     }

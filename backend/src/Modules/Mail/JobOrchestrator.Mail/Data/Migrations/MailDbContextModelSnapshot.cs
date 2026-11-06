@@ -177,10 +177,24 @@ namespace JobOrchestrator.Mail.Data.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("last_uid");
 
+                    b.Property<string>("PauseReason")
+                        .HasColumnType("text")
+                        .HasColumnName("pause_reason");
+
+                    b.Property<DateTime?>("PausedUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("paused_until");
+
                     b.Property<string>("Provider")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("provider");
+
+                    b.Property<bool>("Sends")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("sends");
 
                     b.Property<string>("SmtpHost")
                         .IsRequired()
@@ -294,6 +308,10 @@ namespace JobOrchestrator.Mail.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<Guid?>("AccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("account_id");
+
                     b.Property<DateTime?>("ApprovedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("approved_at");
@@ -392,6 +410,9 @@ namespace JobOrchestrator.Mail.Data.Migrations
 
                     b.HasIndex("MessageId")
                         .HasDatabaseName("ix_outgoing_message_id");
+
+                    b.HasIndex("AccountId", "SentAt")
+                        .HasDatabaseName("ix_outgoing_account_id_sent_at");
 
                     b.HasIndex("JobId", "Kind")
                         .HasDatabaseName("ix_outgoing_job_id_kind");

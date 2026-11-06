@@ -32,6 +32,8 @@ const MODES = [
 })
 export class MailConnect {
   readonly start = input(1);
+  /** How many connected accounts send, for the daily total in the cap help. */
+  readonly senders = input(1);
   readonly settings = input<MailSettings | null>(null);
   readonly close = output<void>();
   readonly changed = output<void>();

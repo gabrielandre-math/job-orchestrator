@@ -1,6 +1,8 @@
 namespace JobOrchestrator.Mail.Features;
 
-internal sealed record AccountView(Guid Id, string Provider, string Address, string DisplayName, string SmtpHost, int SmtpPort, string ImapHost, DateTime? CheckedAt, string? LastError);
+internal sealed record AccountView(Guid Id, string Provider, string Address, string DisplayName, string SmtpHost, int SmtpPort, string ImapHost, DateTime? CheckedAt, string? LastError,
+    bool Sends, DateTime? PausedUntil, string? PauseReason, int SentToday);
+internal sealed record SendsInput(bool Sends);
 internal sealed record TargetView(Guid JobId, string Company, string Title, string Location, string ApplyEmail, string ApplyUrl, string? CompanyDomain, int Score, string? MailStatus, Guid? MailId);
 internal sealed record OverviewView(int SentToday, int DailyCap, int Awaiting, int Scheduled, int Sent, int Replied, int Interviews, string Mode, bool Consent, bool Connected);
 
@@ -25,13 +27,20 @@ internal sealed class MailEndpoints : ICarterModule
             var zone = TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
             var start = TimeZoneInfo.ConvertTimeToUtc(TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, zone).Date, zone);
             var all = await db.Outgoing.AsNoTracking().Select(o => new { o.Status, o.SentAt, o.ReplyClass }).ToListAsync(ct);
-            return Results.Ok(new OverviewView(all.Count(o => o.SentAt >= start), s.DailyCap, all.Count(o => o.Status == "AwaitingApproval"), all.Count(o => o.Status == "Scheduled"),
+            var senders = await db.Accounts.CountAsync(a => a.Sends, ct);
+            return Results.Ok(new OverviewView(all.Count(o => o.SentAt >= start), s.DailyCap * Math.Max(1, senders), all.Count(o => o.Status == "AwaitingApproval"), all.Count(o => o.Status == "Scheduled"),
                 all.Count(o => o.Status is "Sent" or "Replied"), all.Count(o => o.Status == "Replied"), all.Count(o => o.ReplyClass is "interview_invite" or "assessment" or "offer"),
                 s.Mode, s.AutoConsentAt is not null, await db.Accounts.AnyAsync(ct)));
         });
 
-        g.MapGet("accounts", async (MailDbContext db, CancellationToken ct) => Results.Ok(await db.Accounts.AsNoTracking().OrderBy(a => a.CreatedAt)
-            .Select(a => new AccountView(a.Id, a.Provider, a.Address, a.DisplayName, a.SmtpHost, a.SmtpPort, a.ImapHost, a.CheckedAt, a.LastError)).ToListAsync(ct)));
+        g.MapGet("accounts", async (MailDbContext db, MailService mail, CancellationToken ct) =>
+        {
+            var today = await mail.SentTodayAsync(ct);
+            var paused = DateTime.UtcNow;
+            return Results.Ok((await db.Accounts.AsNoTracking().OrderBy(a => a.CreatedAt).ToListAsync(ct)).Select(a => new AccountView(a.Id, a.Provider, a.Address, a.DisplayName,
+                a.SmtpHost, a.SmtpPort, a.ImapHost, a.CheckedAt, a.LastError, a.Sends, a.PausedUntil > paused ? a.PausedUntil : null, a.PausedUntil > paused ? a.PauseReason : null, today.GetValueOrDefault(a.Id))));
+        });
+        g.MapPut("accounts/{id:guid}", (Guid id, SendsInput body, MailService mail, CancellationToken ct) => Run(async () => { await mail.SetSendsAsync(id, body.Sends, ct); return new { ok = true }; }));
         g.MapPost("accounts", (AccountInput body, MailService mail, CancellationToken ct) => Run(async () => { var a = await mail.ConnectAsync(body, ct); return new { a.Id, a.Address }; }));
         g.MapDelete("accounts/{id:guid}", async (Guid id, MailService mail, CancellationToken ct) => { await mail.RemoveAsync(id, ct); return Results.NoContent(); });
         g.MapPost("accounts/{id:guid}/test", (Guid id, MailService mail, CancellationToken ct) => Run(async () => { await mail.SendTestAsync(id, ct); return new { ok = true }; }));

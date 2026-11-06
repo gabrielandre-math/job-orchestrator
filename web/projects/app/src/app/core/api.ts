@@ -106,7 +106,7 @@ export interface SourceTestResult { ok: boolean; count: number; seconds: number;
 // E-mail.
 export interface MailPreset { id: string; name: string; smtp: string; smtpPort: number; smtpSsl: boolean; imap: string; imapPort: number; appPasswordUrl: string; hint: string; }
 export interface MailOverview { sentToday: number; dailyCap: number; awaiting: number; scheduled: number; sent: number; replied: number; interviews: number; mode: 'Draft' | 'Review' | 'Auto'; consent: boolean; connected: boolean; }
-export interface MailAccountView { id: string; provider: string; address: string; displayName: string; smtpHost: string; smtpPort: number; imapHost: string; checkedAt: string | null; lastError: string | null; }
+export interface MailAccountView { id: string; provider: string; address: string; displayName: string; smtpHost: string; smtpPort: number; imapHost: string; checkedAt: string | null; lastError: string | null; sends: boolean; pausedUntil: string | null; pauseReason: string | null; sentToday: number; }
 export interface MailSettings { mode: 'Draft' | 'Review' | 'Auto'; dailyCap: number; followUpDays: number; windowStart: number; windowEnd: number; attachResume: boolean; autoConsentAt: string | null; autoConsentText: string | null; }
 export interface MailTemplate { id: string; kind: 'first' | 'followup'; language: 'pt' | 'en'; subject: string; body: string; updatedAt: string; }
 export interface MailTarget { jobId: string; company: string; title: string; location: string; applyEmail: string; applyUrl: string; companyDomain: string | null; score: number; mailStatus: string | null; mailId: string | null; }

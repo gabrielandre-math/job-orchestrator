@@ -1,6 +1,9 @@
 namespace JobOrchestrator.Mail.Data;
 
-/// <summary>Conta de envio e leitura. A senha de app fica no gnome-keyring (conta mail:{Id}), nunca aqui.</summary>
+/// <summary>
+/// Conta de envio e leitura. A senha de app fica no chaveiro do sistema (conta mail:{Id}), nunca aqui. Com várias contas, os envios
+/// se revezam entre as que enviam; uma conta que bate o limite do provedor pausa até o dia seguinte.
+/// </summary>
 internal sealed class MailAccount
 {
     public Guid Id { get; init; } = Guid.CreateVersion7();
@@ -16,6 +19,9 @@ internal sealed class MailAccount
     public DateTime? CheckedAt { get; set; }
     public string? LastError { get; set; }
     public long LastUid { get; set; }
+    public bool Sends { get; set; } = true;
+    public DateTime? PausedUntil { get; set; }
+    public string? PauseReason { get; set; }
 }
 
 /// <summary>
@@ -58,6 +64,7 @@ internal sealed class OutgoingMail
     public string Body { get; set; } = "";
     public string Kind { get; set; } = "first";
     public Guid? FollowsId { get; set; }
+    public Guid? AccountId { get; set; }
     public string Status { get; set; } = "Draft";
     public DateTime CreatedAt { get; init; }
     public DateTime? ApprovedAt { get; set; }
@@ -113,7 +120,7 @@ internal sealed class MailDbContext(DbContextOptions<MailDbContext> options) : D
     protected override void OnModelCreating(ModelBuilder b)
     {
         b.HasDefaultSchema("mail");
-        b.Entity<MailAccount>(e => { e.ToTable("accounts"); e.HasKey(x => x.Id); e.Property(x => x.Address).HasMaxLength(200); });
+        b.Entity<MailAccount>(e => { e.ToTable("accounts"); e.HasKey(x => x.Id); e.Property(x => x.Address).HasMaxLength(200); e.Property(x => x.Sends).HasDefaultValue(true); });
         b.Entity<MailSettings>(e => { e.ToTable("settings"); e.HasKey(x => x.Id); e.Property(x => x.Id).ValueGeneratedNever(); });
         b.Entity<MailTemplate>(e => { e.ToTable("templates"); e.HasKey(x => x.Id); e.HasIndex(x => new { x.Kind, x.Language }).IsUnique(); });
         b.Entity<OutgoingMail>(e =>
@@ -122,6 +129,7 @@ internal sealed class MailDbContext(DbContextOptions<MailDbContext> options) : D
             e.HasKey(x => x.Id);
             e.HasIndex(x => new { x.JobId, x.Kind });
             e.HasIndex(x => x.MessageId);
+            e.HasIndex(x => new { x.AccountId, x.SentAt });
             e.Property(x => x.Status).HasMaxLength(20);
         });
         b.Entity<IncomingMail>(e => { e.ToTable("incoming"); e.HasKey(x => x.Id); e.HasIndex(x => x.MessageId).IsUnique(); });

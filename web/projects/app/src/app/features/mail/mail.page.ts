@@ -55,8 +55,10 @@ export class MailPage {
   protected readonly checking = command((_: void) => send<{ stored: number }>('POST', '/mail/inbox/check'), (r) => r.stored ? `${r.stored} respostas novas.` : 'Nada novo na caixa.');
   protected readonly savingTpl = command((x: { id: string; subject: string; body: string }) => send('PUT', `/mail/templates/${x.id}`, { subject: x.subject, body: x.body }), 'Modelo salvo.');
   protected readonly removing = command((id: string) => send('DELETE', `/mail/accounts/${id}`), 'Conta desconectada e senha apagada do chaveiro.');
+  protected readonly toggling = command((x: { id: string; sends: boolean }) => send('PUT', `/mail/accounts/${x.id}`, { sends: x.sends }), 'Revezamento das contas atualizado.');
 
   protected readonly connected = computed(() => (this.accounts.value() ?? []).length > 0);
+  protected readonly sending = computed(() => (this.accounts.value() ?? []).filter((a) => a.sends).length);
   protected readonly toWrite = computed(() => (this.targets.value() ?? []).filter((t) => !t.mailStatus));
   protected readonly toReview = computed(() => (this.outgoing.value() ?? []).filter((m) => m.status === 'AwaitingApproval' || m.status === 'Draft' || m.status === 'Scheduled'));
   protected readonly done = computed(() => (this.outgoing.value() ?? []).filter((m) => ['Sent', 'Replied', 'Failed', 'Bounced', 'Cancelled', 'Sending'].includes(m.status)));
