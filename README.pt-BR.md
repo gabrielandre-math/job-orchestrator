@@ -9,6 +9,7 @@
   <a href="#download"><b>Download</b></a> &nbsp;|&nbsp;
   <a href="#como-funciona">Como funciona</a> &nbsp;|&nbsp;
   <a href="#self-hosted-de-verdade">Self-hosted</a> &nbsp;|&nbsp;
+  <a href="#próximos-passos-o-job-orchestrator-para-recrutadores">Próximos passos</a> &nbsp;|&nbsp;
   <a href="#compilar-a-partir-do-código">Compilar</a> &nbsp;|&nbsp;
   <a href="README.md">English</a>
 </p>
@@ -144,6 +145,78 @@ job-orchestrator --uninstall   # tira o app e mantém os seus dados (com --purge
 - **Testes:** suítes de unidade e de ponta a ponta contra um ATS falso com 10 cenários, além de testes de caos que derrubam o processo logo antes e logo depois do clique de enviar e conferem que a candidatura sai uma vez só ou volta para você.
 
 Mais detalhes: [guia de uso](docs/guia.md), [arquitetura](docs/architecture.md), [manual de operação](docs/runbook.md) e [modelo de ameaças](docs/threat-model.md).
+
+## Próximos passos: o Job Orchestrator para recrutadores
+
+Hoje o Job Orchestrator trabalha para a pessoa que procura emprego. O próximo passo é o outro lado da mesa: recrutadores publicando vagas direto na plataforma e chegando às pessoas que usam o app, com as mesmas regras. A base de candidatos nunca fica reunida num lugar só. Cada perfil continua no computador do dono, então a vaga vai até as pessoas em vez de as pessoas irem para o banco de dados de alguém.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/network-pt-dark.svg">
+  <img alt="A estação do recrutador no meio de um campo de máquinas de candidatos. Uma chamada se espalha em anéis, cada máquina acende enquanto confere a vaga na própria GPU, e só algumas respondem sim e mandam um sinal de volta." src=".github/assets/network-pt-light.svg" width="100%">
+</picture>
+
+<p align="center"><b>Contrate com a GPU de todo mundo. Só o sim volta.</b></p>
+
+O recrutador envia uma chamada. Cada Job Orchestrator que segue a empresa confere a vaga contra o perfil do dono na própria GPU, e apenas as pessoas que dizem sim aparecem.
+
+<table>
+  <tr>
+    <td width="112" align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/step-form-dark.svg"><img alt="" src=".github/assets/step-form-light.svg" width="96"></picture></td>
+    <td><b>Vaga direta.</b> O recrutador descreve a vaga em poucas linhas ou num áudio curto, transcrito na própria máquina. O Redator de vagas transforma isso numa vaga estruturada, e um Conferente aponta o que a lei proíbe em anúncio de emprego (referência a sexo, idade, cor ou situação familiar, art. 373-A da CLT), palavras que afastam pessoas, requisitos que a vaga não precisa e a falta de faixa salarial, sem impedir vagas afirmativas. A vaga sai publicada no domínio da própria empresa como JobPosting do schema.org, com verificação por DNS, então o Google for Jobs pode listá-la, e o Batedor de cada candidato lê a vaga como fonte nativa, sem coleta, sem preencher formulário e sem CAPTCHA.</td>
+  </tr>
+  <tr>
+    <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/step-router-dark.svg"><img alt="" src=".github/assets/step-router-light.svg" width="96"></picture></td>
+    <td><b>Uma chamada, milhares de GPUs.</b> Para chegar às pessoas, o recrutador envia uma chamada: a vaga e os requisitos, sem pergunta sobre ninguém em particular. Cada Job Orchestrator busca as chamadas das empresas que segue a cada poucos minutos e dá a nota contra o perfil do dono com o modelo local. Dez mil candidatos são dez mil máquinas fazendo a própria triagem, e nenhum banco central para vazar, vender ou treinar modelo.</td>
+  </tr>
+  <tr>
+    <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/step-identity-dark.svg"><img alt="" src=".github/assets/step-identity-light.svg" width="96"></picture></td>
+    <td><b>Sim por escolha.</b> As regras do candidato decidem o que chega até ele: piso salarial, modalidade, porte da empresa e frequência. Uma vaga boa aparece como sugestão, e nada sai da máquina antes do sim. Aí o recrutador recebe um currículo criptografado para ele. Um não, ou uma chamada que nunca combinou, não deixa rastro do lado do recrutador, nem um "visto".</td>
+  </tr>
+  <tr>
+    <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/step-gate-dark.svg"><img alt="" src=".github/assets/step-gate-light.svg" width="96"></picture></td>
+    <td><b>Prova, não nota.</b> Cada linha do currículo compartilhado aponta para o documento de origem, que é como o Job Orchestrator já monta currículos. O recrutador vê, requisito por requisito, as provas de cada candidato, primeiro no modo cego, com nome, foto, idade, endereço e escola escondidos. Ninguém é ordenado por um número opaco, toda reprovação é decidida por uma pessoa, e o candidato pode pedir revisão, como garante o art. 20 da LGPD.</td>
+  </tr>
+  <tr>
+    <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/step-you-dark.svg"><img alt="" src=".github/assets/step-you-light.svg" width="96"></picture></td>
+    <td><b>Agentes que conversam às claras.</b> Os dois Job Orchestrators cuidam do vai e vem. Acham um horário de entrevista sem expor nenhuma das agendas, respondem perguntas padrão com as respostas salvas do candidato e só contam a pretensão salarial quando a vaga publica a faixa. Cada mensagem aparece ao vivo nas duas telas, como a conversa dos agentes no mapa ao vivo, e fica no histórico.</td>
+  </tr>
+  <tr>
+    <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/step-receipt-dark.svg"><img alt="" src=".github/assets/step-receipt-light.svg" width="96"></picture></td>
+    <td><b>Recibo e resposta para todos.</b> Candidaturas, mudanças de etapa e decisões vêm com recibo assinado. Cada empresa define um prazo de resposta, e a candidatura ainda sem resposta nesse prazo é encerrada assim e entra na taxa de resposta da empresa, que o candidato vê antes de se candidatar. A reprovação diz qual requisito faltou, então o retorno substitui o silêncio e alimenta as lacunas da vaga do candidato.</td>
+  </tr>
+  <tr>
+    <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/step-guardian-dark.svg"><img alt="" src=".github/assets/step-guardian-light.svg" width="96"></picture></td>
+    <td><b>Consentimento com prazo.</b> O banco de talentos guarda pessoas apenas com consentimento que vence. O candidato vê quais empresas têm os dados dele e até quando, e um clique revoga. A instância da empresa apaga os dados e devolve um recibo de exclusão assinado, e os direitos da LGPD de acesso, correção, exclusão e portabilidade viram mensagens do protocolo.</td>
+  </tr>
+</table>
+
+**A máquina de IA dos dois lados**
+
+- **O mesmo motor.** Modelos locais pelo Ollama vêm primeiro, um rápido para a triagem e um mais forte para escrever. O Claude Code e o Codex continuam opcionais, o revisor é sempre de outra família de modelos, e cada tarefa começa no menor modelo que passa na validação.
+- **A combinação acontece onde o dado mora.** Os embeddings das provas do candidato nunca saem da máquina dele. Cada máquina processa a chamada uma vez e dá a nota na própria GPU, então o recrutador não precisa de uma fazenda de GPUs para fazer a triagem de uma multidão.
+- **Contagens que protegem as pessoas.** Antes de publicar, um termômetro de requisitos estima quantas pessoas atendem cada requisito, com contagens consentidas e ruído de privacidade diferencial, para ninguém ser identificado. Ele mostra coisas como "tirar o inglês fluente quase dobra o número de pessoas".
+- **Um protocolo aberto.** Vagas, chamadas, respostas e recibos são JSON assinado sobre HTTPS, com assinatura Ed25519 e criptografia de ponta a ponta para o destinatário, descobertos pelo `/.well-known/` do domínio da empresa. As máquinas dos candidatos só buscam, então nunca abrem uma porta.
+- **Um app, dois modos.** O mesmo binário ganha um modo empresa para o time de contratação, com os papéis de recrutador, gestor da vaga e entrevistador, self-hosted num notebook ou num servidor da empresa.
+
+**Mais ideias na lista**
+
+- Faixa salarial honesta, comparada com as vagas abertas que publicam salário para o mesmo cargo e nível.
+- Guarda contra vaga fantasma: vaga sem renovação a cada 30 dias expira na tela de todos os candidatos.
+- O Sentinela nas chamadas: cobrança de taxa, pagamento em cripto ou conversa levada para o WhatsApp impedem a chamada de chegar a alguém.
+- Treino de entrevista com o modelo local do candidato, a partir das competências que a vaga publica.
+- Propostas lado a lado, com o líquido em CLT e em PJ comparado quando chega uma proposta.
+- Entrevistas estruturadas, com as mesmas perguntas para todos os candidatos e uma ficha por requisito.
+- Radar do mercado para recrutadores, com as habilidades em falta e as faixas salariais das vagas públicas que o Job Orchestrator já lê.
+
+**Limites que ele não cruza**
+
+- Nenhum perfil coletado do LinkedIn ou de qualquer outro lugar para encher uma base.
+- Nada de vender ou compartilhar dados de candidatos, nem de treinar modelo com eles.
+- Nada de ordenar pessoas por uma nota opaca, e nenhuma reprovação automática.
+- Nenhuma análise de emoção, voz ou rosto em entrevista. O AI Act da União Europeia já proíbe reconhecimento de emoção no trabalho.
+- Nenhum contato fora de uma vaga real com faixa salarial publicada, e o candidato decide com que frequência algo chega até ele.
+
+Contratar com o lado do recrutador é uso comercial, então empresas vão precisar de uma licença comercial do autor. Pessoas e organizações sem fins lucrativos continuam usando o Job Orchestrator de graça.
 
 ## Compilar a partir do código
 

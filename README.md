@@ -9,6 +9,7 @@
   <a href="#download"><b>Download</b></a> &nbsp;|&nbsp;
   <a href="#how-it-works">How it works</a> &nbsp;|&nbsp;
   <a href="#self-hosted-by-design">Self-hosted</a> &nbsp;|&nbsp;
+  <a href="#whats-next-job-orchestrator-for-recruiters">What's next</a> &nbsp;|&nbsp;
   <a href="#build-from-source">Build from source</a> &nbsp;|&nbsp;
   <a href="README.pt-BR.md">Português</a>
 </p>
@@ -144,6 +145,78 @@ job-orchestrator --uninstall   # removes the app and keeps your data (--purge re
 - **Tests:** unit and end-to-end suites against a fake ATS with 10 scenarios, plus chaos tests that kill the process right before and right after the submit click and check that the application ends up sent exactly once or handed back to you.
 
 More detail, in Portuguese: [user guide](docs/guia.md), [architecture](docs/architecture.md), [operations runbook](docs/runbook.md) and [threat model](docs/threat-model.md).
+
+## What's next: Job Orchestrator for recruiters
+
+Today Job Orchestrator works for the person looking for a job. The next step is the other side of the table: recruiters publishing jobs straight on the platform and reaching the people who use it, under the same rules. The candidate base is never gathered in one place. Every profile stays on its owner's computer, so the job travels to the people instead of the people going into someone's database.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/network-en-dark.svg">
+  <img alt="A recruiter station in the middle of a field of candidate machines. A call spreads out in rings, each machine lights up while it checks the job on its own GPU, and only a few answer yes and send a signal back." src=".github/assets/network-en-light.svg" width="100%">
+</picture>
+
+<p align="center"><b>Hire with everyone's GPU. See only who said yes.</b></p>
+
+A recruiter sends one call. Every Job Orchestrator that follows the company checks the job against its owner's profile on its own GPU, and only the people who say yes become visible.
+
+<table>
+  <tr>
+    <td width="112" align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/step-form-dark.svg"><img alt="" src=".github/assets/step-form-light.svg" width="96"></picture></td>
+    <td><b>Direct jobs.</b> The recruiter describes the job in a few lines or in a short voice note transcribed on the machine. The posting writer turns it into a structured job, and a checker flags what Brazilian law forbids in job ads (references to sex, age, color or family situation, CLT article 373-A), wording that pushes people away, requirements the job does not need and a missing salary range, while affirmative jobs stay possible. The job is published on the company's own domain as schema.org JobPosting and verified through DNS, so Google for Jobs can list it, and every candidate's Scout reads it as a native source with no scraping, no form filling and no CAPTCHA.</td>
+  </tr>
+  <tr>
+    <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/step-router-dark.svg"><img alt="" src=".github/assets/step-router-light.svg" width="96"></picture></td>
+    <td><b>One call, thousands of GPUs.</b> To reach people, the recruiter sends a call: the job and its requirements, with no question about anyone in particular. Each Job Orchestrator pulls the calls of the companies it follows every few minutes and scores them against its owner's profile with the local model. Ten thousand candidates means ten thousand machines doing their own screening, and no central database to leak, sell or train on.</td>
+  </tr>
+  <tr>
+    <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/step-identity-dark.svg"><img alt="" src=".github/assets/step-identity-light.svg" width="96"></picture></td>
+    <td><b>Yes, by choice.</b> The candidate's own rules decide what reaches them: salary floor, work model, company size and how often. A good match shows up as a suggestion, and nothing leaves the machine until they say yes. Then the recruiter receives a résumé encrypted to them. A no, or a call that never matched, leaves no trace on the recruiter's side, not even a "seen".</td>
+  </tr>
+  <tr>
+    <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/step-gate-dark.svg"><img alt="" src=".github/assets/step-gate-light.svg" width="96"></picture></td>
+    <td><b>Evidence, not a score.</b> Every line of a shared résumé links to the document it came from, which is how Job Orchestrator already builds résumés. The recruiter reviews requirement by requirement who has proof, first in blind mode, with name, photo, age, address and school hidden. Nobody is ranked by a single opaque number, a person makes every rejection, and the candidate can ask for a review, as LGPD article 20 allows.</td>
+  </tr>
+  <tr>
+    <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/step-you-dark.svg"><img alt="" src=".github/assets/step-you-light.svg" width="96"></picture></td>
+    <td><b>Agents that talk in the open.</b> The two Job Orchestrators handle the back and forth. They find an interview time without exposing either calendar, answer standard questions from the candidate's saved answers and share the salary expectation only when the job publishes a range. Every message shows up live on both screens, like the agent chat on the live map, and stays in the history.</td>
+  </tr>
+  <tr>
+    <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/step-receipt-dark.svg"><img alt="" src=".github/assets/step-receipt-light.svg" width="96"></picture></td>
+    <td><b>A receipt and an answer for everyone.</b> Applications, status changes and decisions come with signed receipts. Each company sets an answer deadline, and an application still unanswered by then closes as such and counts toward the company's response rate, which candidates see before they apply. A rejection names the requirement that was missing, so feedback replaces silence and feeds the candidate's job gaps.</td>
+  </tr>
+  <tr>
+    <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/step-guardian-dark.svg"><img alt="" src=".github/assets/step-guardian-light.svg" width="96"></picture></td>
+    <td><b>Consent with an end date.</b> Talent pools keep people only with consent that expires. The candidate sees which companies hold their data and until when, and one click revokes it. The company's instance deletes the data and returns a signed deletion receipt, so the LGPD rights to access, correct, delete and port data become messages of the protocol.</td>
+  </tr>
+</table>
+
+**The AI machine on both sides**
+
+- **Same engine.** Local models through Ollama come first, a fast one for screening and a stronger one for writing. Claude Code and Codex stay optional, the reviewer always comes from another model family, and each task starts on the smallest model that passes validation.
+- **Matching where the data lives.** The embeddings of a candidate's evidence never leave their machine. Each machine embeds the call once and scores it on its own GPU, so the recruiter needs no GPU farm to screen a crowd.
+- **Counts that protect people.** Before publishing, a requirement thermometer estimates how many people match each requirement, using opt-in counts with differential privacy noise, so no one can be singled out. It shows things like "dropping fluent English roughly doubles the pool".
+- **An open protocol.** Jobs, calls, answers and receipts are signed JSON over HTTPS, with Ed25519 signatures and end-to-end encryption to the recipient, discovered through `/.well-known/` on the company's domain. Candidate machines only pull, so they never open a port.
+- **One app, two modes.** The same binary gets a company mode for the hiring team, with recruiter, hiring manager and interviewer roles, self-hosted on a laptop or on a company server.
+
+**More ideas on the list**
+
+- An honest salary range, checked against open jobs that publish pay for the same role and level.
+- A ghost job guard: jobs not renewed every 30 days expire on every candidate's screen.
+- The scam sentinel on calls: fees, crypto payments or a move to WhatsApp mean the call never reaches anyone.
+- Interview practice with the candidate's local model, based on the competencies the job publishes.
+- Offers side by side, with net pay under CLT and PJ compared when an offer arrives.
+- Structured interviews, with the same questions for every candidate and a scorecard per requirement.
+- A market radar for recruiters, with scarce skills and pay bands from the public jobs Job Orchestrator already reads.
+
+**Lines it will not cross**
+
+- No profiles scraped from LinkedIn or anywhere else to fill a base.
+- No selling or sharing of candidates' data, and no training on it.
+- No ranking of people by one opaque score, and no automatic rejections.
+- No emotion, voice or face analysis in interviews. The EU AI Act already bans emotion recognition at work.
+- No contact outside a real job with a published salary range, and the candidate decides how often anything reaches them.
+
+Hiring with the recruiter side is commercial use, so companies will need a commercial license from the author. People and nonprofits keep using Job Orchestrator for free.
 
 ## Build from source
 
