@@ -55,6 +55,12 @@ export class MailConnect {
   /** O início nunca passa do fim (e o contrário): antes, arrastar o início para 23h com o fim em 19h salvava 23h à meia-noite. */
   protected setStart(v: number) { this.windowStart.set(v); if (this.windowEnd() <= v) this.windowEnd.set(Math.min(24, v + 1)); }
   protected setEnd(v: number) { this.windowEnd.set(v); if (this.windowStart() >= v) this.windowStart.set(Math.max(0, v - 1)); }
+  /** 24 horas, todos os dias: das 0h às 24h. Sair do 24/7 volta para o horário comercial, que dá para ajustar. */
+  protected readonly always = computed(() => this.windowStart() === 0 && this.windowEnd() === 24);
+  protected setAlways(on: boolean) {
+    if (on) { this.windowStart.set(0); this.windowEnd.set(24); }
+    else if (this.always()) { this.windowStart.set(8); this.windowEnd.set(19); }
+  }
   protected readonly attach = signal(true);
   protected readonly connecting = command((body: object) => send<{ id: string; address: string }>('POST', '/mail/accounts', body), 'E-mail conectado: envio e leitura testados.');
   protected readonly testing = command((id: string) => send('POST', `/mail/accounts/${id}/test`), 'E-mail de teste enviado para você mesmo.');

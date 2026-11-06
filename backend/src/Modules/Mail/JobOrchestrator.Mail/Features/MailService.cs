@@ -487,6 +487,15 @@ internal sealed partial class MailService(
                     var messageId = env.MessageId ?? $"{a.Id}:{summary.UniqueId.Id}";
                     if (await db.Incoming.AnyAsync(x => x.MessageId == messageId, ct)) continue;
                     var preview = Cut(summary.PreviewText ?? "", 600);
+                    // Aviso de falha na entrega volta no mesmo fio, mas não é resposta: o e-mail não chegou na empresa.
+                    if (link is { } lost && Bounce(from, env.From.Mailboxes.FirstOrDefault()?.Name, subject))
+                    {
+                        db.Incoming.Add(new IncomingMail { MessageId = messageId, From = from, Subject = Cut(subject, 300), Date = env.Date?.UtcDateTime ?? Now, Snippet = preview, Class = "bounce", OutgoingId = lost, ReceivedAt = Now });
+                        if (await db.Outgoing.FindAsync([lost], ct) is { Status: "Sent" or "Replied" } back) Bounced(back, preview);
+                        foreach (var f in await db.Outgoing.Where(x => x.FollowsId == lost && (x.Status == "AwaitingApproval" || x.Status == "Scheduled")).ToListAsync(ct)) f.Status = "Cancelled";
+                        stored++;
+                        continue;
+                    }
                     (string? cls, bool action) = await ClassifyAsync(from, subject, preview, ct);
                     if (link is null && cls is "other" or "recruiter_outreach" or null) continue;
                     db.Incoming.Add(new IncomingMail { MessageId = messageId, From = from, Subject = Cut(subject, 300), Date = env.Date?.UtcDateTime ?? Now, Snippet = preview, Class = cls, ActionNeeded = action, OutgoingId = link, ReceivedAt = Now });
@@ -513,6 +522,25 @@ internal sealed partial class MailService(
         }
         return stored;
     }
+
+    /// <summary>Remetente de aviso de entrega (mailer-daemon, postmaster) ou assunto de falha na entrega, em inglês ou português.</summary>
+    internal static bool Bounce(string from, string? name, string subject) =>
+        from.Split('@')[0].ToLowerInvariant() is "mailer-daemon" or "postmaster" or "mail-daemon"
+        || name is { } n && n.Contains("Mail Delivery", StringComparison.OrdinalIgnoreCase)
+        || BounceSubject().IsMatch(subject);
+
+    /// <summary>O e-mail voltou: fica como não entregue, com o motivo do aviso, e não conta como resposta.</summary>
+    internal static void Bounced(OutgoingMail m, string preview)
+    {
+        m.Status = "Bounced";
+        m.RepliedAt = null;
+        m.ReplyClass = null;
+        var why = preview.Replace("*", "").Trim();
+        m.Error = Cut($"Não chegou na empresa: {(why.Length > 0 ? why : "o servidor de lá recusou a mensagem.")}", 300);
+    }
+
+    [GeneratedRegex(@"delivery status notification|undeliver|returned to sender|delivery (has )?failed|mail delivery failed|failure notice|não (foi possível )?entreg|mensagem (não entregue|devolvida)", RegexOptions.IgnoreCase)]
+    private static partial Regex BounceSubject();
 
     private async Task<(string?, bool)> ClassifyAsync(string from, string subject, string text, CancellationToken ct)
     {

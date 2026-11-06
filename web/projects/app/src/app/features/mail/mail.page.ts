@@ -12,10 +12,10 @@ import { MailConnect } from './mail-connect';
 type Tab = 'targets' | 'review' | 'sent' | 'inbox' | 'template';
 const STATUS: Record<string, { label: string; tone: string }> = {
   Draft: { label: 'rascunho', tone: 'muted' }, AwaitingApproval: { label: 'esperando você', tone: 'warn' }, Scheduled: { label: 'agendado', tone: 'accent' },
-  Sending: { label: 'enviando', tone: 'accent' }, Sent: { label: 'enviado', tone: 'ok' }, Replied: { label: 'respondido', tone: 'ok' }, Failed: { label: 'não saiu', tone: 'bad' }, Cancelled: { label: 'cancelado', tone: 'muted' },
+  Sending: { label: 'enviando', tone: 'accent' }, Sent: { label: 'enviado', tone: 'ok' }, Replied: { label: 'respondido', tone: 'ok' }, Failed: { label: 'não saiu', tone: 'bad' }, Bounced: { label: 'não entregue', tone: 'bad' }, Cancelled: { label: 'cancelado', tone: 'muted' },
 };
 const CLASS: Record<string, string> = {
-  application_received: 'candidatura recebida', rejection: 'recusa', interview_invite: 'convite para entrevista', assessment: 'teste técnico', offer: 'proposta', recruiter_outreach: 'recrutador', other: 'outro',
+  application_received: 'candidatura recebida', rejection: 'recusa', interview_invite: 'convite para entrevista', assessment: 'teste técnico', offer: 'proposta', recruiter_outreach: 'recrutador', bounce: 'não entregue', other: 'outro',
 };
 const MARKERS = ['{{empresa}}', '{{vaga}}', '{{experiencia}}', '{{competencias}}', '{{link_vaga}}', '{{nome}}', '{{assinatura}}'];
 
@@ -57,10 +57,10 @@ export class MailPage {
   protected readonly connected = computed(() => (this.accounts.value() ?? []).length > 0);
   protected readonly toWrite = computed(() => (this.targets.value() ?? []).filter((t) => !t.mailStatus));
   protected readonly toReview = computed(() => (this.outgoing.value() ?? []).filter((m) => m.status === 'AwaitingApproval' || m.status === 'Draft' || m.status === 'Scheduled'));
-  protected readonly done = computed(() => (this.outgoing.value() ?? []).filter((m) => ['Sent', 'Replied', 'Failed', 'Cancelled', 'Sending'].includes(m.status)));
+  protected readonly done = computed(() => (this.outgoing.value() ?? []).filter((m) => ['Sent', 'Replied', 'Failed', 'Bounced', 'Cancelled', 'Sending'].includes(m.status)));
   protected readonly tabs = computed(() => [
     { key: 'targets' as Tab, label: 'Para escrever', n: this.toWrite().length }, { key: 'review' as Tab, label: 'Para aprovar', n: this.toReview().length },
-    { key: 'sent' as Tab, label: 'Enviados', n: this.done().length }, { key: 'inbox' as Tab, label: 'Respostas', n: (this.inbox.value() ?? []).length },
+    { key: 'sent' as Tab, label: 'Enviados', n: this.done().length }, { key: 'inbox' as Tab, label: 'Respostas', n: (this.inbox.value() ?? []).filter((i) => i.class !== 'bounce').length },
     { key: 'template' as Tab, label: 'Modelo', n: null },
   ]);
   protected readonly stats = computed<HeroStat[]>(() => {
@@ -112,7 +112,7 @@ export class MailPage {
   protected tplLabel(t: MailTemplate) { return `${t.kind === 'first' ? 'Candidatura' : 'Lembrete'} · ${t.language === 'pt' ? 'português' : 'inglês'}`; }
 }
 
-/** A janela de envio em palavras: das 0h às 24h é o dia todo. */
+/** A janela de envio em palavras: das 0h às 24h é o 24/7. */
 function hours(s: { windowStart: number; windowEnd: number }) {
-  return s.windowStart === 0 && s.windowEnd === 24 ? 'a qualquer hora' : `das ${s.windowStart}h às ${s.windowEnd}h`;
+  return s.windowStart === 0 && s.windowEnd === 24 ? '24 horas, todos os dias' : `das ${s.windowStart}h às ${s.windowEnd}h`;
 }

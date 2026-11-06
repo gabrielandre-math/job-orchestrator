@@ -95,7 +95,7 @@
           @for (m of done(); track m.id) {
             <li>
               <jo-company [name]="m.company" [size]="28" />
-              <span class="what"><strong>{{ m.subject }}</strong><span class="faint small">{{ m.company }} · {{ m.to }} · {{ m.sentAt ? ago(m.sentAt) : ago(m.createdAt) }}@if (m.error && m.status === 'Failed') { <span class="warn"> · {{ m.error }}</span> }</span></span>
+              <span class="what"><strong>{{ m.subject }}</strong><span class="faint small">{{ m.company }} · {{ m.to }} · {{ m.sentAt ? ago(m.sentAt) : ago(m.createdAt) }}@if (m.error && (m.status === 'Failed' || m.status === 'Bounced')) { <span class="warn"> · {{ m.error }}</span> }</span></span>
               <span [class]="'pill ' + status(m.status).tone">{{ m.replyClass ? classLabel[m.replyClass] ?? status(m.status).label : status(m.status).label }}</span>
             </li>
           } @empty { <li class="calm"><span class="muted">Nada enviado ainda.</span></li> }
@@ -110,7 +110,7 @@
             <li [class.act]="i.actionNeeded">
               <jo-iso [name]="i.class === 'interview_invite' ? 'you' : i.class === 'rejection' ? 'receipt' : i.class === 'assessment' ? 'form' : 'inbox'" [size]="34" />
               <span class="what"><strong>{{ i.subject }}</strong><span class="faint small">{{ i.from }} · {{ ago(i.date) }}</span><span class="muted small snippet">{{ i.snippet }}</span></span>
-              <span [class]="'pill ' + (i.class === 'rejection' ? 'muted' : i.class === 'interview_invite' || i.class === 'offer' || i.class === 'assessment' ? 'ok' : 'accent')">{{ classLabel[i.class ?? 'other'] ?? 'outro' }}@if (i.actionNeeded) { · responder }</span>
+              <span [class]="'pill ' + (i.class === 'rejection' || i.class === 'bounce' ? 'muted' : i.class === 'interview_invite' || i.class === 'offer' || i.class === 'assessment' ? 'ok' : 'accent')">{{ classLabel[i.class ?? 'other'] ?? 'outro' }}@if (i.actionNeeded) { · responder }</span>
             </li>
           } @empty { <li class="calm"><span class="muted">Nenhuma resposta ainda. A caixa é lida a cada 10 minutos, só para o que é da busca.</span></li> }
         </ul>

@@ -82,9 +82,21 @@
         <div class="limits">
           <label class="field">Teto por dia <span class="num accent">{{ cap() }}</span><input type="range" min="1" max="15" [value]="cap()" (input)="cap.set(num($event))" /></label>
           <label class="field">Lembrete depois de <span class="num accent">{{ followUp() }} dias</span><input type="range" min="3" max="21" [value]="followUp()" (input)="followUp.set(num($event))" /></label>
-          <label class="field">Janela de envio <span class="num accent">{{ windowStart() === 0 && windowEnd() === 24 ? 'o dia todo' : windowStart() + 'h às ' + windowEnd() + 'h' }}</span>
-            <span class="pair"><input type="range" min="0" max="23" [value]="windowStart()" (input)="setStart(num($event))" aria-label="Início" /><input type="range" min="1" max="24" [value]="windowEnd()" (input)="setEnd(num($event))" aria-label="Fim" /></span>
-          </label>
+          <div class="field when">Quando pode enviar
+            <div class="cards row" role="radiogroup" aria-label="Quando pode enviar">
+              <button type="button" class="card" role="radio" [attr.aria-checked]="always()" (click)="setAlways(true)">
+                <span class="dot" aria-hidden="true"></span><strong>24 horas, todos os dias</strong><span class="muted small">Sai assim que estiver pronto, a qualquer hora, sem esperar horário.</span>
+              </button>
+              <button type="button" class="card" role="radio" [attr.aria-checked]="!always()" (click)="setAlways(false)">
+                <span class="dot" aria-hidden="true"></span><strong>Só num horário</strong><span class="muted small">Fora dele, o e-mail pronto espera o horário começar.</span>
+              </button>
+            </div>
+            @if (!always()) {
+              <label class="field">Das {{ windowStart() }}h às {{ windowEnd() }}h
+                <span class="pair"><input type="range" min="0" max="23" [value]="windowStart()" (input)="setStart(num($event))" aria-label="Começa às" /><input type="range" min="1" max="24" [value]="windowEnd()" (input)="setEnd(num($event))" aria-label="Termina às" /></span>
+              </label>
+            }
+          </div>
           <label class="line"><input type="checkbox" class="switch" [checked]="attach()" (change)="attach.set($any($event.target).checked)" /><span><strong>Anexar o currículo da vaga</strong><p>O PDF sob medida, perfeito para ATS, com o nome Nome-Sobrenome-Curriculo.pdf.</p></span></label>
         </div>
         @if (mode() === 'Auto') {
