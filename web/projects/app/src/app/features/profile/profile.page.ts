@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Badge } from '@jo/ui/badge';
 import { Icon } from '@jo/ui/icon';
@@ -83,6 +83,10 @@ export class ProfilePage {
   }
 
   protected readonly linkedin = signal(false);
+  /** /perfil?conectar=linkedin abre o assistente (a Visão geral, as boas-vindas e a tela da vaga pedem por aqui). */
+  readonly conectar = input<string | undefined>();
+  protected readonly link = query<{ connected: boolean; fileName: string | null; importedAt: string | null; facts: number; found: { name: string }[] }>(() => '/profile/linkedin', 0);
+  private readonly ask = effect(() => { if (this.conectar() === 'linkedin') this.linkedin.set(true); });
 
   protected async drop(e: DragEvent) {
     e.preventDefault();

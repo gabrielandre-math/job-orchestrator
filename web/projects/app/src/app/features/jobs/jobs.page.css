@@ -122,3 +122,6 @@
 .calm p { margin: 0 0 12px; line-height: 1.55; max-width: 64ch; }
 .calm-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 @media (max-width: 760px) { .calm { grid-template-columns: 1fr; padding: 18px; } }
+.nudge { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0; color: var(--text-2); }
+.nudge jo-icon { color: var(--accent); }
+

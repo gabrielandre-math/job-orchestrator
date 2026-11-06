@@ -11,6 +11,7 @@ import { SearchRun } from '../../core/search';
 import { describeSource } from '../../core/sources';
 import { Wizard } from '../../shared/wizard';
 import { Connect } from '../providers/connect';
+import { LinkedInImport } from '../profile/linkedin-import';
 
 interface Pick { source: string; why: string; on: boolean; test: SourceTestResult | null; testing: boolean }
 
@@ -20,7 +21,7 @@ interface Pick { source: string; why: string; on: boolean; test: SourceTestResul
  */
 @Component({
   selector: 'app-welcome',
-  imports: [Company, Connect, Icon, Iso, Mark, Wizard],
+  imports: [Company, Connect, Icon, Iso, LinkedInImport, Mark, Wizard],
   templateUrl: './welcome.html',
   styleUrl: './welcome.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -36,6 +37,8 @@ export class Welcome {
   protected readonly accounts = signal<Account[]>([]);
   protected readonly providers = signal<Provider[]>([]);
   protected readonly connecting = signal(false);
+  /** Conectar o LinkedIn sem sair do primeiro contato: o assistente dele abre por cima e, ao fechar, o perfil já vem atualizado. */
+  protected readonly linkedin = signal(false);
   protected readonly profile = signal<Profile | null>(null);
   protected readonly reading = signal(false);
   protected readonly dragging = signal(false);

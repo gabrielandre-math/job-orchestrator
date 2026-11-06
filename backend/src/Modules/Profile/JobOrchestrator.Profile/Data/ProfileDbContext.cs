@@ -49,6 +49,7 @@ internal sealed class ProfileDbContext(DbContextOptions<ProfileDbContext> option
             e.Property(x => x.Quote).HasMaxLength(600);
             e.Property(x => x.Note).HasMaxLength(300);
             e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.AlsoIn).HasDefaultValueSql("'{}'::uuid[]");
             e.Ignore(x => x.Usable);
             e.HasIndex(x => new { x.ProfileId, x.Kind, x.Position });
         });

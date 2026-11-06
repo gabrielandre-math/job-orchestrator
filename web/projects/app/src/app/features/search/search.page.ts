@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ChartRow, Columns } from '@jo/ui/charts';
 import { Company } from '@jo/ui/company';
@@ -32,6 +32,9 @@ export class SearchPage {
   protected readonly s = this.run.state;
   protected readonly icons = AGENT_ICON;
   protected readonly ago = ago;
+  /** O relógio da tela: o tempo da rodada anda a cada segundo, não só quando chega dado novo. */
+  private readonly now = signal(Date.now());
+
 
   protected readonly reports = query<{ name: string; at: string; summary: string }[]>(() => '/night/reports', 60000);
   protected readonly opened = signal<{ name: string; html: string } | null>(null);
@@ -45,7 +48,11 @@ export class SearchPage {
     return `${d}/${m}/${y} às ${hm?.slice(0, 2)}h${hm?.slice(2)}`;
   }
 
-  constructor() { void this.run.load(); }
+  constructor() {
+    void this.run.load();
+    const id = setInterval(() => this.now.set(Date.now()), 1000);
+    inject(DestroyRef).onDestroy(() => clearInterval(id));
+  }
 
   protected readonly stations = computed<Station[]>(() => {
     const s = this.s();
@@ -83,7 +90,7 @@ export class SearchPage {
   protected readonly elapsed = computed(() => {
     const s = this.s();
     if (!s?.startedAt) return '';
-    const end = s.running ? Date.now() : new Date(s.lastAt).getTime();
+    const end = s.running ? this.now() : new Date(s.lastAt).getTime();
     const sec = Math.max(0, Math.round((end - new Date(s.startedAt).getTime()) / 1000));
     return sec >= 60 ? `${Math.floor(sec / 60)} min ${sec % 60} s` : `${sec} s`;
   });

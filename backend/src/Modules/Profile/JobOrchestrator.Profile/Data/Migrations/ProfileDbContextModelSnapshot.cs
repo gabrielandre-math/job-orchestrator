@@ -264,6 +264,13 @@ namespace JobOrchestrator.Profile.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.PrimitiveCollection<List<Guid>>("AlsoIn")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid[]")
+                        .HasColumnName("also_in")
+                        .HasDefaultValueSql("'{}'::uuid[]");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");

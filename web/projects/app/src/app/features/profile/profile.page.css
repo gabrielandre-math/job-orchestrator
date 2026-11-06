@@ -58,3 +58,10 @@
   .sec:nth-child(odd):not(.wide) { border-right: 0; }
   .money { grid-template-columns: 1fr; }
 }
+.connect { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 18px; align-items: center; padding: 18px 20px; }
+.connect h2 { font-size: 15px; margin: 0 0 4px; }
+.connect p { margin: 0; line-height: 1.55; max-width: 72ch; }
+.linked { display: inline-flex; align-items: center; gap: 6px; margin: 0; }
+.linked jo-icon { color: var(--ok); }
+@media (max-width: 760px) { .connect { grid-template-columns: 1fr; } }
+

@@ -11,6 +11,15 @@
       <button type="button" class="btn primary" (click)="hub.open.set(true)"><jo-icon name="sparkle" [size]="14" />Continuar com o assistente</button>
     </section>
   }
+  @if (profile.value(); as p) {
+    @if (!setup() && !linkedinOn()) {
+      <a class="panel connect" routerLink="/perfil" [queryParams]="{ conectar: 'linkedin' }">
+        <jo-iso name="identity" [size]="56" />
+        <span class="c-text"><strong>Conecte o LinkedIn</strong><span class="muted small">Experiências, formação e competências entram no perfil e nos currículos, somadas ao seu currículo, pelo caminho oficial do LinkedIn. Leva uns 10 minutos.</span></span>
+        <span class="btn">Conectar<jo-icon name="arrow-right" [size]="14" /></span>
+      </a>
+    }
+  }
   <article class="hero panel">
     <div class="hero-text">
       <p class="eyebrow">

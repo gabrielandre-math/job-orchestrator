@@ -223,6 +223,10 @@
               <jo-icon name="pen-nib" [size]="14" />{{ composing.running() ? 'Os agentes estão escrevendo…' : 'Gerar currículo para esta vaga' }}
             </button>
           </div>
+          @if (profile.value() && !linkedinOn()) {
+            <p class="nudge small"><jo-icon name="identification-card" [size]="13" />Com o LinkedIn conectado, o currículo usa todas as suas experiências e competências.
+              <a routerLink="/perfil" [queryParams]="{ conectar: 'linkedin' }">Conectar o LinkedIn</a></p>
+          }
 
           @if (composing.running() || composing.problem()) {
             <ol class="mini" aria-live="polite">

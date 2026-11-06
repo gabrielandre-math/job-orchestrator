@@ -45,15 +45,15 @@
         <div class="intro">
           <jo-iso name="reader" [size]="96" />
           <div>
-            <h2>Envie o seu currículo</h2>
-            <p class="muted">PDF, DOCX, TXT ou o ZIP do export de dados do LinkedIn. Os agentes leem, tiram os fatos e conferem cada um no texto original. Nome, e-mail e telefone ficam só na sua máquina.</p>
+            <h2>Envie o seu currículo ou conecte o LinkedIn</h2>
+            <p class="muted">O currículo em PDF, DOCX ou TXT, o LinkedIn pela cópia oficial dos dados, ou os dois. Os agentes leem, tiram os fatos e conferem cada um no texto original. Nome, e-mail e telefone ficam só na sua máquina.</p>
           </div>
         </div>
         @if (realProfile() && !reading()) {
           <div class="have">
             <jo-iso name="identity" [size]="56" />
             <span class="what"><strong>{{ profile()!.identity.fullName || 'Perfil atual' }}</strong><span class="faint small">{{ profile()!.facts.length }} fatos de {{ doc()?.fileName ?? 'documentos enviados' }}</span></span>
-            <span class="faint small">Um currículo novo substitui este perfil inteiro.</span>
+            <span class="faint small">Um currículo novo substitui o anterior; o que veio do LinkedIn fica.</span>
           </div>
         }
         <label class="drop" [class.over]="dragging()" [class.busy]="reading() || importing.running()" (dragover)="$event.preventDefault(); dragging.set(true)" (dragleave)="dragging.set(false)" (drop)="drop($event)">
@@ -69,9 +69,14 @@
           } @else {
             <jo-icon name="upload-simple" [size]="28" />
             <strong>Solte o arquivo aqui ou clique para escolher</strong>
-            <span class="muted small">Um arquivo por vez. O ZIP do LinkedIn sai em Configurações, Privacidade, Obter uma cópia dos seus dados.</span>
+            <span class="muted small">Um arquivo por vez: PDF, DOCX ou TXT.</span>
           }
         </label>
+        <div class="li-way">
+          <jo-iso name="identity" [size]="44" />
+          <span class="what"><strong>Prefere o LinkedIn?</strong><span class="muted small">O app pede a cópia oficial dos seus dados e lê sozinho quando ela chega, sem entrar na sua conta. Soma ao currículo, sem repetir.</span></span>
+          <button type="button" class="btn" (click)="linkedin.set(true)" [disabled]="reading()"><jo-icon name="identification-card" [size]="14" />Conectar LinkedIn</button>
+        </div>
         @if (doc()?.status === 'Failed') { <p class="problem">{{ doc()?.error ?? 'Não deu para ler o arquivo.' }}</p> }
         @if (readingFeed().length > 0 && (reading() || importing.running())) {
           <ol class="feed">
@@ -179,6 +184,10 @@
     </footer>
   }
 </jo-wizard>
+
+@if (linkedin()) {
+  <app-linkedin-import (close)="linkedin.set(false); connected()" (changed)="connected()" />
+}
 
 @if (connecting()) {
   <app-connect [accounts]="accounts()" [providers]="providers()" (close)="connecting.set(false); connected()" (changed)="connected()" (local)="connecting.set(false); go('/provedores')" />

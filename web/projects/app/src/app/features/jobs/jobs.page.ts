@@ -79,6 +79,7 @@ export class JobsPage {
   protected readonly all = query<JobRow[]>(() => '/jobs', 8000);
   protected readonly stats = query<JobStats>(() => '/jobs/stats', 15000);
   protected readonly profile = query<Profile>(() => '/profile', 0);
+  protected readonly linkedinOn = computed(() => (this.profile.value()?.documents ?? []).some((d) => d.kind === 'linkedin' && d.status === 'Ready'));
   protected readonly campaigns = query<Campaign[]>(() => '/campaigns', 0);
   /** Crédito que a fonte exige (Remotive, Himalayas e outras do registro): aparece em cada vaga que veio dela. */
   private readonly registry = query<{ sources: { prefix: string; name: string; docsUrl: string; attribution: string | null }[] }>(() => '/sources/registry', 0);

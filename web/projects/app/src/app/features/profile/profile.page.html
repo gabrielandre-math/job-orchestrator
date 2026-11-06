@@ -5,10 +5,25 @@
       <jo-badge [label]="statusLabel(p.status)" [tone]="statusTone(p.status)" />
       @if (p.version > 0) { <span class="faint mono">versão {{ p.version }}</span> }
     }
-    <button type="button" class="btn" (click)="linkedin.set(true)"><jo-icon name="identification-card" [size]="14" />Importar do LinkedIn</button>
+    <button type="button" class="btn" (click)="linkedin.set(true)"><jo-icon name="identification-card" [size]="14" />{{ link.value()?.connected ? 'Atualizar o LinkedIn' : 'Conectar LinkedIn' }}</button>
   </jo-page-hero>
   @if (profile.problem(); as e) { <p class="problem">{{ e.detail }}</p> }
   @if (sending.problem(); as e) { <p class="problem">{{ e.detail }}</p> }
+
+  @if (link.value(); as l) {
+    @if (!l.connected) {
+      <article class="panel connect">
+        <jo-iso name="identity" [size]="72" />
+        <div>
+          <h2>Conecte o LinkedIn</h2>
+          <p class="muted">Experiências, formação, competências, certificados e idiomas entram no perfil e nos currículos, somados ao que já veio do seu currículo, com a origem de cada um. É pelo caminho oficial do LinkedIn e leva uns 10 minutos.</p>
+        </div>
+        <button type="button" class="btn primary" (click)="linkedin.set(true)"><jo-icon name="identification-card" [size]="14" />{{ l.found.length ? 'Ler o export que já está em Downloads' : 'Conectar LinkedIn' }}</button>
+      </article>
+    } @else {
+      <p class="linked faint small"><jo-icon name="check" [size]="13" />LinkedIn conectado: {{ l.facts }} fatos do export {{ l.fileName }}, lido em {{ l.importedAt?.slice(0, 10)?.split('-')?.reverse()?.join('/') }}.</p>
+    }
+  }
 
   @if (profile.value(); as p) {
     <div class="layout">
@@ -220,4 +235,4 @@
   }
 </section>
 
-@if (linkedin()) { <app-linkedin-import (close)="linkedin.set(false)" (changed)="profile.reload()" /> }
+@if (linkedin()) { <app-linkedin-import (close)="linkedin.set(false)" (changed)="profile.reload(); link.reload()" /> }

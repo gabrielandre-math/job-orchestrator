@@ -27,6 +27,8 @@ internal sealed record FactView
     public string? Start { get; init; }
     public string? End { get; init; }
     public string[] Technologies { get; init; } = [];
+    /// <summary>Os outros documentos que também trazem o fato (currículo e LinkedIn).</summary>
+    public Guid[] AlsoIn { get; init; } = [];
     public string? Level { get; init; }
     public string? Quote { get; init; }
     public int? Page { get; init; }
@@ -74,7 +76,7 @@ internal sealed class GetProfileHandler(IReadDb<ProfileDbContext> db) : IQueryHa
             select id, file_name, kind, pages, status, error, extracted_by, imported_at, extracted_at from profile.documents where profile_id = @Id order by imported_at desc
             """, new { p.Id }, ct);
         var facts = await db.ListAsync<FactView>("""
-            select id, document_id, kind, statement, parent_id, organization, role, start, "end", technologies, level, quote, page, note, status
+            select id, document_id, kind, statement, parent_id, organization, role, start, "end", technologies, also_in, level, quote, page, note, status
             from profile.facts where profile_id = @Id order by position
             """, new { p.Id }, ct);
         var confirmations = p.Confirmations is { Length: > 2 } j ? JsonSerializer.Deserialize<Confirmations>(j, JsonSerializerOptions.Web) ?? Confirmations.Empty : Confirmations.Empty;

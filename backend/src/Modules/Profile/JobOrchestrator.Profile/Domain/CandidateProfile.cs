@@ -59,6 +59,8 @@ internal sealed class VerifiedFact
     public string? Start { get; private set; }
     public string? End { get; private set; }
     public List<string> Technologies { get; private set; } = [];
+    /// <summary>Outros documentos que também trazem este fato (o currículo e o export do LinkedIn, por exemplo): ele só sai quando nenhum trouxer mais.</summary>
+    public List<Guid> AlsoIn { get; private set; } = [];
     public string? Level { get; private set; }
     public string? Quote { get; private set; }
     public int? Page { get; private set; }
@@ -78,6 +80,27 @@ internal sealed class VerifiedFact
             Technologies = [.. (technologies ?? []).Select(t => Cut(t, 60)!).Distinct(StringComparer.OrdinalIgnoreCase)], Level = level,
             Quote = Cut(quote, 600), Page = page, Note = Cut(note, 300)
         };
+
+    /// <summary>A conquista de um fato repetido passa para o fato que já existia.</summary>
+    internal void MoveTo(Guid? parentId) => ParentId = parentId;
+
+    /// <summary>O mesmo fato visto em outro documento: as tecnologias se somam e o documento entra na lista dos que também o trazem.</summary>
+    internal void Absorb(VerifiedFact twin)
+    {
+        Technologies = [.. Technologies.Concat(twin.Technologies).Distinct(StringComparer.OrdinalIgnoreCase).Take(40)];
+        if (twin.DocumentId is { } d && d != DocumentId && !AlsoIn.Contains(d)) AlsoIn = [.. AlsoIn, d];
+    }
+
+    /// <summary>Os documentos que estão sendo trocados saem da lista; se o de origem é um deles, o fato passa para outro que também o traz.</summary>
+    internal bool Release(IReadOnlySet<Guid> replaced)
+    {
+        if (AlsoIn.Any(replaced.Contains)) AlsoIn = [.. AlsoIn.Where(d => !replaced.Contains(d))];
+        if (DocumentId is not { } id || !replaced.Contains(id)) return true;
+        if (AlsoIn.Count == 0) return false;
+        DocumentId = AlsoIn[0];
+        AlsoIn = [.. AlsoIn.Skip(1)];
+        return true;
+    }
 
     internal void Decide(bool accept, DateTime now)
     {
@@ -159,14 +182,36 @@ internal sealed class CandidateProfile : AggregateRoot
     }
 
     /// <summary>
-    /// Os fatos de um documento novo substituem os que vieram de documentos (os seus descartes e confirmações manuais ficam).
+    /// Os fatos de um documento novo substituem os dos documentos da mesma família: um currículo novo vale mais que o antigo, e um
+    /// export novo do LinkedIn, mais que o anterior. Os da outra família ficam e se somam: o que o novo repete (a mesma experiência,
+    /// formação, skill, idioma, certificado ou conquista) não entra duas vezes, as tecnologias dele vão para o fato que já existia e as
+    /// conquistas de uma experiência repetida passam para a que já estava. Os seus descartes e confirmações manuais ficam.
     /// Dados pessoais achados no documento só preenchem o que ainda está vazio: o que você editou vale mais.
     /// </summary>
     public void ReplaceFacts(SourceDocument doc, IEnumerable<VerifiedFact> facts, Identity found, string by, DateTime now)
     {
-        _facts.RemoveAll(f => f.DocumentId is not null && f.Status != FactStatus.Rejected);
+        var family = Family(doc.Kind);
+        var same = _documents.Where(d => Family(d.Kind) == family).Select(d => d.Id).ToHashSet();
+        // Sai o que só os documentos desta família traziam; o que outro documento também traz fica, em nome dele.
+        var gone = _facts.Where(f => f.Status != FactStatus.Rejected && !f.Release(same)).ToList();
+        _facts.RemoveAll(gone.Contains);
         var rejected = _facts.Where(f => f.Status == FactStatus.Rejected).Select(f => Key(f)).ToHashSet();
-        _facts.AddRange(facts.Where(f => !rejected.Contains(Key(f))));
+        var kept = _facts.Where(f => f.Status != FactStatus.Rejected).ToList();
+        var moved = new Dictionary<Guid, Guid>();
+        foreach (var f in facts)
+        {
+            if (rejected.Contains(Key(f))) continue;
+            var parent = f.ParentId is { } p && moved.TryGetValue(p, out var to) ? to : f.ParentId;
+            if (kept.FirstOrDefault(k => Same(k, f, parent)) is { } twin) { twin.Absorb(f); moved[f.Id] = twin.Id; continue; }
+            if (parent != f.ParentId) f.MoveTo(parent);
+            _facts.Add(f);
+        }
+        // Fato que estava sob uma experiência que saiu passa para a equivalente que entrou, ou fica solto.
+        foreach (var orphan in _facts.Where(f => f.ParentId is { } pid && gone.Any(g => g.Id == pid)).ToList())
+        {
+            var old = gone.First(g => g.Id == orphan.ParentId);
+            orphan.MoveTo(_facts.FirstOrDefault(k => k.Id != orphan.Id && Same(k, old, k.ParentId))?.Id);
+        }
         FullName = FullName.Length > 0 ? FullName : found.FullName;
         Email ??= found.Email;
         Phone ??= found.Phone;
@@ -255,5 +300,37 @@ internal sealed class CandidateProfile : AggregateRoot
     }
 
     private static string Key(VerifiedFact f) => $"{f.Kind}|{f.Statement.Trim().ToLowerInvariant()}";
+
+    /// <summary>Currículo (PDF, DOCX, TXT) e export do LinkedIn são as duas famílias de documento.</summary>
+    private static string Family(string kind) => kind == "linkedin" ? "linkedin" : "cv";
+
+    /// <summary>O fato novo repete um que já existe? Experiência pela empresa e cargo; skill, idioma e certificado pelo nome; conquista pelo texto.</summary>
+    internal static bool Same(VerifiedFact a, VerifiedFact b, Guid? parentOfB)
+    {
+        if (a.Kind != b.Kind) return false;
+        static string F(string? s) => Claims.Fold(s ?? "").Trim();
+        static string Head(string s) => F(s.Split(" (")[0]);
+        return a.Kind switch
+        {
+            "experience" => a.Organization is not null && b.Organization is not null && a.Role is not null && b.Role is not null
+                ? F(a.Organization) == F(b.Organization) && F(a.Role) == F(b.Role)
+                : F(a.Statement) == F(b.Statement),
+            "education" => F(a.Organization ?? a.Statement) == F(b.Organization ?? b.Statement),
+            "skill" or "language" or "certification" => Head(a.Statement) == Head(b.Statement),
+            // Um título e um resumo bastam: o que já existe fica.
+            "headline" or "summary" => true,
+            "achievement" => a.ParentId == parentOfB && Overlap(a, b),
+            _ => Overlap(a, b),
+        };
+
+        static bool Overlap(VerifiedFact a, VerifiedFact b)
+        {
+            string x = F(a.Statement), y = F(b.Statement);
+            if (x == y) return true;
+            string qa = F(a.Quote ?? a.Statement), qb = F(b.Quote ?? b.Statement);
+            return (y.Length >= 25 && (qa.Contains(y, StringComparison.Ordinal) || x.Contains(y, StringComparison.Ordinal)))
+                || (x.Length >= 25 && (qb.Contains(x, StringComparison.Ordinal) || y.Contains(x, StringComparison.Ordinal)));
+        }
+    }
     private static string? Blank(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
 }

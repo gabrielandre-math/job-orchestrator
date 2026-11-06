@@ -56,6 +56,7 @@ export class OverviewPage {
   protected readonly data = query<Overview>(() => '/overview', 4000);
   protected readonly tasks = query<TaskRow[]>(() => '/tasks', 4000);
   protected readonly profile = query<Profile>(() => '/profile', 0);
+  protected readonly linkedinOn = computed(() => (this.profile.value()?.documents ?? []).some((d) => d.kind === 'linkedin' && d.status === 'Ready'));
   protected readonly explore = query<ExploreStatus>(() => '/explore/status', 15000);
   /** Relógio de 30 s para os "em 12 min" do hero andarem sozinhos. */
   private readonly now = signal(Date.now());

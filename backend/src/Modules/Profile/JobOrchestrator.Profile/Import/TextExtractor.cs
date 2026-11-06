@@ -66,7 +66,7 @@ internal static class TextExtractor
     private static ExtractedText LinkedIn(string path)
     {
         using var zip = ZipFile.OpenRead(path);
-        var wanted = new[] { "Profile.csv", "Positions.csv", "Education.csv", "Skills.csv", "Languages.csv", "Certifications.csv", "Projects.csv", "Email Addresses.csv", "PhoneNumbers.csv" };
+        var wanted = LinkedInExport.Files;
         var tables = new Dictionary<string, IReadOnlyList<string[]>>(StringComparer.OrdinalIgnoreCase);
         var sb = new StringBuilder();
         foreach (var name in wanted)

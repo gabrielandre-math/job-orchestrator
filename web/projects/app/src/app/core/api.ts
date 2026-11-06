@@ -64,7 +64,7 @@ export interface Confirmations {
   modalities: string[]; cities: string[]; relocate: boolean; startAvailability: string | null; englishLevel: string | null; selfIdDefault: string; openAnswersPolicy: string; confirmedAt: string | null;
 }
 export interface ProfileDocument { id: string; fileName: string; kind: string; pages: number; status: 'Stored' | 'Extracting' | 'Ready' | 'Failed'; error: string | null; extractedBy: string | null; importedAt: string; extractedAt: string | null; }
-export interface ProfileFact { id: string; documentId: string | null; kind: string; statement: string; parentId: string | null; organization: string | null; role: string | null; start: string | null; end: string | null; technologies: string[]; level: string | null; quote: string | null; page: number | null; note: string | null; status: 'Verified' | 'Inferred' | 'Confirmed' | 'Rejected'; }
+export interface ProfileFact { id: string; documentId: string | null; alsoIn?: string[]; kind: string; statement: string; parentId: string | null; organization: string | null; role: string | null; start: string | null; end: string | null; technologies: string[]; level: string | null; quote: string | null; page: number | null; note: string | null; status: 'Verified' | 'Inferred' | 'Confirmed' | 'Rejected'; }
 export interface Profile { id: string | null; version: number; status: 'Empty' | 'Extracting' | 'NeedsConfirmation' | 'Ready'; synthetic: boolean; identity: Identity; confirmations: Confirmations; confirmedAt: string | null; updatedAt: string | null; documents: ProfileDocument[]; facts: ProfileFact[]; pending: number; }
 
 /** Envio de arquivo (multipart). */

@@ -18,7 +18,8 @@ internal sealed class ImportDocumentValidator : AbstractValidator<ImportDocument
 
     public ImportDocumentValidator()
     {
-        RuleFor(x => x.Content).Must(c => c.Length is > 0 and <= TextExtractor.MaxBytes).WithMessage("O arquivo precisa ter até 15 MB.");
+        RuleFor(x => x.Content).Must(c => c.Length is > 0 and <= TextExtractor.MaxBytes)
+            .WithMessage(x => x.FileName.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) ? "O ZIP passa de 15 MB. Deixe-o na pasta Downloads e use Conectar LinkedIn, que acha o arquivo lá." : "O arquivo precisa ter até 15 MB.");
         RuleFor(x => x.FileName).Must(n => Allowed.Contains(Path.GetExtension(n).ToLowerInvariant())).WithMessage("Envie PDF, DOCX, TXT ou o ZIP do export do LinkedIn.");
     }
 }
@@ -28,11 +29,18 @@ internal sealed class ImportDocumentHandler(ProfileDbContext db, TimeProvider ti
     public async Task<Result<ImportedView>> Handle(ImportDocumentCommand c, CancellationToken ct)
     {
         var now = time.GetUtcNow().UtcDateTime;
-        var sha = Convert.ToHexStringLower(SHA256.HashData(c.Content));
         var ext = Path.GetExtension(c.FileName).ToLowerInvariant();
+        var content = c.Content;
+        // Do ZIP do LinkedIn só os CSVs do perfil são guardados; mensagens, conexões e o resto ficam de fora.
+        if (ext == ".zip")
+        {
+            try { content = LinkedInExport.Slim(new MemoryStream(c.Content)); }
+            catch (InvalidDataException) { return Error.Validation("unreadable", "O ZIP está incompleto ou corrompido. Baixe de novo pelo link do e-mail do LinkedIn."); }
+        }
+        var sha = Convert.ToHexStringLower(SHA256.HashData(content));
         // Fora do git, no diretório de dados: o CV nunca vai para o repositório.
         var path = Path.Combine(AppPaths.In(AppPaths.Data, "profile", "documents"), sha + ext);
-        if (!File.Exists(path)) await File.WriteAllBytesAsync(path, c.Content, ct);
+        if (!File.Exists(path)) await File.WriteAllBytesAsync(path, content, ct);
         ExtractedText text;
         try { text = await TextExtractor.ExtractAsync(path, c.FileName, ct); }
         catch (NotSupportedException ex) { return Error.Validation("unreadable", ex.Message); }
