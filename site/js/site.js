@@ -132,7 +132,7 @@ function applyLang(next) {
   const b = $('#lang');
   b.textContent = pt ? 'EN' : 'PT';
   b.setAttribute('aria-label', pt ? 'English' : 'Português');
-  setDownload();
+  paintRelease();
   setStageName();
   sizePills();
   try { localStorage.setItem('jo.site.lang', lang); } catch {}
@@ -170,6 +170,27 @@ const SIZE = {
   'job-orchestrator-macos-arm64.dmg': '106.9 MB', 'job-orchestrator-macos-x64.dmg': '110.7 MB',
   'job-orchestrator-windows-x64-setup.exe': '102.6 MB', 'job-orchestrator-windows-arm64-setup.exe': '101.6 MB',
 };
+let version = null;
+const mb = (bytes) => `${(bytes / 1048576).toFixed(1)} MB`;
+// The version and file sizes of the latest release, so the page never lags behind one; the HTML keeps the last known values.
+async function latestRelease() {
+  try {
+    const r = await fetch('https://api.github.com/repos/gabrielandre-math/job-orchestrator/releases/latest', { headers: { Accept: 'application/vnd.github+json' } });
+    if (!r.ok) return;
+    const rel = await r.json();
+    version = String(rel.tag_name || '').replace(/^v/, '') || null;
+    for (const a of rel.assets ?? []) SIZE[a.name] = mb(a.size);
+    paintRelease();
+  } catch {}
+}
+function paintRelease() {
+  if (version) for (const v of $$('[data-version]')) v.textContent = version;
+  for (const link of $$('.os li a')) {
+    const size = SIZE[link.href.split('/').pop()];
+    if (size) link.querySelector('.size').textContent = size;
+  }
+  setDownload();
+}
 async function detect() {
   const ua = navigator.userAgent;
   const platform = (navigator.userAgentData?.platform || navigator.platform || '').toLowerCase();
@@ -621,6 +642,7 @@ async function main() {
   }
   applyLang(firstLang);
   detect();
+  latestRelease();
   tabs();
   copy();
   navShadow();
