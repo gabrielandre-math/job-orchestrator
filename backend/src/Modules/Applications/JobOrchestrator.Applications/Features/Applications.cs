@@ -3,7 +3,7 @@ namespace JobOrchestrator.Applications.Features;
 /// <summary>Uma candidatura na lista.</summary>
 internal sealed record ApplicationRow(
     Guid Id, Guid JobId, string Company, string Title, string Location, string State, int Score, DateTime CreatedAt, DateTime UpdatedAt,
-    string? PreparedBy, int EvidenceLevel, string? ReceiptId, string? LastReason, string ApplyChannel);
+    string? PreparedBy, int EvidenceLevel, string? ReceiptId, string? LastReason, string ApplyChannel, string? Outcome, DateTime? OutcomeAt);
 
 internal sealed record HistoryRow(DateTime At, string? From, string To, string Reason, string Actor, string? Detail);
 internal sealed record EvidenceRow(int Level, string Kind, string Detail, DateTime At);
@@ -16,7 +16,7 @@ internal sealed record ApplicationDetail(
 
 internal static class Reads
 {
-    public const string Columns = "id, job_id, company, title, location, state, score, created_at, updated_at, prepared_by, evidence_level, receipt_id, last_reason, apply_channel";
+    public const string Columns = "id, job_id, company, title, location, state, score, created_at, updated_at, prepared_by, evidence_level, receipt_id, last_reason, apply_channel, outcome, outcome_at";
 }
 
 /// <summary>Consulta (CQRS): candidaturas, com filtro por estado.</summary>
@@ -147,6 +147,22 @@ internal sealed record CopilotAnswer(string Key, string Value);
 
 internal sealed record DeclareBody(string? Note);
 
+/// <summary>Comando: a etapa depois do envio (Entrevista, Oferta, Aceita, Recusada; vazio volta para Enviada), arrastada no quadro.</summary>
+internal sealed record SetOutcomeCommand(Guid Id, string? Outcome) : ICommand<Done>, IApplicationsCommand;
+internal sealed record OutcomeBody(string? Outcome);
+
+internal sealed class SetOutcomeHandler(ApplicationsDbContext db, TimeProvider time) : ICommandHandler<SetOutcomeCommand, Done>
+{
+    public async Task<Result<Done>> Handle(SetOutcomeCommand c, CancellationToken ct)
+    {
+        var app = await db.Applications.FirstOrDefaultAsync(a => a.Id == c.Id, ct);
+        if (app is null) return Error.NotFound("application-not-found", "Candidatura não encontrada.");
+        try { app.SetOutcome(string.IsNullOrWhiteSpace(c.Outcome) ? null : c.Outcome, time.GetUtcNow().UtcDateTime); }
+        catch (DomainRuleException ex) { return Error.Conflict("cannot-move", ex.Message); }
+        return new Done();
+    }
+}
+
 /// <summary>Rotas HTTP (Carter) das candidaturas e da revisão.</summary>
 internal sealed class ApplicationEndpoints : ICarterModule
 {
@@ -157,6 +173,8 @@ internal sealed class ApplicationEndpoints : ICarterModule
         group.MapGet("{id:guid}", async (Guid id, ISender sender, CancellationToken ct) => (await sender.Send(new GetApplicationQuery(id), ct)).ToHttp(Results.Ok));
         group.MapPost("{id:guid}/approve", async (Guid id, ApproveCommand body, ISender sender, CancellationToken ct) => (await sender.Send(body with { Id = id }, ct)).ToHttp(_ => Results.NoContent()));
         group.MapPost("{id:guid}/withdraw", async (Guid id, ISender sender, CancellationToken ct) => (await sender.Send(new WithdrawCommand(id), ct)).ToHttp(_ => Results.NoContent()));
+        group.MapPut("{id:guid}/outcome", async (Guid id, OutcomeBody body, ISender sender, CancellationToken ct) =>
+            (await sender.Send(new SetOutcomeCommand(id, body.Outcome), ct)).ToHttp(_ => Results.NoContent()));
         group.MapPost("{id:guid}/retry", async (Guid id, ISender sender, CancellationToken ct) => (await sender.Send(new RetryCommand(id), ct)).ToHttp(_ => Results.NoContent()));
         group.MapGet("{id:guid}/resume", async (Guid id, IReadDb<ApplicationsDbContext> db, CancellationToken ct) =>
         {

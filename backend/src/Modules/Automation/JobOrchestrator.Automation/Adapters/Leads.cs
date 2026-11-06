@@ -68,6 +68,7 @@ internal sealed partial class Leads(IHttpClientFactory http, ScrapyRunner runner
         if (platform == "job-board-directory") return await BoardDirectoryAsync(ct);
         if (platform == "lastroundai") return await LastRoundAsync(ct);
         if (platform == "openjobs") return await OpenJobsAsync(ct);
+        if (platform == "yc") return await YcAsync(ct);
         if (platform != "pandape") return [];
         // O sitemap que o robots.txt do Pandapé indica: um índice .gz de pedaços .gz com as vagas abertas de todas as empresas.
         var index = await GunzipAsync("https://www.pandape.com.br/pandapeindexofertas.xml.gz", ct);
@@ -127,6 +128,26 @@ internal sealed partial class Leads(IHttpClientFactory http, ScrapyRunner runner
             foreach (var slug in ats.Value.EnumerateArray())
                 if (SourceKeys.OpenJobs(ats.Name, slug.GetString() ?? "") is { } key) leads.Add(new SourceLead(key, $"lista Open Jobs, CC0 (quadro lido pela frota deles em {at})"));
         return [.. leads.DistinctBy(l => l.Source, StringComparer.OrdinalIgnoreCase).OrderBy(l => unchecked(l.Source.Aggregate(week, (h, c) => h * 31 + c))).Take(4000)];
+    }
+
+    /// <summary>
+    /// Startups do Y Combinator que estão contratando (yc-oss/api, lista pública derivada do diretório do YC, atualizada todo dia, sem licença
+    /// declarada: pista de uso pessoal, não republicada). O site de cada uma vai para a varredura, que acha o quadro oficial de vagas;
+    /// as que contratam remoto primeiro.
+    /// </summary>
+    private async Task<IReadOnlyList<SourceLead>> YcAsync(CancellationToken ct)
+    {
+        await using var stream = await Client.GetStreamAsync("https://yc-oss.github.io/api/companies/hiring.json", ct);
+        using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
+        var leads = new List<(SourceLead Lead, int Rank)>();
+        foreach (var c in doc.RootElement.EnumerateArray())
+        {
+            if (LeadFor(c.Str("website"), "") is not { } lead) continue;
+            var regions = c.TryGetProperty("regions", out var r) && r.ValueKind == JsonValueKind.Array ? r.EnumerateArray().Select(x => x.GetString() ?? "").ToList() : [];
+            var rank = regions.Contains("Fully Remote") ? 0 : regions.Contains("Remote") || regions.Contains("Latin America") ? 1 : regions.Contains("Partly Remote") ? 2 : 3;
+            leads.Add((lead with { Origin = $"lista de startups do YC que contratam ({c.Str("name")}, {c.Str("batch")}{(regions.Count > 0 ? $", {string.Join(", ", regions.Take(3))}" : "")})" }, rank));
+        }
+        return [.. leads.OrderBy(l => l.Rank).Select(l => l.Lead).DistinctBy(l => l.Source, StringComparer.OrdinalIgnoreCase).Take(1500)];
     }
 
     /// <summary>Uma linha de CSV com aspas (nomes de empresa com vírgula vêm entre aspas, e aspas dobradas dentro delas).</summary>

@@ -1,5 +1,36 @@
 <section class="page">
   <jo-page-hero title="Candidaturas" lead="Cada vaga que entrou na fila, com o estado atual, quem mexeu por último e a prova de envio." [scene]="['form', 'guardian', 'send']" [stats]="heroStats()" />
+  <div class="bar">
+    <div class="seg-view" role="radiogroup" aria-label="Ver como">
+      <button type="button" role="radio" [attr.aria-checked]="view() === 'board'" [class.on]="view() === 'board'" (click)="setView('board')"><jo-icon name="squares-four" [size]="14" />Quadro</button>
+      <button type="button" role="radio" [attr.aria-checked]="view() === 'table'" [class.on]="view() === 'table'" (click)="setView('table')"><jo-icon name="list-checks" [size]="14" />Tabela</button>
+    </div>
+  </div>
+  @if (view() === 'board') {
+    <div class="board" [style.--cols]="columns().length">
+      @for (c of columns(); track c.key) {
+        <section class="col" [class.drop]="c.drop !== null" [class.over]="over() === c.key && c.drop !== null && dragging()"
+                 (dragover)="c.drop !== null && $event.preventDefault()" (dragenter)="c.drop !== null && over.set(c.key)" (drop)="drop($event, c.drop)">
+          <header><strong>{{ c.label }}</strong><span class="n num">{{ c.items.length }}</span></header>
+          <p class="faint small hint">{{ c.hint }}</p>
+          @for (a of c.items; track a.id) {
+            <article class="card" [class.draggable]="isSent(a)" [attr.draggable]="isSent(a)"
+                     (dragstart)="dragging.set(a.id); $event.dataTransfer?.setData('text/plain', a.id)" (dragend)="dragging.set(null); over.set(null)">
+              <a class="who" [routerLink]="['/candidaturas', a.id]"><jo-company [name]="a.company" [size]="28" /><span><span class="title">{{ a.title }}</span><span class="company">{{ a.company }}</span></span></a>
+              <span class="meta"><jo-score [value]="a.score" /><span class="faint small">{{ ago(a.outcomeAt ?? a.updatedAt) }}</span></span>
+              @if (isSent(a)) {
+                <label class="to small"><span class="sr-only">Mover para</span>
+                  <select [value]="a.outcome ?? ''" (change)="move(a.id, $any($event.target).value)">
+                    <option value="">Enviada</option>@for (o of steps; track o) { <option [value]="o">{{ o }}</option> }
+                  </select>
+                </label>
+              } @else if (c.key !== 'prep') { <span class="faint small state">{{ label(a.state) }}</span> }
+            </article>
+          } @empty { <p class="empty faint small">{{ c.drop !== null ? 'Solte aqui' : 'Nada agora' }}</p> }
+        </section>
+      }
+    </div>
+  } @else {
   <div class="chips" role="group" aria-label="Filtrar por estado">
     @for (f of filters; track f.label) {
       <button type="button" class="chip" [attr.aria-pressed]="state() === f.key" (click)="filter(f.key)">{{ f.label }}<span class="n">{{ count(f.key) }}</span></button>
@@ -27,4 +58,5 @@
       </table>
     }
   </section>
+  }
 </section>

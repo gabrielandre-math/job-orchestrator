@@ -43,7 +43,7 @@ export interface JobRow { id: string; company: string; title: string; location: 
 export interface CaptureResult { kind: 'watch' | 'saved' | 'known'; jobId: string | null; source: string | null; message: string; }
 export interface Factor { name: string; weight: number; value: number; points: number; note: string; unknown: boolean; }
 export interface JobDetail { job: JobRow; factors: Factor[]; description: string; snapshots: number; }
-export interface ApplicationRow { id: string; jobId: string; company: string; title: string; location: string; state: string; score: number; createdAt: string; updatedAt: string; preparedBy: string | null; evidenceLevel: number; receiptId: string | null; lastReason: string | null; }
+export interface ApplicationRow { id: string; jobId: string; company: string; title: string; location: string; state: string; score: number; createdAt: string; updatedAt: string; preparedBy: string | null; evidenceLevel: number; receiptId: string | null; lastReason: string | null; outcome?: string | null; outcomeAt?: string | null; }
 export interface Field { label: string; value: string; source: string; }
 export interface HistoryRow { at: string; from: string | null; to: string; reason: string; actor: string; detail: string | null; }
 export interface EvidenceRow { level: number; kind: string; detail: string; at: string; }

@@ -32,7 +32,7 @@ internal sealed class Explorer(IServiceScopeFactory scopes, [FromKeyedServices("
     public static string PrintFile => Path.Combine(Folder, "campaign.txt");
 
     /// <summary>Listas de empresas lidas pelo Explorador (README no GitHub), relidas a cada 7 dias. Explorer:Lists troca a lista.</summary>
-    internal static readonly string[] DefaultLists = ["catalog:job-board-directory", "catalog:lastroundai", "catalog:openjobs", "lerrua/remote-jobs-brazil", "sitemap:pandape", "poteto/hiring-without-whiteboards", "yanirs/established-remote", "remoteintech/remote-jobs"];
+    internal static readonly string[] DefaultLists = ["catalog:job-board-directory", "catalog:lastroundai", "catalog:openjobs", "catalog:yc", "lerrua/remote-jobs-brazil", "sitemap:pandape", "poteto/hiring-without-whiteboards", "yanirs/established-remote", "remoteintech/remote-jobs"];
     /// <summary>Quadros de vagas brasileiros que o robots.txt deixa ler (o coletor lê o dado estruturado e o navegador o que monta com JavaScript).
     /// Entram como pistas para qualquer currículo; o juiz decide pela área de cada pessoa.</summary>
     internal static readonly string[] Boards =

@@ -271,6 +271,15 @@ namespace JobOrchestrator.Applications.Data.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("location");
 
+                    b.Property<string>("Outcome")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("outcome");
+
+                    b.Property<DateTime?>("OutcomeAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("outcome_at");
+
                     b.Property<string>("PayloadHash")
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)")

@@ -34,6 +34,24 @@ internal sealed class JobApplication : AggregateRoot
     public string? ReceiptId { get; private set; }
     public int EvidenceLevel { get; private set; }
     public string? LastReason { get; private set; }
+    /// <summary>O que veio depois do envio, marcado por você: Entrevista, Oferta, Aceita ou Recusada. Não mexe no estado da máquina.</summary>
+    public string? Outcome { get; private set; }
+    public DateTime? OutcomeAt { get; private set; }
+
+    public static readonly string[] Outcomes = ["Entrevista", "Oferta", "Aceita", "Recusada"];
+
+    /// <summary>Você marca a etapa depois do envio (o quadro de candidaturas); vazio volta para "Enviada". Fica no histórico.</summary>
+    public void SetOutcome(string? outcome, DateTime now)
+    {
+        if (State is not (ApplicationState.SubmittedConfirmed or ApplicationState.SubmittedDeclared))
+            throw new DomainRuleException("Só dá para marcar entrevista, oferta ou resposta numa candidatura enviada.");
+        if (outcome is not null && !Outcomes.Contains(outcome)) throw new DomainRuleException($"Etapa desconhecida: {outcome}.");
+        if (outcome == Outcome) return;
+        _history.Add(ApplicationEvent.Step(Id, Outcome ?? "Enviada", outcome ?? "Enviada", now));
+        Outcome = outcome;
+        OutcomeAt = outcome is null ? null : now;
+        UpdatedAt = now;
+    }
     public uint Version { get; private set; }
     public IReadOnlyList<ApplicationEvent> History => _history;
 
@@ -113,6 +131,10 @@ internal sealed class ApplicationEvent
 
     internal static ApplicationEvent Create(Guid applicationId, ApplicationState? from, ApplicationState to, string reason, string actor, string? detail, DateTime now) =>
         new() { ApplicationId = applicationId, At = now, From = from?.ToString(), To = to.ToString(), Reason = reason, Actor = actor, Detail = detail };
+
+    /// <summary>Uma etapa depois do envio, marcada por você no quadro.</summary>
+    internal static ApplicationEvent Step(Guid applicationId, string from, string to, DateTime now) =>
+        new() { ApplicationId = applicationId, At = now, From = from, To = to, Reason = $"Você moveu de {from} para {to}.", Actor = "Você" };
 }
 
 /// <summary>Item da fila de trabalho, com lease para não rodar em dois lugares ao mesmo tempo.</summary>
