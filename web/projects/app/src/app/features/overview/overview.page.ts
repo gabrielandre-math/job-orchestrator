@@ -34,13 +34,17 @@ export class OverviewPage {
   protected readonly automating = signal(false);
   /** "Configurar tudo" do menu chega aqui como ?configurar=1 e abre o passo a passo guiado. */
   readonly configurar = input<string | undefined>();
-  private readonly openSetup = effect(() => { if (this.configurar()) untracked(() => this.automating.set(true)); });
+  private readonly openSetup = effect(() => {
+    if (!this.configurar() || !this.hub.state()) return;
+    untracked(() => {
+      if (this.setup() && !this.allDone()) this.hub.open.set(true); else this.automating.set(true);
+      // Abriu: tira o ?configurar=1, para recarregar a página não abrir de novo.
+      void this.router.navigate([], { queryParams: { configurar: null }, queryParamsHandling: 'merge', replaceUrl: true });
+    });
+  });
   private readonly router = inject(Router);
   /** Fechou o passo a passo: tira o ?configurar=1, para recarregar a página não abrir de novo. */
-  protected closeSetup() {
-    this.automating.set(false);
-    if (this.configurar()) void this.router.navigate([], { queryParams: { configurar: null }, queryParamsHandling: 'merge' });
-  }
+  protected closeSetup() { this.automating.set(false); }
   /** Configuração pendente: o que falta para a busca andar sozinha. */
   protected readonly setup = computed(() => {
     const o = this.hub.state();

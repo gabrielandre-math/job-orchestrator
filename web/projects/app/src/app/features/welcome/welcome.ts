@@ -135,6 +135,8 @@ export class Welcome {
     this.step.set(5);
     await this.search.start();
   }
+  /** O passo seguinte do primeiro uso: fecha este e abre o Automatizar tudo no Início. */
+  protected automate() { this.close.emit(); void this.router.navigate(['/'], { queryParams: { configurar: '1' } }); }
   protected go(path: string) { this.close.emit(); void this.router.navigate([path]); }
   protected async later() { this.close.emit(); }
   protected providerLogo(p: Provider) { return p.family === 'anthropic' ? 'claude' : p.family === 'openai' ? 'openai' : p.family === 'local' ? 'ollama' : null; }

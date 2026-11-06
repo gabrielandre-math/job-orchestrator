@@ -155,11 +155,12 @@
           <jo-iso name="send" [size]="96" />
           <div>
             <h2>Tudo pronto{{ state()?.firstName ? ', ' + state()!.firstName : '' }}</h2>
-            <p class="muted">A primeira busca já começou. Na Busca ao vivo você vê cada fonte, o que é da sua área, a nota e o que vai para a fila. Depois, confirme o perfil para os currículos saírem com tudo.</p>
+            <p class="muted">A primeira busca já começou. Falta um passo: escolher como as candidaturas saem (você revisa ou o app envia sozinho), ligar a busca de toda noite e, se quiser, o e-mail. O próximo assistente guia cada um.</p>
           </div>
         </div>
         <div class="done-actions">
-          <button type="button" class="btn primary" (click)="go('/busca')"><jo-icon name="magnifying-glass" [size]="14" />Ver a busca ao vivo</button>
+          <button type="button" class="btn primary" (click)="automate()"><jo-icon name="lightning" [size]="14" />Continuar: automatizar</button>
+          <button type="button" class="btn" (click)="go('/busca')"><jo-icon name="magnifying-glass" [size]="14" />Ver a busca ao vivo</button>
           <button type="button" class="btn" (click)="go('/perfil')"><jo-icon name="identification-card" [size]="14" />Confirmar o perfil</button>
           <button type="button" class="btn ghost" (click)="go('/assistente')"><jo-icon name="chats" [size]="14" />Conversar com o assistente</button>
         </div>
