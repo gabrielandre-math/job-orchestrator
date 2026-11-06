@@ -35,7 +35,8 @@ internal static class AnswerBank
 {
     public static Dictionary<string, string> Build(ProfileSnapshot p, AnswerContext c, DateOnly today)
     {
-        var en = c.Language == "en";
+        // As respostas existem em português e inglês: formulário em outra língua recebe as em inglês.
+        var en = c.Language != "pt";
         string T(string pt, string english) => en ? english : pt;
         var id = p.Identity;
         var conf = p.Confirmations;

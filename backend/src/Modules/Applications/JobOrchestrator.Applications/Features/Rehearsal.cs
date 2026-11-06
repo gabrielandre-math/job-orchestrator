@@ -80,7 +80,7 @@ internal sealed class Rehearsal(IServiceScopeFactory scopes, TimeProvider time, 
             try
             {
                 var text = await jobs.TextAsync(t.Id, cts.Token);
-                var pdf = Profile.Contracts.Languages.Detect($"{text?.Title} {text?.Description}") == "en" ? enPdf : ptPdf;
+                var pdf = Profile.Contracts.Languages.PtOrEn($"{text?.Title} {text?.Description}") == "pt" ? ptPdf : enPdf;
                 var bundle = await bundles.ForJobAsync(t.Id, pdf, cts.Token);
                 if (bundle is null)
                 {

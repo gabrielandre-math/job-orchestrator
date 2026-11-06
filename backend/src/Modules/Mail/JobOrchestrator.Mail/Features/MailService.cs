@@ -181,7 +181,9 @@ internal sealed partial class MailService(
         var text = await jobs.TextAsync(jobId, ct);
         var p = await profile.CurrentAsync(ct) ?? throw new MailRuleException("Envie o currículo antes: o e-mail sai dos fatos dele.");
         var settings = await SettingsAsync(ct);
-        var language = English(text?.Description ?? "") ? "en" : "pt";
+        // A língua do e-mail: a da vaga quando é português ou inglês, ou outra que você fala (perfil); senão, inglês.
+        var writing = Languages.Writing(Languages.DetectAny($"{target.Title} {text?.Description}"), p.Facts.Where(f => f.Kind == "language").Select(f => $"{f.Statement} {f.Level}"));
+        var language = writing == "pt" ? "pt" : "en";
         var template = (await TemplatesAsync(ct)).First(t => t.Kind == kind && t.Language == language);
         var thread = AgentThread.New("mail", $"E-mail para {target.Company}: {target.Title}");
         await ai.NoteAsync(thread, "Seletor", $"E-mail {(kind == "first" ? "de candidatura" : "de lembrete")} para {target.Company}", $"Destino: o e-mail que a vaga publica ({target.ApplyEmail}). Idioma: {language}.",
@@ -193,6 +195,9 @@ internal sealed partial class MailService(
         {
             var facts = string.Join("\n", p.Facts.Where(f => f.Kind is "experience" or "skill" or "achievement" or "education" or "certification" or "language").Take(50).Select(f => $"- {Line(f)}"));
             var prompt = $"Esqueleto (tom e estrutura):\nAssunto: {template.Subject}\n{template.Body}\n\nVaga: {target.Title} na {target.Company} ({target.Location}).\n{Cut(text?.Description ?? "", 3500)}\n\nFatos verificados do currículo:\n{facts}";
+            // Fora do português e do inglês, o esqueleto vai em inglês e a IA escreve na língua da vaga, que você fala.
+            if (writing is not ("pt" or "en"))
+                prompt += $"\n\nWrite the subject and the whole body in {Languages.EnglishName(writing)}, the language of the job posting. Keep every fact exactly as given.";
             var res = await ai.CompleteAsync(LlmRequest.For(LlmTasks.CoverWrite, language == "en" ? SystemEn : SystemPt, prompt, Schema, thread: thread, agent: "Redator"), ct);
             if (res.Ok && res.Json is { } json)
             {
@@ -602,12 +607,6 @@ internal sealed partial class MailService(
     private static string Join(IReadOnlyList<string> items, string and) => items.Count == 1 ? items[0] : $"{string.Join(", ", items.Take(items.Count - 1))} {and} {items[^1]}";
     private static string Cut(string s, int max) => s.Length > max ? s[..max] : s;
     private static string Slug(string s) => new string(s.Normalize(NormalizationForm.FormD).Where(c => char.IsLetterOrDigit(c) || c == '-').ToArray());
-    private static bool English(string text)
-    {
-        var words = Regex.Matches(text.ToLowerInvariant(), @"\b[a-zà-ú]+\b").Select(m => m.Value).Take(400).ToList();
-        int en = words.Count(w => w is "the" or "and" or "with" or "you" or "will" or "our" or "for" or "experience"), pt = words.Count(w => w is "de" or "com" or "para" or "você" or "experiência" or "vaga" or "nossa" or "e");
-        return en > pt;
-    }
 
     [GeneratedRegex(@"(?<=[.!?])\s+")] private static partial Regex Sentence();
     [GeneratedRegex(@"candidatura|processo seletivo|entrevista|vaga|application|interview|position|recruit|oferta|offer|teste t[eé]cnico|assessment", RegexOptions.IgnoreCase)] private static partial Regex Hiring();

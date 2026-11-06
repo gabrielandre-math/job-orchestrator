@@ -19,7 +19,7 @@ internal sealed class Bundles(IProfileApi profiles, IJobsApi jobs)
         var job = await jobs.TextAsync(jobId, ct);
         var techs = p.Facts.SelectMany(f => f.Technologies).Concat(p.Facts.Where(f => f.Kind == "skill").Select(f => f.Statement)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         var text = $"{job?.Title} {job?.Description}";
-        var context = new AnswerContext(job?.Contract, job?.SalaryCurrency, Country(job), techs, Languages.Detect(text), job?.Source ?? "manual");
+        var context = new AnswerContext(job?.Contract, job?.SalaryCurrency, Country(job), techs, Languages.PtOrEn(text), job?.Source ?? "manual");
         // O banco do perfil e, por cima, as suas respostas às perguntas que ele não cobre.
         var answers = new Dictionary<string, string>(await profiles.AnswersAsync(context, ct), StringComparer.Ordinal);
         foreach (var (key, saved) in AnswerStore.Load()) answers[key] = saved.Answer;

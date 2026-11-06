@@ -46,6 +46,65 @@ public static class Languages
         var words = System.Text.RegularExpressions.Regex.Matches(text.ToLowerInvariant(), @"\p{L}+").Select(m => m.Value).ToList();
         return words.Count(En.Contains) > words.Count(Pt.Contains) ? "en" : "pt";
     }
+
+    /// <summary>Palavras comuns de cada língua das fontes (Suécia, Noruega, Dinamarca, Finlândia, Tchéquia, Polônia, Europa e América Latina).</summary>
+    private static readonly Dictionary<string, string[]> Common = new()
+    {
+        ["es"] = ["el", "la", "los", "las", "y", "con", "usted", "nosotros", "experiencia", "equipo", "para", "en", "del", "una", "que", "por", "es", "de"],
+        ["fr"] = ["le", "la", "les", "et", "avec", "vous", "nous", "notre", "expérience", "équipe", "pour", "dans", "des", "une", "est", "de"],
+        ["de"] = ["der", "die", "das", "und", "mit", "sie", "wir", "unser", "erfahrung", "für", "ist", "eine", "von", "zu", "bei"],
+        ["it"] = ["il", "gli", "con", "noi", "nostro", "esperienza", "squadra", "per", "del", "una", "che", "è", "di"],
+        ["nl"] = ["het", "en", "met", "jij", "wij", "ons", "ervaring", "voor", "een", "van", "is", "je", "bij"],
+        ["sv"] = ["och", "med", "vi", "vår", "erfarenhet", "för", "att", "är", "som", "på", "av", "till", "det", "har", "du"],
+        ["da"] = ["og", "med", "vi", "vores", "erfaring", "for", "at", "er", "som", "på", "af", "til", "det", "har", "du"],
+        ["no"] = ["og", "med", "vi", "vår", "erfaring", "for", "å", "er", "som", "på", "av", "til", "det", "har", "du"],
+        ["fi"] = ["ja", "on", "kanssa", "sinä", "me", "meidän", "kokemus", "tiimi", "että", "tai", "olet"],
+        ["pl"] = ["z", "w", "na", "jest", "dla", "się", "do", "oraz", "doświadczenie", "zespół", "nas"],
+        ["cs"] = ["s", "v", "na", "je", "pro", "se", "do", "zkušenosti", "tým", "nebo", "práce"],
+    };
+
+    /// <summary>A língua do texto entre português, inglês e as outras das fontes; sem palavra conhecida, português (como Detect).</summary>
+    public static string DetectAny(string text)
+    {
+        var words = System.Text.RegularExpressions.Regex.Matches(text.ToLowerInvariant(), @"\p{L}+").Select(m => m.Value).Take(600).ToList();
+        var scores = Common.ToDictionary(kv => kv.Key, kv => words.Count(kv.Value.Contains));
+        scores["en"] = words.Count(En.Contains);
+        scores["pt"] = words.Count(Pt.Contains);
+        var best = scores.OrderByDescending(kv => kv.Value).First();
+        return best.Value == 0 ? "pt" : best.Key;
+    }
+
+    /// <summary>Para o que só existe em português e inglês (currículo, respostas do formulário): português só para texto em português.</summary>
+    public static string PtOrEn(string text) => DetectAny(text) == "pt" ? "pt" : "en";
+
+    /// <summary>Nomes de cada língua no perfil, em português, em inglês e na própria língua.</summary>
+    private static readonly Dictionary<string, string[]> Names = new()
+    {
+        ["es"] = ["espanhol", "spanish", "español", "castellano"], ["fr"] = ["francês", "frances", "french", "français"],
+        ["de"] = ["alemão", "alemao", "german", "deutsch"], ["it"] = ["italiano", "italian"], ["nl"] = ["holandês", "holandes", "neerlandês", "dutch", "nederlands"],
+        ["sv"] = ["sueco", "swedish", "svenska"], ["da"] = ["dinamarquês", "dinamarques", "danish", "dansk"], ["no"] = ["norueguês", "noruegues", "norwegian", "norsk"],
+        ["fi"] = ["finlandês", "finlandes", "finnish", "suomi"], ["pl"] = ["polonês", "polones", "polish", "polski"], ["cs"] = ["tcheco", "checo", "czech", "čeština"],
+    };
+
+    /// <summary>O nome da língua para o prompt ("Spanish", "German"...).</summary>
+    public static string EnglishName(string code) => code switch
+    {
+        "pt" => "Portuguese", "en" => "English", "es" => "Spanish", "fr" => "French", "de" => "German", "it" => "Italian", "nl" => "Dutch",
+        "sv" => "Swedish", "da" => "Danish", "no" => "Norwegian", "fi" => "Finnish", "pl" => "Polish", "cs" => "Czech", _ => "English",
+    };
+
+    /// <summary>
+    /// Em que língua escrever a candidatura: a da vaga quando é português ou inglês; outra língua só se você a fala (pelos idiomas do
+    /// perfil, de intermediário para cima). Senão, inglês: escrever numa língua que você não fala faria a empresa esperar que você fala.
+    /// </summary>
+    public static string Writing(string jobLanguage, IEnumerable<string> profileLanguages)
+    {
+        if (jobLanguage is "pt" or "en") return jobLanguage;
+        if (!Names.TryGetValue(jobLanguage, out var names)) return "en";
+        var speaks = profileLanguages.Select(l => l.ToLowerInvariant())
+            .Any(l => names.Any(l.Contains) && !System.Text.RegularExpressions.Regex.IsMatch(l, @"b[aá]sico|basic|beginner|iniciante|elementar|elementary|\ba[12]\b"));
+        return speaks ? jobLanguage : "en";
+    }
 }
 
 /// <summary>Chaves do banco de respostas e o significado curto que vai no prompt do question.map.</summary>

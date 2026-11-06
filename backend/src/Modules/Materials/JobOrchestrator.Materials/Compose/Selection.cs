@@ -57,7 +57,8 @@ internal static partial class Selector
         return new Selection(picked, Language(job.Description + " " + job.Title), matched, missing);
     }
 
-    internal static string Language(string text) => Languages.Detect(text);
+    // O currículo existe em português e inglês: vaga em outra língua (sueco, espanhol...) recebe o inglês.
+    internal static string Language(string text) => Languages.PtOrEn(text);
 
     private static bool Mentions(string folded, string term)
     {

@@ -272,8 +272,11 @@ internal sealed partial class AssistantService(IIntelligenceApi ai, IServiceScop
         var job = await jobs.TextAsync(jobId, ct);
         var p = await profile.CurrentAsync(ct);
         if (job is null || p is null || p.Facts.Count == 0) return new CoverLetter(false, "", "pt", "", [], "Falta o perfil ou a vaga.");
-        var lower = job.Description.ToLowerInvariant();
-        var lang = wanted is "pt" or "en" or "es" ? wanted : EnWords().Matches(lower).Count > PtWords().Matches(lower).Count ? "en" : "pt";
+        // Sem escolha sua: a língua da vaga quando é português ou inglês, ou outra que você fala (perfil); senão, inglês.
+        var auto = Languages.Writing(Languages.DetectAny($"{job.Title} {job.Description}"), p.Facts.Where(f => f.Kind == "language").Select(f => $"{f.Statement} {f.Level}"));
+        var lang = wanted is "pt" or "en" or "es" ? wanted : auto is "pt" or "en" or "es" ? auto : "en";
+        // Língua sem texto pronto aqui (alemão, sueco...): as instruções vão em inglês e a carta sai na língua da vaga.
+        var other = wanted is null && auto is not ("pt" or "en" or "es") ? auto : null;
         var english = lang == "en";
         var facts = string.Join("\n", p.Facts.Where(f => f.Kind is "experience" or "skill" or "achievement" or "education" or "certification" or "language").Take(60).Select(f => $"- {Fact(f)}"));
         var system = lang switch
@@ -288,11 +291,12 @@ internal sealed partial class AssistantService(IIntelligenceApi ai, IServiceScop
             ("caloroso", _) => " Tom: caloroso e com interesse genuíno, sem clichês.",
             (_, "en") => " Tone: direct and concise.", (_, "es") => " Tono: directo y conciso.", _ => " Tom: direto e objetivo.",
         };
+        if (other is not null) system += $" Write the letter in {Languages.EnglishName(other)}, the language of the job posting.";
         var thread = AgentThread.New("cover", $"Carta para {job.Company}: {job.Title}");
         const string schema = """{"type":"object","properties":{"letter":{"type":"string"}},"required":["letter"],"additionalProperties":false}""";
         var prompt = $"Vaga: {job.Title} na {job.Company} ({job.Location}).\n{(job.Description.Length > 3500 ? job.Description[..3500] : job.Description)}\n\nFatos verificados:\n{facts}";
         var res = await ai.CompleteAsync(new LlmRequest(LlmTasks.CoverWrite.Name, system, prompt, schema, LlmTasks.CoverWrite.Rung, null, 180, true, thread, "Redator"), ct);
-        var language = lang;
+        var language = other ?? lang;
         if (!res.Ok || res.Json is null) return new CoverLetter(false, "", language, res.Model, [], res.Error ?? "sem resposta");
         string letter;
         try { using var d = JsonDocument.Parse(res.Json); letter = d.RootElement.GetProperty("letter").GetString() ?? ""; }
@@ -310,9 +314,6 @@ internal sealed partial class AssistantService(IIntelligenceApi ai, IServiceScop
             removed.Count == 0 ? null : string.Join("\n", removed), new { stage = "check", removed = removed.Count }, "Você", removed.Count == 0, ct);
         return new CoverLetter(true, text, language, res.Model, removed, null);
     }
-
-    [GeneratedRegex(@"\b(the|and|with|you|will|our)\b")] private static partial Regex EnWords();
-    [GeneratedRegex(@"\b(de|com|para|você|nossa|vaga)\b")] private static partial Regex PtWords();
     [GeneratedRegex(@"(?<=[.!?])\s+")] private static partial Regex SentenceEnd();
     [GeneratedRegex(@"\n{3,}")] private static partial Regex Gaps();
 
