@@ -67,94 +67,109 @@
   <section class="panel filterbar" aria-label="Filtros das vagas">
     <div class="fb-top">
       <label class="fb-search"><jo-icon name="magnifying-glass" [size]="15" /><input type="search" placeholder="Buscar empresa, cargo ou tecnologia" [value]="search()" (input)="search.set($any($event.target).value)" aria-label="Buscar" /></label>
-      <div class="seg" role="radiogroup" aria-label="Ordenar">
+      <div class="sort" role="radiogroup" aria-label="Ordenar">
         @for (o of sorts; track o.key) { <button type="button" role="radio" [attr.aria-checked]="sort() === o.key" (click)="sort.set(o.key)">{{ o.label }}</button> }
       </div>
-      <span class="fb-total"><strong class="num">{{ rows().length }}</strong> <span class="faint">de {{ all.value()?.length ?? 0 }}</span></span>
-      @if (activeCount() > 0) { <button type="button" class="btn ghost" (click)="clearFilters()"><jo-icon name="x" [size]="13" />Limpar {{ activeCount() }}</button> }
+      <button type="button" class="btn fb-more" [class.on]="more()" [attr.aria-expanded]="more()" aria-controls="fb-panel" (click)="toggleMore()">
+        <jo-icon name="funnel-simple" [size]="14" />Filtros@if (active().length > 0) { <span class="badge num">{{ active().length }}</span> }
+      </button>
+      <span class="fb-total"><strong class="num">{{ rows().length }}</strong><span class="faint"> de {{ all.value()?.length ?? 0 }}</span></span>
     </div>
-    <div class="fb-group">
-      <span class="fb-label">Situação</span>
+    <div class="fb-row">
       <div class="chips" role="group" aria-label="Filtrar por situação">
         @for (f of filters; track f.label) {
           <button type="button" class="chip" [attr.aria-pressed]="status() === f.key" (click)="filter(f.key)">{{ f.label }}<span class="n">{{ count(f.key) }}</span></button>
         }
       </div>
+      @if (activeCount() > 0) { <button type="button" class="btn ghost fb-clear" (click)="clearFilters()"><jo-icon name="x" [size]="13" />Limpar {{ activeCount() }}</button> }
     </div>
-    @if (facets().elig.length > 0) {
-      <div class="fb-group">
-        <span class="fb-label">Para quem mora no Brasil</span>
-        <div class="chips" role="group" aria-label="Filtrar por elegibilidade">
-          @for (e of facets().elig; track e.key) {
-            <button type="button" class="chip elig" [class]="'chip elig ' + (eligibility[e.key]?.tone ?? '')" [attr.aria-pressed]="eligSel().has(e.key)" (click)="toggle(eligSel, e.key)">
-              <span class="dot" aria-hidden="true"></span>{{ eligibility[e.key]?.label ?? e.key }}<span class="n">{{ e.n }}</span>
-            </button>
-          }
-          <button type="button" class="chip" [attr.aria-pressed]="hideRestricted()" (click)="hideRestricted.set(!hideRestricted())"><jo-icon name="funnel-simple" [size]="14" />Esconder as restritas</button>
+    @if (!more() && active().length > 0) {
+      <div class="fb-row fb-active" role="group" aria-label="Filtros ligados">
+        @for (a of active(); track a.label) {
+          <button type="button" class="chip" aria-pressed="true" [attr.aria-label]="'Tirar o filtro ' + a.label" (click)="a.off()">{{ a.label }}<jo-icon name="x" [size]="11" /></button>
+        }
+      </div>
+    }
+    @if (more()) {
+      <div class="fb-panel" id="fb-panel">
+        @if (facets().elig.length > 0) {
+          <div class="fb-group">
+            <span class="fb-label">Para quem mora no Brasil</span>
+            <div class="chips" role="group" aria-label="Filtrar por elegibilidade">
+              @for (e of facets().elig; track e.key) {
+                <button type="button" [class]="'chip elig ' + (eligibility[e.key]?.tone ?? '')" [attr.aria-pressed]="eligSel().has(e.key)" (click)="toggle(eligSel, e.key)">
+                  <span class="dot" aria-hidden="true"></span>{{ eligibility[e.key]?.label ?? e.key }}<span class="n">{{ e.n }}</span>
+                </button>
+              }
+              <button type="button" class="chip" [attr.aria-pressed]="hideRestricted()" (click)="hideRestricted.set(!hideRestricted())"><jo-icon name="funnel-simple" [size]="13" />Esconder as restritas</button>
+            </div>
+          </div>
+        }
+        @if (facets().tech.length > 0) {
+          <div class="fb-group">
+            <span class="fb-label">Tecnologias</span>
+            <div class="chips" role="group" aria-label="Filtrar por tecnologia">
+              @for (t of techShown(); track t.key) {
+                <button type="button" class="chip logo" [class.have]="has(t.key) === true" [attr.aria-pressed]="techSel().has(t.key)" (click)="toggle(techSel, t.key)">
+                  <jo-tech [name]="t.key" [label]="false" [size]="14" />{{ t.key }}<span class="n">{{ t.n }}</span>
+                </button>
+              }
+              @if (facets().tech.length > 14) { <button type="button" class="chip more" (click)="allTech.set(!allTech())">{{ allTech() ? 'Menos' : '+' + (facets().tech.length - 14) }}</button> }
+            </div>
+          </div>
+        }
+        <div class="fb-group">
+          <span class="fb-label">Fonte</span>
+          <div class="chips" role="group" aria-label="Filtrar por fonte">
+            @for (s of sourceShown(); track s.key) {
+              <button type="button" class="chip logo" [attr.aria-pressed]="sourceSel().has(s.key)" (click)="toggle(sourceSel, s.key)">
+                @if (platform(s.key + ':'); as p) { <img class="plat" [class.mono]="p.mono" [src]="'/logos/' + p.file + '.svg'" alt="" /> } @else { <jo-tech [name]="platformName(s.key)" [label]="false" [size]="14" /> }
+                {{ platformName(s.key) }}<span class="n">{{ s.n }}</span>
+              </button>
+            }
+            @if (facets().source.length > 10) { <button type="button" class="chip more" (click)="allSources.set(!allSources())">{{ allSources() ? 'Menos' : '+' + (facets().source.length - 10) }}</button> }
+          </div>
+        </div>
+        <div class="fb-group">
+          <span class="fb-label">Modalidade</span>
+          <div class="chips" role="group" aria-label="Filtrar por modalidade">
+            @for (m of facets().mode; track m.key) {
+              <button type="button" class="chip" [attr.aria-pressed]="modeSel().has(m.key)" (click)="toggle(modeSel, m.key)"><jo-icon [name]="modes[m.key] ?? 'map-pin'" [size]="13" />{{ m.key }}<span class="n">{{ m.n }}</span></button>
+            }
+          </div>
+        </div>
+        @if (facets().level.length > 0) {
+          <div class="fb-group">
+            <span class="fb-label">Senioridade</span>
+            <div class="chips" role="group" aria-label="Filtrar por senioridade">
+              @for (l of facets().level; track l.key) { <button type="button" class="chip" [attr.aria-pressed]="levelSel().has(l.key)" (click)="toggle(levelSel, l.key)">{{ l.key }}<span class="n">{{ l.n }}</span></button> }
+            </div>
+          </div>
+        }
+        @if (facets().contract.length > 0) {
+          <div class="fb-group">
+            <span class="fb-label">Contrato</span>
+            <div class="chips" role="group" aria-label="Filtrar por contrato">
+              @for (c of facets().contract; track c.key) { <button type="button" class="chip" [attr.aria-pressed]="contractSel().has(c.key)" (click)="toggle(contractSel, c.key)">{{ c.key }}<span class="n">{{ c.n }}</span></button> }
+            </div>
+          </div>
+        }
+        <div class="fb-group">
+          <span class="fb-label">Mais</span>
+          <div class="chips">
+            <button type="button" class="chip" [attr.aria-pressed]="withSalary()" (click)="withSalary.set(!withSalary())"><jo-icon name="currency-circle-dollar" [size]="13" />Com salário<span class="n">{{ facets().salary }}</span></button>
+            <button type="button" class="chip" [attr.aria-pressed]="atsOnly()" (click)="atsOnly.set(!atsOnly())"><jo-icon name="cursor-click" [size]="13" />Formulário do ATS<span class="n">{{ facets().ats }}</span></button>
+          </div>
+        </div>
+        <div class="fb-group">
+          <span class="fb-label">Nota mínima</span>
+          <div class="score">
+            <input type="range" min="0" max="95" step="5" [value]="minScore()" (input)="minScore.set(+$any($event.target).value)" aria-label="Nota mínima" />
+            <strong class="num">{{ minScore() === 0 ? 'qualquer' : 'a partir de ' + minScore() }}</strong>
+          </div>
         </div>
       </div>
     }
-    @if (facets().tech.length > 0) {
-      <div class="fb-group">
-        <span class="fb-label">Tecnologias</span>
-        <div class="chips" role="group" aria-label="Filtrar por tecnologia">
-          @for (t of techShown(); track t.key) {
-            <button type="button" class="chip logo" [class.have]="has(t.key) === true" [attr.aria-pressed]="techSel().has(t.key)" (click)="toggle(techSel, t.key)">
-              <jo-tech [name]="t.key" [label]="false" [size]="15" />{{ t.key }}<span class="n">{{ t.n }}</span>
-            </button>
-          }
-          @if (facets().tech.length > 14) { <button type="button" class="chip more" (click)="allTech.set(!allTech())">{{ allTech() ? 'Menos' : '+' + (facets().tech.length - 14) }}</button> }
-        </div>
-      </div>
-    }
-    <div class="fb-grid">
-      <div class="fb-group">
-        <span class="fb-label">Fonte</span>
-        <div class="chips" role="group" aria-label="Filtrar por fonte">
-          @for (s of facets().source; track s.key) {
-            <button type="button" class="chip logo" [attr.aria-pressed]="sourceSel().has(s.key)" (click)="toggle(sourceSel, s.key)">
-              @if (platform(s.key + ':'); as p) { <img class="plat" [class.mono]="p.mono" [src]="'/logos/' + p.file + '.svg'" alt="" /> } @else { <jo-tech [name]="platformName(s.key)" [label]="false" [size]="15" /> }
-              {{ platformName(s.key) }}<span class="n">{{ s.n }}</span>
-            </button>
-          }
-        </div>
-      </div>
-      <div class="fb-group">
-        <span class="fb-label">Modalidade</span>
-        <div class="chips" role="group" aria-label="Filtrar por modalidade">
-          @for (m of facets().mode; track m.key) {
-            <button type="button" class="chip" [attr.aria-pressed]="modeSel().has(m.key)" (click)="toggle(modeSel, m.key)"><jo-icon [name]="modes[m.key] ?? 'map-pin'" [size]="14" />{{ m.key }}<span class="n">{{ m.n }}</span></button>
-          }
-        </div>
-      </div>
-      @if (facets().level.length > 0) {
-        <div class="fb-group">
-          <span class="fb-label">Senioridade</span>
-          <div class="chips" role="group" aria-label="Filtrar por senioridade">
-            @for (l of facets().level; track l.key) { <button type="button" class="chip" [attr.aria-pressed]="levelSel().has(l.key)" (click)="toggle(levelSel, l.key)">{{ l.key }}<span class="n">{{ l.n }}</span></button> }
-          </div>
-        </div>
-      }
-      @if (facets().contract.length > 0) {
-        <div class="fb-group">
-          <span class="fb-label">Contrato</span>
-          <div class="chips" role="group" aria-label="Filtrar por contrato">
-            @for (c of facets().contract; track c.key) { <button type="button" class="chip" [attr.aria-pressed]="contractSel().has(c.key)" (click)="toggle(contractSel, c.key)">{{ c.key }}<span class="n">{{ c.n }}</span></button> }
-          </div>
-        </div>
-      }
-      <div class="fb-group">
-        <span class="fb-label">Mais</span>
-        <div class="chips">
-          <button type="button" class="chip" [attr.aria-pressed]="withSalary()" (click)="withSalary.set(!withSalary())"><jo-icon name="currency-circle-dollar" [size]="14" />Com salário<span class="n">{{ facets().salary }}</span></button>
-          <button type="button" class="chip" [attr.aria-pressed]="atsOnly()" (click)="atsOnly.set(!atsOnly())"><jo-icon name="cursor-click" [size]="14" />Formulário do ATS<span class="n">{{ facets().ats }}</span></button>
-        </div>
-      </div>
-      <div class="fb-group score">
-        <span class="fb-label">Nota mínima <strong class="num">{{ minScore() === 0 ? 'qualquer' : minScore() }}</strong></span>
-        <input type="range" min="0" max="95" step="5" [value]="minScore()" (input)="minScore.set(+$any($event.target).value)" aria-label="Nota mínima" />
-      </div>
-    </div>
   </section>
 
   @if (all.value()?.length === 0) {
@@ -176,7 +191,7 @@
   } @else {
     <div class="cards">
       @for (j of shown(); track j.id) {
-        <button type="button" class="panel card" [style.view-transition-name]="'job-' + j.id" [class.current]="open() === j.id" [class.cut]="j.status === 'Rejected' || j.status === 'Duplicate' || j.status === 'Expired'" (click)="open.set(j.id)">
+        <button type="button" class="panel card" [class.current]="open() === j.id" [class.cut]="j.status === 'Rejected' || j.status === 'Duplicate' || j.status === 'Expired'" (click)="open.set(j.id)">
           <span class="c-head">
             <jo-company [name]="j.company" [domain]="j.companyDomain" [size]="44" />
             <span class="c-title">

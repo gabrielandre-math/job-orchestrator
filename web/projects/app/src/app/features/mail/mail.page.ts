@@ -75,8 +75,8 @@ export class MailPage {
   protected readonly modeText = computed(() => {
     const s = this.settings.value();
     if (!s) return '';
-    return s.mode === 'Auto' ? `Automático desde ${s.autoConsentAt ? new Date(s.autoConsentAt).toLocaleDateString('pt-BR') : ''}: até ${s.dailyCap} por dia, das ${s.windowStart}h às ${s.windowEnd}h, lembrete em ${s.followUpDays} dias.`
-      : s.mode === 'Review' ? `Revisão sua: cada e-mail espera o seu ok. Até ${s.dailyCap} por dia, das ${s.windowStart}h às ${s.windowEnd}h.` : 'Só rascunho: nada sai daqui.';
+    return s.mode === 'Auto' ? `Automático desde ${s.autoConsentAt ? new Date(s.autoConsentAt).toLocaleDateString('pt-BR') : ''}: até ${s.dailyCap} por dia, ${hours(s)}, lembrete em ${s.followUpDays} dias.`
+      : s.mode === 'Review' ? `Revisão sua: cada e-mail espera o seu ok. Até ${s.dailyCap} por dia, ${hours(s)}.` : 'Só rascunho: nada sai daqui.';
   });
 
   protected status(s: string) { return STATUS[s] ?? { label: s, tone: 'muted' }; }
@@ -110,4 +110,9 @@ export class MailPage {
   }
   protected async saveTpl(t: MailTemplate) { if ((await this.savingTpl.run({ id: t.id, ...this.tpl(t) })) !== null) { this.tplEdits.update((x) => { const n = { ...x }; delete n[t.id]; return n; }); await this.templates.reload(); } }
   protected tplLabel(t: MailTemplate) { return `${t.kind === 'first' ? 'Candidatura' : 'Lembrete'} · ${t.language === 'pt' ? 'português' : 'inglês'}`; }
+}
+
+/** A janela de envio em palavras: das 0h às 24h é o dia todo. */
+function hours(s: { windowStart: number; windowEnd: number }) {
+  return s.windowStart === 0 && s.windowEnd === 24 ? 'a qualquer hora' : `das ${s.windowStart}h às ${s.windowEnd}h`;
 }

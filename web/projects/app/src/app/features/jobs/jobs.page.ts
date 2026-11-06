@@ -17,6 +17,7 @@ import { AGENT_ICON, Live } from '../../core/live';
 import { query } from '../../core/query';
 import { PLATFORMS } from '../../core/sources';
 
+const FILTERS_OPEN = 'jo.vagas.filtros';
 interface Tally { key: string; value: number }
 interface JobStats { byStatus: Tally[]; bySource: Tally[]; scores: Tally[]; byModality: Tally[]; byContract: Tally[]; bySeniority: Tally[]; topStack: Tally[]; perDay: { day: string; value: number }[]; total: number;
   open: { open: number; brazilOk: number; restricted: number; fresh: number } }
@@ -172,6 +173,31 @@ export class JobsPage {
     };
   });
   protected readonly techShown = computed(() => this.allTech() ? this.facets().tech : this.facets().tech.slice(0, 14));
+  protected readonly allSources = signal(false);
+  protected readonly sourceShown = computed(() => this.allSources() ? this.facets().source : this.facets().source.slice(0, 10));
+  /** Os filtros por faceta ficam fechados: a faixa mostra busca, ordem, situação e, em etiquetas, o que está ligado. */
+  protected readonly more = signal(stored(FILTERS_OPEN));
+  protected toggleMore() {
+    const open = !this.more();
+    this.more.set(open);
+    try { localStorage.setItem(FILTERS_OPEN, open ? '1' : '0'); } catch { /* sem armazenamento: só não lembra */ }
+  }
+  /** O que está ligado nas facetas, para a faixa fechada mostrar e tirar com um clique. */
+  protected readonly active = computed(() => {
+    const out: { label: string; off: () => void }[] = [];
+    const each = (sel: WritableSignal<ReadonlySet<string>>, name: (k: string) => string) => { for (const k of sel()) out.push({ label: name(k), off: () => this.toggle(sel, k) }); };
+    each(this.eligSel, (k) => this.eligibility[k]?.label ?? k);
+    each(this.techSel, (k) => k);
+    each(this.sourceSel, (k) => this.platformName(k));
+    each(this.modeSel, (k) => k);
+    each(this.levelSel, (k) => k);
+    each(this.contractSel, (k) => k);
+    if (this.remoteOnly()) out.push({ label: 'Só remoto', off: () => this.remoteOnly.set(false) });
+    if (this.withSalary()) out.push({ label: 'Com salário', off: () => this.withSalary.set(false) });
+    if (this.atsOnly()) out.push({ label: 'Formulário do ATS', off: () => this.atsOnly.set(false) });
+    if (this.minScore() > 0) out.push({ label: `Nota a partir de ${this.minScore()}`, off: () => this.minScore.set(0) });
+    return out;
+  });
 
   protected readonly activeCount = computed(() =>
     [this.techSel(), this.sourceSel(), this.modeSel(), this.levelSel(), this.contractSel(), this.eligSel()].reduce((n, s) => n + s.size, 0)
@@ -205,15 +231,13 @@ export class JobsPage {
   protected readonly Math = Math;
 
   protected toggle(sel: WritableSignal<ReadonlySet<string>>, key: string) {
-    transition(() => sel.update((s) => { const n = new Set(s); if (n.has(key)) n.delete(key); else n.add(key); return n; }));
+    sel.update((s) => { const n = new Set(s); if (n.has(key)) n.delete(key); else n.add(key); return n; });
   }
   protected clearFilters() {
-    transition(() => {
-      for (const sel of [this.techSel, this.sourceSel, this.modeSel, this.levelSel, this.contractSel, this.eligSel]) sel.set(new Set());
-      this.hideRestricted.set(true);
-      this.withSalary.set(false); this.atsOnly.set(false); this.minScore.set(0); this.search.set(''); this.remoteOnly.set(false);
-      void this.router.navigate([], { queryParams: { status: null }, queryParamsHandling: 'merge' });
-    });
+    for (const sel of [this.techSel, this.sourceSel, this.modeSel, this.levelSel, this.contractSel, this.eligSel]) sel.set(new Set());
+    this.hideRestricted.set(true);
+    this.withSalary.set(false); this.atsOnly.set(false); this.minScore.set(0); this.search.set(''); this.remoteOnly.set(false);
+    void this.router.navigate([], { queryParams: { status: null }, queryParamsHandling: 'merge' });
   }
   protected platformName(key: string) { return PLATFORMS[key]?.name ?? key; }
 
@@ -297,9 +321,9 @@ export class JobsPage {
   }
 
   protected filter(key: string | undefined) {
-    transition(() => void this.router.navigate([], { queryParams: { status: key ?? null }, queryParamsHandling: 'merge' }));
+    void this.router.navigate([], { queryParams: { status: key ?? null }, queryParamsHandling: 'merge' });
   }
-  protected toggleRemote() { transition(() => this.remoteOnly.update((v) => !v)); }
+  protected toggleRemote() { this.remoteOnly.update((v) => !v); }
 
   protected count(key: string | undefined) { return key ? (this.counts()[key] ?? 0) : (this.all.value()?.length ?? 0); }
   protected source(s: string) { return s.replace(/^[a-z]+:/, '').replace(/^https?:\/\//, ''); }
@@ -327,11 +351,9 @@ export class JobsPage {
   });
 }
 
-/** Troca de filtro com View Transitions: os cartões deslizam para o lugar novo em vez de pular. */
-function transition(change: () => void) {
-  const doc = document as Document & { startViewTransition?: (cb: () => void) => unknown };
-  if (doc.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) doc.startViewTransition(change);
-  else change();
+/** Filtros abertos ou fechados, lembrado neste navegador. Sem armazenamento, abre fechado. */
+function stored(key: string) {
+  try { return localStorage.getItem(key) === '1'; } catch { return false; }
 }
 
 function fold(s: string) { return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9#+]/g, ''); }

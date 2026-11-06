@@ -21,16 +21,31 @@
 .legend b { font-weight: 600; color: var(--text); margin-left: 2px; }
 /* Filtros: um cartão com a busca e a ordem no topo e os grupos com rótulo em caixa alta; logos do svgl nas tecnologias e nas fontes. */
 .filterbar { display: grid; gap: 0; padding: 0; overflow: hidden; }
-.fb-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 14px; border-bottom: 1px solid var(--line); }
-.fb-search { flex: 1 1 280px; display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px; border-radius: 6px; border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--text-3); }
+.fb-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 14px 8px; }
+.fb-search { flex: 1 1 260px; display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px; border-radius: 6px; border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--text-3); }
 .fb-search:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in oklch, var(--accent) 14%, transparent); }
 .fb-search input { flex: 1; min-width: 0; border: 0; background: none; outline: none; color: var(--text); font: inherit; height: 100%; padding: 0; }
-.fb-total { margin-left: auto; font-size: 13px; }
-.fb-group { display: grid; gap: 7px; padding: 11px 14px; border-bottom: 1px solid var(--line); min-width: 0; }
-.fb-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); }
-.fb-grid .fb-group { border-right: 1px solid var(--line); margin-right: -1px; }
-.fb-label { font: 500 10.5px var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); display: flex; gap: 8px; align-items: baseline; }
-.fb-label strong { color: var(--text); font-size: 12px; letter-spacing: 0; text-transform: none; }
+.fb-total { font-size: 13px; white-space: nowrap; }
+/* Ordem: controle segmentado próprio (o .seg daqui é a barra do Perfil das vagas). */
+.sort { display: inline-flex; gap: 2px; padding: 2px; border-radius: 6px; border: 1px solid var(--line-strong); background: var(--surface-2); }
+.sort button { height: 26px; padding: 0 10px; border: 0; border-radius: 4px; background: transparent; color: var(--text-2); font: 500 12px var(--font-ui); cursor: pointer; }
+.sort button:hover { color: var(--text); }
+.sort button[aria-checked="true"] { background: var(--surface-3); color: var(--text); }
+.fb-more { height: 32px; gap: 6px; }
+.fb-more.on { border-color: var(--accent); color: var(--text); }
+.fb-more .badge { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; display: inline-grid; place-items: center; background: var(--accent); color: var(--accent-text); font-size: 11px; }
+.fb-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 0 14px 10px; }
+.fb-clear { height: 26px; margin-left: auto; }
+.fb-active .chip jo-icon { opacity: 0.8; }
+.filterbar .chip { height: 26px; padding: 0 9px; }
+.fb-panel { border-top: 1px solid var(--line); }
+.fb-group { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 12px; align-items: start; padding: 8px 14px; min-width: 0; }
+.fb-group + .fb-group { border-top: 1px solid var(--line); }
+.fb-label { padding-top: 5px; font: 500 10.5px var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); }
+.score { display: flex; align-items: center; gap: 12px; max-width: 420px; padding-top: 3px; }
+.score input { flex: 1; padding: 0; height: 20px; border: 0; background: transparent; accent-color: var(--accent); box-shadow: none; }
+.score strong { font-size: 12px; white-space: nowrap; }
+@media (max-width: 720px) { .fb-group { grid-template-columns: minmax(0, 1fr); gap: 6px; } .fb-label { padding-top: 0; } .fb-total { margin-left: auto; } }
 .chip { display: inline-flex; align-items: center; gap: 6px; }
 .chip.logo jo-tech { flex: none; }
 .chip.have:not([aria-pressed="true"]) { border-color: color-mix(in oklch, var(--ok) 40%, var(--line-strong)); }
