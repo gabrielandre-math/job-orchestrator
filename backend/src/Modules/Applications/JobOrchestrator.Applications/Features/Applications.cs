@@ -26,7 +26,7 @@ internal sealed class ListApplicationsHandler(IReadDb<ApplicationsDbContext> db)
 {
     public async Task<Result<IReadOnlyList<ApplicationRow>>> Handle(ListApplicationsQuery q, CancellationToken ct) =>
         Result<IReadOnlyList<ApplicationRow>>.Ok(await db.ListAsync<ApplicationRow>(
-            $"select {Reads.Columns} from applications.applications where (@State is null or state = @State) order by updated_at desc limit 500", new { q.State }, ct));
+            $"select {Reads.Columns} from applications.applications where archived_at is null and (@State is null or state = @State) order by updated_at desc limit 500", new { q.State }, ct));
 }
 
 internal sealed record GetApplicationQuery(Guid Id) : IQuery<ApplicationDetail>;
@@ -147,6 +147,21 @@ internal sealed record CopilotAnswer(string Key, string Value);
 
 internal sealed record DeclareBody(string? Note);
 
+/// <summary>Comando: arquivar uma candidatura encerrada (some das telas e das contagens; o histórico ganha a linha e fica).</summary>
+internal sealed record ArchiveCommand(Guid Id) : ICommand<Done>, IApplicationsCommand;
+
+internal sealed class ArchiveHandler(ApplicationsDbContext db, TimeProvider time) : ICommandHandler<ArchiveCommand, Done>
+{
+    public async Task<Result<Done>> Handle(ArchiveCommand c, CancellationToken ct)
+    {
+        var app = await db.Applications.FirstOrDefaultAsync(a => a.Id == c.Id, ct);
+        if (app is null) return Error.NotFound("application-not-found", "Candidatura não encontrada.");
+        try { app.Archive(time.GetUtcNow().UtcDateTime); }
+        catch (DomainRuleException ex) { return Error.Conflict("cannot-archive", ex.Message); }
+        return new Done();
+    }
+}
+
 /// <summary>Comando: a etapa depois do envio (Entrevista, Oferta, Aceita, Recusada; vazio volta para Enviada), arrastada no quadro.</summary>
 internal sealed record SetOutcomeCommand(Guid Id, string? Outcome) : ICommand<Done>, IApplicationsCommand;
 internal sealed record OutcomeBody(string? Outcome);
@@ -173,6 +188,7 @@ internal sealed class ApplicationEndpoints : ICarterModule
         group.MapGet("{id:guid}", async (Guid id, ISender sender, CancellationToken ct) => (await sender.Send(new GetApplicationQuery(id), ct)).ToHttp(Results.Ok));
         group.MapPost("{id:guid}/approve", async (Guid id, ApproveCommand body, ISender sender, CancellationToken ct) => (await sender.Send(body with { Id = id }, ct)).ToHttp(_ => Results.NoContent()));
         group.MapPost("{id:guid}/withdraw", async (Guid id, ISender sender, CancellationToken ct) => (await sender.Send(new WithdrawCommand(id), ct)).ToHttp(_ => Results.NoContent()));
+        group.MapPost("{id:guid}/archive", async (Guid id, ISender sender, CancellationToken ct) => (await sender.Send(new ArchiveCommand(id), ct)).ToHttp(_ => Results.NoContent()));
         group.MapPut("{id:guid}/outcome", async (Guid id, OutcomeBody body, ISender sender, CancellationToken ct) =>
             (await sender.Send(new SetOutcomeCommand(id, body.Outcome), ct)).ToHttp(_ => Results.NoContent()));
         group.MapPost("{id:guid}/retry", async (Guid id, ISender sender, CancellationToken ct) => (await sender.Send(new RetryCommand(id), ct)).ToHttp(_ => Results.NoContent()));

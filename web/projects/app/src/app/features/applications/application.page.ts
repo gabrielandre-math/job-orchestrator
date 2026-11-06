@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { inject, ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
+import { Router, RouterLink } from '@angular/router';
 import { Copilot } from './copilot';
 import { Badge } from '@jo/ui/badge';
 import { ApplicationDetail, send } from '../../core/api';
@@ -21,6 +21,11 @@ export class ApplicationPage {
   protected readonly approve = command((hash: string) => send('POST', `/applications/${this.id()}/approve`, { payloadHash: hash }));
   protected readonly withdraw = command(() => send('POST', `/applications/${this.id()}/withdraw`));
   protected readonly retry = command(() => send('POST', `/applications/${this.id()}/retry`));
+  /** Arquivar: a candidatura encerrada some das telas e das contagens; o histórico fica, com a linha do arquivamento. */
+  protected readonly archiving = command(() => send('POST', `/applications/${this.id()}/archive`), 'Arquivada: saiu das telas, e o histórico fica.');
+  private readonly router = inject(Router);
+  protected closed(state: string) { return ['Withdrawn', 'SubmittedConfirmed', 'SubmittedDeclared', 'Failed', 'DeadLetter', 'BlockedByPolicy'].includes(state); }
+  protected async archive() { if ((await this.archiving.run(undefined)) !== null) void this.router.navigate(['/candidaturas']); }
   protected readonly confirming = signal(false);
   protected readonly declaring = command(() => send('POST', `/applications/${this.id()}/declare`, { note: 'Você confirmou que o envio chegou.' }), 'Registrada: o envio chegou.');
   protected async arrived2() { await this.data.reload(); }

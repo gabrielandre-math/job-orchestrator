@@ -10,10 +10,13 @@
         <jo-badge [label]="label(d.application.state)" [tone]="tone(d.application.state)" />
         @if (d.hasResume) { <a class="btn" [href]="'/api/applications/' + d.application.id + '/resume'" target="_blank" rel="noopener">Currículo enviado (PDF)</a> }
         <a class="btn" [href]="d.applyUrl" target="_blank" rel="noopener noreferrer">Vaga original</a>
+        @if (closed(d.application.state)) {
+          <button class="btn ghost" type="button" [disabled]="archiving.running()" (click)="archive()" title="Some das telas e das contagens; o histórico fica">Arquivar</button>
+        }
       </div>
     </header>
 
-    @for (p of [approve.problem(), withdraw.problem(), retry.problem()]; track $index) { @if (p) { <p class="problem">{{ p.detail }}</p> } }
+    @for (p of [approve.problem(), withdraw.problem(), retry.problem(), archiving.problem()]; track $index) { @if (p) { <p class="problem">{{ p.detail }}</p> } }
 
     @if (d.application.state === 'AwaitingApproval' && d.payloadHash) {
       <div class="decision panel">

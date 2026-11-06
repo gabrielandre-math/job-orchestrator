@@ -40,6 +40,21 @@ internal sealed class JobApplication : AggregateRoot
 
     public static readonly string[] Outcomes = ["Entrevista", "Oferta", "Aceita", "Recusada"];
 
+    /// <summary>Quando você arquivou: some das telas e das contagens; o histórico fica, com a linha do arquivamento.</summary>
+    public DateTime? ArchivedAt { get; private set; }
+
+    /// <summary>Arquivar só vale para candidatura encerrada (a em andamento se retira antes). O histórico só ganha linha, nunca perde.</summary>
+    public void Archive(DateTime now)
+    {
+        if (State is not (ApplicationState.Withdrawn or ApplicationState.SubmittedConfirmed or ApplicationState.SubmittedDeclared or ApplicationState.Failed
+            or ApplicationState.DeadLetter or ApplicationState.BlockedByPolicy))
+            throw new DomainRuleException("Só dá para arquivar candidatura encerrada: retire antes a que está em andamento.");
+        if (ArchivedAt is not null) return;
+        _history.Add(ApplicationEvent.Archived(Id, State.ToString(), now));
+        ArchivedAt = now;
+        UpdatedAt = now;
+    }
+
     /// <summary>Você marca a etapa depois do envio (o quadro de candidaturas); vazio volta para "Enviada". Fica no histórico.</summary>
     public void SetOutcome(string? outcome, DateTime now)
     {
@@ -131,6 +146,9 @@ internal sealed class ApplicationEvent
 
     internal static ApplicationEvent Create(Guid applicationId, ApplicationState? from, ApplicationState to, string reason, string actor, string? detail, DateTime now) =>
         new() { ApplicationId = applicationId, At = now, From = from?.ToString(), To = to.ToString(), Reason = reason, Actor = actor, Detail = detail };
+
+    internal static ApplicationEvent Archived(Guid applicationId, string from, DateTime now) =>
+        new() { ApplicationId = applicationId, At = now, From = from, To = "Arquivada", Reason = "Você arquivou: ela sai das telas e das contagens, e o histórico fica.", Actor = "Você" };
 
     /// <summary>Uma etapa depois do envio, marcada por você no quadro.</summary>
     internal static ApplicationEvent Step(Guid applicationId, string from, string to, DateTime now) =>

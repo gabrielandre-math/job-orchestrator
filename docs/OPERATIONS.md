@@ -89,4 +89,4 @@ Todas as fontes passam pela resiliência por host (espera com Retry-After, circu
 | Porta 7410 ocupada | outro processo do app | `job-orchestrator --status`; parar o antigo antes de subir o novo |
 | Caçador sem Common Crawl | o índice público corta em ~10 s e às vezes fica fora (504 em tudo) | nada a fazer: a próxima caçada tenta de novo; os outros canais seguem |
 | Open Jobs `/data/` com 500 ("error code: 1101") | o servidor deles está fora | o `jo history import` com a URL do .tar funciona quando voltar; a lista CC0 de quadros já está no catálogo |
-| Vaga de teste na fila (127.0.0.1:5470) | resto de teste com o ATS falso no banco de desenvolvimento | encerrar a vaga com o motivo e retirar a candidatura pela tela; o histórico de candidatura não se apaga (só inclusão, de propósito) |
+| Vaga ou candidatura de teste (127.0.0.1:5470) | resto de teste com o ATS falso no banco de desenvolvimento | a vaga pode ser apagada; a candidatura se arquiva (botão Arquivar na tela dela), porque o histórico de candidatura é só inclusão, de propósito |

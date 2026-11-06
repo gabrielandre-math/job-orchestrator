@@ -228,6 +228,10 @@ namespace JobOrchestrator.Applications.Data.Migrations
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("apply_url");
 
+                    b.Property<DateTime?>("ArchivedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("archived_at");
+
                     b.Property<Guid>("CampaignId")
                         .HasColumnType("uuid")
                         .HasColumnName("campaign_id");

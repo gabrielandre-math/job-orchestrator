@@ -24,7 +24,7 @@ internal sealed class GetOverviewHandler(IReadDb<ApplicationsDbContext> db, ICam
           count(*) filter (where state = 'BlockedByPolicy')::int as blocked,
           count(*) filter (where state in ('Failed','DeadLetter'))::int as failed,
           count(*) filter (where state = 'Withdrawn')::int as withdrawn
-        from applications.applications
+        from applications.applications where archived_at is null
         """;
 
     public async Task<Result<OverviewView>> Handle(GetOverviewQuery q, CancellationToken ct)
@@ -32,10 +32,11 @@ internal sealed class GetOverviewHandler(IReadDb<ApplicationsDbContext> db, ICam
         var campaign = (await campaigns.ListAsync(ct)).FirstOrDefault();
         var counts = (await db.FirstAsync<StateCounts>(CountsSql, null, ct))!;
         var pending = await db.FirstAsync<int>("select count(*)::int from applications.human_tasks where resolved_at is null", null, ct);
-        var today = await db.FirstAsync<int>("select count(*)::int from applications.applications where state = 'SubmittedConfirmed' and updated_at >= @Since", new { Since = time.GetUtcNow().UtcDateTime.Date }, ct);
+        var today = await db.FirstAsync<int>("select count(*)::int from applications.applications where state = 'SubmittedConfirmed' and archived_at is null and updated_at >= @Since", new { Since = time.GetUtcNow().UtcDateTime.Date }, ct);
         var activity = await db.ListAsync<ActivityRow>("""
             select e.at, e.application_id, a.company, a.title, e."from", e."to", e.reason, e.actor
             from applications.events e join applications.applications a on a.id = e.application_id
+            where a.archived_at is null
             order by e.id desc limit 15
             """, null, ct);
         return new OverviewView(
@@ -62,8 +63,8 @@ internal sealed class GetFlowHandler(IReadDb<ApplicationsDbContext> db, IJobsApi
         var sources = await jobs.SourcesAsync(ct);
         var a = (await db.FirstAsync<StateCounts>(GetOverviewHandler.CountsSql, null, ct))!;
         var x = (await db.FirstAsync<Extra>("""
-            select (select count(*) from applications.applications where resume_hash is not null)::int as materials,
-                   (select count(*) from applications.applications where payload_hash is not null)::int as prepared,
+            select (select count(*) from applications.applications where resume_hash is not null and archived_at is null)::int as materials,
+                   (select count(*) from applications.applications where payload_hash is not null and archived_at is null)::int as prepared,
                    (select count(*) from applications.submission_intents)::int as intents,
                    (select count(*) from applications.human_tasks where resolved_at is null)::int as tasks,
                    (select count(*) from materials.resume_versions where reviewed)::int as reviewed,

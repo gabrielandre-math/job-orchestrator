@@ -42,4 +42,17 @@ public sealed class OutcomeTests
         Assert.Throws<DomainRuleException>(() => app.SetOutcome("Entrevista", Now));
         Assert.Throws<DomainRuleException>(() => Sent().SetOutcome("Contratada", Now));
     }
+
+    [Fact]
+    public void Arquivar_so_encerrada_e_o_historico_ganha_a_linha()
+    {
+        var app = Sent();
+        var before = app.History.Count;
+        app.Archive(Now.AddDays(1));
+        Assert.Equal(Now.AddDays(1), app.ArchivedAt);
+        Assert.Equal(("SubmittedDeclared", "Arquivada", "Você"), (app.History[^1].From, app.History[^1].To, app.History[^1].Actor));
+        app.Archive(Now.AddDays(2));
+        Assert.Equal(before + 1, app.History.Count);
+        Assert.Throws<DomainRuleException>(() => JobApplication.Create(TransitionTests.Job(), Now).Archive(Now));
+    }
 }
