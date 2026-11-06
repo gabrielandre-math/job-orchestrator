@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signa
 import { Badge } from '@jo/ui/badge';
 import { Icon } from '@jo/ui/icon';
 import { Iso } from '@jo/ui/iso';
+import { HeroStat, PageHero } from '@jo/ui/page-hero';
 import { Account, InstallState, LlmCall, LlmResult, LocalCatalog, LoginState, Provider, TaskUsage, get, remove, send } from '../../core/api';
 import { command } from '../../core/command';
 import { Connect } from './connect';
@@ -38,7 +39,7 @@ const KINDS = [
  */
 @Component({
   selector: 'app-providers',
-  imports: [Badge, Icon, Iso, Connect, Sensors],
+  imports: [Badge, Icon, Iso, PageHero, Connect, Sensors],
   templateUrl: './providers.page.html',
   styleUrl: './providers.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -75,6 +76,19 @@ export class ProvidersPage {
   protected readonly rows = computed(() => {
     const views = new Map((this.list.value() ?? []).map((p) => [p.id, p]));
     return (this.accounts.value() ?? []).map((a) => ({ account: a, view: views.get(a.id) ?? null, logo: LOGO_BY_KIND[a.kind] ?? null }));
+  });
+  /** Os números do cabeçalho: contas ligadas, modelos locais instalados e as chamadas de IA das últimas 24 h (assinatura, local, falhas). */
+  protected readonly hero = computed<HeroStat[]>(() => {
+    const usage = this.usage.value() ?? [];
+    const sum = (k: 'cloud' | 'local' | 'failed') => usage.reduce((n, u) => n + u[k], 0);
+    const failed = sum('failed');
+    return [
+      { label: 'Contas ligadas', value: (this.accounts.value() ?? []).filter((a) => a.enabled).length },
+      { label: 'Modelos locais', value: (this.local.value()?.models ?? []).filter((m) => m.installed).length },
+      { label: 'Pelas assinaturas, 24 h', value: sum('cloud'), tone: 'accent' },
+      { label: 'No modelo local, 24 h', value: sum('local'), tone: 'ok', note: 'sem custo' },
+      { label: 'Falhas, 24 h', value: failed, tone: failed ? 'warn' : undefined },
+    ];
   });
   protected readonly ollama = computed(() => (this.list.value() ?? []).find((p) => p.id === 'ollama') ?? null);
   protected readonly kind = computed(() => KINDS.find((k) => k.kind === this.draft().kind)!);

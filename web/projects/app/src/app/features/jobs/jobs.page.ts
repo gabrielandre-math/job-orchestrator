@@ -1,11 +1,12 @@
 import { ChangeDetectionStrategy, Component, WritableSignal, computed, inject, input, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { Badge } from '@jo/ui/badge';
 import { Company } from '@jo/ui/company';
 import { Count } from '@jo/ui/count';
 import { Empty } from '@jo/ui/empty';
 import { Icon } from '@jo/ui/icon';
 import { Iso } from '@jo/ui/iso';
+import { HeroStat, PageHero } from '@jo/ui/page-hero';
 import { Area, ChartRow, Columns, HBars } from '@jo/ui/charts';
 import { Score } from '@jo/ui/score';
 import { Tech } from '@jo/ui/tech';
@@ -17,7 +18,8 @@ import { query } from '../../core/query';
 import { PLATFORMS } from '../../core/sources';
 
 interface Tally { key: string; value: number }
-interface JobStats { byStatus: Tally[]; bySource: Tally[]; scores: Tally[]; byModality: Tally[]; byContract: Tally[]; bySeniority: Tally[]; topStack: Tally[]; perDay: { day: string; value: number }[]; total: number }
+interface JobStats { byStatus: Tally[]; bySource: Tally[]; scores: Tally[]; byModality: Tally[]; byContract: Tally[]; bySeniority: Tally[]; topStack: Tally[]; perDay: { day: string; value: number }[]; total: number;
+  open: { open: number; brazilOk: number; restricted: number; fresh: number } }
 interface Resume { id: string; language: string; mode: string; writtenBy: string | null; reviewedBy: string | null; reviewed: boolean; pages: number; createdAt: string; fileName: string; threadId: string }
 interface Compose { ok: boolean; versionId: string | null; mode: string; reviewed: boolean; error: string | null; threadId: string | null }
 
@@ -44,7 +46,7 @@ type Sort = 'score' | 'new' | 'company';
  */
 @Component({
   selector: 'app-jobs',
-  imports: [Area, Badge, Columns, Company, Count, Empty, HBars, Icon, Iso, Score, Tech],
+  imports: [Area, Badge, Columns, Company, Count, Empty, HBars, Icon, Iso, PageHero, RouterLink, Score, Tech],
   templateUrl: './jobs.page.html',
   styleUrl: './jobs.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -118,6 +120,24 @@ export class JobsPage {
     const t = fold(tech);
     return m.has(t) || [...m].some((x) => x.startsWith(t) || t.startsWith(x));
   }
+
+  /**
+   * Os números do cabeçalho, contados no servidor (a lista da tela vem cortada nas 500 primeiras): abertas e únicas, na fila,
+   * abertas a quem mora no Brasil, novas nas últimas 24 h e as restritas que a lista esconde.
+   */
+  protected readonly hero = computed<HeroStat[]>(() => {
+    const st = this.stats.value();
+    const o = st?.open;
+    if (!st || !o) return [];
+    const queued = st.byStatus.find((x) => x.key === 'Shortlisted')?.value ?? 0;
+    return [
+      { label: 'Abertas', value: o.open },
+      { label: 'Na fila', value: queued, tone: queued ? 'accent' : undefined },
+      { label: 'Abertas ao Brasil', value: o.brazilOk, tone: 'ok' },
+      { label: 'Novas em 24 h', value: o.fresh },
+      { label: 'Restritas a outro país', value: o.restricted, note: o.restricted ? 'fora da lista até você pedir' : undefined },
+    ];
+  });
 
   protected readonly counts = computed(() => {
     const c: Record<string, number> = {};

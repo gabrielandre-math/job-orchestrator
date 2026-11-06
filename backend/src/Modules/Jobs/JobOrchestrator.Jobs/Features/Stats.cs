@@ -3,10 +3,19 @@ namespace JobOrchestrator.Jobs.Features;
 internal sealed record Count(string Key, int Value);
 internal sealed record DayCount(DateOnly Day, int Value);
 
+/// <summary>As abertas e únicas (não duplicadas nem encerradas), as abertas a quem mora no Brasil, as restritas e as que chegaram nas últimas 24 h.</summary>
+internal sealed record OpenCounts
+{
+    public int Open { get; init; }
+    public int BrazilOk { get; init; }
+    public int Restricted { get; init; }
+    public int Fresh { get; init; }
+}
+
 /// <summary>Os números da área de vagas: situação, fonte, nota, modalidade, vínculo, senioridade, stack mais pedida e vagas novas por dia.</summary>
 internal sealed record JobStats(
     IReadOnlyList<Count> ByStatus, IReadOnlyList<Count> BySource, IReadOnlyList<Count> Scores, IReadOnlyList<Count> ByModality,
-    IReadOnlyList<Count> ByContract, IReadOnlyList<Count> BySeniority, IReadOnlyList<Count> TopStack, IReadOnlyList<DayCount> PerDay, int Total);
+    IReadOnlyList<Count> ByContract, IReadOnlyList<Count> BySeniority, IReadOnlyList<Count> TopStack, IReadOnlyList<DayCount> PerDay, int Total, OpenCounts Open);
 
 internal sealed record JobStatsQuery : IQuery<JobStats>;
 
@@ -29,7 +38,14 @@ internal sealed class JobStatsHandler(IReadDb<JobsDbContext> db) : IQueryHandler
             select d::date as day, (select count(*)::int from jobs.postings p where p.first_seen_at >= d and p.first_seen_at < d + interval '1 day') as value
             from generate_series(date_trunc('day', now()) - interval '13 days', date_trunc('day', now()), interval '1 day') d order by d
             """, null, ct);
-        return new JobStats(status, source, scores, modality, contract, seniority, stack, days, status.Sum(s => s.Value));
+        var open = await db.FirstAsync<OpenCounts>("""
+            select count(*)::int as open,
+                   count(*) filter (where eligibility = 'BR_ELIGIBLE_CONFIRMED')::int as brazil_ok,
+                   count(*) filter (where eligibility = 'BR_RESTRICTED')::int as restricted,
+                   count(*) filter (where first_seen_at >= now() - interval '24 hours')::int as fresh
+            from jobs.postings where duplicate_of is null and status not in ('Expired', 'Duplicate')
+            """, null, ct) ?? new OpenCounts();
+        return new JobStats(status, source, scores, modality, contract, seniority, stack, days, status.Sum(s => s.Value), open);
     }
 }
 

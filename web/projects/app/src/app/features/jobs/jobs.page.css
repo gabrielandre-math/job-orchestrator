@@ -117,3 +117,8 @@
 .tag.elig.ok { color: var(--ok); border-color: color-mix(in oklch, var(--ok) 40%, var(--line)); }
 .tag.elig.warn { color: var(--warn); border-color: color-mix(in oklch, var(--warn) 40%, var(--line)); }
 .tag.elig.bad { color: var(--bad, #e5484d); border-color: color-mix(in oklch, var(--bad, #e5484d) 40%, var(--line)); }
+.calm { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 22px; align-items: center; padding: 26px 28px; }
+.calm h2 { font-size: 16px; margin-bottom: 4px; }
+.calm p { margin: 0 0 12px; line-height: 1.55; max-width: 64ch; }
+.calm-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+@media (max-width: 760px) { .calm { grid-template-columns: 1fr; padding: 18px; } }

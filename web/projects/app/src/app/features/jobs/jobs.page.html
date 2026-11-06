@@ -1,10 +1,9 @@
 <section class="page">
-  <header class="page-head">
-    <div>
-      <h1>Vagas</h1>
-      <p>Tudo que as fontes trouxeram. A nota mede aderência à campanha, não chance de contratação.</p>
-    </div>
-  </header>
+  <jo-page-hero title="Vagas" [scene]="['ats', 'queue', 'chart']" [stats]="hero()"
+    lead="Tudo que as fontes trouxeram, com a elegibilidade de quem mora no Brasil. A nota mede a aderência à campanha, não a chance de contratação.">
+    <a class="btn" routerLink="/busca"><jo-icon name="magnifying-glass" [size]="14" />Busca ao vivo</a>
+    <a class="btn ghost" routerLink="/fontes"><jo-icon name="plugs-connected" [size]="14" />Fontes</a>
+  </jo-page-hero>
   @if (all.problem(); as p) { <p class="problem">{{ p.detail }}</p> }
 
   @if (stats.value(); as st) {
@@ -149,8 +148,20 @@
     </div>
   </section>
 
-  @if (all.value() && rows().length === 0) {
-    <div class="panel"><jo-empty title="Nenhuma vaga neste filtro." hint="Rode a campanha ou troque o filtro." /></div>
+  @if (all.value()?.length === 0) {
+    <section class="calm panel">
+      <jo-iso name="radar" [size]="112" />
+      <div>
+        <h2>Nenhuma vaga ainda</h2>
+        <p class="muted">As vagas chegam pelas fontes da campanha: cada rodada lê os quadros oficiais, separa as da sua área, confere quem mora no Brasil e dá a nota. Acompanhe a rodada ao vivo ou ligue mais fontes.</p>
+        <span class="calm-actions">
+          <a class="btn" routerLink="/busca"><jo-icon name="magnifying-glass" [size]="14" />Ver a busca ao vivo</a>
+          <a class="btn ghost" routerLink="/fontes"><jo-icon name="plus" [size]="14" />Adicionar fonte</a>
+        </span>
+      </div>
+    </section>
+  } @else if (all.value() && rows().length === 0) {
+    <div class="panel"><jo-empty title="Nenhuma vaga neste filtro." hint="As vagas existem, mas nenhuma passa por todos os filtros escolhidos."><button type="button" class="btn ghost" (click)="clearFilters()"><jo-icon name="x" [size]="14" />Limpar filtros</button></jo-empty></div>
   } @else if (!all.value()) {
     <div class="cards">@for (i of [1, 2, 3, 4, 5, 6]; track i) { <div class="panel card skeleton"></div> }</div>
   } @else {
