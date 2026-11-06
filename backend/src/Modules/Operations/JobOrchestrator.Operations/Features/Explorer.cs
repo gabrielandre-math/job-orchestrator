@@ -94,6 +94,12 @@ internal sealed class Explorer(IServiceScopeFactory scopes, [FromKeyedServices("
             if (!Fresh(source) || !frontier.TryAdd(source, origin)) return;
             origins[kind] = origins.GetValueOrDefault(kind) + 1;
         }
+        // Pistas do caçador (Hunter, com o Llama local): entram na fila antes das outras e a caixa de entrada se esvazia.
+        if (Read<Dictionary<string, string>>(Hunter.InboxFile) is { Count: > 0 } hunted)
+        {
+            foreach (var (s, o) in hunted) Lead(s, o, "caçador");
+            File.Delete(Hunter.InboxFile);
+        }
         // As buscas giram entre os ciclos: cada ciclo pergunta uma coisa diferente, sem repetir a mesma busca a cada 10 minutos.
         var turn = (int)(DateTime.UtcNow.Ticks / TimeSpan.FromMinutes(10).Ticks % 100_000);
         var terms = campaign.Technologies.Take(4).Concat((campaign.Titles ?? []).Take(3)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
@@ -171,7 +177,7 @@ internal sealed class Explorer(IServiceScopeFactory scopes, [FromKeyedServices("
         foreach (var d in await jobs.CompanyDomainsAsync(60, ct)) Lead($"web:{d}", "site da empresa de uma vaga", "sites de empresa");
         foreach (var k in frontier.Keys.Where(k => !Fresh(k)).ToList()) frontier.Remove(k);
         // A fila vai para o disco antes dos testes: se o processo cair no meio do ciclo, as pistas ficam.
-        Write(FrontierFile, frontier.Take(25000).ToDictionary());
+        Write(FrontierFile, frontier.OrderBy(f => Priority(f.Value)).Take(25000).ToDictionary());
         Write(ListsFile, lists);
 
         // Teste de quadro é barato (uma chamada à API pública; o Llama só entra quando as palavras batem): 30 quadros e 15 da Gupy por ciclo.
@@ -235,7 +241,7 @@ internal sealed class Explorer(IServiceScopeFactory scopes, [FromKeyedServices("
         var added = fit.Count == 0 ? 0 : await runs.AddSourcesAsync(campaign.Id, fit, ct);
         var fetching = added > 0 && await runs.RequestSourcesAsync(campaign.Id, fit, "explorer", ct);
         Write(SeenFile, seen.OrderByDescending(x => x.Value.At).Take(30000).ToDictionary());
-        Write(FrontierFile, frontier.Take(25000).ToDictionary());
+        Write(FrontierFile, frontier.OrderBy(f => Priority(f.Value)).Take(25000).ToDictionary());
         var seconds = Math.Round(clock.Elapsed.TotalSeconds, 1);
         await Note(ai, thread, "Curador", added > 0 ? $"{added} {(added == 1 ? "fonte nova entrou" : "fontes novas entraram")} na campanha" : "Nenhuma fonte nova com vaga da sua área neste ciclo",
             (fetching ? "As vagas delas já estão chegando na Busca ao vivo.\n" : "") +
@@ -338,7 +344,7 @@ internal sealed class Explorer(IServiceScopeFactory scopes, [FromKeyedServices("
     }
 
     /// <summary>Teto diário da busca na web (o plano gratuito do Brave Search dá cerca de 2.000 consultas por mês).</summary>
-    private static bool SpendWebSearch(int perDay)
+    internal static bool SpendWebSearch(int perDay)
     {
         var file = Path.Combine(Folder, "websearch.json");
         var today = DateTime.UtcNow.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
@@ -404,7 +410,7 @@ internal sealed class Explorer(IServiceScopeFactory scopes, [FromKeyedServices("
 /// No Worker: o Explorador roda um ciclo a cada 10 minutos (Explorer:Enabled, Explorer:IntervalMinutes) e a busca contínua pede rodada das
 /// campanhas ligadas a cada hora (Search:IntervalMinutes). Nada disso envia candidatura: o modo da campanha continua valendo.
 /// </summary>
-internal sealed class Continuous(Explorer explorer, IServiceScopeFactory scopes, IConfiguration config, ILogger<Continuous> log) : BackgroundService
+internal sealed class Continuous(Explorer explorer, Hunter hunter, IServiceScopeFactory scopes, IConfiguration config, ILogger<Continuous> log) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stop)
     {
@@ -434,6 +440,7 @@ internal sealed class Continuous(Explorer explorer, IServiceScopeFactory scopes,
     private async Task ExploreAsync(CancellationToken stop)
     {
         var last = Explorer.Read<ExploreSummary>(Explorer.LastFile)?.At ?? DateTime.MinValue;
+        var hunted = Explorer.Read<HuntSummary>(Hunter.LastFile)?.At ?? DateTime.MinValue;
         var seen = File.Exists(Explorer.PrintFile) ? await File.ReadAllTextAsync(Explorer.PrintFile, stop) : "";
         while (!stop.IsCancellationRequested)
         {
@@ -448,6 +455,14 @@ internal sealed class Continuous(Explorer explorer, IServiceScopeFactory scopes,
                 }
                 var changed = print.Length > 0 && print != seen;
                 var every = TimeSpan.FromMinutes(Math.Clamp(config.GetValue("Explorer:IntervalMinutes", 10), 5, 1440));
+                // Caçada com o Llama, quando ligada: a cada Explorer:Hunter:IntervalHours (12 h por padrão), antes do ciclo, que já testa o que ela achou.
+                if (config.GetValue("Explorer:Hunter:Enabled", false) && DateTime.UtcNow - hunted >= TimeSpan.FromHours(Math.Clamp(config.GetValue("Explorer:Hunter:IntervalHours", 12), 1, 168)))
+                {
+                    hunted = DateTime.UtcNow;
+                    var h = await hunter.HuntAsync(config.GetValue("Explorer:Hunter:Depth", "rapido") ?? "rapido", stop);
+                    log.LogInformation("Hunter: {Leads} leads ({Skipped})", h.Leads, h.Skipped ?? "ok");
+                    last = DateTime.UtcNow;
+                }
                 if (config.GetValue("Explorer:Enabled", true) && (changed || DateTime.UtcNow - last >= every))
                 {
                     if (changed) { seen = print; await File.WriteAllTextAsync(Explorer.PrintFile, print, stop); log.LogInformation("Explorer: campaign changed, exploring now"); }

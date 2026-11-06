@@ -67,9 +67,10 @@ public static class LlmTasks
     public static readonly LlmTask AssistantSetup = new("assistant.setup", Rung.Medium, true, 8, "currículo sem dados pessoais");
     public static readonly LlmTask ExploreJudge = new("explore.judge", Rung.Local, false, 0, "títulos públicos de vagas, fica na máquina");
     public static readonly LlmTask PageNavigate = new("page.navigate", Rung.Local, false, 0, "rótulos de botões e links de página pública de carreira");
+    public static readonly LlmTask ExploreHunt = new("explore.hunt", Rung.Local, false, 0, "palavras da campanha e do currículo, fica na máquina");
 
     public static IReadOnlyList<LlmTask> All { get; } = [JobExtract, QuestionMap, EmailClassify, ProfileExtract, ResumeTailor, ResumeFactcheck, CoverWrite, QuestionDraft, InterviewPrep, PageJobs,
-        AssistantTriage, AssistantChat, AssistantSetup, ExploreJudge];
+        AssistantTriage, AssistantChat, AssistantSetup, ExploreJudge, ExploreHunt];
 
     public static LlmTask? Find(string name) => All.FirstOrDefault(t => t.Name == name);
 }

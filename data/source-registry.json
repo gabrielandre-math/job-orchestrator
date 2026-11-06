@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-05T23:54:53.7128346Z",
+  "generated_at": "2026-11-06T01:15:56.0462926Z",
   "generated_by": "jo sources probe",
   "experimental_on": true,
   "catalog": {
@@ -79,7 +79,7 @@
       "public_employment_agency": 79,
       "public_labor_market_statistics": 2
     },
-    "matchedToConnectors": 36
+    "matchedToConnectors": 38
   },
   "sources": [
     {
@@ -111,9 +111,9 @@
         "ok": true,
         "count": 33,
         "http": 200,
-        "seconds": 0.5,
+        "seconds": 0.3,
         "error": null,
-        "at": "2026-11-05T23:54:16.2279769Z"
+        "at": "2026-11-06T01:15:15.3661921Z"
       }
     },
     {
@@ -141,13 +141,13 @@
       "disabled": false,
       "probe": {
         "prefix": "lever",
-        "source": "lever:spotify",
+        "source": "lever:ciandt",
         "ok": true,
-        "count": 86,
+        "count": 142,
         "http": 200,
-        "seconds": 4.7,
+        "seconds": 2.3,
         "error": null,
-        "at": "2026-11-05T23:54:20.5143349Z"
+        "at": "2026-11-06T01:15:17.3076599Z"
       }
     },
     {
@@ -177,11 +177,11 @@
         "prefix": "ashby",
         "source": "ashby:ramp",
         "ok": true,
-        "count": 170,
+        "count": 171,
         "http": 200,
-        "seconds": 0.3,
+        "seconds": 0.2,
         "error": null,
-        "at": "2026-11-05T23:54:16.0831544Z"
+        "at": "2026-11-06T01:15:15.287705Z"
       }
     },
     {
@@ -209,13 +209,13 @@
       "disabled": false,
       "probe": {
         "prefix": "smartrecruiters",
-        "source": "smartrecruiters:BoschGroup",
+        "source": "smartrecruiters:SoftwareMind",
         "ok": true,
         "count": 40,
         "http": 200,
-        "seconds": 36.4,
+        "seconds": 37.2,
         "error": null,
-        "at": "2026-11-05T23:54:52.1789194Z"
+        "at": "2026-11-06T01:15:52.2959605Z"
       }
     },
     {
@@ -243,13 +243,13 @@
       "disabled": false,
       "probe": {
         "prefix": "inhire",
-        "source": null,
-        "ok": false,
-        "count": 0,
-        "http": null,
-        "seconds": 0,
-        "error": "sem amostra pública segura",
-        "at": "2026-11-05T23:54:15.7797309Z"
+        "source": "inhire:somosed",
+        "ok": true,
+        "count": 4,
+        "http": 200,
+        "seconds": 4.7,
+        "error": null,
+        "at": "2026-11-06T01:15:19.987724Z"
       }
     },
     {
@@ -277,13 +277,13 @@
       "disabled": false,
       "probe": {
         "prefix": "teamtailor",
-        "source": "teamtailor:polestar",
+        "source": "teamtailor:recasab",
         "ok": true,
-        "count": 12,
+        "count": 1,
         "http": 200,
-        "seconds": 1.4,
+        "seconds": 0.8,
         "error": null,
-        "at": "2026-11-05T23:54:17.4995821Z"
+        "at": "2026-11-06T01:15:16.192208Z"
       }
     },
     {
@@ -317,7 +317,7 @@
         "http": 200,
         "seconds": 0.8,
         "error": "A fonte respondeu, mas não tem vaga aberta agora. Pode salvar: ela entra nas próximas rodadas.",
-        "at": "2026-11-05T23:54:17.0461441Z"
+        "at": "2026-11-06T01:15:17.040983Z"
       }
     },
     {
@@ -345,13 +345,13 @@
       "disabled": false,
       "probe": {
         "prefix": "breezy",
-        "source": "breezy:breezy",
+        "source": "breezy:fluxit",
         "ok": true,
-        "count": 3,
+        "count": 42,
         "http": 200,
         "seconds": 0.3,
         "error": null,
-        "at": "2026-11-05T23:54:17.3256552Z"
+        "at": "2026-11-06T01:15:17.3356974Z"
       }
     },
     {
@@ -379,13 +379,13 @@
       "disabled": false,
       "probe": {
         "prefix": "recruitee",
-        "source": "recruitee:bunq",
+        "source": "recruitee:joinready",
         "ok": true,
-        "count": 23,
+        "count": 40,
         "http": 200,
-        "seconds": 1.3,
+        "seconds": 1.2,
         "error": null,
-        "at": "2026-11-05T23:54:18.6348301Z"
+        "at": "2026-11-06T01:15:18.4638184Z"
       }
     },
     {
@@ -417,9 +417,9 @@
         "ok": true,
         "count": 6,
         "http": 200,
-        "seconds": 0.2,
+        "seconds": 0.4,
         "error": null,
-        "at": "2026-11-05T23:54:17.6864382Z"
+        "at": "2026-11-06T01:15:17.708774Z"
       }
     },
     {
@@ -451,9 +451,9 @@
         "ok": true,
         "count": 60,
         "http": 200,
-        "seconds": 4.8,
+        "seconds": 3.3,
         "error": null,
-        "at": "2026-11-05T23:54:22.493109Z"
+        "at": "2026-11-06T01:15:21.0062752Z"
       }
     },
     {
@@ -485,9 +485,105 @@
         "ok": true,
         "count": 20,
         "http": 200,
-        "seconds": 14.8,
+        "seconds": 15.2,
         "error": null,
-        "at": "2026-11-05T23:54:33.4133593Z"
+        "at": "2026-11-06T01:15:33.6365368Z"
+      }
+    },
+    {
+      "id": "pinpoint",
+      "name": "Pinpoint postings.json",
+      "category": "ats",
+      "integration_method": "OFFICIAL_PUBLIC",
+      "state": "ACTIVE",
+      "country_codes": [
+        "GLOBAL"
+      ],
+      "api_doc_url": "https://www.pinpointhq.com/",
+      "terms_url": null,
+      "attribution": null,
+      "update_frequency": "6 h por empresa",
+      "catalog_ids": [],
+      "notes": "Feed público de cada quadro (empresa.pinpointhq.com/postings.json), o que o Pinpoint oferece para sites de carreira próprios; conferido em 05/11/2026 com quadros da lista do Open Jobs.",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": true,
+      "ingestion_enabled": true,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "pinpoint",
+        "source": "pinpoint:aawdc",
+        "ok": true,
+        "count": 31,
+        "http": 200,
+        "seconds": 1.9,
+        "error": null,
+        "at": "2026-11-06T01:15:21.884083Z"
+      }
+    },
+    {
+      "id": "bamboohr",
+      "name": "BambooHR careers",
+      "category": "ats",
+      "integration_method": "OBSERVED",
+      "state": "EXPERIMENTAL",
+      "country_codes": [
+        "GLOBAL"
+      ],
+      "api_doc_url": "https://www.bamboohr.com/",
+      "terms_url": null,
+      "attribution": null,
+      "update_frequency": "6 h por empresa",
+      "catalog_ids": [],
+      "notes": "JSON da página pública de vagas (empresa.bamboohr.com/careers/list e /careers/{id}/detail), sem documentação; até 30 detalhes por rodada. Conferido em 05/11/2026.",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": true,
+      "ingestion_enabled": true,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "bamboohr",
+        "source": "bamboohr:100percentgroup",
+        "ok": true,
+        "count": 2,
+        "http": 200,
+        "seconds": 1.4,
+        "error": null,
+        "at": "2026-11-06T01:15:22.4181653Z"
+      }
+    },
+    {
+      "id": "recruiterbox",
+      "name": "Recruiterbox (Trakstar Hire)",
+      "category": "ats",
+      "integration_method": "OBSERVED",
+      "state": "EXPERIMENTAL",
+      "country_codes": [
+        "GLOBAL"
+      ],
+      "api_doc_url": "https://www.trakstar.com/hire/",
+      "terms_url": null,
+      "attribution": null,
+      "update_frequency": "6 h por empresa",
+      "catalog_ids": [],
+      "notes": "API pública do widget de carreiras (jsapi.recruiterbox.com/v1/openings?client_name=empresa). Conferido em 05/11/2026.",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": true,
+      "ingestion_enabled": true,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "recruiterbox",
+        "source": "recruiterbox:adzerk",
+        "ok": true,
+        "count": 1,
+        "http": 200,
+        "seconds": 0.8,
+        "error": null,
+        "at": "2026-11-06T01:15:22.6394237Z"
       }
     },
     {
@@ -519,9 +615,9 @@
         "ok": true,
         "count": 3,
         "http": 200,
-        "seconds": 1.8,
+        "seconds": 1.9,
         "error": null,
-        "at": "2026-11-05T23:54:22.3404626Z"
+        "at": "2026-11-06T01:15:24.2754881Z"
       }
     },
     {
@@ -551,9 +647,9 @@
         "ok": true,
         "count": 20,
         "http": 200,
-        "seconds": 17,
+        "seconds": 16.4,
         "error": null,
-        "at": "2026-11-05T23:54:39.3334397Z"
+        "at": "2026-11-06T01:15:39.0442249Z"
       }
     },
     {
@@ -585,7 +681,7 @@
         "http": null,
         "seconds": 0,
         "error": "sem amostra pública segura",
-        "at": "2026-11-05T23:54:15.7805134Z"
+        "at": "2026-11-06T01:15:15.0580187Z"
       }
     },
     {
@@ -617,9 +713,9 @@
         "ok": true,
         "count": 5,
         "http": 200,
-        "seconds": 2.9,
+        "seconds": 2.1,
         "error": null,
-        "at": "2026-11-05T23:54:25.3789664Z"
+        "at": "2026-11-06T01:15:26.3680235Z"
       }
     },
     {
@@ -645,13 +741,13 @@
       "disabled": false,
       "probe": {
         "prefix": "solides",
-        "source": "solides:solides",
+        "source": "solides:redeflex",
         "ok": true,
-        "count": 18,
+        "count": 74,
         "http": 200,
-        "seconds": 1,
+        "seconds": 3.7,
         "error": null,
-        "at": "2026-11-05T23:54:26.3830094Z"
+        "at": "2026-11-06T01:15:30.0806886Z"
       }
     },
     {
@@ -681,9 +777,9 @@
         "ok": true,
         "count": 3,
         "http": 200,
-        "seconds": 0.2,
+        "seconds": 0.1,
         "error": null,
-        "at": "2026-11-05T23:54:26.5909642Z"
+        "at": "2026-11-06T01:15:30.1627148Z"
       }
     },
     {
@@ -710,13 +806,13 @@
       "disabled": false,
       "probe": {
         "prefix": "pandape",
-        "source": "pandape:infojobs",
+        "source": "pandape:prysmo",
         "ok": true,
-        "count": 3,
+        "count": 2,
         "http": 200,
-        "seconds": 2.7,
+        "seconds": 1.9,
         "error": null,
-        "at": "2026-11-05T23:54:29.3295073Z"
+        "at": "2026-11-06T01:15:32.0427169Z"
       }
     },
     {
@@ -748,9 +844,9 @@
         "ok": true,
         "count": 20,
         "http": 200,
-        "seconds": 0.1,
+        "seconds": 0.2,
         "error": null,
-        "at": "2026-11-05T23:54:29.4112944Z"
+        "at": "2026-11-06T01:15:32.2278842Z"
       }
     },
     {
@@ -778,13 +874,13 @@
       "disabled": false,
       "probe": {
         "prefix": "remoteok",
-        "source": "remoteok:dev",
+        "source": "remoteok:dotnet",
         "ok": true,
-        "count": 99,
+        "count": 0,
         "http": 200,
-        "seconds": 1.3,
-        "error": null,
-        "at": "2026-11-05T23:54:30.6653264Z"
+        "seconds": 0.8,
+        "error": "A fonte respondeu, mas não tem vaga aberta agora. Pode salvar: ela entra nas próximas rodadas.",
+        "at": "2026-11-06T01:15:33.0491363Z"
       }
     },
     {
@@ -816,9 +912,9 @@
         "ok": true,
         "count": 13,
         "http": 200,
-        "seconds": 0.4,
+        "seconds": 0.6,
         "error": null,
-        "at": "2026-11-05T23:54:31.0398928Z"
+        "at": "2026-11-06T01:15:33.6475855Z"
       }
     },
     {
@@ -850,9 +946,9 @@
         "ok": true,
         "count": 10,
         "http": 200,
-        "seconds": 0.1,
+        "seconds": 0.2,
         "error": null,
-        "at": "2026-11-05T23:54:31.1301349Z"
+        "at": "2026-11-06T01:15:33.8119798Z"
       }
     },
     {
@@ -884,9 +980,9 @@
         "ok": true,
         "count": 50,
         "http": 200,
-        "seconds": 1.4,
+        "seconds": 1.5,
         "error": null,
-        "at": "2026-11-05T23:54:32.4993954Z"
+        "at": "2026-11-06T01:15:35.1486374Z"
       }
     },
     {
@@ -918,9 +1014,9 @@
         "ok": true,
         "count": 150,
         "http": 200,
-        "seconds": 3.1,
+        "seconds": 3.2,
         "error": null,
-        "at": "2026-11-05T23:54:35.5523358Z"
+        "at": "2026-11-06T01:15:37.0502382Z"
       }
     },
     {
@@ -954,7 +1050,7 @@
         "http": 200,
         "seconds": 0.1,
         "error": "A fonte respondeu, mas não tem vaga aberta agora. Pode salvar: ela entra nas próximas rodadas.",
-        "at": "2026-11-05T23:54:33.5257004Z"
+        "at": "2026-11-06T01:15:35.2588649Z"
       }
     },
     {
@@ -988,7 +1084,7 @@
         "http": 200,
         "seconds": 1.1,
         "error": null,
-        "at": "2026-11-05T23:54:34.592395Z"
+        "at": "2026-11-06T01:15:36.3182952Z"
       }
     },
     {
@@ -1016,13 +1112,13 @@
       "disabled": false,
       "probe": {
         "prefix": "jobtech",
-        "source": "jobtech:developer",
+        "source": "jobtech:c#",
         "ok": true,
         "count": 200,
         "http": 200,
-        "seconds": 10.4,
+        "seconds": 12.8,
         "error": null,
-        "at": "2026-11-05T23:54:44.9919176Z"
+        "at": "2026-11-06T01:15:49.1055452Z"
       }
     },
     {
@@ -1054,9 +1150,9 @@
         "ok": true,
         "count": 300,
         "http": 200,
-        "seconds": 2.8,
+        "seconds": 3.8,
         "error": null,
-        "at": "2026-11-05T23:54:38.3399711Z"
+        "at": "2026-11-06T01:15:40.8126323Z"
       }
     },
     {
@@ -1087,11 +1183,111 @@
         "prefix": "nav",
         "source": "nav:utvikler",
         "ok": true,
-        "count": 14,
+        "count": 17,
         "http": 200,
-        "seconds": 15.3,
+        "seconds": 17,
         "error": "Também declarou 15 anúncios encerrados, que fecham as vagas que já estiverem aqui.",
-        "at": "2026-11-05T23:54:53.6796152Z"
+        "at": "2026-11-06T01:15:56.0295576Z"
+      }
+    },
+    {
+      "id": "mpsv",
+      "name": "Úřad práce, volná místa (República Tcheca)",
+      "category": "gov",
+      "integration_method": "OFFICIAL_PUBLIC",
+      "state": "ACTIVE",
+      "country_codes": [
+        "CZ"
+      ],
+      "api_doc_url": "https://data.mpsv.cz/web/data/otevrena-data",
+      "terms_url": "https://data.mpsv.cz/od/soubory/volna-mista/volna-mista-metadata.jsonld",
+      "attribution": "Dados abertos do MPSV (Úřad práce ČR).",
+      "update_frequency": "1 dia",
+      "catalog_ids": [],
+      "notes": "Conjunto aberto e oficial de todas as vagas registradas, atualizado todo dia (186 MB, .gz baixado uma vez por dia e lido item a item). Termos do conjunto: sem obra protegida e sem direito de base de dados; tem dados pessoais, então os contatos ficam de fora. Bandeiras oficiais: aceita estrangeiro de fora da UE, Cartão Azul, cartão de funcionário. Conferido ao vivo em 05/11/2026.",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": true,
+      "ingestion_enabled": true,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "mpsv",
+        "source": "mpsv:programator",
+        "ok": true,
+        "count": 144,
+        "http": 200,
+        "seconds": 2.9,
+        "error": null,
+        "at": "2026-11-06T01:15:43.746545Z"
+      }
+    },
+    {
+      "id": "nva",
+      "name": "NVA vakances (Letônia)",
+      "category": "gov",
+      "integration_method": "OFFICIAL_PUBLIC",
+      "state": "ACTIVE",
+      "country_codes": [
+        "LV"
+      ],
+      "api_doc_url": "https://data.gov.lv/dati/lv/dataset/vakances",
+      "terms_url": "https://data.gov.lv/dati/lv/dataset/vakances",
+      "attribution": "Dados abertos da Agência Estatal de Emprego da Letônia (NVA), CC0.",
+      "update_frequency": "1 dia",
+      "catalog_ids": [
+        "wapes-agency-lv-nva"
+      ],
+      "notes": "CSV diário do portal de dados abertos (CKAN package_show resolve o arquivo do dia), CC0; o CSV traz o número de registro da empresa, não o nome; a página oficial de cada vaga (cvvp.nva.gov.lv) é o link. Conferido ao vivo em 05/11/2026.",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": true,
+      "ingestion_enabled": true,
+      "gate": null,
+      "disabled": false,
+      "probe": {
+        "prefix": "nva",
+        "source": "nva:programmetajs",
+        "ok": true,
+        "count": 1,
+        "http": 200,
+        "seconds": 2.7,
+        "error": null,
+        "at": "2026-11-06T01:15:46.4624817Z"
+      }
+    },
+    {
+      "id": "mcf",
+      "name": "MyCareersFuture (Singapura)",
+      "category": "gov",
+      "integration_method": "PARTNER_ONLY",
+      "state": "PARTNER_ONLY",
+      "country_codes": [
+        "SG"
+      ],
+      "api_doc_url": "https://www.mycareersfuture.gov.sg/",
+      "terms_url": "https://www.wsg.gov.sg/home/terms-of-use",
+      "attribution": null,
+      "update_frequency": "—",
+      "catalog_ids": [
+        "singapore-mycareersfuture"
+      ],
+      "notes": "A busca responde em JSON sem chave, mas os termos da Workforce Singapore (05/11/2026) dizem: \"You shall not scrape The Website or the Contents without the prior written permission\". Sem conector até haver autorização por escrito.",
+      "authorization_kind": "none",
+      "credential_present": false,
+      "connector": false,
+      "ingestion_enabled": false,
+      "gate": "PARTNER_ONLY: MyCareersFuture (Singapura) só com parceria. A busca responde em JSON sem chave, mas os termos da Workforce Singapore (05/11/2026) dizem: \"You shall not scrape The Website or the Contents without the prior written permission\". Sem conector até haver autorização por escrito.",
+      "disabled": false,
+      "probe": {
+        "prefix": "mcf",
+        "source": null,
+        "ok": false,
+        "count": 0,
+        "http": null,
+        "seconds": 0,
+        "error": "não sondada: PARTNER_ONLY",
+        "at": "2026-11-06T01:15:15.0581342Z"
       }
     },
     {
@@ -1123,9 +1319,9 @@
         "ok": true,
         "count": 200,
         "http": 200,
-        "seconds": 1.5,
+        "seconds": 1.6,
         "error": null,
-        "at": "2026-11-05T23:54:40.8245582Z"
+        "at": "2026-11-06T01:15:48.0420552Z"
       }
     },
     {
@@ -1153,13 +1349,13 @@
       "disabled": false,
       "probe": {
         "prefix": "freehire",
-        "source": "freehire:developer",
+        "source": "freehire:asp.net core",
         "ok": true,
-        "count": 718,
+        "count": 377,
         "http": 200,
-        "seconds": 10.1,
+        "seconds": 4.7,
         "error": null,
-        "at": "2026-11-05T23:54:50.9091741Z"
+        "at": "2026-11-06T01:15:52.7128152Z"
       }
     },
     {
@@ -1187,11 +1383,11 @@
         "prefix": "4dayweek",
         "source": "4dayweek:engineering",
         "ok": true,
-        "count": 59,
+        "count": 77,
         "http": 200,
-        "seconds": 2.7,
+        "seconds": 3.1,
         "error": null,
-        "at": "2026-11-05T23:54:47.7083363Z"
+        "at": "2026-11-06T01:15:52.1677909Z"
       }
     },
     {
@@ -1221,9 +1417,9 @@
         "ok": true,
         "count": 23,
         "http": 200,
-        "seconds": 1.1,
+        "seconds": 1.3,
         "error": null,
-        "at": "2026-11-05T23:54:48.7973173Z"
+        "at": "2026-11-06T01:15:53.5073942Z"
       }
     },
     {
@@ -1257,7 +1453,7 @@
         "http": 200,
         "seconds": 1.3,
         "error": null,
-        "at": "2026-11-05T23:54:50.1231482Z"
+        "at": "2026-11-06T01:15:53.6300851Z"
       }
     },
     {
@@ -1289,7 +1485,7 @@
         "http": 200,
         "seconds": 0.8,
         "error": null,
-        "at": "2026-11-05T23:54:50.8814199Z"
+        "at": "2026-11-06T01:15:53.4845582Z"
       }
     },
     {
@@ -1321,7 +1517,7 @@
         "http": null,
         "seconds": 0,
         "error": "sem amostra pública segura",
-        "at": "2026-11-05T23:54:15.780608Z"
+        "at": "2026-11-06T01:15:15.0581488Z"
       }
     },
     {
@@ -1355,7 +1551,7 @@
         "http": null,
         "seconds": 0,
         "error": "sem amostra pública segura",
-        "at": "2026-11-05T23:54:15.7806107Z"
+        "at": "2026-11-06T01:15:15.0581509Z"
       }
     },
     {
@@ -1387,7 +1583,7 @@
         "http": null,
         "seconds": 0,
         "error": "sem amostra pública segura",
-        "at": "2026-11-05T23:54:15.7806132Z"
+        "at": "2026-11-06T01:15:15.0581529Z"
       }
     },
     {
@@ -1421,7 +1617,7 @@
         "http": null,
         "seconds": 0,
         "error": "A consulta falhou: Conecte a chave da Adzuna em Fontes › Chaves de API.",
-        "at": "2026-11-05T23:54:50.8951915Z"
+        "at": "2026-11-06T01:15:53.5002713Z"
       }
     },
     {
@@ -1455,7 +1651,7 @@
         "http": null,
         "seconds": 0,
         "error": "A consulta falhou: Conecte a chave do Jooble em Fontes › Chaves de API.",
-        "at": "2026-11-05T23:54:50.9031812Z"
+        "at": "2026-11-06T01:15:53.5089193Z"
       }
     },
     {
@@ -1490,7 +1686,7 @@
         "http": null,
         "seconds": 0,
         "error": "A consulta falhou: CREDENTIALS_REQUIRED: conecte a chave do USAJOBS em Fontes › Chaves de API.",
-        "at": "2026-11-05T23:54:50.9200726Z"
+        "at": "2026-11-06T01:15:53.5330347Z"
       }
     },
     {
@@ -1524,7 +1720,7 @@
         "http": null,
         "seconds": 0,
         "error": "A consulta falhou: CREDENTIALS_REQUIRED: conecte o appname aprovado da ReliefWeb em Fontes › Chaves de API.",
-        "at": "2026-11-05T23:54:50.9164498Z"
+        "at": "2026-11-06T01:15:53.5298306Z"
       }
     },
     {
@@ -1556,7 +1752,7 @@
         "http": null,
         "seconds": 0,
         "error": "não sondada: BLOCKED",
-        "at": "2026-11-05T23:54:15.7806688Z"
+        "at": "2026-11-06T01:15:15.0581678Z"
       }
     },
     {
@@ -1590,7 +1786,7 @@
         "http": null,
         "seconds": 0,
         "error": "não sondada: BLOCKED",
-        "at": "2026-11-05T23:54:15.7806699Z"
+        "at": "2026-11-06T01:15:15.0581684Z"
       }
     },
     {
@@ -1624,7 +1820,7 @@
         "http": null,
         "seconds": 0,
         "error": "não sondada: PARTNER_ONLY",
-        "at": "2026-11-05T23:54:15.7806707Z"
+        "at": "2026-11-06T01:15:15.0581687Z"
       }
     }
   ]

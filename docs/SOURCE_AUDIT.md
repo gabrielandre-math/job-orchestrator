@@ -1,40 +1,43 @@
 # Auditoria das fontes
 
-Gerado por `jo sources probe` em 05/11/2026 23:54 UTC, contra a API local (http://127.0.0.1:7420). Cada plataforma com permissão foi chamada uma vez pela porta oficial,
+Gerado por `jo sources probe` em 06/11/2026 01:15 UTC, contra a API local (http://127.0.0.1:7410). Cada plataforma com permissão foi chamada uma vez pela porta oficial,
 com a amostra da campanha ou uma amostra pública; bloqueadas e só com parceria nunca são chamadas. Os números abaixo são desta execução, sem estimativa.
 
 | | Quantas |
 |---|---|
-| Plataformas no registro | 46 |
-| Com conector no app | 43 |
-| Autorizadas agora (portão aberto) | 39 |
-| Sondadas | 38 |
-| Funcionando (responderam com vaga) | 32 |
+| Plataformas no registro | 52 |
+| Com conector no app | 48 |
+| Autorizadas agora (portão aberto) | 44 |
+| Sondadas | 44 |
+| Funcionando (responderam com vaga) | 37 |
 | Esperando credencial da pessoa | 4 |
-| Bloqueadas por política ou só com parceria | 3 |
+| Bloqueadas por política ou só com parceria | 4 |
 
 ## ACTIVE
 
 | Fonte | Acesso | Países | Sondagem | Documentação | Termos | Notas |
 |---|---|---|---|---|---|---|
-| Greenhouse Job Board API (`greenhouse`) | OFFICIAL_PUBLIC | GLOBAL | `greenhouse:vtex` HTTP 200, 33 vagas, 0.5 s | [link](https://docs.greenhouse.io/job-board) | [link](https://www.greenhouse.com/legal) | GET de anúncios públicos sem chave; candidatura por API exige credencial do empregador e não é implementada. |
-| Lever Postings API (`lever`) | OFFICIAL_PUBLIC | GLOBAL | `lever:spotify` HTTP 200, 86 vagas, 4.7 s | [link](https://github.com/lever/postings-api) | [link](https://www.lever.co/terms-of-service/) | api.lever.co e api.eu.lever.co; diferente da API privada do Lever. |
-| Ashby Public Job Posting API (`ashby`) | OFFICIAL_PUBLIC | GLOBAL | `ashby:ramp` HTTP 200, 170 vagas, 0.3 s | [link](https://developers.ashbyhq.com/docs/public-job-posting-api) | [link](https://www.ashbyhq.com/terms) | Vaga com isListed=false não aparece. |
-| SmartRecruiters Posting API (`smartrecruiters`) | OFFICIAL_PUBLIC | GLOBAL | `smartrecruiters:BoschGroup` HTTP 200, 40 vagas, 36.4 s | [link](https://developers.smartrecruiters.com/docs/endpoints) | [link](https://www.smartrecruiters.com/terms-of-service/) | Paginado (limit e offset). |
-| InHire páginas públicas (`inhire`) | OFFICIAL_PUBLIC | BR | sem amostra pública segura | [link](https://docs.inhire.com.br/guides/guias/pagina-de-divulgacao/listar/) | - | Por tenant (X-Tenant), sem busca unificada. |
-| Teamtailor RSS (`teamtailor`) | OFFICIAL_PUBLIC | GLOBAL | `teamtailor:polestar` HTTP 200, 12 vagas, 1.4 s | [link](https://docs.teamtailor.com/) | - | Só o RSS público; a API central exige token da conta e não é chamada. |
-| Himalayas (`himalayas`) | OFFICIAL_PUBLIC | GLOBAL | `himalayas:c#` HTTP 200, 20 vagas, 0.1 s | [link](https://himalayas.app/docs/remote-jobs-api) | [link](https://himalayas.app/docs/remote-jobs-api) | locationRestrictions e timezoneRestrictions entram na elegibilidade. |
-| Remote OK (`remoteok`) | OFFICIAL_PUBLIC | GLOBAL | `remoteok:dev` HTTP 200, 99 vagas, 1.3 s | [link](https://remoteok.com/api) | [link](https://remoteok.com/faq) |  |
-| We Work Remotely (`wwr`) | OFFICIAL_PUBLIC | GLOBAL | `wwr:remote-back-end-programming-jobs` HTTP 200, 13 vagas, 0.4 s | [link](https://weworkremotely.com/remote-job-rss-feed) | [link](https://weworkremotely.com/remote-job-rss-feed) | RSS oficial por categoria. |
-| Remotive (`remotive`) | OFFICIAL_PUBLIC | GLOBAL | `remotive:dotnet` HTTP 200, 10 vagas, 0.1 s | [link](https://remotive.com/remote-jobs/api) | [link](https://remotive.com/remote-jobs/api) | Vagas chegam com 24 h de atraso. |
-| Jobicy (`jobicy`) | OFFICIAL_PUBLIC | GLOBAL | `jobicy:dev` HTTP 200, 50 vagas, 1.4 s | [link](https://jobicy.com/jobs-rss-feed) | - | Janela recente de 7 dias. |
-| Get on Board (`getonbrd`) | OFFICIAL_PUBLIC | LATAM | `getonbrd:developer` HTTP 200, 150 vagas, 3.1 s | [link](https://www.getonbrd.com/user-manual/get-on-board-s-api) | [link](https://www.getonbrd.com/terms) | Tecnologia na América Latina. |
+| Greenhouse Job Board API (`greenhouse`) | OFFICIAL_PUBLIC | GLOBAL | `greenhouse:vtex` HTTP 200, 33 vagas, 0.3 s | [link](https://docs.greenhouse.io/job-board) | [link](https://www.greenhouse.com/legal) | GET de anúncios públicos sem chave; candidatura por API exige credencial do empregador e não é implementada. |
+| Lever Postings API (`lever`) | OFFICIAL_PUBLIC | GLOBAL | `lever:ciandt` HTTP 200, 142 vagas, 2.3 s | [link](https://github.com/lever/postings-api) | [link](https://www.lever.co/terms-of-service/) | api.lever.co e api.eu.lever.co; diferente da API privada do Lever. |
+| Ashby Public Job Posting API (`ashby`) | OFFICIAL_PUBLIC | GLOBAL | `ashby:ramp` HTTP 200, 171 vagas, 0.2 s | [link](https://developers.ashbyhq.com/docs/public-job-posting-api) | [link](https://www.ashbyhq.com/terms) | Vaga com isListed=false não aparece. |
+| SmartRecruiters Posting API (`smartrecruiters`) | OFFICIAL_PUBLIC | GLOBAL | `smartrecruiters:SoftwareMind` HTTP 200, 40 vagas, 37.2 s | [link](https://developers.smartrecruiters.com/docs/endpoints) | [link](https://www.smartrecruiters.com/terms-of-service/) | Paginado (limit e offset). |
+| InHire páginas públicas (`inhire`) | OFFICIAL_PUBLIC | BR | `inhire:somosed` HTTP 200, 4 vagas, 4.7 s | [link](https://docs.inhire.com.br/guides/guias/pagina-de-divulgacao/listar/) | - | Por tenant (X-Tenant), sem busca unificada. |
+| Teamtailor RSS (`teamtailor`) | OFFICIAL_PUBLIC | GLOBAL | `teamtailor:recasab` HTTP 200, 1 vagas, 0.8 s | [link](https://docs.teamtailor.com/) | - | Só o RSS público; a API central exige token da conta e não é chamada. |
+| Pinpoint postings.json (`pinpoint`) | OFFICIAL_PUBLIC | GLOBAL | `pinpoint:aawdc` HTTP 200, 31 vagas, 1.9 s | [link](https://www.pinpointhq.com/) | - | Feed público de cada quadro (empresa.pinpointhq.com/postings.json), o que o Pinpoint oferece para sites de carreira próprios; conferido em 05/11/2026 com quadros da lista do Open Jobs. |
+| Himalayas (`himalayas`) | OFFICIAL_PUBLIC | GLOBAL | `himalayas:c#` HTTP 200, 20 vagas, 0.2 s | [link](https://himalayas.app/docs/remote-jobs-api) | [link](https://himalayas.app/docs/remote-jobs-api) | locationRestrictions e timezoneRestrictions entram na elegibilidade. |
+| Remote OK (`remoteok`) | OFFICIAL_PUBLIC | GLOBAL | `remoteok:dotnet` HTTP 200, 0 vagas, 0.8 s | [link](https://remoteok.com/api) | [link](https://remoteok.com/faq) |  |
+| We Work Remotely (`wwr`) | OFFICIAL_PUBLIC | GLOBAL | `wwr:remote-back-end-programming-jobs` HTTP 200, 13 vagas, 0.6 s | [link](https://weworkremotely.com/remote-job-rss-feed) | [link](https://weworkremotely.com/remote-job-rss-feed) | RSS oficial por categoria. |
+| Remotive (`remotive`) | OFFICIAL_PUBLIC | GLOBAL | `remotive:dotnet` HTTP 200, 10 vagas, 0.2 s | [link](https://remotive.com/remote-jobs/api) | [link](https://remotive.com/remote-jobs/api) | Vagas chegam com 24 h de atraso. |
+| Jobicy (`jobicy`) | OFFICIAL_PUBLIC | GLOBAL | `jobicy:dev` HTTP 200, 50 vagas, 1.5 s | [link](https://jobicy.com/jobs-rss-feed) | - | Janela recente de 7 dias. |
+| Get on Board (`getonbrd`) | OFFICIAL_PUBLIC | LATAM | `getonbrd:developer` HTTP 200, 150 vagas, 3.2 s | [link](https://www.getonbrd.com/user-manual/get-on-board-s-api) | [link](https://www.getonbrd.com/terms) | Tecnologia na América Latina. |
 | Arbeitnow (`arbeitnow`) | OFFICIAL_PUBLIC | EUROPE | `arbeitnow:dotnet` HTTP 200, 0 vagas, 0.1 s | [link](https://www.arbeitnow.com/blog/job-board-api) | - | Sobretudo Europa. |
 | The Muse (`themuse`) | OFFICIAL_PUBLIC | GLOBAL | `themuse:Software Engineering` HTTP 200, 20 vagas, 1.1 s | [link](https://www.themuse.com/developers/api/v2) | [link](https://www.themuse.com/developers/api/v2) | Registro do app recomendado; sem chave funciona com cota menor. |
-| JobTech JobSearch (Suécia) (`jobtech`) | OFFICIAL_PUBLIC | SE | `jobtech:developer` HTTP 200, 200 vagas, 10.4 s | [link](https://jobsearch.api.jobtechdev.se/) | [link](https://data.arbetsformedlingen.se/dataset/job-ads/) | Serviço público de emprego da Suécia. |
-| JobTech JobAd Links (Suécia) (`joblinks`) | OFFICIAL_PUBLIC | SE | `joblinks:developer` HTTP 200, 300 vagas, 2.8 s | [link](https://links.api.jobtechdev.se/) | [link](https://jobtechdev.se/) | Anúncios de muitos sites suecos com o link para o original; sem chave. |
-| NAV pam-stilling-feed (Noruega) (`nav`) | OFFICIAL_PUBLIC | NO | `nav:utvikler` HTTP 200, 14 vagas, 15.3 s | [link](https://navikt.github.io/pam-stilling-feed/) | [link](https://arbeidsplassen.nav.no/vilkar-api) | Token público rotativo (/api/publicToken); anúncio INACTIVE fecha a vaga, como os termos pedem; contatos pessoais não são guardados; a API antiga pam-public-feed saiu em maio de 2025. |
-| SeasonalJobs.dol.gov (EUA) (`seasonaljobs`) | OFFICIAL_PUBLIC | US | `seasonaljobs:all` HTTP 200, 200 vagas, 1.5 s | [link](https://seasonaljobs.dol.gov/feeds) | [link](https://seasonaljobs.dol.gov/feeds) | Arquivo diário oficial com as ordens H-2A (790/790A) dos últimos 20 dias: visto temporário agrícola, não patrocínio de visto qualificado. Os arquivos 9142A e 9142B são pedidos de certificação, não vagas. |
+| JobTech JobSearch (Suécia) (`jobtech`) | OFFICIAL_PUBLIC | SE | `jobtech:c#` HTTP 200, 200 vagas, 12.8 s | [link](https://jobsearch.api.jobtechdev.se/) | [link](https://data.arbetsformedlingen.se/dataset/job-ads/) | Serviço público de emprego da Suécia. |
+| JobTech JobAd Links (Suécia) (`joblinks`) | OFFICIAL_PUBLIC | SE | `joblinks:developer` HTTP 200, 300 vagas, 3.8 s | [link](https://links.api.jobtechdev.se/) | [link](https://jobtechdev.se/) | Anúncios de muitos sites suecos com o link para o original; sem chave. |
+| NAV pam-stilling-feed (Noruega) (`nav`) | OFFICIAL_PUBLIC | NO | `nav:utvikler` HTTP 200, 17 vagas, 17 s | [link](https://navikt.github.io/pam-stilling-feed/) | [link](https://arbeidsplassen.nav.no/vilkar-api) | Token público rotativo (/api/publicToken); anúncio INACTIVE fecha a vaga, como os termos pedem; contatos pessoais não são guardados; a API antiga pam-public-feed saiu em maio de 2025. |
+| Úřad práce, volná místa (República Tcheca) (`mpsv`) | OFFICIAL_PUBLIC | CZ | `mpsv:programator` HTTP 200, 144 vagas, 2.9 s | [link](https://data.mpsv.cz/web/data/otevrena-data) | [link](https://data.mpsv.cz/od/soubory/volna-mista/volna-mista-metadata.jsonld) | Conjunto aberto e oficial de todas as vagas registradas, atualizado todo dia (186 MB, .gz baixado uma vez por dia e lido item a item). Termos do conjunto: sem obra protegida e sem direito de base de dados; tem dados pessoais, então os contatos ficam de fora. Bandeiras oficiais: aceita estrangeiro de fora da UE, Cartão Azul, cartão de funcionário. Conferido ao vivo em 05/11/2026. |
+| NVA vakances (Letônia) (`nva`) | OFFICIAL_PUBLIC | LV | `nva:programmetajs` HTTP 200, 1 vagas, 2.7 s | [link](https://data.gov.lv/dati/lv/dataset/vakances) | [link](https://data.gov.lv/dati/lv/dataset/vakances) | CSV diário do portal de dados abertos (CKAN package_show resolve o arquivo do dia), CC0; o CSV traz o número de registro da empresa, não o nome; a página oficial de cada vaga (cvvp.nva.gov.lv) é o link. Conferido ao vivo em 05/11/2026. |
+| SeasonalJobs.dol.gov (EUA) (`seasonaljobs`) | OFFICIAL_PUBLIC | US | `seasonaljobs:all` HTTP 200, 200 vagas, 1.6 s | [link](https://seasonaljobs.dol.gov/feeds) | [link](https://seasonaljobs.dol.gov/feeds) | Arquivo diário oficial com as ordens H-2A (790/790A) dos últimos 20 dias: visto temporário agrícola, não patrocínio de visto qualificado. Os arquivos 9142A e 9142B são pedidos de certificação, não vagas. |
 | Hacker News Who is hiring (`hn`) | OFFICIAL_PUBLIC | GLOBAL | `hn:whoishiring` HTTP 200, 3 vagas, 1.3 s | [link](https://hn.algolia.com/api) | [link](https://news.ycombinator.com/) | Busca da Algolia; e-mail só quando o post o publica para candidatura. |
 | GitHub issues de vagas (`github`) | OFFICIAL_PUBLIC | BR | `github:backend-br/vagas` HTTP 200, 44 vagas, 0.8 s | [link](https://docs.github.com/rest/issues) | [link](https://docs.github.com/site-policy/github-terms/github-terms-of-service) | 60 chamadas por hora sem token. |
 | Alertas de vaga por e-mail (`alertas`) | OFFICIAL_PUBLIC | GLOBAL | sem amostra pública segura | [link](https://support.google.com/mail/answer/7126229) | - | Da caixa da própria pessoa (IMAP); o link do alerta nunca é aberto por robô. |
@@ -44,21 +47,23 @@ com a amostra da campanha ou uma amostra pública; bloqueadas e só com parceria
 | Fonte | Acesso | Países | Sondagem | Documentação | Termos | Notas |
 |---|---|---|---|---|---|---|
 | Personio XML (`personio`) | OBSERVED | EUROPE | `personio:personio` HTTP 200, 0 vagas, 0.8 s | [link](https://www.personio.com/) | - | Feed XML público por tenant; confirmar por empresa. |
-| Breezy HR JSON (`breezy`) | OBSERVED | GLOBAL | `breezy:breezy` HTTP 200, 3 vagas, 0.3 s | [link](https://breezy.hr/) | - | JSON por empresa divulgado em referência técnica comunitária. |
-| Recruitee Careers Site (`recruitee`) | OBSERVED | GLOBAL | `recruitee:bunq` HTTP 200, 23 vagas, 1.3 s | [link](https://docs.recruitee.com/reference/authentication-1) | - | Rota anônima legada: a partir de 10/02/2027 exige X-Careers-Sites-Token e para sozinha. |
-| Workable widget (`workable`) | OBSERVED | GLOBAL | `workable:huggingface` HTTP 200, 6 vagas, 0.2 s | [link](https://apply.workable.com/) | [link](https://www.workable.com/terms) | Widget de carreiras observado; a SPI oficial é autenticada e não é usada. |
-| Workable busca de vagas (`workable-search`) | OBSERVED | GLOBAL | `workable-search:asp.net core` HTTP 200, 60 vagas, 4.8 s | [link](https://jobs.workable.com/) | [link](https://www.workable.com/terms) | Busca pública de todas as empresas no Workable. |
-| Workday CXS (`workday`) | OBSERVED | GLOBAL | `workday:accenture.wd103.myworkdayjobs.com/AvanadeCareers` HTTP 200, 20 vagas, 14.8 s | [link](https://www.workday.com/) | - | Endpoint dos sites públicos; tenant, host e site exatos; páginas de 20. |
-| Rippling ATS board (`rippling`) | OBSERVED | GLOBAL | `rippling:aaca` HTTP 200, 3 vagas, 1.8 s | [link](https://ats.rippling.com/) | - | Endereço que o quadro público usa (api.rippling.com/platform/api/ats/v1/board/{empresa}/jobs), conferido em 05/11/2026 com quadros do job-board-directory; lista e detalhe, unlistedFromSearch escondida. |
-| Oracle Recruiting Cloud (`oracle`) | OBSERVED | GLOBAL | `oracle:eeho.fa.us2.oraclecloud.com/CX_1` HTTP 200, 20 vagas, 17 s | [link](https://www.oracle.com/human-capital-management/recruiting/) | - | API REST pública dos sites de carreira (requisitionList); robots.txt conferido. |
+| Breezy HR JSON (`breezy`) | OBSERVED | GLOBAL | `breezy:fluxit` HTTP 200, 42 vagas, 0.3 s | [link](https://breezy.hr/) | - | JSON por empresa divulgado em referência técnica comunitária. |
+| Recruitee Careers Site (`recruitee`) | OBSERVED | GLOBAL | `recruitee:joinready` HTTP 200, 40 vagas, 1.2 s | [link](https://docs.recruitee.com/reference/authentication-1) | - | Rota anônima legada: a partir de 10/02/2027 exige X-Careers-Sites-Token e para sozinha. |
+| Workable widget (`workable`) | OBSERVED | GLOBAL | `workable:huggingface` HTTP 200, 6 vagas, 0.4 s | [link](https://apply.workable.com/) | [link](https://www.workable.com/terms) | Widget de carreiras observado; a SPI oficial é autenticada e não é usada. |
+| Workable busca de vagas (`workable-search`) | OBSERVED | GLOBAL | `workable-search:asp.net core` HTTP 200, 60 vagas, 3.3 s | [link](https://jobs.workable.com/) | [link](https://www.workable.com/terms) | Busca pública de todas as empresas no Workable. |
+| Workday CXS (`workday`) | OBSERVED | GLOBAL | `workday:accenture.wd103.myworkdayjobs.com/AvanadeCareers` HTTP 200, 20 vagas, 15.2 s | [link](https://www.workday.com/) | - | Endpoint dos sites públicos; tenant, host e site exatos; páginas de 20. |
+| BambooHR careers (`bamboohr`) | OBSERVED | GLOBAL | `bamboohr:100percentgroup` HTTP 200, 2 vagas, 1.4 s | [link](https://www.bamboohr.com/) | - | JSON da página pública de vagas (empresa.bamboohr.com/careers/list e /careers/{id}/detail), sem documentação; até 30 detalhes por rodada. Conferido em 05/11/2026. |
+| Recruiterbox (Trakstar Hire) (`recruiterbox`) | OBSERVED | GLOBAL | `recruiterbox:adzerk` HTTP 200, 1 vagas, 0.8 s | [link](https://www.trakstar.com/hire/) | - | API pública do widget de carreiras (jsapi.recruiterbox.com/v1/openings?client_name=empresa). Conferido em 05/11/2026. |
+| Rippling ATS board (`rippling`) | OBSERVED | GLOBAL | `rippling:aaca` HTTP 200, 3 vagas, 1.9 s | [link](https://ats.rippling.com/) | - | Endereço que o quadro público usa (api.rippling.com/platform/api/ats/v1/board/{empresa}/jobs), conferido em 05/11/2026 com quadros do job-board-directory; lista e detalhe, unlistedFromSearch escondida. |
+| Oracle Recruiting Cloud (`oracle`) | OBSERVED | GLOBAL | `oracle:eeho.fa.us2.oraclecloud.com/CX_1` HTTP 200, 20 vagas, 16.4 s | [link](https://www.oracle.com/human-capital-management/recruiting/) | - | API REST pública dos sites de carreira (requisitionList); robots.txt conferido. |
 | SAP SuccessFactors (`successfactors`) | OBSERVED | GLOBAL | sem amostra pública segura | [link](https://www.sap.com/products/hcm/recruiting-software.html) | - | Página pública de vagas; robots.txt conferido. |
-| Gupy páginas de carreira e portal (`gupy`) | OBSERVED | BR | `gupy:softplan` HTTP 200, 5 vagas, 2.9 s | [link](https://portal.gupy.io/) | [link](https://www.gupy.io/termos-de-uso) | Dados embutidos na página pública de carreiras (robots.txt libera /) e busca do portal; a API de empregador (Bearer) nunca é usada. |
-| Sólides vagas (`solides`) | OBSERVED | BR | `solides:solides` HTTP 200, 18 vagas, 1 s | [link](https://solides.com.br/) | - | API pública da página de vagas. |
-| Quickin vagas (`quickin`) | OBSERVED | BR | `quickin:igma` HTTP 200, 3 vagas, 0.2 s | [link](https://quickin.io/) | - | API pública da página de vagas. |
-| Pandapé (`pandape`) | OBSERVED | BR, LATAM | `pandape:infojobs` HTTP 200, 3 vagas, 2.7 s | [link](https://www.pandape.com.br/) | - | Página da vaga com JSON-LD; empresas pelo sitemap oficial. |
-| freehire (`freehire`) | OBSERVED | GLOBAL | `freehire:developer` HTTP 200, 718 vagas, 10.1 s | [link](https://freehire.me/docs/api) | [link](https://freehire.me/docs/api) | Agregador aberto de ~420 fontes; números do projeto são declarados por ele. |
-| 4 Day Week (`4dayweek`) | OBSERVED | GLOBAL | `4dayweek:engineering` HTTP 200, 59 vagas, 2.7 s | [link](https://4dayweek.io/) | - |  |
-| Working Nomads (`workingnomads`) | OBSERVED | GLOBAL | `workingnomads:development` HTTP 200, 23 vagas, 1.1 s | [link](https://www.workingnomads.com/) | - |  |
+| Gupy páginas de carreira e portal (`gupy`) | OBSERVED | BR | `gupy:softplan` HTTP 200, 5 vagas, 2.1 s | [link](https://portal.gupy.io/) | [link](https://www.gupy.io/termos-de-uso) | Dados embutidos na página pública de carreiras (robots.txt libera /) e busca do portal; a API de empregador (Bearer) nunca é usada. |
+| Sólides vagas (`solides`) | OBSERVED | BR | `solides:redeflex` HTTP 200, 74 vagas, 3.7 s | [link](https://solides.com.br/) | - | API pública da página de vagas. |
+| Quickin vagas (`quickin`) | OBSERVED | BR | `quickin:igma` HTTP 200, 3 vagas, 0.1 s | [link](https://quickin.io/) | - | API pública da página de vagas. |
+| Pandapé (`pandape`) | OBSERVED | BR, LATAM | `pandape:prysmo` HTTP 200, 2 vagas, 1.9 s | [link](https://www.pandape.com.br/) | - | Página da vaga com JSON-LD; empresas pelo sitemap oficial. |
+| freehire (`freehire`) | OBSERVED | GLOBAL | `freehire:asp.net core` HTTP 200, 377 vagas, 4.7 s | [link](https://freehire.me/docs/api) | [link](https://freehire.me/docs/api) | Agregador aberto de ~420 fontes; números do projeto são declarados por ele. |
+| 4 Day Week (`4dayweek`) | OBSERVED | GLOBAL | `4dayweek:engineering` HTTP 200, 77 vagas, 3.1 s | [link](https://4dayweek.io/) | - |  |
+| Working Nomads (`workingnomads`) | OBSERVED | GLOBAL | `workingnomads:development` HTTP 200, 23 vagas, 1.3 s | [link](https://www.workingnomads.com/) | - |  |
 | RSS de vagas (`rss`) | OBSERVED | GLOBAL | sem amostra pública segura | [link](https://www.rssboard.org/rss-specification) | - | Feed público informado por fonte. |
 | Site de carreiras (coletor) (`web`) | OBSERVED | GLOBAL | sem amostra pública segura | [link](https://developers.google.com/search/docs/appearance/structured-data/job-posting) | - | JSON-LD JobPosting e links de ATS; robots.txt sempre obedecido. |
 
@@ -75,6 +80,7 @@ com a amostra da campanha ou uma amostra pública; bloqueadas e só com parceria
 
 | Fonte | Acesso | Países | Sondagem | Documentação | Termos | Notas |
 |---|---|---|---|---|---|---|
+| MyCareersFuture (Singapura) (`mcf`) | PARTNER_ONLY | SG | não sondada: PARTNER_ONLY | [link](https://www.mycareersfuture.gov.sg/) | [link](https://www.wsg.gov.sg/home/terms-of-use) | A busca responde em JSON sem chave, mas os termos da Workforce Singapore (05/11/2026) dizem: "You shall not scrape The Website or the Contents without the prior written permission". Sem conector até haver autorização por escrito. |
 | Gupy API de empregador (`gupy-api`) | PARTNER_ONLY | BR | não sondada: PARTNER_ONLY | [link](https://developers.gupy.io/reference/authentication) | - | Bearer de cliente da Gupy; nunca usada como busca global. |
 
 ## BLOCKED
@@ -86,7 +92,7 @@ com a amostra da campanha ou uma amostra pública; bloqueadas e só com parceria
 
 ## Catálogo V2 do usuário
 
-`data/catalog/catalogo-fontes-v2-2026.json` (Global Job Source Seed Registry v2 (with agency discovery and audit tracker), compilado em 2026-11-05): 321 registros, dos quais 36 ligados a perfis do registro.
+`data/catalog/catalogo-fontes-v2-2026.json` (Global Job Source Seed Registry v2 (with agency discovery and audit tracker), compilado em 2026-11-05): 321 registros, dos quais 38 ligados a perfis do registro.
 Registro do catálogo não é fonte funcionando: os que não têm perfil aqui seguem como pista ou pendência em docs/NEXT_SOURCES.md.
 
 | Método | Registros |

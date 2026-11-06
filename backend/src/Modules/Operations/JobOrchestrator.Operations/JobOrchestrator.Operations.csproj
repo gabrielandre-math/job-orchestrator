@@ -9,5 +9,6 @@
     <ProjectReference Include="../../Jobs/JobOrchestrator.Jobs.Contracts/JobOrchestrator.Jobs.Contracts.csproj" />
     <ProjectReference Include="../../Automation/JobOrchestrator.Automation.Contracts/JobOrchestrator.Automation.Contracts.csproj" />
     <ProjectReference Include="../../Intelligence/JobOrchestrator.Intelligence.Contracts/JobOrchestrator.Intelligence.Contracts.csproj" />
+    <ProjectReference Include="../../Profile/JobOrchestrator.Profile.Contracts/JobOrchestrator.Profile.Contracts.csproj" />
   </ItemGroup>
 </Project>

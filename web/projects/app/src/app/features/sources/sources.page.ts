@@ -13,6 +13,7 @@ import { AddSource } from './add-source';
 import { Alerts } from './alerts';
 import { ApiKeys } from './api-keys';
 import { Explorer } from './explorer';
+import { Hunter } from './hunter';
 
 const GROUPS: { kind: SourceInfo['kind']; title: string; hint: string }[] = [
   { kind: 'ats', title: 'Empresas', hint: 'quadros de vagas oficiais (ATS)' },
@@ -24,7 +25,7 @@ const GROUPS: { kind: SourceInfo['kind']; title: string; hint: string }[] = [
 /** Fontes: de onde vêm as vagas da campanha, agrupadas, com o resultado da última rodada de cada uma e o assistente para adicionar. */
 @Component({
   selector: 'app-sources',
-  imports: [RouterLink, AddSource, Alerts, ApiKeys, Company, Explorer, Icon, PageHero, Tabs],
+  imports: [RouterLink, AddSource, Alerts, ApiKeys, Company, Explorer, Hunter, Icon, PageHero, Tabs],
   templateUrl: './sources.page.html',
   styleUrl: './sources.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

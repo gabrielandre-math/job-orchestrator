@@ -15,6 +15,13 @@ public static class OperationsModule
         s.AddKeyedSingleton("operations", (_, _) => NpgsqlDataSource.Create(config.ConnectionFor("Operations")));
         s.AddSingleton<Features.NightReports>();
         s.AddSingleton<Features.Explorer>();
+        s.AddSingleton<Features.Hunter>();
+        // O índice do Common Crawl e o SPARQL do Wikidata demoram mais que uma API de vaga: cliente próprio, sem o tempo curto por tentativa.
+        s.AddHttpClient("hunter", c =>
+        {
+            c.Timeout = TimeSpan.FromSeconds(100);
+            c.DefaultRequestHeaders.UserAgent.ParseAdd("JobOrchestrator/1.0 (personal job search tool; polite, cached)");
+        });
         return s;
     }
 
