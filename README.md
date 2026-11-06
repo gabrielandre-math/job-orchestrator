@@ -255,18 +255,9 @@ dotnet test backend/tests/JobOrchestrator.Tests --filter "Category!=E2E"
 scripts/package.sh all            # the six platform builds, in dist/
 ```
 
-### Local CAPTCHA lab
+### Local CAPTCHA and jobs labs
 
-The Fake ATS can generate an image CAPTCHA for a fictitious job. The Python script learns ten digit shapes from a reference image, recognizes the five digits in the challenge and submits the answer to the local server. Each challenge expires after two minutes and allows one attempt.
-
-Run these commands in separate terminals from the repository root. The lab needs only the .NET 10 SDK and Python 3.11 or newer.
-
-```sh
-FAKEATS_CAPTCHA_LAB=1 dotnet run --project backend/src/Tools/JobOrchestrator.FakeAts
-python3 scripts/captcha-lab.py
-```
-
-Open [the local challenge](http://127.0.0.1:5470/lab/captcha) to try it manually. The lab is off by default and uses only the local Fake ATS.
+The Fake ATS includes image and arithmetic CAPTCHA challenges and a paginated job feed. The job router reads JSON-LD and HTML cards, deduplicates listings and can also process local HTML files. See the [lab guide and test commands](docs/labs.md).
 
 ## License
 
