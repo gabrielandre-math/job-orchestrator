@@ -92,6 +92,16 @@ export class ProfilePage {
     const score = items.filter((i) => i.done).reduce((s, i) => s + i.weight, 0);
     return { score, items, next: items.filter((i) => !i.done).sort((a, b) => b.weight - a.weight).slice(0, 3) };
   });
+  /** Currículo base: sem vaga e sem IA, só os fatos do perfil, no tema e no idioma escolhidos (o tema vale também nos currículos das vagas). */
+  protected readonly base = query<{ theme: string; themes: { key: string; name: string; note: string }[]; versions: { id: string; language: string; pages: number; createdAt: string; writtenBy: string | null }[] }>(() => '/materials/base', 0);
+  protected readonly theme = signal<string | null>(null);
+  protected readonly baseLang = signal<'pt' | 'en'>('pt');
+  protected readonly composing = command((b: { language: string; theme: string }) => send<{ ok: boolean; versionId: string | null; error: string | null }>('POST', '/materials/base', b),
+    'Currículo base pronto: o PDF está na lista do cartão.');
+  protected async composeBase() {
+    const theme = this.theme() ?? this.base.value()?.theme ?? 'classico';
+    if (await this.composing.run({ language: this.baseLang(), theme })) await this.base.reload();
+  }
   protected strengthAct(action: 'linkedin' | 'identity' | 'confirm' | 'upload') {
     if (action === 'linkedin') { this.linkedin.set(true); return; }
     const target = { identity: '#dados', confirm: '#confirmacoes', upload: '.drop' }[action];

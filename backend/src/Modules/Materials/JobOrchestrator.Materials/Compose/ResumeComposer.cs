@@ -93,7 +93,7 @@ internal sealed class ResumeComposer(IProfileApi profiles, IJobsApi jobs, IIntel
         PdfCheck check;
         while (true)
         {
-            html = Template.Render(draft, s, s.Language);
+            html = Template.Render(draft, s, s.Language, config.GetValue("Materials:Theme", "classico") ?? "classico");
             await automation.RenderPdfAsync(Template.Fill(html, profile.Identity), path, ct);
             check = await PdfCheck.RunAsync(path, profile.Identity, draft, s, s.Language, maxPages, ct);
             pages = check.Pages;
@@ -120,6 +120,56 @@ internal sealed class ResumeComposer(IProfileApi profiles, IJobsApi jobs, IIntel
         await db.SaveChangesAsync(ct);
         log.LogInformation("Currículo {Version} para {Application}: {Mode}, {Pages} páginas, revisado {Reviewed}", version.Id, r.ApplicationId, mode, pages, reviewed);
         return new ComposeResult(true, version.Id, path, sha, s.Language, mode, reviewed, null, false, thread.Id);
+    }
+
+    /// <summary>
+    /// Currículo base: sem vaga e sem IA, montado dos fatos do perfil (as experiências com as conquistas, as competências, formação, idiomas
+    /// e certificados) no tema e no idioma escolhidos, conferido pelo Conferente e pelo Inspetor ATS como os das vagas. Fica no app como
+    /// rascunho; nada é enviado.
+    /// </summary>
+    public async Task<ComposeResult> ComposeBaseAsync(string language, string theme, CancellationToken ct)
+    {
+        var profile = await profiles.CurrentAsync(ct);
+        if (profile is null || profile.Facts.Count == 0) return Fail("Nenhum perfil. Envie o seu currículo ou conecte o LinkedIn na tela Perfil.");
+        var lang = language == "en" ? "en" : "pt";
+        var style = Template.Themes.Any(t => t.Key == theme) ? theme : "classico";
+        // A "vaga" do currículo base é o próprio perfil: o título e todas as competências e tecnologias, para o Seletor pegar o que é da pessoa.
+        var own = new JobText
+        {
+            Title = profile.Facts.FirstOrDefault(f => f.Kind == "headline")?.Statement ?? "",
+            Description = string.Join(", ", profile.Facts.Where(f => f.Kind == "skill").Select(f => f.Statement).Concat(profile.Facts.SelectMany(f => f.Technologies)).Distinct()),
+        };
+        var s = Selector.Pick(profile, own) with { Language = lang };
+        var thread = AgentThread.New("resume", "Currículo base");
+        var checkedDraft = Conferente.Check(Draft.Plain(s), s);
+        var draft = Tailor.Finish(checkedDraft.Draft, s);
+        var maxPages = config.GetValue("Materials:MaxPages", 2);
+        var dir = AppPaths.In(AppPaths.Data, "materials", profile.ProfileId.ToString("N"), "base-" + time.GetUtcNow().ToString("yyyyMMddHHmmss"));
+        var path = Path.Combine(dir, $"{FileName(profile.Identity.FullName)}-{(lang == "en" ? "Resume" : "Curriculo")}.pdf");
+        string html;
+        PdfCheck check;
+        var trims = 0;
+        while (true)
+        {
+            html = Template.Render(draft, s, lang, style);
+            await automation.RenderPdfAsync(Template.Fill(html, profile.Identity), path, ct);
+            check = await PdfCheck.RunAsync(path, profile.Identity, draft, s, lang, maxPages, ct);
+            if (check.Pages <= maxPages || trims >= 10 || !Trim(ref draft)) break;
+            trims++;
+        }
+        if (check.Problems.Count > 0)
+        {
+            await ai.NoteAsync(thread, "Inspetor ATS", "O PDF não passou na leitura como ATS", string.Join("\n", check.Problems), "Supervisor", false, ct);
+            return new ComposeResult(false, null, null, null, lang, "base", false, string.Join("; ", check.Problems), false, thread.Id);
+        }
+        var sha = Convert.ToHexStringLower(SHA256.HashData(await File.ReadAllBytesAsync(path, ct)));
+        await ai.NoteAsync(thread, "Renderizador", $"Currículo base, tema {Template.Themes.First(t => t.Key == style).Name}: {check.Pages} {(check.Pages == 1 ? "página" : "páginas")}",
+            $"Leitura como ATS: {check.Score}%. Sem vaga e sem IA: só os fatos do perfil.", "Você", true, ct);
+        var version = ResumeVersion.Create(profile.ProfileId, Guid.Empty, profile, lang, "base", $"regras, tema {style}", null, false, html, path, sha, check.Pages,
+            checkedDraft.Lines, thread.Id, time.GetUtcNow().UtcDateTime);
+        db.Resumes.Add(version);
+        await db.SaveChangesAsync(ct);
+        return new ComposeResult(true, version.Id, path, sha, lang, "base", false, null, false, thread.Id);
     }
 
     /// <summary>Tira a última conquista da experiência com mais conquistas (mínimo de duas em cada).</summary>

@@ -9,7 +9,37 @@ namespace JobOrchestrator.Materials.Compose;
 /// </summary>
 internal static class Template
 {
-    public static string Render(Draft d, Selection s, string language)
+    /// <summary>
+    /// Os temas mudam só tipografia, cor dos títulos e espaçamento: a estrutura continua uma coluna de texto pesquisável, sem tabela nem
+    /// imagem, e passa no Inspetor ATS do mesmo jeito.
+    /// </summary>
+    public static readonly (string Key, string Name, string Note)[] Themes =
+    [
+        ("classico", "Clássico", "sans-serif sóbria, títulos em caixa alta com linha"),
+        ("moderno", "Moderno", "nome maior e títulos com um traço de cor"),
+        ("compacto", "Compacto", "margens e letra menores, para caber em uma página"),
+        ("serifado", "Serifado", "letra com serifa, tom mais formal"),
+    ];
+
+    private static string ThemeCss(string theme) => theme switch
+    {
+        "moderno" => """
+              h1 { font-size: 23pt; color: #12305c; }
+              h2 { text-transform: none; letter-spacing: 0; font-size: 11pt; color: #12305c; border-bottom: 0; border-left: 3pt solid #12305c; padding: 0 0 0 6pt; }
+            """,
+        "compacto" => """
+              @page { size: A4; margin: 10mm; }
+              body { font-size: 9.6pt; line-height: 1.32; }
+              h1 { font-size: 17pt; } h2 { margin: 8pt 0 3pt; } .role { margin-top: 5pt; } li { margin: 1pt 0; }
+            """,
+        "serifado" => """
+              body { font-family: "Liberation Serif", "DejaVu Serif", Georgia, serif; font-size: 10.8pt; }
+              h1 { font-weight: 600; letter-spacing: 0; } h2 { font-variant: small-caps; text-transform: none; letter-spacing: 0.04em; font-size: 11pt; }
+            """,
+        _ => "",
+    };
+
+    public static string Render(Draft d, Selection s, string language, string theme = "classico")
     {
         var en = language == "en";
         string T(string pt, string english) => en ? english : pt;
@@ -31,6 +61,7 @@ internal static class Template
               .tech { color: #3a3f4b; font-size: 9.2pt; margin: 1pt 0 2pt; }
               ul { margin: 2pt 0 0 14pt; padding: 0; } li { margin: 1.5pt 0; }
               p { margin: 0; }
+            {{{ThemeCss(theme)}}}
             </style></head><body>
             <h1>{{NOME}}</h1>
             """);

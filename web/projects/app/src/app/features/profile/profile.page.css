@@ -75,4 +75,28 @@
 .st-next { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .st-next li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; }
 .st-next .what { display: grid; gap: 2px; }
+.base { display: grid; gap: 12px; }
+.base > header { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; padding: 14px 18px 0; }
+.base h2 { font-size: 15px; margin: 0; }
+.themes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr)); gap: 10px; padding: 0 18px; }
+.theme { display: grid; gap: 4px; justify-items: start; text-align: left; padding: 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface-2); color: var(--text); font: inherit; cursor: pointer;
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 120ms ease; }
+.theme:hover { border-color: var(--line-strong); }
+.theme.on { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-weak); }
+.paper { display: grid; gap: 4px; width: 100%; padding: 10px; border-radius: 4px; background: #fbfbfa; color: #16181d; margin-bottom: 4px; }
+.paper .nm { font: 600 13px "Inter", "Liberation Sans", sans-serif; }
+.paper .hd { font: 600 8px "Inter", sans-serif; text-transform: uppercase; letter-spacing: 0.08em; color: #3a3f4b; border-bottom: 1px solid #d5d8de; padding-bottom: 2px; }
+.paper .ln { height: 4px; border-radius: 2px; background: #d9dce2; }
+.paper .ln.short { width: 60%; }
+.paper.t-moderno .nm { font-size: 15px; color: #12305c; }
+.paper.t-moderno .hd { text-transform: none; letter-spacing: 0; font-size: 9px; color: #12305c; border-bottom: 0; border-left: 2px solid #12305c; padding: 0 0 0 4px; }
+.paper.t-compacto { gap: 2px; padding: 7px; } .paper.t-compacto .nm { font-size: 11.5px; }
+.paper.t-serifado .nm { font-family: "Liberation Serif", "DejaVu Serif", Georgia, serif; font-size: 14px; }
+.paper.t-serifado .hd { font-family: "Liberation Serif", Georgia, serif; font-variant: small-caps; text-transform: none; font-size: 9.5px; }
+.base-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 0 18px; }
+.base-actions .lang { display: flex; gap: 5px; }
+.versions { list-style: none; margin: 0; padding: 0 18px 14px; display: grid; gap: 4px; }
+.versions li { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; font-size: 12.5px; }
+.versions a { display: inline-flex; gap: 6px; align-items: center; }
+.base > :last-child:not(.versions) { padding-bottom: 14px; }
 

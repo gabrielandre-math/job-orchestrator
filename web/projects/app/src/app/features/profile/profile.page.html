@@ -31,6 +31,35 @@
     </article>
   }
 
+  @if (base.value(); as b) {
+    <article class="panel base">
+      <header><h2>Currículo base</h2><span class="faint small">sem vaga e sem IA: só os fatos do perfil, conferidos como os das vagas</span></header>
+      <div class="themes" role="radiogroup" aria-label="Tema do currículo">
+        @for (t of b.themes; track t.key) {
+          <button type="button" role="radio" class="theme" [class.on]="(theme() ?? b.theme) === t.key" [attr.aria-checked]="(theme() ?? b.theme) === t.key" (click)="theme.set(t.key)">
+            <span class="paper" [class]="'paper t-' + t.key"><span class="nm">{{ identity().fullName || 'Seu nome' }}</span><span class="hd">Experiência</span><span class="ln"></span><span class="ln short"></span></span>
+            <strong>{{ t.name }}</strong><span class="faint small">{{ t.note }}</span>
+          </button>
+        }
+      </div>
+      <div class="base-actions">
+        <div class="lang" role="radiogroup" aria-label="Idioma">
+          <button type="button" class="chip" [attr.aria-pressed]="baseLang() === 'pt'" (click)="baseLang.set('pt')">Português</button>
+          <button type="button" class="chip" [attr.aria-pressed]="baseLang() === 'en'" (click)="baseLang.set('en')">Inglês</button>
+        </div>
+        <button type="button" class="btn primary" (click)="composeBase()" [disabled]="composing.running()">
+          @if (composing.running()) { <span class="spinner sm" aria-hidden="true"></span>Gerando… } @else { <jo-icon name="file-text" [size]="14" />Gerar o PDF }
+        </button>
+        <span class="faint small">O tema escolhido passa a valer também nos currículos das vagas.</span>
+      </div>
+      @if (b.versions.length > 0) {
+        <ul class="versions">
+          @for (v of b.versions; track v.id) { <li><a [href]="'/api/materials/resumes/' + v.id + '/pdf'" target="_blank" rel="noopener"><jo-icon name="file-text" [size]="13" />{{ v.language === 'en' ? 'Inglês' : 'Português' }}, {{ v.pages }} {{ v.pages === 1 ? 'página' : 'páginas' }}</a><span class="faint small">{{ v.writtenBy }} · {{ v.createdAt.slice(0, 16).replace('T', ' ') }}</span></li> }
+        </ul>
+      }
+    </article>
+  }
+
   @if (link.value(); as l) {
     @if (!l.connected) {
       <article class="panel connect">

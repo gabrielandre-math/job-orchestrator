@@ -11,7 +11,8 @@ public static class MaterialsModule
     {
         s.AddDbContext<MaterialsDbContext>(o => o.UseModuleDatabase(config.ConnectionFor("Materials"), "materials"));
         s.AddModuleReadDb<MaterialsDbContext>(config, "Materials");
-        s.AddScoped<IMaterialsApi, Compose.ResumeComposer>();
+        s.AddScoped<Compose.ResumeComposer>();
+        s.AddScoped<IMaterialsApi>(sp => sp.GetRequiredService<Compose.ResumeComposer>());
         return s;
     }
 

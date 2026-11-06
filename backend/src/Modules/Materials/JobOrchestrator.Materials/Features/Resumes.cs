@@ -48,6 +48,20 @@ internal sealed class ResumeEndpoints : ICarterModule
             var result = await materials.ComposeResumeAsync(new ComposeRequest(jobId, jobId, job.Company, job.Title), ct);
             return result.Ok ? Results.Ok(result) : Results.UnprocessableEntity(result);
         });
+        // Currículo base (sem vaga, sem IA) no tema e no idioma escolhidos; o tema escolhido vale também para os currículos das vagas.
+        group.MapPost("base", async (BaseInput body, Compose.ResumeComposer composer, CancellationToken ct) =>
+        {
+            if (Compose.Template.Themes.Any(t => t.Key == body.Theme)) await UserSettings.SetAsync(new Dictionary<string, object?> { ["Materials:Theme"] = body.Theme });
+            var result = await composer.ComposeBaseAsync(body.Language ?? "pt", body.Theme ?? "classico", ct);
+            return result.Ok ? Results.Ok(result) : Results.UnprocessableEntity(result);
+        });
+        group.MapGet("base", async (MaterialsDbContext db, IConfiguration config, CancellationToken ct) => Results.Ok(new
+        {
+            theme = config.GetValue("Materials:Theme", "classico"),
+            themes = Compose.Template.Themes.Select(t => new { key = t.Key, name = t.Name, note = t.Note }),
+            versions = await db.Resumes.AsNoTracking().Where(v => v.JobId == Guid.Empty).OrderByDescending(v => v.CreatedAt).Take(8)
+                .Select(v => new { v.Id, v.Language, v.Pages, v.CreatedAt, v.WrittenBy }).ToListAsync(ct),
+        }));
         // O PDF só sai do diretório de materiais e pelo id da versão: nunca por caminho vindo de fora.
         group.MapGet("resumes/{id:guid}/pdf", async (Guid id, MaterialsDbContext db, CancellationToken ct) =>
         {
@@ -58,3 +72,6 @@ internal sealed class ResumeEndpoints : ICarterModule
         });
     }
 }
+
+/// <summary>O idioma (pt ou en) e o tema do currículo base.</summary>
+internal sealed record BaseInput(string? Language, string? Theme);
