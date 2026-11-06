@@ -319,6 +319,10 @@ namespace JobOrchestrator.Jobs.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("first_seen_at");
 
+                    b.Property<int>("IntegritySignals")
+                        .HasColumnType("integer")
+                        .HasColumnName("integrity_signals");
+
                     b.Property<DateTime>("LastSeenAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_seen_at");

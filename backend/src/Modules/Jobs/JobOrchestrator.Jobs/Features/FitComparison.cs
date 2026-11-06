@@ -38,11 +38,11 @@ internal sealed class CompareFitHandler(JobsDbContext db, IProfileApi profiles, 
         var profile = await profiles.CurrentAsync(ct);
         if (profile is not { Facts.Count: > 0 }) return Error.Conflict("no-profile-facts", "Adicione fatos ao seu perfil para comparar a vaga.");
 
-        var description = Cut(job.Description, 12000);
+        var description = Cut(PostingIntegrity.Inspect(job.Description).Text, 12000);
         var facts = profile.Facts.Where(f => f.Kind is "experience" or "achievement" or "skill" or "project" or "education" or "certification" or "language")
             .OrderByDescending(f => f.Technologies.Any(t => t.Length > 0 && description.Contains(t, StringComparison.OrdinalIgnoreCase)))
             .Take(60).Select(f => new FitEvidence(f.Id, Cut(f.Statement, 400))).ToArray();
-        var prompt = JsonSerializer.Serialize(new { title = Cut(job.Title, 240), description, facts }, JsonSerializerOptions.Web);
+        var prompt = JsonSerializer.Serialize(new { title = Cut(PostingIntegrity.Inspect(job.Title).Text, 240), description, facts }, JsonSerializerOptions.Web);
         var result = await ai.CompleteAsync(LlmRequest.For(LlmTasks.JobFit, System, prompt, Schema, timeoutSeconds: 90), ct);
         if (!result.Ok || result.Json is null)
             return Error.Conflict("fit-unavailable", "O modelo local não respondeu. Confira o Ollama na tela Provedores e tente de novo.");

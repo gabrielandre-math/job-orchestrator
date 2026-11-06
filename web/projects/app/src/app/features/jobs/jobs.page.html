@@ -398,6 +398,15 @@
             </section>
           }
 
+          @if (d.integrityWarnings.length > 0) {
+            <section class="d-sec">
+              <h3>Integridade do anúncio</h3>
+              <ul class="problem">
+                @for (warning of d.integrityWarnings; track warning) { <li>{{ warning }}</li> }
+              </ul>
+            </section>
+          }
+
           @if (d.job.open && d.job.status === 'Shortlisted') {
             <section class="d-sec">
               <h3>Aderência por evidência</h3>

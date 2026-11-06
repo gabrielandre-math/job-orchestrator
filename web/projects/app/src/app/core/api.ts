@@ -42,7 +42,7 @@ export interface Flow { nodes: FlowNode[]; edges: FlowEdge[]; at: string; }
 export interface JobRow { id: string; company: string; title: string; location: string; status: string; score: number | null; confidence: number | null; reason: string | null; applyUrl: string; source: string; firstSeenAt: string; lastVerifiedAt: string | null; open: boolean; duplicateOf: string | null; seniority: string | null; modality: string | null; salaryText: string | null; contract: string | null; english: string | null; sponsorship: string | null; eligibility: string | null; eligibilityEvidence: string | null; applyChannel: string; applyEmail: string | null; stack: string[]; companyDomain: string | null; }
 export interface CaptureResult { kind: 'watch' | 'saved' | 'known'; jobId: string | null; source: string | null; message: string; }
 export interface Factor { name: string; weight: number; value: number; points: number; note: string; unknown: boolean; }
-export interface JobDetail { job: JobRow; factors: Factor[]; description: string; snapshots: number; }
+export interface JobDetail { job: JobRow; factors: Factor[]; description: string; snapshots: number; integrityWarnings: string[]; }
 export interface ApplicationRow { id: string; jobId: string; company: string; title: string; location: string; state: string; score: number; createdAt: string; updatedAt: string; preparedBy: string | null; evidenceLevel: number; receiptId: string | null; lastReason: string | null; outcome?: string | null; outcomeAt?: string | null; }
 export interface Field { label: string; value: string; source: string; }
 export interface HistoryRow { at: string; from: string | null; to: string; reason: string; actor: string; detail: string | null; }

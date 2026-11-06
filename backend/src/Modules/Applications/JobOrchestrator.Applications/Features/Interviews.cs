@@ -69,7 +69,8 @@ internal sealed class Interviews(ApplicationsDbContext db, IJobsApi jobs, IProfi
             .OrderByDescending(x => x.CreatedAt).Take(4).Select(x => new { x.Stage, x.Feedback }).ToListAsync(ct);
         var prompt = JsonSerializer.Serialize(new
         {
-            stage = stageName, application.Title, application.Company, description = Cut(job?.Description, 8000),
+            stage = stageName, title = job?.Title ?? PostingIntegrity.Inspect(application.Title).Text,
+            company = job?.Company ?? PostingIntegrity.Inspect(application.Company).Text, description = Cut(job?.Description, 8000),
             resume = Cut(resume?.Text, 8000), facts,
             previousRounds = history.Select(x => new { x.Stage, Feedback = Cut(x.Feedback, 1000) }), previousFeedback = request.PreviousFeedback?.Trim()
         }, JsonSerializerOptions.Web);

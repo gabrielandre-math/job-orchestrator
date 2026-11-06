@@ -39,11 +39,11 @@ internal sealed partial class GreenhouseLikeSource(IHttpClientFactory http, IOpt
                 Title: job.GetProperty("title").GetString() ?? "",
                 Location: job.TryGetProperty("location", out var l) && l.TryGetProperty("name", out var ln) ? ln.GetString() ?? "" : "",
                 ApplyUrl: job.GetProperty("absolute_url").GetString() ?? "",
-                Description: Tags().Replace(html, " "),
+                Description: PostingIntegrity.Visible(html).Text,
                 UpdatedAt: job.TryGetProperty("updated_at", out var u) && u.TryGetDateTime(out var at) ? at.ToUniversalTime() : null,
                 RawJson: job.GetRawText(),
                 // A API pública só lista vagas abertas; boards por URL (como o ATS de teste) são conferidos um por um.
-                ListedAsOpen: !board.StartsWith("http", StringComparison.OrdinalIgnoreCase)));
+                ListedAsOpen: !board.StartsWith("http", StringComparison.OrdinalIgnoreCase), DescriptionMarkup: html));
         }
         return result;
     }
@@ -72,8 +72,6 @@ internal sealed partial class GreenhouseLikeSource(IHttpClientFactory http, IOpt
         }
     }
 
-    [GeneratedRegex("<[^>]+>")]
-    private static partial Regex Tags();
 
     [GeneratedRegex(@"\s*[-|]\s*linked\s*in\s*$", RegexOptions.IgnoreCase)]
     private static partial Regex BoardSuffix();
