@@ -407,16 +407,24 @@ internal sealed partial class MailService(
         {
             if (auto)
             {
+                // Só sai sozinho o e-mail de vaga que confirma aceitar quem mora no Brasil; o da remota "a confirmar" espera você.
+                var targets = await jobs.EmailTargetsAsync(ct);
+                var open = targets.Where(t => AutoEligibility.Allows(t.Eligibility)).Select(t => t.Id).ToHashSet();
                 // Rascunho de antes do automático também sai, pelas mesmas regras.
                 foreach (var old in await db.Outgoing.Where(o => o.Status == "AwaitingApproval").ToListAsync(ct))
                 {
+                    if (!open.Contains(old.JobId)) continue;
                     try { await ReleaseAsync(old, s.AttachResume, ct); }
                     catch (MailRuleException ex) { log.LogInformation("Auto release skipped: {Error}", ex.Message); }
                 }
                 var contacted = await db.Outgoing.Where(o => o.Status != "Cancelled").Select(o => o.JobId).Distinct().ToListAsync(ct);
-                foreach (var t in (await jobs.EmailTargetsAsync(ct)).Where(t => !contacted.Contains(t.Id)).Take(2))
+                foreach (var t in targets.Where(t => !contacted.Contains(t.Id)).Take(2))
                 {
-                    try { await ReleaseAsync(await DraftAsync(t.Id, "first", ct), s.AttachResume, ct); }
+                    try
+                    {
+                        var m = await DraftAsync(t.Id, "first", ct);
+                        if (open.Contains(t.Id)) await ReleaseAsync(m, s.AttachResume, ct);
+                    }
                     catch (MailRuleException ex) { log.LogInformation("Auto draft skipped: {Error}", ex.Message); }
                 }
             }

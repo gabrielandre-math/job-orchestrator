@@ -1,10 +1,12 @@
+using JobOrchestrator.Jobs.Contracts;
+
 namespace JobOrchestrator.Applications.Domain;
 
 /// <summary>O que o Guardião olha antes de liberar um envio.</summary>
 internal sealed record GuardInput(
     SubmissionMode Mode, ApplicationState State, string? PayloadHash, ApprovalDecision? Approval,
     int ConfirmedToday, int MaxPerDay, bool OpenIntent, int PendingTasks,
-    SubmitAuthorizationView? Authorization = null, DateTime Now = default, int Score = 0, string? AdapterId = null, int SameCompanyToday = 0);
+    SubmitAuthorizationView? Authorization = null, DateTime Now = default, int Score = 0, string? AdapterId = null, int SameCompanyToday = 0, string? Eligibility = null);
 
 /// <summary>Decisão do Guardião, com código estável e motivo em português.</summary>
 internal sealed record GuardDecision(bool Allowed, string Code, string Reason);
@@ -19,12 +21,13 @@ internal static class SubmissionGuard
     /// Depois do preparo: para, pede aprovação ou, no automático com autorização válida para esta vaga, segue sozinho.
     /// Automático sem autorização válida (vencida, revogada, nota abaixo, adapter fora) cai para a sua aprovação: nunca envia sozinho.
     /// </summary>
-    public static (ApplicationState Next, string Reason) AfterPrepare(SubmissionMode mode, SubmitAuthorizationView? auth = null, DateTime now = default, int score = 0, string? adapterId = null) => mode switch
+    public static (ApplicationState Next, string Reason) AfterPrepare(SubmissionMode mode, SubmitAuthorizationView? auth = null, DateTime now = default, int score = 0, string? adapterId = null, string? eligibility = null) => mode switch
     {
         SubmissionMode.ReviewRequired => (ApplicationState.AwaitingApproval, "Esperando a sua aprovação do formulário exato."),
         SubmissionMode.AutoSubmit when auth is null || !auth.ValidAt(now) => (ApplicationState.AwaitingApproval, "A autorização de envio automático não está ativa: esperando a sua aprovação."),
         SubmissionMode.AutoSubmit when score < auth!.MinScore => (ApplicationState.AwaitingApproval, $"Nota {score} abaixo do mínimo da autorização ({auth.MinScore}): esperando a sua aprovação."),
         SubmissionMode.AutoSubmit when !auth!.Allows(adapterId) => (ApplicationState.AwaitingApproval, $"O adapter {adapterId} não está na autorização: esperando a sua aprovação."),
+        SubmissionMode.AutoSubmit when !AutoEligibility.Allows(eligibility) => (ApplicationState.AwaitingApproval, "A vaga não confirma que aceita quem mora no Brasil: no automático, ela espera a sua aprovação."),
         SubmissionMode.AutoSubmit => (ApplicationState.ReadyToSubmit, "Aprovada pela autorização de envio automático."),
         _ => (ApplicationState.FormValidated, "Modo só preparar: fica pronta, nada é enviado.")
     };
@@ -45,6 +48,8 @@ internal static class SubmissionGuard
                 return new(false, "score-below-authorization", $"A nota {i.Score} está abaixo do mínimo da autorização ({i.Authorization.MinScore}).");
             if (!i.Authorization.Allows(i.AdapterId))
                 return new(false, "adapter-not-authorized", $"O adapter {i.AdapterId} não está na autorização.");
+            if (!AutoEligibility.Allows(i.Eligibility))
+                return new(false, "eligibility-unconfirmed", "A vaga não confirma que aceita quem mora no Brasil: no automático, ela espera a sua aprovação.");
             if (i.ConfirmedToday >= i.Authorization.MaxPerDay)
                 return new(false, "authorization-daily-limit", $"Teto de {i.Authorization.MaxPerDay} envios por dia da autorização atingido.");
             if (i.SameCompanyToday > 0)

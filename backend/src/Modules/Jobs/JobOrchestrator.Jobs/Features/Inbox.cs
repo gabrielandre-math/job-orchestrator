@@ -139,11 +139,22 @@ internal sealed class JobsApi(IReadDb<JobsDbContext> db, ISender sender) : IJobs
 
     public Task<IReadOnlyList<EmailTarget>> EmailTargetsAsync(CancellationToken ct) => db.ListAsync<EmailTarget>(
         """
-        select id, company, title, location, apply_email, apply_url, company_domain, coalesce(score, 0) as score, first_seen_at
+        select id, company, title, location, apply_email, apply_url, company_domain, coalesce(score, 0) as score, first_seen_at, eligibility
         from jobs.postings
         where status = 'Shortlisted' and duplicate_of is null and apply_email is not null and apply_email <> ''
         order by score desc nulls last, first_seen_at desc limit 200
         """, null, ct);
+
+    public Task<IReadOnlyList<QueuedJob>> QueueAsync(string channel, int limit, CancellationToken ct) => db.ListAsync<QueuedJob>(
+        """
+        select id, company, title, location, apply_url, apply_channel, eligibility, coalesce(score, 0) as score
+        from jobs.postings
+        where status = 'Shortlisted' and duplicate_of is null and apply_channel = @channel and apply_url <> ''
+        order by score desc nulls last, first_seen_at desc limit @limit
+        """, new { channel, limit }, ct);
+
+    public async Task<string?> EligibilityAsync(Guid jobId, CancellationToken ct) =>
+        (await db.ListAsync<string?>("select eligibility from jobs.postings where id = @jobId", new { jobId }, ct)).FirstOrDefault();
 
     public Task<IReadOnlyList<string>> ApplyLinksAsync(int limit, CancellationToken ct) => db.ListAsync<string>(
         "select apply_url from (select apply_url, max(first_seen_at) as seen from jobs.postings where apply_url <> '' group by apply_url) t order by seen desc limit @limit", new { limit }, ct);

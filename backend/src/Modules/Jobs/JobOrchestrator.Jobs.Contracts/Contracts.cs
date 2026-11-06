@@ -49,6 +49,27 @@ public sealed record EmailTarget
     public string? CompanyDomain { get; init; }
     public int Score { get; init; }
     public DateTime FirstSeenAt { get; init; }
+    /// <summary>Quem mora no Brasil pode se candidatar? (BR_ELIGIBLE_CONFIRMED, BR_ELIGIBLE_POSSIBLE, ...)</summary>
+    public string? Eligibility { get; init; }
+}
+
+/// <summary>Vaga da fila com o caminho de candidatura: o ensaio dos formulários usa as que têm formulário de ATS.</summary>
+public sealed record QueuedJob
+{
+    public Guid Id { get; init; }
+    public string Company { get; init; } = "";
+    public string Title { get; init; } = "";
+    public string Location { get; init; } = "";
+    public string ApplyUrl { get; init; } = "";
+    public string ApplyChannel { get; init; } = "";
+    public string? Eligibility { get; init; }
+    public int Score { get; init; }
+}
+
+/// <summary>O automático só envia sozinho para vaga que confirma aceitar quem mora no Brasil (ou paga visto e mudança); a remota "a confirmar" espera você.</summary>
+public static class AutoEligibility
+{
+    public static bool Allows(string? eligibility) => eligibility is "BR_ELIGIBLE_CONFIRMED" or "RELOCATION_WITH_SPONSORSHIP";
 }
 
 /// <summary>Quantas vagas abertas e únicas têm este texto de local, e quantas aceitam quem mora no Brasil (confirmado, possível, restrita).</summary>
@@ -87,6 +108,8 @@ public interface IJobsApi
     Task<IReadOnlyList<SourceCount>> SourcesAsync(CancellationToken ct);
     Task<JobText?> TextAsync(Guid jobId, CancellationToken ct);
     Task<IReadOnlyList<EmailTarget>> EmailTargetsAsync(CancellationToken ct);
+    Task<IReadOnlyList<QueuedJob>> QueueAsync(string channel, int limit, CancellationToken ct);
+    Task<string?> EligibilityAsync(Guid jobId, CancellationToken ct);
     /// <summary>Vagas abertas e únicas agrupadas pelo texto do local, com a elegibilidade de quem mora no Brasil.</summary>
     Task<IReadOnlyList<LocationCount>> OpenLocationsAsync(CancellationToken ct);
     Task<OpenSummary> OpenSummaryAsync(CancellationToken ct);

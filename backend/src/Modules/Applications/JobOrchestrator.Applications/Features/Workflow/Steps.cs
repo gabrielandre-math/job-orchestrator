@@ -10,9 +10,10 @@ internal interface IStep
 }
 
 /// <summary>O que as etapas compartilham: banco, automação, campanha, perfil e relógio.</summary>
-internal sealed class StepKit(ApplicationsDbContext db, IAutomationApi automation, ICampaignsApi campaigns, IProfileApi profile, IMaterialsApi materials, Bundles bundles, TimeProvider time, IConfiguration config)
+internal sealed class StepKit(ApplicationsDbContext db, IAutomationApi automation, ICampaignsApi campaigns, IProfileApi profile, IMaterialsApi materials, Bundles bundles, TimeProvider time, IConfiguration config, IJobsApi jobs)
 {
     public ApplicationsDbContext Db => db;
+    public IJobsApi Jobs => jobs;
     public IAutomationApi Automation => automation;
     public IProfileApi Profile => profile;
     public IMaterialsApi Materials => materials;
@@ -140,7 +141,7 @@ internal sealed class PrepareStep(StepKit k) : IStep
         {
             case AdapterResultKind.Completed:
                 app.Prepared(outcome.Value!, outcome.Route, now);
-                var (next, reason) = SubmissionGuard.AfterPrepare(campaign.Mode, campaign.Authorization, now, app.Score, outcome.Value!.AdapterId);
+                var (next, reason) = SubmissionGuard.AfterPrepare(campaign.Mode, campaign.Authorization, now, app.Score, outcome.Value!.AdapterId, await k.Jobs.EligibilityAsync(app.JobId, ct));
                 if (next == ApplicationState.ReadyToSubmit)
                 {
                     // Automático autorizado: a aprovação fica registrada como da autorização, para o payload exato preparado agora.
@@ -213,9 +214,10 @@ internal sealed class SubmitStep(StepKit k, TokenIssuer tokens) : IStep
             await db.Intents.AnyAsync(i => i.ApplicationId == app.Id && (i.State == IntentState.Open || i.State == IntentState.SentUnverified), ct),
             await db.Tasks.CountAsync(t => t.ApplicationId == app.Id && t.ResolvedAt == null, ct),
             campaign.Authorization, k.Now, app.Score, app.PreparedBy,
-            await db.Applications.CountAsync(a => a.Id != app.Id && a.Company == app.Company && db.Events.Any(e => e.ApplicationId == a.Id && e.To == confirmed && e.At >= dayAgo), ct));
+            await db.Applications.CountAsync(a => a.Id != app.Id && a.Company == app.Company && db.Events.Any(e => e.ApplicationId == a.Id && e.To == confirmed && e.At >= dayAgo), ct),
+            await k.Jobs.EligibilityAsync(app.JobId, ct));
         var decision = SubmissionGuard.CanSubmit(input);
-        if (!decision.Allowed && decision.Code == "consent-required")
+        if (!decision.Allowed && decision.Code is "consent-required" or "eligibility-unconfirmed")
         {
             // Sem autorização valendo, nada sai sozinho: a vaga volta para a sua aprovação em vez de travar.
             app.Move(ApplicationState.AwaitingApproval, decision.Reason, "Guardião", k.Now);

@@ -14,8 +14,9 @@ public sealed class GuardTests
     private static readonly DateTime Now = new(2026, 11, 5, 12, 0, 0, DateTimeKind.Utc);
     private static readonly ApprovalDecision ByAuthorization = new() { PayloadHash = Hash, Approved = true, ByAuthorization = true };
     private static SubmitAuthorizationView Auth(int days = 7, int max = 5, int min = 85, params string[] adapters) => new(Guid.NewGuid(), Now.AddDays(-1), Now.AddDays(days), max, min, adapters);
-    private static GuardInput Auto(SubmitAuthorizationView? auth, int score = 90, string adapter = "greenhouse-form", int today = 0, int sameCompany = 0, ApprovalDecision? approval = null) =>
-        new(SubmissionMode.AutoSubmit, ApplicationState.ReadyToSubmit, Hash, approval ?? ByAuthorization, today, 15, false, 0, auth, Now, score, adapter, sameCompany);
+    private static GuardInput Auto(SubmitAuthorizationView? auth, int score = 90, string adapter = "greenhouse-form", int today = 0, int sameCompany = 0, ApprovalDecision? approval = null,
+        string? eligibility = "BR_ELIGIBLE_CONFIRMED") =>
+        new(SubmissionMode.AutoSubmit, ApplicationState.ReadyToSubmit, Hash, approval ?? ByAuthorization, today, 15, false, 0, auth, Now, score, adapter, sameCompany, eligibility);
 
     [Fact] public void Automatico_sem_autorizacao_nao_envia() => Assert.Equal("consent-required", SubmissionGuard.CanSubmit(Auto(null)).Code);
     [Fact] public void Automatico_com_autorizacao_vencida_nao_envia() => Assert.Equal("consent-required", SubmissionGuard.CanSubmit(Auto(Auth(days: -1))).Code);
@@ -30,6 +31,14 @@ public sealed class GuardTests
         Assert.Equal(new DateTime(2026, 11, 5, 3, 0, 0), SubmissionGuard.StartOfDay(new DateTime(2026, 11, 6, 2, 0, 0, DateTimeKind.Utc), "America/Sao_Paulo"));
     [Fact] public void Fuso_desconhecido_vira_a_meia_noite_utc() =>
         Assert.Equal(new DateTime(2026, 11, 6), SubmissionGuard.StartOfDay(new DateTime(2026, 11, 6, 2, 0, 0, DateTimeKind.Utc), "Lugar/Nenhum"));
+    [Fact]
+    public void Automatico_so_envia_sozinho_vaga_aberta_ao_Brasil()
+    {
+        Assert.Equal("eligibility-unconfirmed", SubmissionGuard.CanSubmit(Auto(Auth(), eligibility: "BR_ELIGIBLE_POSSIBLE")).Code);
+        Assert.Equal("eligibility-unconfirmed", SubmissionGuard.CanSubmit(Auto(Auth(), eligibility: null)).Code);
+        Assert.True(SubmissionGuard.CanSubmit(Auto(Auth(), eligibility: "RELOCATION_WITH_SPONSORSHIP")).Allowed);
+        Assert.True(SubmissionGuard.CanSubmit(Auto(null, approval: Approved, eligibility: "BR_ELIGIBLE_POSSIBLE")).Allowed);
+    }
     [Fact] public void Aprovacao_da_autorizacao_nao_vale_com_o_automatico_desligado() =>
         Assert.Equal("consent-required", SubmissionGuard.CanSubmit(Input(approval: ByAuthorization)).Code);
     [Fact] public void Aprovacao_sua_vale_mesmo_no_automatico() => Assert.True(SubmissionGuard.CanSubmit(Auto(null, approval: Approved)).Allowed);
@@ -68,6 +77,7 @@ public sealed class GuardTests
         Assert.Equal(ApplicationState.AwaitingApproval, SubmissionGuard.AfterPrepare(SubmissionMode.AutoSubmit).Next);
         Assert.Equal(ApplicationState.AwaitingApproval, SubmissionGuard.AfterPrepare(SubmissionMode.AutoSubmit, Auth(days: -1), Now, 90, "greenhouse-form").Next);
         Assert.Equal(ApplicationState.AwaitingApproval, SubmissionGuard.AfterPrepare(SubmissionMode.AutoSubmit, Auth(min: 95), Now, 90, "greenhouse-form").Next);
-        Assert.Equal(ApplicationState.ReadyToSubmit, SubmissionGuard.AfterPrepare(SubmissionMode.AutoSubmit, Auth(), Now, 90, "greenhouse-form").Next);
+        Assert.Equal(ApplicationState.ReadyToSubmit, SubmissionGuard.AfterPrepare(SubmissionMode.AutoSubmit, Auth(), Now, 90, "greenhouse-form", "BR_ELIGIBLE_CONFIRMED").Next);
+        Assert.Equal(ApplicationState.AwaitingApproval, SubmissionGuard.AfterPrepare(SubmissionMode.AutoSubmit, Auth(), Now, 90, "greenhouse-form", "BR_ELIGIBLE_POSSIBLE").Next);
     }
 }
