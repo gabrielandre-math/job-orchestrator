@@ -67,7 +67,7 @@ internal sealed class GetJobHandler(IReadDb<JobsDbContext> db) : IQueryHandler<G
     private const string Sql = """
         select p.id, p.company, p.title, p.location, p.status, p.score, p.confidence, p.reason, p.apply_url, p.source, p.first_seen_at,
                p.last_verified_at, p.open, p.duplicate_of, p.seniority, p.modality, p.salary_text, p.contract, p.english, p.sponsorship,
-               p.apply_channel, p.apply_email, p.breakdown::text as breakdown, p.description, p.stack, p.company_domain,
+               p.apply_channel, p.apply_email, p.breakdown::text as breakdown, p.description, p.stack, p.company_domain, p.eligibility, p.eligibility_evidence,
                (select count(*)::int from jobs.snapshots s where s.job_id = p.id) as snapshots
         from jobs.postings p where p.id = @Id
         """;

@@ -266,22 +266,33 @@ internal sealed partial class AssistantService(IIntelligenceApi ai, IServiceScop
     /// Carta para o copiloto (candidatura pelo site original): a IA escreve só com os fatos verificados, o Conferente tira frase com termo
     /// ou número sem fonte e o nome entra aqui, depois da IA. Idioma da vaga.
     /// </summary>
-    public async Task<CoverLetter> CoverAsync(Guid jobId, CancellationToken ct)
+    /// <summary>A carta da vaga no tom (direto, formal, caloroso) e no idioma pedidos; sem idioma, o da descrição da vaga.</summary>
+    public async Task<CoverLetter> CoverAsync(Guid jobId, CancellationToken ct, string? tone = null, string? wanted = null)
     {
         var job = await jobs.TextAsync(jobId, ct);
         var p = await profile.CurrentAsync(ct);
         if (job is null || p is null || p.Facts.Count == 0) return new CoverLetter(false, "", "pt", "", [], "Falta o perfil ou a vaga.");
         var lower = job.Description.ToLowerInvariant();
-        var english = EnWords().Matches(lower).Count > PtWords().Matches(lower).Count;
+        var lang = wanted is "pt" or "en" or "es" ? wanted : EnWords().Matches(lower).Count > PtWords().Matches(lower).Count ? "en" : "pt";
+        var english = lang == "en";
         var facts = string.Join("\n", p.Facts.Where(f => f.Kind is "experience" or "skill" or "achievement" or "education" or "certification" or "language").Take(60).Select(f => $"- {Fact(f)}"));
-        var system = english
-            ? "Write a short cover letter (up to 180 words) in English for this job, using only the verified resume facts. Never invent numbers, companies, titles or results. Tie 2 or 3 facts to what the job asks. No em dashes. Do not write the candidate's name or contact details. Plain text."
-            : "Escreva uma carta de apresentação curta (até 180 palavras) em português do Brasil para esta vaga, usando só os fatos verificados do currículo. Nunca invente número, empresa, cargo ou resultado. Ligue 2 ou 3 fatos ao que a vaga pede. Sem travessão. Não escreva o nome nem o contato da pessoa. Texto simples.";
+        var system = lang switch
+        {
+            "en" => "Write a short cover letter (up to 180 words) in English for this job, using only the verified resume facts. Never invent numbers, companies, titles or results. Tie 2 or 3 facts to what the job asks. No em dashes. Do not write the candidate's name or contact details. Plain text.",
+            "es" => "Escribe una carta de presentación breve (hasta 180 palabras) en español para esta vacante, usando solo los hechos verificados del currículum. Nunca inventes números, empresas, cargos ni resultados. Relaciona 2 o 3 hechos con lo que pide la vacante. Sin rayas. No escribas el nombre ni los datos de contacto de la persona. Texto simple.",
+            _ => "Escreva uma carta de apresentação curta (até 180 palavras) em português do Brasil para esta vaga, usando só os fatos verificados do currículo. Nunca invente número, empresa, cargo ou resultado. Ligue 2 ou 3 fatos ao que a vaga pede. Sem travessão. Não escreva o nome nem o contato da pessoa. Texto simples.",
+        } + (tone, lang) switch
+        {
+            ("formal", "en") => " Tone: formal and polite.", ("formal", "es") => " Tono: formal y cortés.", ("formal", _) => " Tom: formal e cordial.",
+            ("caloroso", "en") => " Tone: warm and genuinely interested, without clichés.", ("caloroso", "es") => " Tono: cálido y con interés genuino, sin clichés.",
+            ("caloroso", _) => " Tom: caloroso e com interesse genuíno, sem clichês.",
+            (_, "en") => " Tone: direct and concise.", (_, "es") => " Tono: directo y conciso.", _ => " Tom: direto e objetivo.",
+        };
         var thread = AgentThread.New("cover", $"Carta para {job.Company}: {job.Title}");
         const string schema = """{"type":"object","properties":{"letter":{"type":"string"}},"required":["letter"],"additionalProperties":false}""";
         var prompt = $"Vaga: {job.Title} na {job.Company} ({job.Location}).\n{(job.Description.Length > 3500 ? job.Description[..3500] : job.Description)}\n\nFatos verificados:\n{facts}";
         var res = await ai.CompleteAsync(new LlmRequest(LlmTasks.CoverWrite.Name, system, prompt, schema, LlmTasks.CoverWrite.Rung, null, 180, true, thread, "Redator"), ct);
-        var language = english ? "en" : "pt";
+        var language = lang;
         if (!res.Ok || res.Json is null) return new CoverLetter(false, "", language, res.Model, [], res.Error ?? "sem resposta");
         string letter;
         try { using var d = JsonDocument.Parse(res.Json); letter = d.RootElement.GetProperty("letter").GetString() ?? ""; }

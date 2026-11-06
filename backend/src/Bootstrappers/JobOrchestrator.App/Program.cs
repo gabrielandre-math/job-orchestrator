@@ -12,6 +12,7 @@ if (args.Length == 0 && OperatingSystem.IsWindows() && Environment.ProcessPath i
 return args.FirstOrDefault() switch
 {
     "--serve" => await Server.RunAsync(args[1..]),
+    "--mcp" => await Mcp.RunAsync(args[1..]),
     "--setup" => await Setup.RunAsync(),
     "--stop" => await Launcher.StopAsync(),
     "--status" => await Launcher.StatusAsync(),
@@ -25,6 +26,7 @@ return args.FirstOrDefault() switch
         job-orchestrator --serve         roda os serviços neste terminal
         job-orchestrator --setup         abre o instalador
         job-orchestrator --status        mostra se está no ar
+        job-orchestrator --mcp           conector MCP (Claude Code, Claude Desktop): claude mcp add job-orchestrator -- job-orchestrator --mcp
         job-orchestrator --stop          para os serviços
         job-orchestrator --backup        copia o banco agora (com o app no ar)
         job-orchestrator --restore ZIP   restaura o banco de um backup

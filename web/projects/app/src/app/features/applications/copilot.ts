@@ -53,7 +53,13 @@ const LABEL: Record<string, string> = {
           </li>
           <li class="wide">
             <jo-iso name="writer" [size]="44" />
-            <div><strong>Carta de apresentação, se a vaga pedir</strong><p class="muted small">Escrita só com fatos do seu currículo; o Conferente tira o que não tiver fonte.</p></div>
+            <div><strong>Carta de apresentação, se a vaga pedir</strong><p class="muted small">Escrita só com fatos do seu currículo; o Conferente tira o que não tiver fonte.</p>
+              <div class="tone" role="group" aria-label="Tom e idioma da carta">
+                @for (o of tones; track o.key) { <button type="button" class="chip" [attr.aria-pressed]="tone() === o.key" (click)="tone.set(o.key)">{{ o.label }}</button> }
+                <span class="sep" aria-hidden="true"></span>
+                @for (o of langs; track o.key) { <button type="button" class="chip" [attr.aria-pressed]="lang() === o.key" (click)="lang.set(o.key)">{{ o.label }}</button> }
+              </div>
+            </div>
             <button type="button" class="btn" (click)="write()" [disabled]="writing.running()">
               @if (writing.running()) { <span class="spinner sm" aria-hidden="true"></span>Escrevendo } @else { <jo-icon name="pen-nib" [size]="14" />{{ letter() ? 'Escrever de novo' : 'Escrever com IA' }} }
             </button>
@@ -79,6 +85,8 @@ const LABEL: Record<string, string> = {
       }
     </section>`,
   styles: `
+    .tone { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; margin-top: 8px; }
+    .tone .sep { width: 1px; height: 16px; background: var(--line-strong); margin: 0 4px; }
     .copilot { overflow: hidden; }
     .small { font-size: 12px; }
     .steps { list-style: none; margin: 0; padding: 6px 0; display: grid; }
@@ -105,7 +113,12 @@ export class Copilot {
   protected readonly letter = signal<CoverLetter | null>(null);
   protected readonly text = signal('');
   protected readonly copied = signal<string | null>(null);
-  protected readonly writing = command((jobId: string) => send<CoverLetter>('POST', `/assistant/cover/${jobId}`));
+  /** Tom e idioma da carta (o idioma automático segue a descrição da vaga). */
+  protected readonly tones = [{ key: 'direto', label: 'Direto' }, { key: 'formal', label: 'Formal' }, { key: 'caloroso', label: 'Caloroso' }];
+  protected readonly langs = [{ key: '', label: 'Idioma da vaga' }, { key: 'pt', label: 'Português' }, { key: 'en', label: 'Inglês' }, { key: 'es', label: 'Espanhol' }];
+  protected readonly tone = signal('direto');
+  protected readonly lang = signal('');
+  protected readonly writing = command((jobId: string) => send<CoverLetter>('POST', `/assistant/cover/${jobId}`, { tone: this.tone(), language: this.lang() || null }));
   protected readonly declaring = command((id: string) => send('POST', `/applications/${id}/declare`, {}), 'Registrada como enviada por você.');
   protected readonly rows = computed(() => (this.view.value()?.answers ?? []).map((a) => ({ ...a, label: a.key.startsWith('years_experience:') ? `Anos com ${a.key.slice(17)}` : LABEL[a.key] ?? a.key })));
 

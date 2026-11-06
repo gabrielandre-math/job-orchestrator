@@ -43,6 +43,9 @@ internal static partial class Eligibility
         if (open.Success && restricted.Success) return new("REVIEW", $"{Snippet(text, open)} / {Snippet(restricted == local ? text : $"{title}\n{location}", restricted)}", true);
         if (open.Success) return new("BR_ELIGIBLE_CONFIRMED", Snippet(text, open), true);
         if (restricted.Success) return new("BR_RESTRICTED", Snippet(restricted == local ? text : $"{title}\n{location}", restricted), true);
+        // Remota com o local citando só países que não são o Brasil ("Remoto (India)", "Remote, Germany"): na prática, só para quem mora lá.
+        if (remote && abroad)
+            return new("BR_RESTRICTED", $"remota, mas o local cita só {string.Join(", ", countries.Select(c => SourceCatalog.Countries.FirstOrDefault(x => x.Iso2 == c)?.Name ?? c))}: {location.Trim()}", false);
         if (!remote && Relocation().Match(text) is { Success: true } move && !NoSponsor().IsMatch(text)) return new("RELOCATION_WITH_SPONSORSHIP", Snippet(text, move), true);
         if (remote && Contractor().Match(text) is { Success: true } b2b) return new("BR_ELIGIBLE_POSSIBLE", Snippet(text, b2b), true);
         if (remote) return new("BR_ELIGIBLE_POSSIBLE", "remota, sem dizer de onde se pode trabalhar: confirmar no anúncio", false);
@@ -86,6 +89,6 @@ internal static partial class Eligibility
     [GeneratedRegex(@"\b(must|need to|required to|should) (be )?(legally )?(authori[sz]ed|eligible|permitted) to work in (the )?(us|u\.s\.|usa|united states|canada|uk|united kingdom|eu|europe|european union|australia|germany|netherlands|ireland|sweden|norway|india|israel)\b|\b(right to work|work (permit|authori[sz]ation)) in (the )?(us|usa|uk|eu|canada|australia|europe)\b|\bmust (reside|live|be (located|based)) in (the )?(us|usa|united states|canada|uk|eu|europe|australia|india)\b|\b(us|usa|u\.s\.|uk|eu|canada)[ -]only\b|\bonly (candidates|applicants) (based|located|residing) in (the )?(us|usa|uk|eu|canada|europe)\b", RegexOptions.IgnoreCase)]
     private static partial Regex LocalAuth();
 
-    [GeneratedRegex(@"\bremote\b[^\n]{0,12}\b(us|usa|u\.s\.|united states|canada|uk|united kingdom|eu|europe|emea|apac|india|germany|australia)\b|\b(us|usa|canada|uk|europe|emea|apac|india)\b[^\n]{0,6}\bremote\b", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"\bremot[eoa]s?\b[^\n]{0,12}\b(us|usa|u\.s\.|united states|eua|estados unidos|canada|canadá|uk|united kingdom|reino unido|eu|europe|europa|emea|apac|india|índia|germany|alemanha|australia|austrália)\b|\b(us|usa|eua|canada|canadá|uk|europe|europa|emea|apac|india|índia)\b[^\n]{0,6}\bremot[eoa]s?\b", RegexOptions.IgnoreCase)]
     private static partial Regex RemoteRestricted();
 }

@@ -14,7 +14,8 @@ internal sealed class AssistantEndpoints : ICarterModule
         g.MapGet("conversations", async (AssistantService assistant, CancellationToken ct) => Results.Ok(await assistant.ConversationsAsync(ct)));
         g.MapGet("conversations/{id:guid}", async (Guid id, AssistantService assistant, CancellationToken ct) => Results.Ok(await assistant.ConversationAsync(id, ct)));
         g.MapPost("setup", async (AssistantService assistant, CancellationToken ct) => Results.Ok(await assistant.SetupAsync(ct)));
-        g.MapPost("cover/{jobId:guid}", async (Guid jobId, AssistantService assistant, CancellationToken ct) => Results.Ok(await assistant.CoverAsync(jobId, ct)));
+        g.MapPost("cover/{jobId:guid}", async (Guid jobId, CoverInput? body, AssistantService assistant, CancellationToken ct) =>
+            Results.Ok(await assistant.CoverAsync(jobId, ct, body?.Tone, body?.Language)));
 
         app.MapGet("/api/onboarding", async (IConfiguration config, IIntelligenceApi ai, IProfileApi profile, ICampaignsApi campaigns, CancellationToken ct) =>
         {
@@ -33,3 +34,6 @@ internal sealed class AssistantEndpoints : ICarterModule
         }).WithTags("Assistant");
     }
 }
+
+/// <summary>O tom (direto, formal, caloroso) e o idioma (pt, en, es; vazio é o da vaga) da carta.</summary>
+internal sealed record CoverInput(string? Tone, string? Language);
