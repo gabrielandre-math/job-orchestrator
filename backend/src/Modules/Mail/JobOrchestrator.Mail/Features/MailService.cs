@@ -86,11 +86,21 @@ internal sealed partial class MailService(
             await smtp.AuthenticateAsync(a.Address, password, ct);
             await smtp.DisconnectAsync(true, ct);
         }
-        catch (AuthenticationException) { throw new MailRuleException("O servidor recusou o login. Confira se é uma senha de app, não a senha normal da conta."); }
+        catch (Exception ex) when (ex is AuthenticationException || RefusedLogin(ex)) { throw new MailRuleException(LoginRefusedMessage(a)); }
         catch (SslHandshakeException) { throw new MailRuleException($"Não foi possível abrir uma conexão segura com {a.SmtpHost}:{a.SmtpPort}: o certificado do servidor não foi aceito."); }
         catch (Exception ex) when (ex is IOException or SmtpCommandException or SmtpProtocolException or System.Net.Sockets.SocketException)
         { throw new MailRuleException($"Não foi possível falar com {a.SmtpHost}:{a.SmtpPort}: {ex.Message}"); }
     }
+
+    // Gmail answers a wrong password with 535 5.7.8 and drops the connection, which MailKit reports as a disconnect, not as a login error.
+    internal static bool RefusedLogin(Exception ex) =>
+        ex is SmtpCommandException or SmtpProtocolException
+        && (ex.Message.Contains("5.7.8", StringComparison.Ordinal) || ex.Message.Contains("535", StringComparison.Ordinal)
+            || ex.Message.Contains("Username and Password not accepted", StringComparison.OrdinalIgnoreCase));
+
+    private static string LoginRefusedMessage(MailAccount a) => a.Provider == "gmail"
+        ? "O Gmail recusou o login. Use uma senha de app de 16 letras, criada em myaccount.google.com/apppasswords com a verificação em duas etapas ligada. A senha normal da conta não funciona aqui."
+        : "O servidor recusou o login. Confira se é uma senha de app, não a senha normal da conta.";
 
     private static async Task TestImapAsync(MailAccount a, string password, CancellationToken ct)
     {

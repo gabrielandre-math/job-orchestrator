@@ -41,3 +41,18 @@ public sealed class MailTlsTests
     [Fact]
     public void Chain_error_without_details_fails() => Assert.False(MailTls.Accept(Chain, []));
 }
+
+/// <summary>A refused Gmail login reads as a login problem, not as a broken connection.</summary>
+public sealed class MailLoginTests
+{
+    [Fact]
+    public void Gmail_disconnect_after_bad_password_is_a_refused_login() =>
+        Assert.True(MailService.RefusedLogin(new MailKit.Net.Smtp.SmtpProtocolException("The SMTP server has unexpectedly disconnected: 5.7.8 Username and Password not accepted.")));
+
+    [Fact]
+    public void Network_errors_are_not_refused_logins()
+    {
+        Assert.False(MailService.RefusedLogin(new IOException("Connection reset by peer")));
+        Assert.False(MailService.RefusedLogin(new MailKit.Net.Smtp.SmtpProtocolException("The SMTP server has unexpectedly disconnected.")));
+    }
+}
