@@ -98,7 +98,7 @@ Das 52 fontes registradas, 24 são estáveis, 20 são experimentais, 4 precisam 
 ## Em breve: o Job Orchestrator para recrutadores
 
 > [!NOTE]
-> Em desenho para uma próxima versão. Nada disto está na 1.0.0, e os detalhes podem mudar até o lançamento.
+> Em desenho para uma próxima versão. Nada disto está na versão atual, e os detalhes podem mudar até o lançamento.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset=".github/assets/recruiters-pt-dark.svg">

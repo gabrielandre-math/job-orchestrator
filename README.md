@@ -98,7 +98,7 @@ Of the 52 registered sources, 24 are stable, 20 are experimental, 4 need a free 
 ## Coming soon: Job Orchestrator for recruiters
 
 > [!NOTE]
-> In design for a future version. None of this is in 1.0.0, and the details may change before it ships.
+> In design for a future version. None of this is in the current release, and the details may change before it ships.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset=".github/assets/recruiters-en-dark.svg">
