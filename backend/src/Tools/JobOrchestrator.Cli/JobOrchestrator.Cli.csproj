@@ -4,8 +4,10 @@
     <AssemblyName>jo</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="../../Modules/Automation/JobOrchestrator.Automation.Contracts/JobOrchestrator.Automation.Contracts.csproj" />
     <ProjectReference Include="../../Modules/Intelligence/JobOrchestrator.Intelligence.Contracts/JobOrchestrator.Intelligence.Contracts.csproj" />
     <ProjectReference Include="../../Modules/Profile/JobOrchestrator.Profile.Contracts/JobOrchestrator.Profile.Contracts.csproj" />
+    <PackageReference Include="Parquet.Net" />
     <None Include="bench/fixtures.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

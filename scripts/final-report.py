@@ -35,7 +35,7 @@ out = [f"# Relatório final da especificação V2", "",
        f"Pendentes por credencial: {', '.join(s['id'] for s in src if s['state'] == 'CREDENTIALS_REQUIRED')}. Nunca chamadas: {', '.join(s['id'] for s in src if s['state'] in ('BLOCKED', 'PARTNER_ONLY'))}.", "",
        "## Quadros de empresa (catálogos importados)", "",
        f"`data/ats-board-catalog.json`: {boards['totals']['rows']} linhas de {len(boards['catalogs'])} catálogos, {boards['totals']['unique_boards']} quadros únicos "
-       f"({boards['totals']['in_both']} nos dois). Validação ao vivo de uma amostra de {boards['validation']['sampled']}: {boards['validation']['with_jobs']} com vaga, "
+       f"({boards['totals']['in_several']} em mais de um catálogo). Validação ao vivo de uma amostra de {boards['validation']['sampled']}: {boards['validation']['with_jobs']} com vaga, "
        f"{boards['validation']['empty']} vazios, {boards['validation']['not_found']} não encontrados. Quadro do catálogo é pista: entra na campanha só pelo Explorador.", "",
        "| Plataforma | Quadros |", "|---|---|", *[f"| {k} | {v} |" for k, v in boards["totals"]["by_platform"].items()], "",
        "## Vagas e elegibilidade de quem mora no Brasil", "",

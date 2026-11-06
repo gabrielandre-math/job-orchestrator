@@ -8,5 +8,6 @@
     <ProjectReference Include="../../src/Bootstrappers/JobOrchestrator.Api/JobOrchestrator.Api.csproj" />
     <ProjectReference Include="../../src/Bootstrappers/JobOrchestrator.Worker/JobOrchestrator.Worker.csproj" />
     <ProjectReference Include="../../src/Tools/JobOrchestrator.FakeAts/JobOrchestrator.FakeAts.csproj" />
+    <ProjectReference Include="../../src/Tools/JobOrchestrator.Cli/JobOrchestrator.Cli.csproj" />
   </ItemGroup>
 </Project>

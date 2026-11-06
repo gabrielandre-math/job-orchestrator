@@ -1,11 +1,16 @@
 import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
 import { Icon } from '@jo/ui/icon';
 import { HeroStat, PageHero } from '@jo/ui/page-hero';
+import { send } from '../../core/api';
+import { command } from '../../core/command';
 import { query } from '../../core/query';
 import { SOURCE_TABS, Tabs } from '../../shared/tabs';
 
 interface Country { iso2: string; iso3: string; name: string; continent: string; status: string; research: string; portals: number; apiCandidates: number; wapes: number; recordIds: string[]; platforms: string[]; pendingPlatforms: string[]; open: number; brazilOk: number; brazilPossible: number; restricted: number }
 interface Continent { code: string; name: string; countries: number; integrated: number; pending: number; jobsSeen: number; seeds: number; unresearched: number; open: number }
+interface HistoryTotals { total: number; unverified: number; open: number; closed: number; withSource: number; boards: number; boardsChecked: number; brazilFit: number; lastCheck: string | null }
+interface History { totals: HistoryTotals; snapshots: { snapshot: string; rows: number; importedAt: string }[]; openBoards: { source: string; open: number; total: number; checkedAt: string | null }[] }
+interface HistoryCheck { boards: number; checked: number; open: number; closed: number; failed: number }
 interface Coverage { at: string; totals: Record<string, number>; continents: Continent[]; countries: Country[]; globalPlatforms: string[]; unmatchedOpen: number }
 
 const STATUS: { key: string; label: string; hint: string }[] = [
@@ -41,6 +46,11 @@ export class CoveragePage {
   protected readonly filter = signal<string | null>(null);
   protected readonly search = signal('');
   protected readonly open = signal<string | null>(null);
+  /** Histórico importado (jo history import): tudo não conferido até a fonte ao vivo abrir ou fechar. */
+  protected readonly history = query<History>(() => '/history', 30000);
+  protected readonly checking = command(() => send<HistoryCheck>('POST', '/history/revalidate', { boards: 10 }),
+    (c) => c.boards === 0 ? 'Nada para conferir: o histórico está vazio ou já foi todo conferido.' : `${c.boards} quadros conferidos: ${c.open} abertas, ${c.closed} encerradas, ${c.failed} sem resposta.`);
+  protected async check() { await this.checking.run(undefined); await this.history.reload(); }
 
   protected readonly stats = computed<HeroStat[]>(() => {
     const t = this.data.value()?.totals ?? {};

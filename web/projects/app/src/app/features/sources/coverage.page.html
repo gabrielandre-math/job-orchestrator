@@ -15,6 +15,38 @@
       <p class="globals faint small">Fontes globais ou regionais ativas, que cobrem qualquer país só onde as empresas anunciam: {{ d.globalPlatforms.join(', ') }}.</p>
     </section>
 
+    @if (history.value(); as h) {
+      <section class="panel history">
+        <header><h2>Histórico importado</h2>
+          @if (h.totals.total > 0) {
+            <button type="button" class="btn" (click)="check()" [disabled]="checking.running()"><jo-icon name="arrows-clockwise" [size]="14" />{{ checking.running() ? 'Conferindo nos quadros…' : 'Conferir 10 quadros agora' }}</button>
+          }
+        </header>
+        @if (h.totals.total === 0) {
+          <p class="hint">Nenhum histórico importado. Um export antigo (o do Open Jobs, CC0, ou outro CSV ou Parquet no mesmo formato) entra por <span class="mono">jo history import &lt;arquivo, pasta ou .tar&gt;</span>, em streaming e só com as vagas da sua área. Nada entra aberto: a vaga do arquivo só abre quando o quadro ao vivo a lista hoje.</p>
+        } @else {
+          <dl class="totals">
+            <div><dt>Vagas no histórico</dt><dd class="num">{{ h.totals.total }}</dd></div>
+            <div><dt>Não conferidas</dt><dd class="num">{{ h.totals.unverified }}</dd></div>
+            <div><dt>Abertas ao vivo</dt><dd class="num ok">{{ h.totals.open }}</dd></div>
+            <div><dt>Encerradas</dt><dd class="num">{{ h.totals.closed }}</dd></div>
+            <div><dt>Quadros que o app lê</dt><dd class="num">{{ h.totals.boards }}</dd></div>
+            <div><dt>Quadros já conferidos</dt><dd class="num">{{ h.totals.boardsChecked }}</dd></div>
+            <div><dt>Que quem mora no Brasil pode disputar</dt><dd class="num">{{ h.totals.brazilFit }}</dd></div>
+          </dl>
+          <p class="globals faint small">
+            @for (x of h.snapshots; track x.snapshot) { <span class="mono">{{ x.snapshot }}</span> ({{ x.rows }} vagas){{ $last ? '.' : ', ' }} }
+            Vaga do arquivo não entra na fila: o quadro com vaga aberta conferida vira pista do Explorador, que confere alguns por ciclo e traz a vaga pela porta oficial.
+          </p>
+          @if (h.openBoards.length > 0) {
+            <ul class="boards">
+              @for (b of h.openBoards; track b.source) { <li><span class="mono">{{ b.source }}</span><span class="num faint">{{ b.open }} de {{ b.total }} abertas</span></li> }
+            </ul>
+          }
+        }
+      </section>
+    }
+
     <section class="panel">
       <header><h2>Por continente</h2>
         <span class="legend">@for (s of status; track s.key) { <span class="key"><span [class]="'sw ' + s.key"></span>{{ s.label }}</span> }</span>

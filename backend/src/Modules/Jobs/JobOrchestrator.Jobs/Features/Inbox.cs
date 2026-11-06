@@ -95,7 +95,7 @@ internal sealed class JobEndpoints : ICarterModule
 }
 
 /// <summary>O que o módulo mostra aos outros.</summary>
-internal sealed class JobsApi(IReadDb<JobsDbContext> db) : IJobsApi
+internal sealed class JobsApi(IReadDb<JobsDbContext> db, ISender sender) : IJobsApi
 {
     private const string Sql = """
         select count(*)::int as total,
@@ -150,6 +150,16 @@ internal sealed class JobsApi(IReadDb<JobsDbContext> db) : IJobsApi
 
     public Task<IReadOnlyList<string>> CompanyDomainsAsync(int limit, CancellationToken ct) => db.ListAsync<string>(
         "select company_domain from (select company_domain, count(*) as n from jobs.postings where company_domain is not null and status <> 'Duplicate' group by company_domain) t order by n desc limit @limit", new { limit }, ct);
+
+    public async Task<HistoryCheck> RevalidateHistoryAsync(int boards, CancellationToken ct) =>
+        (await sender.Send(new RevalidateHistoryCommand(boards), ct)).Value ?? new HistoryCheck(0, 0, 0, 0, 0);
+
+    public Task<IReadOnlyList<HistoryLead>> HistoryLeadsAsync(int limit, CancellationToken ct) => db.ListAsync<HistoryLead>(
+        $"""
+        select source, count(*)::int as open from jobs.history
+        where status = '{HistoricalPosting.Open}' and source is not null and eligibility in ('BR_ELIGIBLE_CONFIRMED', 'BR_ELIGIBLE_POSSIBLE', 'RELOCATION_WITH_SPONSORSHIP')
+        group by source order by open desc limit @limit
+        """, new { limit }, ct);
 
     public Task<IReadOnlyList<SourceCount>> SourcesAsync(CancellationToken ct) => db.ListAsync<SourceCount>(
         "select source, count(*)::int as postings, count(*) filter (where status = 'Shortlisted')::int as shortlisted from jobs.postings group by source order by source",

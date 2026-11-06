@@ -8,6 +8,7 @@ internal sealed class JobsDbContext(DbContextOptions<JobsDbContext> options) : D
     public DbSet<OutboxMessage> Outbox => Set<OutboxMessage>();
     public DbSet<JobPosting> Postings => Set<JobPosting>();
     public DbSet<JobSnapshot> Snapshots => Set<JobSnapshot>();
+    public DbSet<HistoricalPosting> History => Set<HistoricalPosting>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -51,6 +52,28 @@ internal sealed class JobsDbContext(DbContextOptions<JobsDbContext> options) : D
             e.Property(x => x.PayloadHash).HasMaxLength(64);
             e.Property(x => x.Payload).HasColumnType("jsonb");
             e.HasIndex(x => new { x.JobId, x.FetchedAt });
+        });
+        b.Entity<HistoricalPosting>(e =>
+        {
+            e.ToTable("history");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Snapshot).HasMaxLength(60);
+            e.Property(x => x.Ats).HasMaxLength(40);
+            e.Property(x => x.Board).HasMaxLength(200);
+            e.Property(x => x.ExternalId).HasMaxLength(200);
+            e.Property(x => x.Source).HasMaxLength(300);
+            e.Property(x => x.Title).HasMaxLength(300);
+            e.Property(x => x.Company).HasMaxLength(200);
+            e.Property(x => x.Location).HasMaxLength(300);
+            e.Property(x => x.Url).HasMaxLength(1000);
+            e.Property(x => x.RemoteScope).HasMaxLength(120);
+            e.Property(x => x.Arrangement).HasMaxLength(20);
+            e.Property(x => x.Eligibility).HasMaxLength(32);
+            e.Property(x => x.EligibilityEvidence).HasMaxLength(320);
+            e.Property(x => x.Status).HasMaxLength(12);
+            e.Property(x => x.Note).HasMaxLength(300);
+            e.HasIndex(x => new { x.Snapshot, x.Ats, x.Board, x.ExternalId }).IsUnique();
+            e.HasIndex(x => new { x.Status, x.Source });
         });
     }
 

@@ -32,7 +32,7 @@ internal sealed class Explorer(IServiceScopeFactory scopes, [FromKeyedServices("
     public static string PrintFile => Path.Combine(Folder, "campaign.txt");
 
     /// <summary>Listas de empresas lidas pelo Explorador (README no GitHub), relidas a cada 7 dias. Explorer:Lists troca a lista.</summary>
-    internal static readonly string[] DefaultLists = ["catalog:job-board-directory", "catalog:lastroundai", "lerrua/remote-jobs-brazil", "sitemap:pandape", "poteto/hiring-without-whiteboards", "yanirs/established-remote", "remoteintech/remote-jobs"];
+    internal static readonly string[] DefaultLists = ["catalog:job-board-directory", "catalog:lastroundai", "catalog:openjobs", "lerrua/remote-jobs-brazil", "sitemap:pandape", "poteto/hiring-without-whiteboards", "yanirs/established-remote", "remoteintech/remote-jobs"];
     /// <summary>Quadros de vagas brasileiros que o robots.txt deixa ler (o coletor lê o dado estruturado e o navegador o que monta com JavaScript).
     /// Entram como pistas para qualquer currículo; o juiz decide pela área de cada pessoa.</summary>
     internal static readonly string[] Boards =
@@ -130,6 +130,16 @@ internal sealed class Explorer(IServiceScopeFactory scopes, [FromKeyedServices("
         var queries = new[] { "vaga in:title", "vagas in:title" }.Concat(campaign.Technologies.Take(2).Select(t => $"\"{t}\" vaga")).ToList();
         try { foreach (var l in await automation.JobReposAsync(queries[turn % queries.Count], ct)) Lead(l.Source, l.Origin, "repositórios do GitHub"); }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException) { log.LogInformation("GitHub search skipped: {Error}", ex.Message); }
+        // 4b. Histórico importado (jo history import): alguns quadros por ciclo conferidos com a fonte ao vivo; quadro com vaga aberta
+        // conferida e que quem mora no Brasil pode disputar vira pista, e o teste abaixo decide se entra na campanha.
+        try
+        {
+            var check = await jobs.RevalidateHistoryAsync(config.GetValue("Explorer:HistoryBoardsPerCycle", 3), ct);
+            if (check.Boards > 0) log.LogInformation("History check: {Boards} boards, {Open} open, {Closed} closed, {Failed} unchecked", check.Boards, check.Open, check.Closed, check.Failed);
+            foreach (var h in await jobs.HistoryLeadsAsync(200, ct))
+                Lead(h.Source, $"histórico importado: {h.Open} {(h.Open == 1 ? "vaga aberta conferida" : "vagas abertas conferidas")} ao vivo", "histórico importado");
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException) { log.LogInformation("History check skipped: {Error}", ex.Message); }
         // 5. Listas de empresas: uma por ciclo, relida a cada 7 dias.
         var lists = Read<Dictionary<string, DateTime>>(ListsFile) ?? [];
         var due = (config.GetSection("Explorer:Lists").Get<string[]>() is { Length: > 0 } custom ? custom : DefaultLists)

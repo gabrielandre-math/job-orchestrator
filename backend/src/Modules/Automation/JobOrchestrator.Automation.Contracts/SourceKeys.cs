@@ -17,7 +17,25 @@ public static class SourceKeys
         return null;
     }
 
-    private static readonly HashSet<string> Reserved = ["embed", "jobs", "www", "api", "attachments", "suporte-candidatos", "login", "portal", "help", "blog", "static", "cdn", "assets", "app", "candidates", "talentos", "j", "apply", "resources", "career", "careers", "support", "docs", "files", "_nuxt", "wday"];
+    /// <summary>
+    /// A fonte do app para um quadro do Open Jobs (o par ats e slug do export e do slugs.json deles). ATS que o app não lê, e Workday e
+    /// Oracle (o Open Jobs guarda só o host, sem o nome do site), ficam sem fonte.
+    /// </summary>
+    public static string? OpenJobs(string ats, string slug) => slug.Length == 0 || slug.Contains('/') ? null : Board(ats switch
+    {
+        "ashby" => $"https://jobs.ashbyhq.com/{slug}",
+        "greenhouse" => $"https://boards.greenhouse.io/{slug}",
+        "lever" => $"https://jobs.lever.co/{slug}",
+        "workable" => $"https://apply.workable.com/{slug}",
+        "recruitee" => $"https://{slug}.recruitee.com",
+        "personio" => $"https://{slug}.jobs.personio.de",
+        "smartrecruiters" => $"https://jobs.smartrecruiters.com/{slug}",
+        "teamtailor" => $"https://{slug}",
+        "breezy" => $"https://{slug}.breezy.hr",
+        _ => "",
+    });
+
+    private static readonly HashSet<string> Reserved =["embed", "jobs", "www", "api", "attachments", "suporte-candidatos", "login", "portal", "help", "blog", "static", "cdn", "assets", "app", "candidates", "talentos", "j", "apply", "resources", "career", "careers", "support", "docs", "files", "_nuxt", "wday"];
     private static readonly (Regex, string)[] Boards =
     [
         (new(@"(?:boards|job-boards)(?:\.eu)?\.greenhouse\.io/(?:embed/job_board\?for=)?([A-Za-z0-9_-]+)", RegexOptions.IgnoreCase), "greenhouse"),

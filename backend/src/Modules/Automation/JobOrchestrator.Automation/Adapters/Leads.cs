@@ -67,6 +67,7 @@ internal sealed partial class Leads(IHttpClientFactory http, ScrapyRunner runner
     {
         if (platform == "job-board-directory") return await BoardDirectoryAsync(ct);
         if (platform == "lastroundai") return await LastRoundAsync(ct);
+        if (platform == "openjobs") return await OpenJobsAsync(ct);
         if (platform != "pandape") return [];
         // O sitemap que o robots.txt do Pandapé indica: um índice .gz de pedaços .gz com as vagas abertas de todas as empresas.
         var index = await GunzipAsync("https://www.pandape.com.br/pandapeindexofertas.xml.gz", ct);
@@ -108,6 +109,24 @@ internal sealed partial class Leads(IHttpClientFactory http, ScrapyRunner runner
             leads.Add(new SourceLead($"{c[0]}:{c[2].ToLowerInvariant()}", $"diretório LastRoundAI, CC BY 4.0 ({c[1]})"));
         }
         return [.. leads.DistinctBy(l => l.Source).Take(4000)];
+    }
+
+    /// <summary>
+    /// Quadros que a frota do Open Jobs (CC0, github.com/elliottdehn/open-jobs) lia com sucesso na última lista publicada, por ATS. O
+    /// projeto parou em 10/10/2026: a lista é histórica, e cada quadro só entra na campanha depois do teste ao vivo do Explorador. Cada
+    /// leitura semanal traz uma fatia diferente de 4 mil, para a fila não ficar só com esta lista.
+    /// </summary>
+    private async Task<IReadOnlyList<SourceLead>> OpenJobsAsync(CancellationToken ct)
+    {
+        await using var stream = await Client.GetStreamAsync("https://raw.githubusercontent.com/elliottdehn/open-jobs/main/slugs.json", ct);
+        using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
+        var at = doc.RootElement.Str("generated_at");
+        var week = ISOWeek.GetWeekOfYear(DateTime.UtcNow);
+        var leads = new List<SourceLead>();
+        foreach (var ats in doc.RootElement.GetProperty("ats").EnumerateObject())
+            foreach (var slug in ats.Value.EnumerateArray())
+                if (SourceKeys.OpenJobs(ats.Name, slug.GetString() ?? "") is { } key) leads.Add(new SourceLead(key, $"lista Open Jobs, CC0 (quadro lido pela frota deles em {at})"));
+        return [.. leads.DistinctBy(l => l.Source, StringComparer.OrdinalIgnoreCase).OrderBy(l => unchecked(l.Source.Aggregate(week, (h, c) => h * 31 + c))).Take(4000)];
     }
 
     /// <summary>Uma linha de CSV com aspas (nomes de empresa com vírgula vêm entre aspas, e aspas dobradas dentro delas).</summary>

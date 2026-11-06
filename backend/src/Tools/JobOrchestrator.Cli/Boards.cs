@@ -2,9 +2,11 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using JobOrchestrator.Automation.Contracts;
 
 /// <summary>
-/// jo sources boards: importa os catálogos públicos de quadros de ATS (job-board-directory e LastRound AI), converte cada linha para a fonte
+/// jo sources boards: importa os catálogos públicos de quadros de ATS (job-board-directory, LastRound AI e a lista de quadros vivos do
+/// Open Jobs), converte cada linha para a fonte
 /// do app (greenhouse:token, lever:eu/slug, workday:host/site...), deduplica, guarda de onde veio e a licença, valida uma amostra de verdade
 /// pela API do app e grava data/ats-board-catalog.json. Quadro do catálogo é pista: entra na campanha só pelo Explorador, depois de testado.
 /// </summary>
@@ -19,6 +21,8 @@ internal static class Boards
             "sem licença declarada no GitHub (conferido em 05/11/2026): pista de uso pessoal, não redistribuir", "github.com/kalebconfer-sys/job-board-directory"),
         new("lastroundai", "https://raw.githubusercontent.com/fyrosofttech/lastroundai-hiring-data/main/ats-directory/lastroundai-ats-company-directory-2026-08.csv",
             "CC BY 4.0", "LastRound AI hiring data (lastroundai.com/blog/salary-transparency-study-2026)"),
+        new("openjobs", "https://raw.githubusercontent.com/elliottdehn/open-jobs/main/slugs.json",
+            "CC0 1.0 (projeto encerrado em 10/10/2026; lista histórica)", "Open Jobs, de Elliott Dehn (github.com/elliottdehn/open-jobs)"),
     ];
 
     public static async Task<int> ImportAsync(string api, string output, int sample)
@@ -29,6 +33,22 @@ internal static class Boards
         var rows = new Dictionary<string, int>();
         foreach (var c in Catalogs)
         {
+            if (c.Id == "openjobs")
+            {
+                // JSON com os quadros que a frota deles lia com sucesso, por ATS; Workday e Oracle vêm sem o nome do site e ficam de fora.
+                using var list = JsonDocument.Parse(await http.GetStringAsync(c.Url));
+                var at = list.RootElement.GetProperty("generated_at").GetString();
+                foreach (var ats in list.RootElement.GetProperty("ats").EnumerateObject())
+                    foreach (var slug in ats.Value.EnumerateArray().Select(s => s.GetString() ?? ""))
+                    {
+                        rows[c.Id] = rows.GetValueOrDefault(c.Id) + 1;
+                        if (SourceKeys.OpenJobs(ats.Name, slug) is not { } key) continue;
+                        if (!boards.TryGetValue(key, out var o)) boards[key] = o = new Board { Source = key, Platform = ats.Name };
+                        o.Seen ??= at;
+                        o.From.Add(c.Id);
+                    }
+                continue;
+            }
             var lines = (await http.GetStringAsync(c.Url)).Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             var head = Split(lines[0]);
             int Col(string n) => Array.IndexOf(head, n);
@@ -74,7 +94,7 @@ internal static class Boards
             ["catalogs"] = new JsonArray([.. Catalogs.Select(c => (JsonNode)new JsonObject { ["id"] = c.Id, ["url"] = c.Url, ["license"] = c.License, ["credit"] = c.Credit, ["rows"] = rows.GetValueOrDefault(c.Id) })]),
             ["totals"] = new JsonObject
             {
-                ["rows"] = rows.Values.Sum(), ["unique_boards"] = boards.Count, ["in_both"] = boards.Values.Count(b => b.From.Count > 1),
+                ["rows"] = rows.Values.Sum(), ["unique_boards"] = boards.Count, ["in_several"] = boards.Values.Count(b => b.From.Count > 1),
                 ["by_platform"] = new JsonObject([.. boards.Values.GroupBy(b => b.Platform).OrderByDescending(g => g.Count()).Select(g => new KeyValuePair<string, JsonNode?>(g.Key, g.Count()))]),
             },
             ["validation"] = new JsonObject { ["sampled"] = checks.Count, ["with_jobs"] = ok, ["empty"] = empty, ["not_found"] = notFound, ["failed"] = checks.Count - ok - empty, ["at"] = DateTime.UtcNow.ToString("O") },
@@ -88,7 +108,7 @@ internal static class Boards
             })]),
         };
         await File.WriteAllTextAsync(output, doc.ToJsonString(new JsonSerializerOptions { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping }) + "\n");
-        Console.WriteLine($"{rows.Values.Sum()} linhas, {boards.Count} quadros únicos ({boards.Values.Count(b => b.From.Count > 1)} nos dois catálogos); amostra de {checks.Count}: {ok} com vaga, {empty} vazios, {notFound} não encontrados. Escrito: {output}");
+        Console.WriteLine($"{rows.Values.Sum()} linhas, {boards.Count} quadros únicos ({boards.Values.Count(b => b.From.Count > 1)} em mais de um catálogo); amostra de {checks.Count}: {ok} com vaga, {empty} vazios, {notFound} não encontrados. Escrito: {output}");
         return 0;
     }
 

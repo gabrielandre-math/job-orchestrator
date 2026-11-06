@@ -74,6 +74,12 @@ public sealed record OpenSummary
     public int WithDate { get; init; }
 }
 
+/// <summary>Uma conferência do histórico importado com as fontes ao vivo: quantos quadros, quantas vagas abriram, fecharam ou ficaram sem resposta.</summary>
+public sealed record HistoryCheck(int Boards, int Checked, int Open, int Closed, int Failed);
+
+/// <summary>Quadro do histórico com vaga aberta conferida ao vivo e que quem mora no Brasil pode disputar: pista para o Explorador.</summary>
+public sealed record HistoryLead(string Source, int Open);
+
 /// <summary>Contrato público do módulo Jobs.</summary>
 public interface IJobsApi
 {
@@ -87,4 +93,7 @@ public interface IJobsApi
     /// <summary>Links de candidatura e domínios de empresa das vagas recentes: onde o Explorador garimpa quadros de ATS e sites de carreira.</summary>
     Task<IReadOnlyList<string>> ApplyLinksAsync(int limit, CancellationToken ct);
     Task<IReadOnlyList<string>> CompanyDomainsAsync(int limit, CancellationToken ct);
+    /// <summary>Confere até N quadros do histórico importado com a fonte ao vivo (portão de permissão incluído): abre só o que o quadro lista hoje.</summary>
+    Task<HistoryCheck> RevalidateHistoryAsync(int boards, CancellationToken ct);
+    Task<IReadOnlyList<HistoryLead>> HistoryLeadsAsync(int limit, CancellationToken ct);
 }
