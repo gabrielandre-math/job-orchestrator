@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Job Orchestrator: find jobs using your own GPU</title>
+  <meta name="description" content="Self-hosted job search with a local AI model. It finds openings, scores them against your CV, writes a résumé per job from your own facts and applies only with your OK.">
+  <meta name="theme-color" content="#141414">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Job Orchestrator: find jobs using your own GPU">
+  <meta property="og:description" content="Self-hosted job search with a local AI model. Everything runs on your computer, and your data stays there.">
+  <meta property="og:image" content="https://gabrielandre-math.github.io/job-orchestrator/assets/og.png">
+  <meta property="og:url" content="https://gabrielandre-math.github.io/job-orchestrator/">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="preload" href="fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/jetbrains-mono-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <script>
+    try {
+      const t = localStorage.getItem('jo.site.theme');
+      document.documentElement.dataset.theme = t || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+    } catch { document.documentElement.dataset.theme = 'dark'; }
+  </script>
+  <link rel="stylesheet" href="css/site.css">
+</head>
+<body>
+  <a class="skip" href="#main" data-i18n="skip">Skip to content</a>
+
+  <header class="nav" id="nav">
+    <div class="nav-in">
+      <a class="brand" href="#top" aria-label="Job Orchestrator">
+        <svg viewBox="0 0 256 256" aria-hidden="true"><path d="M 180 0 C 221.974 0 256 34.026 256 76 L 256 256 L 208 256 L 208 76 C 208 60.536 195.464 48 180 48 C 164.536 48 152 60.536 152 76 L 152 180 C 152 221.974 117.974 256 76 256 C 34.026 256 0 221.974 0 180 L 0 0 L 48 0 L 48 180 C 48 195.464 60.536 208 76 208 C 91.464 208 104 195.464 104 180 L 104 76 C 104 34.026 138.026 0 180 0 Z"/></svg>
+        <span>Job Orchestrator</span>
+      </a>
+      <nav class="links" aria-label="Sections">
+        <a href="#how" data-i18n="nav.how">How it works</a>
+        <a href="#self-hosted" data-i18n="nav.self">Self-hosted</a>
+        <a href="#recruiters"><span data-i18n="nav.recruiters">Recruiters</span> <em data-i18n="soon.short">soon</em></a>
+        <a href="#download" data-i18n="nav.download">Download</a>
+      </nav>
+      <div class="tools">
+        <button class="tool" id="lang" type="button" aria-label="Português">PT</button>
+        <button class="tool" id="theme" type="button" aria-label="Switch theme">
+          <svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+          <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/></svg>
+        </button>
+        <a class="btn ghost sm" href="https://github.com/gabrielandre-math/job-orchestrator">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.71 1.26 3.37.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.42-2.69 5.39-5.26 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5Z"/></svg>
+          <span>GitHub</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" class="frame">
+    <section class="hero" id="top">
+      <div class="hero-copy">
+        <h1 class="h1"><span data-i18n="hero.l1">Find jobs using</span><br><span class="accent" data-i18n="hero.l2">your own GPU.</span></h1>
+        <p class="lead" data-i18n="hero.lead">A local app that reads job boards and career pages, scores every opening against your CV with a model on your GPU and prepares each application for you to approve.</p>
+        <div class="cta">
+          <a class="btn primary" id="hero-download" href="#download">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 19h16"/></svg>
+            <span data-i18n="hero.download">Download</span><small id="hero-size"></small>
+          </a>
+          <a class="textlink" href="https://github.com/gabrielandre-math/job-orchestrator" data-i18n="hero.github">Source on GitHub</a>
+        </div>
+        <p class="hero-meta" data-i18n="hero.meta">Version 1.0.0 for Linux, macOS and Windows. Free for personal use.</p>
+      </div>
+      <figure class="hero-art">
+        <div id="hero-art" aria-hidden="true"></div>
+        <figcaption data-i18n="hero.run">Counts from a real run on the author's machine.</figcaption>
+      </figure>
+    </section>
+
+    <section class="pillars" aria-label="Highlights">
+      <div class="pillar">
+        <h3 data-i18n="p1.t">Local model first</h3>
+        <p data-i18n="p1.d">Reading your CV, scoring jobs and drafting text run on Ollama, on your GPU when the machine has one.</p>
+      </div>
+      <div class="pillar">
+        <h3 data-i18n="p2.t">Your data stays home</h3>
+        <p data-i18n="p2.d">CV, profile, résumés and history live in your user folder. The panel only listens on 127.0.0.1.</p>
+      </div>
+      <div class="pillar">
+        <h3 data-i18n="p3.t">Nothing goes out without you</h3>
+        <p data-i18n="p3.d">Every application waits for your approval or an authorization you set, with a daily cap and a time window.</p>
+      </div>
+    </section>
+
+    <section class="shot-sec" aria-label="Product">
+      <div class="shot-wrap">
+        <figure class="shot">
+          <img class="t-dark" src="assets/screen-jobs-dark.webp" width="1440" height="900" alt="The Jobs screen: open jobs, the funnel from found to queued, jobs per source, score distribution and the tools employers ask for most." data-i18n-alt="shot.alt">
+          <img class="t-light" src="assets/screen-jobs-light.webp" width="1440" height="900" alt="The Jobs screen: open jobs, the funnel from found to queued, jobs per source, score distribution and the tools employers ask for most." data-i18n-alt="shot.alt" loading="lazy">
+        </figure>
+      </div>
+      <dl class="stats">
+        <div><dt data-i18n="s1">registered job sources</dt><dd data-count="52">52</dd></div>
+        <div><dt data-i18n="s2">company job boards in the catalog</dt><dd data-count="34880">34,880</dd></div>
+        <div><dt data-i18n="s3">countries and territories mapped</dt><dd data-count="249">249</dd></div>
+        <div><dt data-i18n="s4">accounts, servers or trackers</dt><dd>0</dd></div>
+      </dl>
+    </section>
+
+    <section class="section how" id="how">
+      <div class="how-pin">
+        <div class="how-copy">
+          <p class="eyebrow" data-i18n="how.e">How it works</p>
+          <h2 class="h2" data-i18n="how.t">From a job board to your inbox, one station at a time.</h2>
+          <ol class="steps">
+            <li class="step" data-station="radar">
+              <div class="step-mini" aria-hidden="true"></div>
+              <span class="step-n">01</span>
+              <div><h3 data-i18n="st1.t">Find</h3><p data-i18n="st1.d">The Scout checks 52 sources through their official APIs or public pages, from career sites on Greenhouse, Lever, Ashby and Workday to Gupy, public employment services and the job alerts in your inbox. Every 10 minutes the Explorer looks for new sources from your CV.</p></div>
+            </li>
+            <li class="step" data-station="chart">
+              <div class="step-mini" aria-hidden="true"></div>
+              <span class="step-n">02</span>
+              <div><h3 data-i18n="st2.t">Sort</h3><p data-i18n="st2.d">Duplicates across boards become one job, openings restricted to countries where you cannot work leave the queue, and each remaining job gets a score from 0 to 100 with the reasons written out.</p></div>
+            </li>
+            <li class="step" data-station="writer">
+              <div class="step-mini" aria-hidden="true"></div>
+              <span class="step-n">03</span>
+              <div><h3 data-i18n="st3.t">Write</h3><p data-i18n="st3.d">The Writer builds a résumé for each job from facts found in your CV, your LinkedIn export and your profile. A checker ties every line to its source, a reviewer from another model family reads it again, and an ATS inspector parses the final PDF.</p></div>
+            </li>
+            <li class="step" data-station="guardian">
+              <div class="step-mini" aria-hidden="true"></div>
+              <span class="step-n">04</span>
+              <div><h3 data-i18n="st4.t">Apply, with your OK</h3><p data-i18n="st4.d">Forms are filled in a real browser, with a rehearsal that stops before the submit button. Nothing goes out without your approval or an authorization you set, and CAPTCHAs and logins are handed to you.</p></div>
+            </li>
+            <li class="step" data-station="inbox">
+              <div class="step-mini" aria-hidden="true"></div>
+              <span class="step-n">05</span>
+              <div><h3 data-i18n="st5.t">Follow up</h3><p data-i18n="st5.d">With read-only access to Gmail, replies move each application along the funnel. Every application keeps an append-only history and a proof of submission.</p></div>
+            </li>
+          </ol>
+        </div>
+        <div class="how-stage" aria-hidden="true">
+          <div class="stage-glow"></div>
+          <div class="stage-art" id="stage-art"></div>
+          <div class="stage-meta"><span class="stage-n">01</span><span class="stage-name" id="stage-name">Scout</span></div>
+          <div class="stage-bar"><i></i></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section self" id="self-hosted">
+      <div class="self-copy">
+        <p class="eyebrow" data-i18n="self.e">Self-hosted</p>
+        <h2 class="h2"><span data-i18n="self.t1">Everything on one machine.</span> <span class="accent" data-i18n="self.t2">Yours.</span></h2>
+        <p class="lead sm" data-i18n="self.lead">The app, its database, the browser automation, the scraper and the AI model run on your computer. There is no Job Orchestrator account, server or subscription.</p>
+        <ul class="facts">
+          <li data-i18n="self.b1">A private PostgreSQL that the installer downloads, about 60 MB, with no Docker needed.</li>
+          <li data-i18n-html="self.b2">Your data lives in <code>~/.local/share/job-orchestrator</code>, <code>~/Library/Application Support/JobOrchestrator</code> or <code>%LOCALAPPDATA%\JobOrchestrator</code>.</li>
+          <li data-i18n="self.b3">API keys go to the system keyring, never to a file.</li>
+          <li data-i18n="self.b4">Claude Code or the Codex CLI can help with the heavier writing, with a reserve that protects the quota you need for your own work.</li>
+          <li data-i18n="self.b5">No telemetry. What leaves the computer is what a source needs to answer and the applications you approve.</li>
+        </ul>
+      </div>
+      <div class="self-art" id="machine-art" aria-hidden="true"></div>
+    </section>
+
+    <section class="section rules" id="rules">
+      <p class="eyebrow" data-i18n="rules.e">Plays by the rules</p>
+      <h2 class="h2"><span data-i18n="rules.t1">Fast where it is allowed.</span><br><span class="dim" data-i18n="rules.t2">Off where it is not.</span></h2>
+      <div class="rule-grid">
+        <div class="rule"><h3 data-i18n="r1.t">LinkedIn is never automated</h3><p data-i18n="r1.d">Its terms forbid it. Import your LinkedIn data export instead, and save LinkedIn jobs by link.</p></div>
+        <div class="rule"><h3 data-i18n="r2.t">No CAPTCHA solvers, no stealth</h3><p data-i18n="r2.d">When a site blocks automated access, that source is skipped.</p></div>
+        <div class="rule"><h3 data-i18n="r3.t">Polite collection</h3><p data-i18n="r3.d">The scraper follows robots.txt, waits between requests and opens one connection per site.</p></div>
+        <div class="rule"><h3 data-i18n="r4.t">Terms on record</h3><p data-i18n="r4.d">Sources whose terms do not allow this use stay registered as blocked or partner-only, with the reason in view.</p></div>
+      </div>
+      <div class="registry">
+        <div class="registry-head"><span data-i18n="reg.t">The 52 registered sources</span><span class="mono dim" data-i18n="reg.n">source registry, v1.0.0</span></div>
+        <div class="bar" role="img" aria-label="24 stable, 20 experimental, 4 need your API key, 2 partner-only, 2 blocked">
+          <i style="--w:24" class="ok"></i><i style="--w:20" class="acc"></i><i style="--w:4" class="warn"></i><i style="--w:2" class="mute"></i><i style="--w:2" class="err"></i>
+        </div>
+        <ul class="legend">
+          <li><i class="ok"></i><b>24</b> <span data-i18n="reg.ok">stable</span></li>
+          <li><i class="acc"></i><b>20</b> <span data-i18n="reg.exp">experimental</span></li>
+          <li><i class="warn"></i><b>4</b> <span data-i18n="reg.key">need your free API key</span></li>
+          <li><i class="mute"></i><b>2</b> <span data-i18n="reg.partner">partner-only</span></li>
+          <li><i class="err"></i><b>2</b> <span data-i18n="reg.blocked">blocked</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="section screens" id="screens">
+      <p class="eyebrow" data-i18n="scr.e">A closer look</p>
+      <h2 class="h2" data-i18n="scr.t">Built to be read at a glance.</h2>
+      <div class="tabs" role="tablist" aria-label="Screens">
+        <button role="tab" aria-selected="true" data-tab="jobs" data-i18n="scr.jobs">Jobs</button>
+        <button role="tab" aria-selected="false" data-tab="live-map" data-i18n="scr.map">Live map</button>
+        <button role="tab" aria-selected="false" data-tab="coverage" data-i18n="scr.cov">Coverage</button>
+      </div>
+      <figure class="screen-stage">
+        <div class="screen on" data-screen="jobs">
+          <img class="t-dark" src="assets/screen-jobs-dark.webp" width="1440" height="900" loading="lazy" alt="">
+          <img class="t-light" src="assets/screen-jobs-light.webp" width="1440" height="900" loading="lazy" alt="">
+        </div>
+        <div class="screen" data-screen="live-map">
+          <img class="t-dark" src="assets/screen-live-map-dark.webp" width="1440" height="900" loading="lazy" alt="">
+          <img class="t-light" src="assets/screen-live-map-light.webp" width="1440" height="900" loading="lazy" alt="">
+        </div>
+        <div class="screen" data-screen="coverage">
+          <img class="t-dark" src="assets/screen-coverage-dark.webp" width="1440" height="900" loading="lazy" alt="">
+          <img class="t-light" src="assets/screen-coverage-light.webp" width="1440" height="900" loading="lazy" alt="">
+        </div>
+      </figure>
+      <figcaption class="screen-cap">
+        <p data-cap="jobs" class="on" data-i18n="cap.jobs">Open jobs, the funnel from found to queued, jobs per source and the tools employers ask for most.</p>
+        <p data-cap="live-map" data-i18n="cap.map">Every agent and what passes between them, updated while the search runs.</p>
+        <p data-cap="coverage" data-i18n="cap.cov">249 countries and territories: where a source works, where jobs show up and what is still unchecked.</p>
+        <p class="dim sm" data-i18n="scr.note">The interface is in Brazilian Portuguese. Résumés and answers come out in Portuguese for jobs in Brazil and in English everywhere else.</p>
+      </figcaption>
+    </section>
+
+    <section class="section recruiters" id="recruiters">
+      <div class="soon">
+        <span class="soon-icon" id="build-icon" aria-hidden="true"></span>
+        <span class="badge" data-i18n="soon.badge">Coming soon</span>
+      </div>
+      <h2 class="h2 xl"><span>Job Orchestrator</span><br><span class="accent" data-i18n="rec.t2">for recruiters.</span></h2>
+      <p class="lead" data-i18n="rec.lead">Recruiters will publish jobs straight on the platform and use the people registered on it as their talent base, under the same rules. Each person will decide whether to be found, by which companies and with how much detail.</p>
+      <p class="slogan" data-i18n="rec.slogan">Hire with everyone's GPU. See only who said yes.</p>
+      <div class="net-art" id="net-art" aria-hidden="true"></div>
+      <p class="net-cap dim" data-i18n="rec.cap">One call goes out. Every machine it reaches checks the job against its owner's profile on its own GPU, and only the people who say yes become visible.</p>
+      <div class="rec-grid">
+        <article><span class="ico" data-icon="form"></span><h3 data-i18n="f1.t">Direct jobs</h3><p data-i18n="f1.d">Written from a few lines or a voice note, checked against what the law forbids in job ads and published on the company's own domain.</p></article>
+        <article><span class="ico" data-icon="router"></span><h3 data-i18n="f2.t">One call, thousands of GPUs</h3><p data-i18n="f2.d">Each candidate's machine scores the call with its own model. No central database to leak, sell or train on.</p></article>
+        <article><span class="ico" data-icon="queue"></span><h3 data-i18n="f3.t">A talent base by opt-in</h3><p data-i18n="f3.d">People turn on open to offers and choose which companies see them and how much.</p></article>
+        <article><span class="ico" data-icon="identity"></span><h3 data-i18n="f4.t">Yes, by choice</h3><p data-i18n="f4.d">Nothing leaves the candidate's machine before a yes, not even a seen.</p></article>
+        <article><span class="ico" data-icon="gate"></span><h3 data-i18n="f5.t">Evidence, not a score</h3><p data-i18n="f5.d">Requirement by requirement, in blind mode first, and a person makes every rejection.</p></article>
+        <article><span class="ico" data-icon="you"></span><h3 data-i18n="f6.t">Agents that talk in the open</h3><p data-i18n="f6.d">Interview times and standard answers worked out by the two apps, live on both screens.</p></article>
+        <article><span class="ico" data-icon="receipt"></span><h3 data-i18n="f7.t">A receipt and an answer</h3><p data-i18n="f7.d">Signed receipts, an answer deadline and the reason behind every rejection.</p></article>
+        <article><span class="ico" data-icon="guardian"></span><h3 data-i18n="f8.t">Consent with an end date</h3><p data-i18n="f8.d">Talent pools hold people only until their consent expires, and one click revokes it.</p></article>
+      </div>
+      <div class="limits">
+        <p class="eyebrow" data-i18n="lim.e">Lines it will not cross</p>
+        <ul>
+          <li data-i18n="lim.1">No scraped profiles</li>
+          <li data-i18n="lim.2">No selling of data</li>
+          <li data-i18n="lim.3">No opaque ranking</li>
+          <li data-i18n="lim.4">No emotion analysis</li>
+          <li data-i18n="lim.5">No contact without a real job and a salary range</li>
+        </ul>
+      </div>
+      <p class="rec-foot dim"><span data-i18n="rec.note">In design for a future version. Not in 1.0.0, and the details may change.</span> <a href="https://github.com/gabrielandre-math/job-orchestrator#coming-soon-job-orchestrator-for-recruiters" data-i18n="rec.more">Read the full plan</a></p>
+    </section>
+
+    <section class="section download" id="download">
+      <p class="eyebrow" data-i18n="dl.e">Download</p>
+      <h2 class="h2" data-i18n="dl.t">Version 1.0.0</h2>
+      <p class="lead sm" data-i18n="dl.lead">Each download is a single self-contained executable with the panel, the scraper and the browser extension inside. You do not need .NET installed.</p>
+      <div class="os-grid">
+        <article class="os" data-os="linux">
+          <header><img src="assets/logos/linux.svg" alt="" width="28" height="28"><h3>Linux</h3><span class="tag" data-i18n="dl.yours">Your system</span></header>
+          <ul>
+            <li><a href="https://github.com/gabrielandre-math/job-orchestrator/releases/latest/download/job-orchestrator-linux-x64.run"><span><b data-i18n="dl.installer">Installer</b> .run</span><span class="arch">x64</span><span class="size">105.8 MB</span></a></li>
+            <li><a href="https://github.com/gabrielandre-math/job-orchestrator/releases/latest/download/job-orchestrator-linux-x64.tar.gz"><span><b data-i18n="dl.archive">Archive</b> .tar.gz</span><span class="arch">x64</span><span class="size">105.8 MB</span></a></li>
+            <li><a href="https://github.com/gabrielandre-math/job-orchestrator/releases/latest/download/job-orchestrator-linux-arm64.run"><span><b data-i18n="dl.installer">Installer</b> .run</span><span class="arch">arm64</span><span class="size">103.3 MB</span></a></li>
+            <li><a href="https://github.com/gabrielandre-math/job-orchestrator/releases/latest/download/job-orchestrator-linux-arm64.tar.gz"><span><b data-i18n="dl.archive">Archive</b> .tar.gz</span><span class="arch">arm64</span><span class="size">103.3 MB</span></a></li>
+          </ul>
+          <p class="os-note" data-i18n-html="dl.linux"><code>chmod +x</code> the installer and run it. No sudo.</p>
+        </article>
+        <article class="os" data-os="macos">
+          <header><img class="t-dark" src="assets/logos/apple-dark.svg" alt="" width="28" height="28"><img class="t-light" src="assets/logos/apple.svg" alt="" width="28" height="28"><h3>macOS</h3><span class="tag" data-i18n="dl.yours">Your system</span></header>
+          <ul>
+            <li><a href="https://github.com/gabrielandre-math/job-orchestrator/releases/latest/download/job-orchestrator-macos-arm64.dmg"><span><b>Apple Silicon</b> .dmg</span><span class="arch">arm64</span><span class="size">106.9 MB</span></a></li>
+            <li><a href="https://github.com/gabrielandre-math/job-orchestrator/releases/latest/download/job-orchestrator-macos-x64.dmg"><span><b>Intel</b> .dmg</span><span class="arch">x64</span><span class="size">110.7 MB</span></a></li>
+          </ul>
+          <p class="os-note" data-i18n-html="dl.mac">macOS 15 or later. Signed ad hoc: if macOS refuses to open it, use Open Anyway in Privacy &amp; Security, or run <code>xattr -dr com.apple.quarantine "/Applications/Job Orchestrator.app"</code>.</p>
+        </article>
+        <article class="os" data-os="windows">
+          <header><img src="assets/logos/windows.svg" alt="" width="28" height="28"><h3>Windows</h3><span class="tag" data-i18n="dl.yours">Your system</span></header>
+          <ul>
+            <li><a href="https://github.com/gabrielandre-math/job-orchestrator/releases/latest/download/job-orchestrator-windows-x64-setup.exe"><span><b>Setup</b> .exe</span><span class="arch">x64</span><span class="size">102.6 MB</span></a></li>
+            <li><a href="https://github.com/gabrielandre-math/job-orchestrator/releases/latest/download/job-orchestrator-windows-x64.zip"><span><b data-i18n="dl.archive">Archive</b> .zip</span><span class="arch">x64</span><span class="size">97.2 MB</span></a></li>
+            <li><a href="https://github.com/gabrielandre-math/job-orchestrator/releases/latest/download/job-orchestrator-windows-arm64-setup.exe"><span><b>Setup</b> .exe</span><span class="arch">arm64</span><span class="size">101.6 MB</span></a></li>
+            <li><a href="https://github.com/gabrielandre-math/job-orchestrator/releases/latest/download/job-orchestrator-windows-arm64.zip"><span><b data-i18n="dl.archive">Archive</b> .zip</span><span class="arch">arm64</span><span class="size">95.6 MB</span></a></li>
+          </ul>
+          <p class="os-note" data-i18n="dl.win">SmartScreen may say Windows protected your PC: click More info, then Run anyway. The arm64 build is experimental.</p>
+        </article>
+      </div>
+      <div class="dl-foot">
+        <a class="mono" href="https://github.com/gabrielandre-math/job-orchestrator/releases/latest/download/SHA256SUMS.txt" data-i18n="dl.sums">SHA256SUMS.txt</a>
+        <a class="mono" href="https://github.com/gabrielandre-math/job-orchestrator/releases" data-i18n="dl.all">All releases</a>
+      </div>
+      <div class="cli">
+        <div class="cli-head"><span class="mono" data-i18n="dl.cli">After installing</span><button class="copy" type="button" data-copy="#cli-code" data-i18n="dl.copy">Copy</button></div>
+<pre id="cli-code"><code>job-orchestrator               <span class="c"># opens the app; the first time, the installer</span>
+job-orchestrator --status      <span class="c"># shows whether it is running</span>
+job-orchestrator --backup      <span class="c"># copies the database now</span>
+job-orchestrator --mcp         <span class="c"># MCP server for Claude Code and Claude Desktop</span>
+job-orchestrator --uninstall   <span class="c"># removes the app and keeps your data</span></code></pre>
+      </div>
+    </section>
+
+    <section class="section stack" id="stack">
+      <p class="eyebrow" data-i18n="stk.e">Under the hood</p>
+      <h2 class="h2" data-i18n="stk.t">Proven parts, put together with care.</h2>
+      <ul class="logos">
+        <li><img src="assets/logos/dotnet.svg" alt="" width="36" height="36"><span>.NET 10</span></li>
+        <li><img src="assets/logos/csharp.svg" alt="" width="36" height="36"><span>C#</span></li>
+        <li><img src="assets/logos/postgresql.svg" alt="" width="36" height="36"><span>PostgreSQL</span></li>
+        <li><img src="assets/logos/angular.svg" alt="" width="36" height="36"><span>Angular</span></li>
+        <li><img src="assets/logos/typescript.svg" alt="" width="36" height="36"><span>TypeScript</span></li>
+        <li><img src="assets/logos/python.svg" alt="" width="36" height="36"><span>Python</span></li>
+        <li><img src="assets/logos/scrapy.svg" alt="" width="36" height="36"><span>Scrapy</span></li>
+        <li><img src="assets/logos/playwright.svg" alt="" width="36" height="36"><span>Playwright</span></li>
+        <li><img class="t-dark" src="assets/logos/ollama-dark.svg" alt="" width="36" height="36"><img class="t-light" src="assets/logos/ollama.svg" alt="" width="36" height="36"><span>Ollama</span></li>
+        <li><img class="t-dark" src="assets/logos/qwen-dark.svg" alt="" width="36" height="36"><img class="t-light" src="assets/logos/qwen.svg" alt="" width="36" height="36"><span>Qwen</span></li>
+        <li><img src="assets/logos/chromium.svg" alt="" width="36" height="36"><span>Chromium</span></li>
+        <li><img src="assets/logos/docker.svg" alt="" width="36" height="36"><span>Docker</span></li>
+        <li><img src="assets/logos/linux.svg" alt="" width="36" height="36"><span>Linux</span></li>
+        <li><img class="t-dark" src="assets/logos/apple-dark.svg" alt="" width="36" height="36"><img class="t-light" src="assets/logos/apple.svg" alt="" width="36" height="36"><span>macOS</span></li>
+        <li><img src="assets/logos/windows.svg" alt="" width="36" height="36"><span>Windows</span></li>
+        <li><img src="assets/logos/gmail.svg" alt="" width="36" height="36"><span>Gmail</span></li>
+      </ul>
+      <div class="hood">
+        <div><h3 data-i18n="h1.t">Backend</h3><p data-i18n="h1.d">.NET 10, a modular monolith in vertical slices with DDD and CQRS, an outbox and an inbox for events, Carter endpoints and Dapper over PostgreSQL.</p></div>
+        <div><h3 data-i18n="h2.t">Panel</h3><p data-i18n="h2.d">Angular 22 with signals. The live map is a hand-drawn SVG canvas, and every isometric icon comes from one shared geometry.</p></div>
+        <div><h3 data-i18n="h3.t">Collection</h3><p data-i18n="h3.d">Official APIs first, Scrapy spiders for career pages and a Playwright browser pool for pages that need JavaScript and for forms.</p></div>
+        <div><h3 data-i18n="h4.t">Tests</h3><p data-i18n="h4.d">Unit and end-to-end suites against a fake ATS, plus chaos tests that kill the process around the submit click.</p></div>
+      </div>
+    </section>
+
+    <section class="section license" id="license">
+      <div>
+        <p class="eyebrow" data-i18n="lic.e">License</p>
+        <h3 class="h3">PolyForm Noncommercial 1.0.0</h3>
+        <p data-i18n="lic.d">Use it, study it, change it and share it for any noncommercial purpose, and that includes your own job search. Selling it, offering it as a paid service or building it into a commercial product is not allowed. For commercial use, talk to the author.</p>
+        <a class="link" href="https://github.com/gabrielandre-math/job-orchestrator/blob/main/LICENSE.md" data-i18n="lic.read">Read the license</a>
+      </div>
+      <div>
+        <p class="eyebrow" data-i18n="aut.e">Author</p>
+        <h3 class="h3">Gabriel André de Lima Silva</h3>
+        <p data-i18n="aut.d">Designed and built Job Orchestrator, from the local AI pipeline to the isometric stations. Bug reports and ideas are welcome in the issues.</p>
+        <a class="link" href="https://github.com/gabrielandre-math">@gabrielandre-math</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <div class="foot-in">
+      <span class="brand sm"><svg viewBox="0 0 256 256" aria-hidden="true"><path d="M 180 0 C 221.974 0 256 34.026 256 76 L 256 256 L 208 256 L 208 76 C 208 60.536 195.464 48 180 48 C 164.536 48 152 60.536 152 76 L 152 180 C 152 221.974 117.974 256 76 256 C 34.026 256 0 221.974 0 180 L 0 0 L 48 0 L 48 180 C 48 195.464 60.536 208 76 208 C 91.464 208 104 195.464 104 180 L 104 76 C 104 34.026 138.026 0 180 0 Z"/></svg>Job Orchestrator 1.0.0</span>
+      <nav aria-label="Footer">
+        <a href="https://github.com/gabrielandre-math/job-orchestrator">GitHub</a>
+        <a href="https://github.com/gabrielandre-math/job-orchestrator/releases" data-i18n="ft.rel">Releases</a>
+        <a href="https://github.com/gabrielandre-math/job-orchestrator/blob/main/README.pt-BR.md" data-i18n="ft.pt">README em português</a>
+        <a href="https://github.com/gabrielandre-math/job-orchestrator/issues" data-i18n="ft.issues">Issues</a>
+      </nav>
+      <p class="dim sm" data-i18n="ft.note">This page has no analytics and sets no cookies.</p>
+    </div>
+  </footer>
+
+  <script src="vendor/gsap/gsap.min.js" defer></script>
+  <script src="vendor/gsap/ScrollTrigger.min.js" defer></script>
+  <script src="vendor/gsap/MotionPathPlugin.min.js" defer></script>
+  <script src="vendor/gsap/DrawSVGPlugin.min.js" defer></script>
+  <script type="module" src="js/site.js"></script>
+</body>
+</html>
