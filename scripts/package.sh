@@ -51,7 +51,7 @@ publish() {
   rm -rf "$out" && mkdir -p "$out"
   dotnet publish "$R/backend/src/Bootstrappers/JobOrchestrator.App" -c Release -r "$rid" --self-contained \
     -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=false -p:EnableCompressionInSingleFile=true -p:DebugType=none \
-    -p:GenerateDocumentationFile=false "${extra[@]}" -o "$out" -v q -nologo -m:2 -nodeReuse:false
+    -p:GenerateDocumentationFile=false -p:UseSharedCompilation=false "${extra[@]}" -o "$out" -v q -nologo -m:2 -nodeReuse:false
   rm -f "$out/playwright.ps1" "$out"/*.staticwebassets.endpoints.json
   # O driver do Playwright (Node) só da plataforma do pacote: o publish traz também o da máquina que compila (uns 120 MB a mais).
   local plat
