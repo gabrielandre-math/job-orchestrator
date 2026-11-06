@@ -112,6 +112,15 @@ export class JobsPage {
     { key: 'Rejected', label: 'Cortadas' }, { key: 'Duplicate', label: 'Duplicadas' }, { key: 'Expired', label: 'Encerradas' },
   ];
 
+  /** Lacunas da vaga: o que ela cita e você tem, o que falta no perfil (e por isso não entra no currículo), e quanto você cobre. */
+  protected readonly gaps = computed(() => {
+    const d = this.detail.value();
+    if (!d || this.mine().size === 0) return null;
+    const have = d.job.stack.filter((t) => this.has(t) === true);
+    const missing = d.job.stack.filter((t) => this.has(t) !== true);
+    return { have, missing, pct: d.job.stack.length ? Math.round((have.length / d.job.stack.length) * 100) : 0 };
+  });
+
   /** O que você tem: skills e tecnologias das experiências do perfil. */
   private readonly mine = computed(() => new Set((this.profile.value()?.facts ?? []).filter((f) => f.status !== 'Rejected')
     .flatMap((f) => (f.kind === 'skill' ? [f.statement] : f.technologies)).map(fold)));

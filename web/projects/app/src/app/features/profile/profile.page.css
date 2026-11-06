@@ -64,4 +64,15 @@
 .linked { display: inline-flex; align-items: center; gap: 6px; margin: 0; }
 .linked jo-icon { color: var(--ok); }
 @media (max-width: 760px) { .connect { grid-template-columns: 1fr; } }
+.strength { display: grid; gap: 10px; padding: 16px 18px; }
+.st-head { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px; align-items: center; }
+.st-score { font-size: 28px; font-weight: 650; min-width: 3ch; color: var(--accent); }
+.st-score.ok { color: var(--ok); } .st-score.warn { color: var(--warn); }
+.st-text h2 { font-size: 15px; margin: 0 0 2px; }
+.st-text p { margin: 0; }
+.st-bar { height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
+.st-bar span { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--ok)); transition: width 600ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.st-next { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.st-next li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; }
+.st-next .what { display: grid; gap: 2px; }
 

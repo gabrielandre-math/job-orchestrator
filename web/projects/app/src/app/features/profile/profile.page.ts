@@ -63,6 +63,40 @@ export class ProfilePage {
       { label: 'Competências', value: usable.filter((f) => f.kind === 'skill').length },
     ];
   });
+  /**
+   * Força do perfil: conta só o que um currículo e um formulário precisam, cada item com o peso e a ação que resolve. Sem LinkedIn
+   * conectado, experiência e competência sugerem conectar; o resto leva ao campo certo da tela.
+   */
+  protected readonly strength = computed(() => {
+    const p = this.profile.value();
+    if (!p) return null;
+    const facts = p.facts.filter((f) => f.status === 'Verified' || f.status === 'Confirmed');
+    const n = (kind: string) => facts.filter((f) => f.kind === kind).length;
+    const jobs = facts.filter((f) => f.kind === 'experience');
+    const proven = jobs.filter((j) => facts.some((f) => f.kind === 'achievement' && f.parentId === j.id)).length;
+    const id = p.identity;
+    const linked = p.documents.some((d) => d.kind === 'linkedin' && d.status === 'Ready');
+    const items: { label: string; weight: number; done: boolean; hint: string; action: 'linkedin' | 'identity' | 'confirm' | 'upload' }[] = [
+      { label: 'Nome, e-mail e telefone', weight: 10, done: !!id.fullName && !!id.email && !!id.phone, hint: 'os formulários pedem os três', action: 'identity' },
+      { label: 'Título profissional', weight: 8, done: n('headline') > 0, hint: 'a linha que abre o currículo', action: linked ? 'upload' : 'linkedin' },
+      { label: 'Resumo', weight: 7, done: n('summary') > 0, hint: 'duas ou três frases sobre o que você faz', action: linked ? 'upload' : 'linkedin' },
+      { label: 'Duas ou mais experiências', weight: 15, done: jobs.length >= 2, hint: `${jobs.length} no perfil`, action: linked ? 'upload' : 'linkedin' },
+      { label: 'Conquistas nas experiências', weight: 15, done: jobs.length > 0 && proven / jobs.length >= 0.7, hint: `${proven} de ${jobs.length} experiências com conquista`, action: linked ? 'upload' : 'linkedin' },
+      { label: 'Dez ou mais competências', weight: 10, done: n('skill') >= 10, hint: `${n('skill')} no perfil`, action: linked ? 'upload' : 'linkedin' },
+      { label: 'Formação', weight: 8, done: n('education') > 0, hint: 'curso, instituição e ano', action: linked ? 'upload' : 'linkedin' },
+      { label: 'Idiomas com nível', weight: 8, done: facts.some((f) => f.kind === 'language' && !!f.level), hint: 'o nível de inglês filtra muita vaga', action: linked ? 'upload' : 'linkedin' },
+      { label: 'Certificado ou projeto', weight: 6, done: n('certification') + n('project') > 0, hint: 'mostra o que o cargo ainda não mostra', action: linked ? 'upload' : 'linkedin' },
+      { label: 'LinkedIn, GitHub ou site', weight: 6, done: !!id.linkedIn || !!id.gitHub || !!id.website, hint: 'os formulários pedem um link', action: 'identity' },
+      { label: 'Confirmações (país, regime, pretensão)', weight: 7, done: !!p.confirmedAt, hint: 'o que só você pode afirmar', action: 'confirm' },
+    ];
+    const score = items.filter((i) => i.done).reduce((s, i) => s + i.weight, 0);
+    return { score, items, next: items.filter((i) => !i.done).sort((a, b) => b.weight - a.weight).slice(0, 3) };
+  });
+  protected strengthAct(action: 'linkedin' | 'identity' | 'confirm' | 'upload') {
+    if (action === 'linkedin') { this.linkedin.set(true); return; }
+    const target = { identity: '#dados', confirm: '#confirmacoes', upload: '.drop' }[action];
+    document.querySelector(target)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
   protected readonly answerRows = computed(() => Object.entries(this.answers.value() ?? {}).filter(([k]) => !['first_name', 'last_name'].includes(k)));
 
   constructor() {

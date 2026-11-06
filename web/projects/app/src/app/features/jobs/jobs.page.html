@@ -282,9 +282,19 @@
 
           @if (d.job.stack.length > 0) {
             <section class="d-sec">
-              <h3>Ferramentas e tecnologias</h3>
-              <div class="d-stack">@for (t of d.job.stack; track t) { <jo-tech [name]="t" [have]="has(t)" /> }</div>
-              @if (profile.value()?.facts?.length) { <p class="faint small">Verde: está no seu perfil. Tracejado: não está, e não entra no currículo.</p> }
+              @if (gaps(); as g) {
+                <h3>Você e a vaga <span class="faint small">você cobre {{ g.have.length }} de {{ d.job.stack.length }} ferramentas que ela cita</span></h3>
+                <div class="fit-bar" role="img" [attr.aria-label]="g.have.length + ' de ' + d.job.stack.length"><span [style.width.%]="g.pct"></span></div>
+                <div class="gaps">
+                  <div><p class="k ok">Você tem</p><div class="d-stack">@for (t of g.have; track t) { <jo-tech [name]="t" [have]="true" /> } @empty { <span class="faint small">nada das ferramentas citadas</span> }</div></div>
+                  <div><p class="k">Falta no seu perfil</p><div class="d-stack">@for (t of g.missing; track t) { <jo-tech [name]="t" [have]="false" /> } @empty { <span class="faint small">nada: você tem tudo o que ela cita</span> }</div></div>
+                </div>
+                <p class="faint small">O que falta não entra no currículo desta vaga: fica como lacuna para você decidir, nunca como experiência inventada.</p>
+              } @else {
+                <h3>Ferramentas e tecnologias</h3>
+                <div class="d-stack">@for (t of d.job.stack; track t) { <jo-tech [name]="t" [have]="null" /> }</div>
+                <p class="faint small">Com o currículo no Perfil, esta seção mostra o que você tem e o que falta para a vaga.</p>
+              }
             </section>
           }
 

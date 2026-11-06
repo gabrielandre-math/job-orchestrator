@@ -10,6 +10,27 @@
   @if (profile.problem(); as e) { <p class="problem">{{ e.detail }}</p> }
   @if (sending.problem(); as e) { <p class="problem">{{ e.detail }}</p> }
 
+  @if (strength(); as st) {
+    <article class="panel strength">
+      <div class="st-head">
+        <span class="st-score num" [class.ok]="st.score >= 80" [class.warn]="st.score < 50">{{ st.score }}</span>
+        <div class="st-text">
+          <h2>Força do perfil</h2>
+          <p class="muted small">{{ st.score >= 80 ? 'Pronto para currículo e formulário: só o que falta abaixo deixa ainda melhor.' : 'Conta só o que um currículo e um formulário precisam. O que mais pesa primeiro.' }}</p>
+        </div>
+      </div>
+      <div class="st-bar" role="img" [attr.aria-label]="'Força do perfil: ' + st.score + ' de 100'"><span [style.width.%]="st.score"></span></div>
+      @if (st.next.length > 0) {
+        <ul class="st-next">
+          @for (i of st.next; track i.label) {
+            <li><span class="what"><strong>{{ i.label }}</strong><span class="faint small">{{ i.hint }}</span></span><span class="faint small num">+{{ i.weight }}</span>
+              <button type="button" class="btn ghost" (click)="strengthAct(i.action)">{{ i.action === 'linkedin' ? 'Conectar LinkedIn' : i.action === 'confirm' ? 'Confirmar' : i.action === 'identity' ? 'Preencher' : 'Enviar o currículo' }}</button></li>
+          }
+        </ul>
+      }
+    </article>
+  }
+
   @if (link.value(); as l) {
     @if (!l.connected) {
       <article class="panel connect">
@@ -74,7 +95,7 @@
 
         @if (!p.synthetic && p.status !== 'Empty' && form(); as f) {
           @if (!p.confirmedAt || p.pending > 0) {
-            <article class="panel confirm">
+            <article class="panel confirm" id="confirmacoes">
               <header>
                 <div>
                   <h2>Confirmar uma vez</h2>
@@ -206,7 +227,7 @@
       </div>
 
       <aside class="side">
-        <article class="panel">
+        <article class="panel" id="dados">
           <header><h2>Dados pessoais</h2></header>
           <div class="pad">
             <p class="faint small">Ficam só nesta máquina. Entram no PDF e no formulário, nunca no prompt de um modelo.</p>
