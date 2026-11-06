@@ -58,7 +58,7 @@ internal sealed partial class Leads(IHttpClientFactory http, ScrapyRunner runner
         request.Headers.Accept.ParseAdd("application/json");
         using var response = await Client.SendAsync(request, ct);
         response.EnsureSuccessStatusCode();
-        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
+        using var doc = await HttpBodies.JsonAsync(response.Content, ct);
         var results = doc.RootElement.TryGetProperty("web", out var web) && web.TryGetProperty("results", out var r) ? r.EnumerateArray().Select(x => x.Str("url")).ToList() : [];
         return [.. results.Select(u => LeadFor(u, $"busca na web por \"{query}\"")).OfType<SourceLead>().DistinctBy(l => l.Source, StringComparer.OrdinalIgnoreCase)];
     }

@@ -25,7 +25,7 @@ internal sealed partial class GreenhouseLikeSource(IHttpClientFactory http, IOpt
         var board = source[Prefix.Length..].Trim();
         var baseUrl = board.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? board.TrimEnd('/') : $"https://boards-api.greenhouse.io/v1/boards/{board}";
         var client = http.CreateClient("sources");
-        using var doc = JsonDocument.Parse(await client.GetStringAsync($"{baseUrl}/jobs?content=true", ct));
+        using var doc = await HttpBodies.JsonAsync(client, $"{baseUrl}/jobs?content=true", ct);
         // Alguns boards se chamam "Empresa - Linkedin"; o sufixo não é parte do nome.
         var company = BoardSuffix().Replace(await BoardNameAsync(client, baseUrl, ct), "");
         var result = new List<DiscoveredPosting>();
@@ -63,7 +63,7 @@ internal sealed partial class GreenhouseLikeSource(IHttpClientFactory http, IOpt
     {
         try
         {
-            using var board = JsonDocument.Parse(await client.GetStringAsync(baseUrl, ct));
+            using var board = await HttpBodies.JsonAsync(client, baseUrl, ct);
             return board.RootElement.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "";
         }
         catch (HttpRequestException)

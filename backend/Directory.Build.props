@@ -5,7 +5,15 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningsNotAsErrors>NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
+    <!-- Memória (documentação do GC do .NET): é um app local de uma pessoa, ao lado do navegador automático e do modelo local.
+         O GC de estação, em segundo plano, usa um heap só em vez de um por núcleo, como o de servidor que o SDK web liga por padrão. -->
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+    <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
   </PropertyGroup>
+  <ItemGroup>
+    <!-- Compacta a área de objetos grandes quando ela fragmenta, em troca de coletas um pouco mais frequentes. -->
+    <RuntimeHostConfigurationOption Include="System.GC.ConserveMemory" Value="5" />
+  </ItemGroup>
   <ItemGroup Condition="'$(MSBuildProjectName)' != 'JobOrchestrator.Tests'">
     <InternalsVisibleTo Include="JobOrchestrator.Tests" />
   </ItemGroup>

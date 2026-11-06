@@ -10,7 +10,7 @@ internal static partial class Json
     {
         using var response = await client.GetAsync(url, ct);
         response.EnsureSuccessStatusCode();
-        return JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
+        return await HttpBodies.JsonAsync(response.Content, ct);
     }
 
     public static string Str(this JsonElement e, string name) =>

@@ -83,7 +83,7 @@ internal sealed class NavSource(IHttpClientFactory http, TimeProvider time) : Pu
             if (res.StatusCode == HttpStatusCode.Unauthorized && attempt == 0) continue;
             if (res.StatusCode is HttpStatusCode.NotModified or HttpStatusCode.NotFound) return null;
             res.EnsureSuccessStatusCode();
-            return JsonDocument.Parse(await res.Content.ReadAsStringAsync(ct));
+            return await HttpBodies.JsonAsync(res.Content, ct);
         }
         return null;
     }
@@ -206,7 +206,7 @@ internal sealed class UsaJobsSource(IHttpClientFactory http) : PublicSource(http
             req.Headers.TryAddWithoutValidation("User-Agent", email);
             using var res = await Client.SendAsync(req, ct);
             res.EnsureSuccessStatusCode();
-            using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync(ct));
+            using var doc = await HttpBodies.JsonAsync(res.Content, ct);
             var items = doc.RootElement.GetProperty("SearchResult").GetProperty("SearchResultItems");
             foreach (var it in items.EnumerateArray())
             {

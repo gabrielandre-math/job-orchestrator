@@ -59,7 +59,7 @@ internal sealed partial class ScrapyRunner(ScraperEnv env, IIntelligenceApi ai, 
             timeout.CancelAfter(TimeSpan.FromSeconds(60));
             using var res = await http.CreateClient("sources").PostAsJsonAsync($"{baseUrl.TrimEnd('/')}/v1/scrape", new { url, formats = new[] { "markdown" }, onlyMainContent = true, timeout = 45000 }, timeout.Token);
             if (!res.IsSuccessStatusCode) return null;
-            using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync(timeout.Token));
+            using var doc = await HttpBodies.JsonAsync(res.Content, timeout.Token);
             var data = doc.RootElement.GetProperty("data");
             var text = data.Str("markdown");
             var title = data.TryGetProperty("metadata", out var m) ? m.Str("title") : "";

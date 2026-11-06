@@ -258,7 +258,7 @@ internal sealed class WeWorkRemotelySource(IHttpClientFactory http, TimeProvider
     protected override async Task<IReadOnlyList<DiscoveredPosting>> FetchAsync(string source, string key, CancellationToken ct)
     {
         var category = key.Length > 0 ? key : "remote-back-end-programming-jobs";
-        var xml = XDocument.Parse(await Client.GetStringAsync($"https://weworkremotely.com/categories/{Uri.EscapeDataString(category)}.rss", ct));
+        var xml = await HttpBodies.XmlAsync(Client, $"https://weworkremotely.com/categories/{Uri.EscapeDataString(category)}.rss", ct);
         return [.. xml.Descendants("item").Select(i =>
         {
             // Título vem como "Empresa: Cargo".
@@ -313,7 +313,7 @@ internal sealed class PersonioSource(IHttpClientFactory http) : PublicSource(htt
     public override async Task<IReadOnlyList<DiscoveredPosting>> DiscoverAsync(string source, CancellationToken ct)
     {
         var company = Key(source);
-        var xml = XDocument.Parse(await Client.GetStringAsync($"https://{company}.jobs.personio.de/xml", ct));
+        var xml = await HttpBodies.XmlAsync(Client, $"https://{company}.jobs.personio.de/xml", ct);
         return [.. xml.Descendants("position").Select(p =>
         {
             var id = (string?)p.Element("id") ?? "";
@@ -399,7 +399,7 @@ internal sealed class TeamtailorSource(IHttpClientFactory http) : PublicSource(h
     public override async Task<IReadOnlyList<DiscoveredPosting>> DiscoverAsync(string source, CancellationToken ct)
     {
         var site = Key(source);
-        var xml = XDocument.Parse(await Client.GetStringAsync($"https://{site}.teamtailor.com/jobs.rss", ct));
+        var xml = await HttpBodies.XmlAsync(Client, $"https://{site}.teamtailor.com/jobs.rss", ct);
         XNamespace tt = "https://teamtailor.com/locations";
         var company = (string?)xml.Root?.Element("channel")?.Element("title") is { Length: > 0 } c ? c : Json.Company(site.Split('.')[0]);
         return [.. xml.Descendants("item").Select(i =>
@@ -433,7 +433,7 @@ internal sealed class RssSource(IHttpClientFactory http) : PublicSource(http, "r
                 throw new InvalidOperationException("O robots.txt do site não permite ler este feed.");
         }
         catch (HttpRequestException) { /* sem robots.txt acessível: segue as regras padrão */ }
-        var xml = XDocument.Parse(await Client.GetStringAsync(url, ct));
+        var xml = await HttpBodies.XmlAsync(Client, url, ct);
         XNamespace atom = "http://www.w3.org/2005/Atom", wp = "https://wpjobmanager.com/";
         var site = (string?)xml.Root?.Element("channel")?.Element("title") ?? (string?)xml.Root?.Element(atom + "title") ?? url.Host;
         var items = xml.Descendants("item").Select(i => (
@@ -563,7 +563,7 @@ internal sealed class JoobleSource(IHttpClientFactory http) : PublicSource(http,
             using var content = new StringContent(JsonSerializer.Serialize(new { keywords = term, location = "Brasil", page }), System.Text.Encoding.UTF8, "application/json");
             using var response = await Client.PostAsync($"https://jooble.org/api/{Uri.EscapeDataString(key)}", content, ct);
             response.EnsureSuccessStatusCode();
-            using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
+            using var doc = await HttpBodies.JsonAsync(response.Content, ct);
             var jobs = doc.RootElement.GetProperty("jobs").EnumerateArray().ToList();
             foreach (var j in jobs)
                 list.Add(new DiscoveredPosting(source, j.GetProperty("id").ToString(), j.Str("company"), j.Str("title"), j.Str("location"), j.Str("link"),

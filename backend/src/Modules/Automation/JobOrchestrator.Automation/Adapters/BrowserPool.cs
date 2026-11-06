@@ -14,12 +14,23 @@ internal sealed class BrowserPool(IOptions<AutomationOptions> options, ILogger<B
     private readonly SemaphoreSlim _launch = new(1);
     private IPlaywright? _playwright;
     private IBrowser? _browser;
+    private int _active;
+    private long _lastUsed;
+    private Timer? _idle;
+    /// <summary>
+    /// Navegador parado não fica aberto (documentação do Playwright: contexto por tarefa, navegador fechado quando não há uso): parado
+    /// por estes minutos, fecha com o driver e libera os ~400 MB; o próximo empréstimo abre de novo.
+    /// </summary>
+    private static readonly TimeSpan IdleClose = TimeSpan.FromMinutes(3);
+    /// <summary>O formulário não precisa de imagem, vídeo nem fonte: não baixar poupa memória e rede no navegador.</summary>
+    private static readonly HashSet<string> Heavy = ["image", "media", "font"];
 
     public int TimeoutMs => _o.TimeoutSeconds * 1000;
 
     public async Task<BrowserLease> LeaseAsync(IReadOnlyCollection<string> allowedHosts, CancellationToken ct)
     {
         await _slots.WaitAsync(ct);
+        Interlocked.Increment(ref _active);
         try
         {
             var browser = await BrowserAsync();
@@ -27,16 +38,42 @@ internal sealed class BrowserPool(IOptions<AutomationOptions> options, ILogger<B
             context.SetDefaultTimeout(TimeoutMs);
             await context.RouteAsync("**/*", async route =>
             {
-                if (Allowed(route.Request.Url, allowedHosts)) await route.ContinueAsync();
+                if (Heavy.Contains(route.Request.ResourceType)) await route.AbortAsync("blockedbyclient");
+                else if (Allowed(route.Request.Url, allowedHosts)) await route.ContinueAsync();
                 else await route.AbortAsync("blockedbyclient");
             });
-            return new BrowserLease(context, _slots);
+            return new BrowserLease(context, _slots, Returned);
         }
         catch
         {
+            Returned();
             _slots.Release();
             throw;
         }
+    }
+
+    /// <summary>Contexto devolvido: marca a hora para o fechamento por inatividade.</summary>
+    private void Returned()
+    {
+        Interlocked.Exchange(ref _lastUsed, Environment.TickCount64);
+        Interlocked.Decrement(ref _active);
+    }
+
+    private async Task CloseIdleAsync()
+    {
+        if (Volatile.Read(ref _active) > 0 || _browser is null || Environment.TickCount64 - Interlocked.Read(ref _lastUsed) < IdleClose.TotalMilliseconds) return;
+        await _launch.WaitAsync();
+        try
+        {
+            if (Volatile.Read(ref _active) > 0 || _browser is null) return;
+            await _browser.CloseAsync();
+            _browser = null;
+            _playwright?.Dispose();
+            _playwright = null;
+            log.LogInformation("Browser closed after {Minutes} idle minutes", IdleClose.TotalMinutes);
+        }
+        catch (Exception ex) when (ex is PlaywrightException or ObjectDisposedException or InvalidOperationException) { log.LogWarning("Closing the idle browser failed: {Error}", ex.Message); _browser = null; }
+        finally { _launch.Release(); }
     }
 
     /// <summary>Só http(s), só hosts da lista. Rede privada só quando o host está explicitamente na lista (ATS de teste).</summary>
@@ -56,9 +93,9 @@ internal sealed class BrowserPool(IOptions<AutomationOptions> options, ILogger<B
         return b[0] == 10 || (b[0] == 172 && b[1] >= 16 && b[1] <= 31) || (b[0] == 192 && b[1] == 168) || (b[0] == 169 && b[1] == 254);
     }
 
+    // Sempre pela trava: o fechamento por inatividade nunca fecha um navegador que acabou de ser entregue.
     private async Task<IBrowser> BrowserAsync()
     {
-        if (_browser is { IsConnected: true }) return _browser;
         await _launch.WaitAsync();
         try
         {
@@ -71,6 +108,7 @@ internal sealed class BrowserPool(IOptions<AutomationOptions> options, ILogger<B
                 Args = ["--disable-extensions", "--disable-sync", "--no-first-run"]
             });
             log.LogInformation("Browser started: {Version}", _browser.Version);
+            _idle ??= new Timer(_ => _ = CloseIdleAsync(), null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
             return _browser;
         }
         finally
@@ -81,19 +119,20 @@ internal sealed class BrowserPool(IOptions<AutomationOptions> options, ILogger<B
 
     public async ValueTask DisposeAsync()
     {
+        if (_idle is not null) await _idle.DisposeAsync();
         if (_browser is not null) await _browser.CloseAsync();
         _playwright?.Dispose();
     }
 }
 
 /// <summary>Um contexto emprestado. Ao devolver, o contexto fecha e a vaga volta ao pool.</summary>
-internal sealed class BrowserLease(IBrowserContext context, SemaphoreSlim slots) : IAsyncDisposable
+internal sealed class BrowserLease(IBrowserContext context, SemaphoreSlim slots, Action returned) : IAsyncDisposable
 {
     public IBrowserContext Context => context;
 
     public async ValueTask DisposeAsync()
     {
         try { await context.CloseAsync(); }
-        finally { slots.Release(); }
+        finally { returned(); slots.Release(); }
     }
 }

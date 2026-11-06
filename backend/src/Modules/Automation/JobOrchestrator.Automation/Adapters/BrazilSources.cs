@@ -88,7 +88,7 @@ internal sealed class InhireSource(IHttpClientFactory http) : PublicSource(http,
         request.Headers.Add("X-Tenant", tenant);
         using var response = await Client.SendAsync(request, ct);
         response.EnsureSuccessStatusCode();
-        return JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
+        return await HttpBodies.JsonAsync(response.Content, ct);
     }
 
     internal static string Slug(string title)
@@ -201,7 +201,7 @@ internal sealed partial class WorkdaySource(IHttpClientFactory http) : PublicSou
             using var content = new StringContent(JsonSerializer.Serialize(new { appliedFacets = new { }, limit = 20, offset = 0, searchText = text }), Encoding.UTF8, "application/json");
             using var response = await Client.PostAsync($"{api}/jobs", content, ct);
             response.EnsureSuccessStatusCode();
-            using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
+            using var doc = await HttpBodies.JsonAsync(response.Content, ct);
             foreach (var j in doc.RootElement.GetProperty("jobPostings").EnumerateArray())
                 if (j.Str("externalPath") is { Length: > 0 } path) found.TryAdd(path, j.Clone());
             await Task.Delay(400, ct);

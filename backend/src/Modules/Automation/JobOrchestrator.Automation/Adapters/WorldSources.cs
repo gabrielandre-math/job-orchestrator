@@ -62,7 +62,8 @@ internal sealed partial class MpsvSource(IHttpClientFactory http, TimeProvider t
         {
             if (!File.Exists(path) || DateTime.UtcNow - File.GetLastWriteTimeUtc(path) > TimeSpan.FromDays(30))
                 await File.WriteAllBytesAsync(path, await Client.GetByteArrayAsync("https://data.mpsv.cz/od/soubory/ciselniky/obce.json", ct), ct);
-            using var doc = JsonDocument.Parse(await File.ReadAllBytesAsync(path, ct));
+            await using var file = File.OpenRead(path);
+            using var doc = await JsonDocument.ParseAsync(file, cancellationToken: ct);
             return doc.RootElement.Obj("polozky").EnumerateArray().Select(o => (Id: o.Str("id"), Name: o.Obj("nazev").Str("cs")))
                 .Where(o => o.Id.Length > 0 && o.Name.Length > 0).DistinctBy(o => o.Id).ToDictionary(o => o.Id, o => o.Name);
         }

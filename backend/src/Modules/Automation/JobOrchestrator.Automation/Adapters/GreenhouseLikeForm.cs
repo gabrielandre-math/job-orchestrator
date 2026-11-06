@@ -114,7 +114,7 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
         if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
             return AdapterResult<ReconcileResult>.Ok(new ReconcileResult(false, null, "O ATS não tem candidatura deste e-mail para a vaga."));
         response.EnsureSuccessStatusCode();
-        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
+        using var doc = await HttpBodies.JsonAsync(response.Content, ct);
         var id = doc.RootElement.GetProperty("receiptId").GetString();
         return AdapterResult<ReconcileResult>.Ok(new ReconcileResult(true, id, "O ATS confirma a candidatura."));
     }

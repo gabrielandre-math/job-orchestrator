@@ -6,6 +6,13 @@ import { get, isProblem, Problem } from './api';
  * (stale-while-revalidate). Assim trocar de página não pisca nem mostra a tela vazia.
  */
 const cache = new Map<string, unknown>();
+/** Até este tanto de caminhos: o mais antigo sai (LRU). Sem teto, abrir vaga por vaga deixaria a aba crescer sem parar. */
+const MAX_CACHED = 80;
+function remember(path: string, data: unknown) {
+  cache.delete(path);
+  cache.set(path, data);
+  if (cache.size > MAX_CACHED) cache.delete(cache.keys().next().value as string);
+}
 
 /** Consulta (CQRS) no cliente: lê, guarda o último valor e relê no intervalo enquanto a aba está visível. */
 export interface Query<T> {
@@ -30,7 +37,7 @@ export function query<T>(path: () => string | null, every = 0): Query<T> {
     controller = new AbortController();
     try {
       const data = await get<T>(p, controller.signal);
-      cache.set(p, data);
+      remember(p, data);
       if (p === current) { value.set(data); problem.set(null); }
     } catch (e) {
       if (e instanceof DOMException && e.name === 'AbortError') return;

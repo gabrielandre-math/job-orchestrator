@@ -341,7 +341,10 @@ internal sealed class OllamaLocal(IHttpClientFactory http, IConfiguration config
         {
             ["model"] = model, ["stream"] = false, ["format"] = JsonDocument.Parse(r.JsonSchema).RootElement,
             ["options"] = new { temperature = 0 },
-            ["messages"] = new[] { new { role = "system", content = r.System }, new { role = "user", content = r.Prompt } }
+            ["messages"] = new[] { new { role = "system", content = r.System }, new { role = "user", content = r.Prompt } },
+            // Quanto o modelo fica carregado depois da resposta (documentação do Ollama): a conversa do Assistente segura 10 minutos,
+            // as tarefas de fundo (Explorador, e-mail, páginas) soltam a placa de vídeo em 2 minutos parados.
+            ["keep_alive"] = r.Task.StartsWith("assistant.", StringComparison.Ordinal) ? "10m" : "2m",
         };
         if (think is { } t) body["think"] = t;
         using var response = await http.CreateClient("ollama").PostAsync($"{Url}/api/chat", new StringContent(JsonSerializer.Serialize(body), System.Text.Encoding.UTF8, "application/json"), ct);

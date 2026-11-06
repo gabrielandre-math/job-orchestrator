@@ -19,7 +19,7 @@ internal sealed partial class GitHubIssuesSource(IHttpClientFactory http) : Publ
         if (await ApiKeys.GetAsync("github", "token", ct) is { Length: > 0 } token) request.Headers.Authorization = new("Bearer", token);
         using var response = await Client.SendAsync(request, ct);
         response.EnsureSuccessStatusCode();
-        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
+        using var doc = await HttpBodies.JsonAsync(response.Content, ct);
         return [.. doc.RootElement.EnumerateArray().Where(i => !i.TryGetProperty("pull_request", out _)).Select(i => Parse(source, repo, i))];
     }
 

@@ -1,3 +1,4 @@
+using JobOrchestrator.Automation.Adapters;
 namespace JobOrchestrator.Automation.Features;
 
 internal sealed record KeyInput(Dictionary<string, string>? Values);
@@ -55,7 +56,7 @@ internal sealed class ApiKeysEndpoints : ICarterModule
         request.Headers.Accept.ParseAdd("application/vnd.github+json");
         using var response = await http.CreateClient("sources").SendAsync(request, ct);
         response.EnsureSuccessStatusCode();
-        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
+        using var doc = await HttpBodies.JsonAsync(response.Content, ct);
         return $"Funcionou: {doc.RootElement.GetProperty("resources").GetProperty("core").GetProperty("limit").GetInt32()} consultas por hora.";
     }
 }
