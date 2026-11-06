@@ -1,6 +1,6 @@
 # Lacunas de cobertura
 
-Gerado por `jo sources coverage` em 05/11/2026 23:54 UTC, contra a API local. O universo é a auditoria dos 249 países e territórios ISO 3166-1
+Gerado por `jo sources coverage` em 06/11/2026 01:56 UTC, contra a API local. O universo é a auditoria dos 249 países e territórios ISO 3166-1
 (`data/catalog/auditoria-249-paises-v2.csv`, do usuário). O estado de cada país sai só do que existe: conector do país sondado com vaga, fonte do país
 no registro ainda sem conector, vaga aberta vista com local nele, ou o estado da auditoria. **Isto não é cobertura mundial completa.**
 
@@ -8,37 +8,37 @@ no registro ainda sem conector, vaga aberta vista com local nele, ou o estado da
 
 | | Quantas |
 |---|---|
-| Fontes configuradas (plataformas no registro) | 46 |
-| Com conector no app | 43 |
-| Autorizadas (portão aberto) | 39 |
-| Funcionando (última sondagem com vaga) | 32 |
-| Quadros de empresa na campanha | 25 |
-| Empresas com vaga aberta | 88 |
-| Vagas únicas abertas | 143 |
-| Vagas abertas com data da fonte | 143 |
-| Vagas confirmadas para quem mora no Brasil | 77 |
-| Vagas possíveis para quem mora no Brasil (remotas sem restrição clara) | 46 |
-| Vagas restritas (fora do alcance de quem mora no Brasil) | 6 |
+| Fontes configuradas (plataformas no registro) | 52 |
+| Com conector no app | 48 |
+| Autorizadas (portão aberto) | 44 |
+| Funcionando (última sondagem com vaga) | 37 |
+| Quadros de empresa na campanha | 58 |
+| Empresas com vaga aberta | 395 |
+| Vagas únicas abertas | 651 |
+| Vagas abertas com data da fonte | 648 |
+| Vagas confirmadas para quem mora no Brasil | 241 |
+| Vagas possíveis para quem mora no Brasil (remotas sem restrição clara) | 152 |
+| Vagas restritas (fora do alcance de quem mora no Brasil) | 10 |
 | Vagas que se contradizem (revisão) | 0 |
 | Vagas sem local nenhum | 0 |
-| Países integrados | 4 |
-| Países com vaga aberta vista | 26 |
-| Países não pesquisados | 147 |
+| Países integrados | 6 |
+| Países com vaga aberta vista | 48 |
+| Países não pesquisados | 137 |
 | Registros no catálogo V2 (referência, não fonte) | 321 |
-| Vagas abertas sem país no local (remotas, mundo todo) | 18 |
+| Vagas abertas sem país no local (remotas, mundo todo) | 88 |
 
-Fontes globais ou regionais ativas (cobrem qualquer país, mas só onde as empresas anunciam): `greenhouse`, `lever`, `ashby`, `smartrecruiters`, `teamtailor`, `personio`, `breezy`, `recruitee`, `workable`, `workable-search`, `workday`, `rippling`, `oracle`, `successfactors`, `pandape`, `himalayas`, `remoteok`, `wwr`, `remotive`, `jobicy`, `getonbrd`, `arbeitnow`, `themuse`, `freehire`, `4dayweek`, `workingnomads`, `hn`, `rss`, `web`, `alertas`.
+Fontes globais ou regionais ativas (cobrem qualquer país, mas só onde as empresas anunciam): `greenhouse`, `lever`, `ashby`, `smartrecruiters`, `teamtailor`, `personio`, `breezy`, `recruitee`, `workable`, `workable-search`, `workday`, `pinpoint`, `bamboohr`, `recruiterbox`, `rippling`, `oracle`, `successfactors`, `pandape`, `himalayas`, `remoteok`, `wwr`, `remotive`, `jobicy`, `getonbrd`, `arbeitnow`, `themuse`, `freehire`, `4dayweek`, `workingnomads`, `hn`, `rss`, `web`, `alertas`.
 
 ## Por continente
 
 | Continente | Países | Integrados | Conector pendente | Vagas vistas | Pistas sem teste | Não pesquisados | Vagas abertas |
 |---|---|---|---|---|---|---|---|
-| Europa | 51 | 2 | 0 | 10 | 22 | 17 | 17 |
-| América do Sul | 16 | 1 | 0 | 0 | 5 | 10 | 60 |
-| América do Norte | 5 | 1 | 0 | 1 | 0 | 3 | 22 |
-| Ásia | 51 | 0 | 0 | 10 | 14 | 27 | 21 |
-| África | 60 | 0 | 0 | 1 | 25 | 34 | 5 |
-| América Central e Caribe | 36 | 0 | 0 | 1 | 4 | 31 | 3 |
+| Europa | 51 | 4 | 0 | 12 | 19 | 16 | 273 |
+| América do Sul | 16 | 1 | 0 | 9 | 0 | 6 | 255 |
+| América do Norte | 5 | 1 | 0 | 1 | 0 | 3 | 23 |
+| América Central e Caribe | 36 | 0 | 0 | 9 | 1 | 26 | 54 |
+| Ásia | 51 | 0 | 0 | 11 | 13 | 27 | 24 |
+| África | 60 | 0 | 0 | 1 | 25 | 34 | 6 |
 | Oceania | 29 | 0 | 0 | 1 | 4 | 24 | 2 |
 | Antártida | 1 | 0 | 0 | 0 | 0 | 1 | 0 |
 
@@ -46,7 +46,7 @@ Fontes globais ou regionais ativas (cobrem qualquer país, mas só onde as empre
 
 | País | Estado | Conectores do país | Pendentes | Vagas abertas | Brasil (confirmadas/possíveis) | Pistas da auditoria |
 |---|---|---|---|---|---|---|
-| Egypt (EG) | vagas vistas por fonte global | - | - | 5 | 0/5 | 0 portais, 0 APIs candidatas, 0 agências WAPES |
+| Egypt (EG) | vagas vistas por fonte global | - | - | 6 | 0/5 | 0 portais, 0 APIs candidatas, 0 agências WAPES |
 | Algeria (DZ) | pistas sem teste ao vivo | - | - | 0 | 0/0 | 0 portais, 0 APIs candidatas, 1 agências WAPES |
 | Benin (BJ) | pistas sem teste ao vivo | - | - | 0 | 0/0 | 0 portais, 0 APIs candidatas, 1 agências WAPES |
 | Burkina Faso (BF) | pistas sem teste ao vivo | - | - | 0 | 0/0 | 0 portais, 0 APIs candidatas, 1 agências WAPES |
@@ -88,11 +88,12 @@ Não pesquisados (1): Antarctica.
 | Indonesia (ID) | vagas vistas por fonte global | - | - | 2 | 0/0 | 0 portais, 0 APIs candidatas, 0 agências WAPES |
 | Israel (IL) | vagas vistas por fonte global | - | - | 1 | 1/0 | 0 portais, 0 APIs candidatas, 0 agências WAPES |
 | Jordan (JO) | vagas vistas por fonte global | - | - | 3 | 0/3 | 0 portais, 0 APIs candidatas, 0 agências WAPES |
-| Pakistan (PK) | vagas vistas por fonte global | - | - | 5 | 1/4 | 0 portais, 0 APIs candidatas, 0 agências WAPES |
+| Pakistan (PK) | vagas vistas por fonte global | - | - | 6 | 2/4 | 0 portais, 0 APIs candidatas, 0 agências WAPES |
+| Philippines (PH) | vagas vistas por fonte global | - | - | 1 | 0/1 | 1 portais, 0 APIs candidatas, 1 agências WAPES |
 | Saudi Arabia (SA) | vagas vistas por fonte global | - | - | 1 | 1/0 | 0 portais, 0 APIs candidatas, 0 agências WAPES |
 | Singapore (SG) | vagas vistas por fonte global | - | - | 1 | 1/0 | 2 portais, 0 APIs candidatas, 0 agências WAPES |
 | United Arab Emirates (AE) | vagas vistas por fonte global | - | - | 1 | 0/1 | 8 portais, 0 APIs candidatas, 0 agências WAPES |
-| Viet Nam (VN) | vagas vistas por fonte global | - | - | 1 | 0/1 | 0 portais, 0 APIs candidatas, 1 agências WAPES |
+| Viet Nam (VN) | vagas vistas por fonte global | - | - | 2 | 0/1 | 0 portais, 0 APIs candidatas, 1 agências WAPES |
 | Azerbaijan (AZ) | pistas sem teste ao vivo | - | - | 0 | 0/0 | 0 portais, 0 APIs candidatas, 1 agências WAPES |
 | Cambodia (KH) | pistas sem teste ao vivo | - | - | 0 | 0/0 | 0 portais, 0 APIs candidatas, 1 agências WAPES |
 | China (CN) | pistas sem teste ao vivo | - | - | 0 | 0/0 | 0 portais, 0 APIs candidatas, 1 agências WAPES |
@@ -104,7 +105,6 @@ Não pesquisados (1): Antarctica.
 | Malaysia (MY) | pistas sem teste ao vivo | - | - | 0 | 0/0 | 1 portais, 0 APIs candidatas, 1 agências WAPES |
 | Oman (OM) | pistas sem teste ao vivo | - | - | 0 | 0/0 | 1 portais, 0 APIs candidatas, 0 agências WAPES |
 | Palestine, State of (PS) | pistas sem teste ao vivo | - | - | 0 | 0/0 | 0 portais, 0 APIs candidatas, 1 agências WAPES |
-| Philippines (PH) | pistas sem teste ao vivo | - | - | 0 | 0/0 | 1 portais, 0 APIs candidatas, 1 agências WAPES |
 | Taiwan, Province of China (TW) | pistas sem teste ao vivo | - | - | 0 | 0/0 | 1 portais, 0 APIs candidatas, 0 agências WAPES |
 | Türkiye (TR) | pistas sem teste ao vivo | - | - | 0 | 0/0 | 0 portais, 0 APIs candidatas, 1 agências WAPES |
 
@@ -114,36 +114,44 @@ Não pesquisados (27): Afghanistan, Bahrain, Bangladesh, Bhutan, Brunei Darussal
 
 | País | Estado | Conectores do país | Pendentes | Vagas abertas | Brasil (confirmadas/possíveis) | Pistas da auditoria |
 |---|---|---|---|---|---|---|
-| Mexico (MX) | vagas vistas por fonte global | - | - | 3 | 1/1 | 0 portais, 0 APIs candidatas, 0 agências WAPES |
-| Dominican Republic (DO) | pistas sem teste ao vivo | - | - | 0 | 0/0 | 0 portais, 0 APIs candidatas, 1 agências WAPES |
-| Honduras (HN) | pistas sem teste ao vivo | - | - | 0 | 0/0 | 0 portais, 0 APIs candidatas, 1 agências WAPES |
-| Panama (PA) | pistas sem teste ao vivo | - | - | 0 | 0/0 | 0 portais, 0 APIs candidatas, 1 agências WAPES |
+| Costa Rica (CR) | vagas vistas por fonte global | - | - | 6 | 4/2 | 0 portais, 0 APIs candidatas, 0 agências WAPES |
+| Cuba (CU) | vagas vistas por fonte global | - | - | 1 | 0/1 | 0 portais, 0 APIs candidatas, 0 agências WAPES |
+| Dominican Republic (DO) | vagas vistas por fonte global | - | - | 3 | 1/2 | 0 portais, 0 APIs candidatas, 1 agências WAPES |
+| El Salvador (SV) | vagas vistas por fonte global | - | - | 1 | 0/1 | 0 portais, 0 APIs candidatas, 0 agências WAPES |
+| Guatemala (GT) | vagas vistas por fonte global | - | - | 2 | 0/2 | 0 portais, 0 APIs candidatas, 0 agências WAPES |
+| Honduras (HN) | vagas vistas por fonte global | - | - | 1 | 0/1 | 0 portais, 0 APIs candidatas, 1 agências WAPES |
+| Mexico (MX) | vagas vistas por fonte global | - | - | 38 | 15/22 | 0 portais, 0 APIs candidatas, 0 agências WAPES |
+| Nicaragua (NI) | vagas vistas por fonte global | - | - | 1 | 0/1 | 0 portais, 0 APIs candidatas, 0 agências WAPES |
+| Panama (PA) | vagas vistas por fonte global | - | - | 1 | 0/1 | 0 portais, 0 APIs candidatas, 1 agências WAPES |
 | Trinidad and Tobago (TT) | pistas sem teste ao vivo | - | - | 0 | 0/0 | 1 portais, 0 APIs candidatas, 0 agências WAPES |
 
-Não pesquisados (31): Anguilla, Antigua and Barbuda, Aruba, Bahamas, Barbados, Belize, Bonaire, Sint Eustatius and Saba, Cayman Islands, Costa Rica, Cuba, Curaçao, Dominica, El Salvador, Grenada, Guadeloupe, Guatemala, Haiti, Jamaica, Martinique, Montserrat, Nicaragua, Puerto Rico, Saint Barthélemy, Saint Kitts and Nevis, Saint Lucia, Saint Martin (French part), Saint Vincent and the Grenadines, Sint Maarten (Dutch part), Turks and Caicos Islands, Virgin Islands, British, Virgin Islands, U.S..
+Não pesquisados (26): Anguilla, Antigua and Barbuda, Aruba, Bahamas, Barbados, Belize, Bonaire, Sint Eustatius and Saba, Cayman Islands, Curaçao, Dominica, Grenada, Guadeloupe, Haiti, Jamaica, Martinique, Montserrat, Puerto Rico, Saint Barthélemy, Saint Kitts and Nevis, Saint Lucia, Saint Martin (French part), Saint Vincent and the Grenadines, Sint Maarten (Dutch part), Turks and Caicos Islands, Virgin Islands, British, Virgin Islands, U.S..
 
 ## Europa
 
 | País | Estado | Conectores do país | Pendentes | Vagas abertas | Brasil (confirmadas/possíveis) | Pistas da auditoria |
 |---|---|---|---|---|---|---|
+| Czechia (CZ) | integrado | `mpsv` | - | 0 | 0/0 | 0 portais, 0 APIs candidatas, 0 agências WAPES |
+| Latvia (LV) | integrado | `nva` | - | 1 | 0/0 | 0 portais, 0 APIs candidatas, 1 agências WAPES |
 | Norway (NO) | integrado | `nav` | - | 0 | 0/0 | 3 portais, 2 APIs candidatas, 1 agências WAPES |
-| Sweden (SE) | integrado | `jobtech`, `joblinks` | - | 0 | 0/0 | 1 portais, 0 APIs candidatas, 1 agências WAPES |
+| Sweden (SE) | integrado | `jobtech`, `joblinks` | - | 242 | 0/14 | 1 portais, 0 APIs candidatas, 1 agências WAPES |
 | Albania (AL) | vagas vistas por fonte global | - | - | 1 | 0/1 | 0 portais, 0 APIs candidatas, 1 agências WAPES |
+| Denmark (DK) | vagas vistas por fonte global | - | - | 1 | 1/0 | 2 portais, 1 APIs candidatas, 1 agências WAPES |
 | France (FR) | vagas vistas por fonte global | - | - | 2 | 0/1 | 1 portais, 0 APIs candidatas, 1 agências WAPES |
 | Greece (GR) | vagas vistas por fonte global | - | - | 1 | 0/1 | 0 portais, 0 APIs candidatas, 1 agências WAPES |
 | Italy (IT) | vagas vistas por fonte global | - | - | 3 | 0/0 | 0 portais, 0 APIs candidatas, 1 agências WAPES |
-| Latvia (LV) | vagas vistas por fonte global | - | - | 1 | 0/0 | 0 portais, 0 APIs candidatas, 1 agências WAPES |
 | Lithuania (LT) | vagas vistas por fonte global | - | - | 1 | 0/0 | 0 portais, 0 APIs candidatas, 1 agências WAPES |
-| Poland (PL) | vagas vistas por fonte global | - | - | 3 | 1/0 | 0 portais, 0 APIs candidatas, 0 agências WAPES |
-| Portugal (PT) | vagas vistas por fonte global | - | - | 1 | 0/1 | 1 portais, 0 APIs candidatas, 1 agências WAPES |
-| Ukraine (UA) | vagas vistas por fonte global | - | - | 2 | 0/2 | 0 portais, 0 APIs candidatas, 1 agências WAPES |
+| Poland (PL) | vagas vistas por fonte global | - | - | 11 | 2/6 | 0 portais, 0 APIs candidatas, 0 agências WAPES |
+| Portugal (PT) | vagas vistas por fonte global | - | - | 2 | 1/1 | 1 portais, 0 APIs candidatas, 1 agências WAPES |
+| Serbia (RS) | vagas vistas por fonte global | - | - | 1 | 0/0 | 0 portais, 0 APIs candidatas, 1 agências WAPES |
+| Spain (ES) | vagas vistas por fonte global | - | - | 2 | 1/1 | 1 portais, 0 APIs candidatas, 1 agências WAPES |
+| Ukraine (UA) | vagas vistas por fonte global | - | - | 3 | 1/2 | 0 portais, 0 APIs candidatas, 1 agências WAPES |
 | United Kingdom (GB) | vagas vistas por fonte global | - | - | 2 | 0/2 | 3 portais, 0 APIs candidatas, 1 agências WAPES |
 | Austria (AT) | pistas sem teste ao vivo | - | - | 0 | 0/0 | 0 portais, 0 APIs candidatas, 1 agências WAPES |
 | Belgium (BE) | pistas sem teste ao vivo | - | - | 0 | 0/0 | 0 portais, 0 APIs candidatas, 4 agências WAPES |
 | Bosnia and Herzegovina (BA) | pistas sem teste ao vivo | - | - | 0 | 0/0 | 0 portais, 0 APIs candidatas, 1 agências WAPES |
 | Bulgaria (BG) | pistas sem teste ao vivo | - | - | 0 | 0/0 | 0 portais, 0 APIs candidatas, 1 agências WAPES |
 | Croatia (HR) | pistas sem teste ao vivo | - | - | 0 | 0/0 | 0 portais, 0 APIs candidatas, 1 agências WAPES |
-| Denmark (DK) | pistas sem teste ao vivo | - | - | 0 | 0/0 | 2 portais, 1 APIs candidatas, 1 agências WAPES |
 | Estonia (EE) | pistas sem teste ao vivo | - | - | 0 | 0/0 | 0 portais, 0 APIs candidatas, 1 agências WAPES |
 | Finland (FI) | pistas sem teste ao vivo | - | - | 0 | 0/0 | 1 portais, 0 APIs candidatas, 1 agências WAPES |
 | Germany (DE) | pistas sem teste ao vivo | - | - | 0 | 0/0 | 1 portais, 0 APIs candidatas, 1 agências WAPES |
@@ -156,18 +164,16 @@ Não pesquisados (31): Anguilla, Antigua and Barbuda, Aruba, Bahamas, Barbados, 
 | Netherlands (NL) | pistas sem teste ao vivo | - | - | 0 | 0/0 | 1 portais, 0 APIs candidatas, 1 agências WAPES |
 | North Macedonia (MK) | pistas sem teste ao vivo | - | - | 0 | 0/0 | 0 portais, 0 APIs candidatas, 1 agências WAPES |
 | Romania (RO) | pistas sem teste ao vivo | - | - | 0 | 0/0 | 0 portais, 0 APIs candidatas, 1 agências WAPES |
-| Serbia (RS) | pistas sem teste ao vivo | - | - | 0 | 0/0 | 0 portais, 0 APIs candidatas, 1 agências WAPES |
 | Slovenia (SI) | pistas sem teste ao vivo | - | - | 0 | 0/0 | 0 portais, 0 APIs candidatas, 1 agências WAPES |
-| Spain (ES) | pistas sem teste ao vivo | - | - | 0 | 0/0 | 1 portais, 0 APIs candidatas, 1 agências WAPES |
 | Switzerland (CH) | pistas sem teste ao vivo | - | - | 0 | 0/0 | 1 portais, 0 APIs candidatas, 1 agências WAPES |
 
-Não pesquisados (17): Åland Islands, Andorra, Belarus, Czechia, Faroe Islands, Gibraltar, Guernsey, Holy See (Vatican City State), Iceland, Isle of Man, Jersey, Liechtenstein, Monaco, Russian Federation, San Marino, Slovakia, Svalbard and Jan Mayen.
+Não pesquisados (16): Åland Islands, Andorra, Belarus, Faroe Islands, Gibraltar, Guernsey, Holy See (Vatican City State), Iceland, Isle of Man, Jersey, Liechtenstein, Monaco, Russian Federation, San Marino, Slovakia, Svalbard and Jan Mayen.
 
 ## América do Norte
 
 | País | Estado | Conectores do país | Pendentes | Vagas abertas | Brasil (confirmadas/possíveis) | Pistas da auditoria |
 |---|---|---|---|---|---|---|
-| United States (US) | integrado | `seasonaljobs` | `usajobs` | 15 | 3/8 | 3 portais, 2 APIs candidatas, 0 agências WAPES |
+| United States (US) | integrado | `seasonaljobs` | `usajobs` | 16 | 3/9 | 3 portais, 2 APIs candidatas, 0 agências WAPES |
 | Canada (CA) | vagas vistas por fonte global | - | - | 7 | 2/5 | 2 portais, 0 APIs candidatas, 2 agências WAPES |
 
 Não pesquisados (3): Bermuda, Greenland, Saint Pierre and Miquelon.
@@ -188,14 +194,18 @@ Não pesquisados (24): American Samoa, Christmas Island, Cocos (Keeling) Islands
 
 | País | Estado | Conectores do país | Pendentes | Vagas abertas | Brasil (confirmadas/possíveis) | Pistas da auditoria |
 |---|---|---|---|---|---|---|
-| Brazil (BR) | integrado | `gupy`, `solides`, `quickin`, `github` | `inhire` | 60 | 60/0 | 2 portais, 0 APIs candidatas, 0 agências WAPES |
-| Argentina (AR) | pistas sem teste ao vivo | - | - | 0 | 0/0 | 1 portais, 0 APIs candidatas, 0 agências WAPES |
-| Chile (CL) | pistas sem teste ao vivo | - | - | 0 | 0/0 | 1 portais, 0 APIs candidatas, 0 agências WAPES |
-| Colombia (CO) | pistas sem teste ao vivo | - | - | 0 | 0/0 | 1 portais, 0 APIs candidatas, 0 agências WAPES |
-| Peru (PE) | pistas sem teste ao vivo | - | - | 0 | 0/0 | 0 portais, 0 APIs candidatas, 1 agências WAPES |
-| Uruguay (UY) | pistas sem teste ao vivo | - | - | 0 | 0/0 | 0 portais, 0 APIs candidatas, 1 agências WAPES |
+| Brazil (BR) | integrado | `inhire`, `gupy`, `solides`, `quickin`, `github` | - | 182 | 182/0 | 2 portais, 0 APIs candidatas, 0 agências WAPES |
+| Argentina (AR) | vagas vistas por fonte global | - | - | 23 | 10/11 | 1 portais, 0 APIs candidatas, 0 agências WAPES |
+| Bolivia, Plurinational State of (BO) | vagas vistas por fonte global | - | - | 2 | 1/1 | 0 portais, 0 APIs candidatas, 0 agências WAPES |
+| Chile (CL) | vagas vistas por fonte global | - | - | 4 | 0/4 | 1 portais, 0 APIs candidatas, 0 agências WAPES |
+| Colombia (CO) | vagas vistas por fonte global | - | - | 27 | 15/11 | 1 portais, 0 APIs candidatas, 0 agências WAPES |
+| Ecuador (EC) | vagas vistas por fonte global | - | - | 1 | 0/1 | 0 portais, 0 APIs candidatas, 0 agências WAPES |
+| Paraguay (PY) | vagas vistas por fonte global | - | - | 2 | 0/2 | 0 portais, 0 APIs candidatas, 0 agências WAPES |
+| Peru (PE) | vagas vistas por fonte global | - | - | 6 | 2/4 | 0 portais, 0 APIs candidatas, 1 agências WAPES |
+| Uruguay (UY) | vagas vistas por fonte global | - | - | 6 | 2/4 | 0 portais, 0 APIs candidatas, 1 agências WAPES |
+| Venezuela, Bolivarian Republic of (VE) | vagas vistas por fonte global | - | - | 2 | 0/2 | 0 portais, 0 APIs candidatas, 0 agências WAPES |
 
-Não pesquisados (10): Bolivia, Plurinational State of, Bouvet Island, Ecuador, Falkland Islands (Malvinas), French Guiana, Guyana, Paraguay, South Georgia and the South Sandwich Islands, Suriname, Venezuela, Bolivarian Republic of.
+Não pesquisados (6): Bouvet Island, Falkland Islands (Malvinas), French Guiana, Guyana, South Georgia and the South Sandwich Islands, Suriname.
 
 ## Próximos passos
 

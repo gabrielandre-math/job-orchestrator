@@ -21,6 +21,8 @@ ou Obscura normal, nunca o modo furtivo).
 - **Explorador:** a cada 10 minutos no Worker; acha fontes novas pelas palavras do currículo e só adiciona a que traz vaga nova, depois de testar.
 - **Timers da noite** (noite, resumo e backup): ligados só pelo botão em Configurações, porque criam persistência na sua máquina.
 - **Arquivo do DOL (SeasonalJobs):** baixado uma vez por dia; antes de sair o do dia, vale o de ontem.
+- **República Tcheca (MPSV) e Letônia (NVA):** o .gz de 186 MB do MPSV e o CSV do NVA são baixados uma vez por dia (o do MPSV fica em `dados/sources/mpsv`); se o download falhar, vale o de ontem.
+- **Caçador com o Llama:** Fontes › Caçador (caçar agora, rápida ou profunda); sozinho a cada `Explorer:Hunter:IntervalHours` (12 h) quando `Explorer:Hunter:Enabled` está ligado. As pistas vão para a caixa de entrada do Explorador (`dados/explorer/hunter/inbox.json`), que as testa primeiro no ciclo seguinte.
 
 ## Fontes, permissão e portão
 
@@ -38,6 +40,9 @@ ou Obscura normal, nunca o modo furtivo).
 | `jo sources coverage` | a cobertura dos 249 países; `docs/COVERAGE_GAPS.md` |
 | `jo sources boards --sample 40` | importa e valida os catálogos de quadros; `data/ats-board-catalog.json` |
 | `jo sources next` | o inventário do que falta no catálogo V2; `docs/NEXT_SOURCES.md` |
+| `jo history import <arquivo, pasta, .tar ou URL do .tar>` | import histórico em streaming (Open Jobs ou export no mesmo formato), só as palavras da campanha salvo `--all`, tudo como UNVERIFIED; `--disk-mb`, `--max-rows`, `--work` |
+| `jo history revalidate [--boards 10]` / `jo history status` | confere o histórico com o quadro ao vivo (abre só o que ele lista hoje) / o resumo |
+| `job-orchestrator --mcp` | o conector MCP: `claude mcp add job-orchestrator -- <caminho>/job-orchestrator --mcp` (o caminho certo está em Configurações › Conector MCP) |
 
 O `jo` é `dotnet backend/src/Tools/JobOrchestrator.Cli/bin/Debug/net10.0/jo.dll` depois do build; `--api` aponta para outra porta quando preciso.
 
@@ -52,6 +57,10 @@ O `jo` é `dotnet backend/src/Tools/JobOrchestrator.Cli/bin/Debug/net10.0/jo.dll
 | Jooble | 500 chamadas no total da chave grátis |
 | NAV | token público (gira sozinho; 401 busca o novo), 7 dias de feed, até 12 páginas e 40 detalhes por rodada |
 | Gupy, Rippling, SmartRecruiters | até 40 descrições por rodada, uma de cada vez, com pausa |
+| BambooHR | até 30 descrições por rodada, uma de cada vez, com pausa |
+| MPSV (República Tcheca) | um download por dia; até 300 vagas por busca, guardadas na memória até o dia virar |
+| Common Crawl (caçador) | uma consulta por vez, por páginas do índice, 1,5 s entre elas; resposta guardada 14 dias; a primeira falha para o canal na caçada |
+| Wikidata (caçador) | uma consulta por vez com 1,2 s entre elas; resposta guardada 30 dias; 429 espera o Retry-After |
 | IA | teto por tarefa por dia (`Llm:Tasks:{tarefa}:Budget`); modelo local sem custo; API paga não é usada |
 
 Todas as fontes passam pela resiliência por host (espera com Retry-After, circuito que abre e fecha) e por robots.txt onde há página.
@@ -78,3 +87,6 @@ Todas as fontes passam pela resiliência por host (espera com Retry-After, circu
 | Chave sumiu | gnome-keyring bloqueado | desbloquear a sessão e testar de novo em Fontes › Chaves de API |
 | Assinatura sem resposta | CLI sem login | Provedores › Conectar conta (Claude ou ChatGPT) |
 | Porta 7410 ocupada | outro processo do app | `job-orchestrator --status`; parar o antigo antes de subir o novo |
+| Caçador sem Common Crawl | o índice público corta em ~10 s e às vezes fica fora (504 em tudo) | nada a fazer: a próxima caçada tenta de novo; os outros canais seguem |
+| Open Jobs `/data/` com 500 ("error code: 1101") | o servidor deles está fora | o `jo history import` com a URL do .tar funciona quando voltar; a lista CC0 de quadros já está no catálogo |
+| Vaga de teste na fila (127.0.0.1:5470) | resto de teste do ATS falso no banco de desenvolvimento | ela não volta pela campanha; pode descartar na tela da vaga ou zerar os dados de teste |

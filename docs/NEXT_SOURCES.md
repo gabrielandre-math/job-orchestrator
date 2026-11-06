@@ -1,6 +1,6 @@
 # Próximas fontes
 
-Gerado por `jo sources next` em 05/11/2026 23:54 UTC. São os 285 registros do catálogo V2 (de 321) que ainda não
+Gerado por `jo sources next` em 06/11/2026 01:56 UTC. São os 283 registros do catálogo V2 (de 321) que ainda não
 viraram plataforma no registro (`data/source-registry.json`), em ordem de prioridade do catálogo (P0 primeiro). Nenhum foi dado como funcionando: cada um
 precisa de documentação, termos e sondagem antes de entrar. Agências do diretório WAPES ficam juntas no fim, por país.
 
@@ -49,7 +49,7 @@ Importar em streaming, com teto de disco e RAM, como histórico: nenhuma vaga vi
 | P1 | Open Jobs archived public data | GLOBAL | SNAPSHOT_ONLY | DOCUMENTED | https://backend.dehnbostele.workers.dev/data/ |
 | P1 | Open Jobs Data | GLOBAL | OPEN_DATA_SNAPSHOTS | REQUIRES_VALIDATION | https://github.com/ConorsCode/open-jobs-data |
 
-## Pista do Explorador (169)
+## Pista do Explorador (168)
 
 Serve para achar empresas, quadros e portais, não para coletar: o Explorador usa e cada quadro achado passa pela sondagem antes de entrar.
 
@@ -198,7 +198,6 @@ Serve para achar empresas, quadros e portais, não para coletar: o Explorador us
 | P2 | SEEK New Zealand | NEW_ZEALAND | DISCOVERY_ONLY | DISCOVERY_TARGET | https://www.seek.co.nz/ |
 | P2 | Sharjah government jobs | AE | DISCOVERY_ONLY | DOCUMENTED | https://u.ae/en/resources/government-jobs |
 | P2 | Singapore data.gov.sg open dataset catalog | SG | DISCOVERY_ONLY | DOCUMENTED | https://developers.data.gov.sg/ |
-| P2 | Singapore MyCareersFuture | SINGAPORE | DISCOVERY_ONLY | REQUIRES_VALIDATION | https://www.mycareersfuture.gov.sg/ |
 | P2 | South Africa DPSA | SOUTH_AFRICA | DISCOVERY_ONLY | REQUIRES_VALIDATION | https://www.dpsa.gov.za/ |
 | P2 | South Africa Government Jobs Circular | SOUTH_AFRICA | DISCOVERY_ONLY | REQUIRES_VALIDATION | https://www.gov.za/government-jobs-week |
 | P2 | South Africa Govt public service vacancy listing | ZA | DISCOVERY_ONLY | DOCUMENTED | https://www.gov.za/jobs |
@@ -259,7 +258,7 @@ O próprio catálogo marca como não usar.
 |---|---|---|---|---|---|
 | P3 | Norway NAV former API (deprecated) | NO | DO_NOT_USE | DOCUMENTED | https://github.com/navikt/pam-public-feed |
 
-## Agências públicas de emprego do diretório WAPES (79)
+## Agências públicas de emprego do diretório WAPES (78)
 
 Uma agência não implica API nem vaga aberta. Caminho: abrir o portal da agência, procurar busca real de vagas e documentação de API ou feed, conferir termos e só então criar a fonte.
 
@@ -311,7 +310,6 @@ Uma agência não implica API nem vaga aberta. Caminho: abrir o portal da agênc
 | KZ | Kazakhstan — ENBEK (Workforce Development Center) | https://wapes.org/members-2/?lang=en |
 | LT | Lithuania — UZT (Uzimtumo tarnyba) | https://wapes.org/members-2/?lang=en |
 | LU | Luxembourg — ADEM (Agence pour le developpement de l'emploi) | https://wapes.org/members-2/?lang=en |
-| LV | Latvia — NVA (State Employment Agency) | https://wapes.org/members-2/?lang=en |
 | MA | Morocco — ANAPEC (ANAPEC) | https://wapes.org/members-2/?lang=en |
 | MD | Moldova — ANOFM (Agentia Nationala pentru Ocuparea Fortei de Munca) | https://wapes.org/members-2/?lang=en |
 | ME | Montenegro — Employment Agency of Montenegro (Employment Agency of Montenegro) | https://wapes.org/members-2/?lang=en |
