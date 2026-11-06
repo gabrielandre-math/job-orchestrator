@@ -15,6 +15,15 @@ internal sealed class SettingsEndpoints : ICarterModule
     {
         var g = app.MapGroup("/api/settings").WithTags("Operations");
         g.MapGet("", (IConfiguration config) => Results.Ok(new PrivacySettings(config.GetValue("Privacy:LocalOnly", false), config.GetValue("Retention:Days", 90))));
+        // O conector MCP: o comando deste executável com --mcp, pronto para o Claude Code e o Claude Desktop.
+        g.MapGet("mcp", () =>
+        {
+            var exe = Environment.ProcessPath is { } path && Path.GetFileNameWithoutExtension(path) == "job-orchestrator" ? path : "job-orchestrator";
+            var shown = exe.Contains(' ') ? $"\"{exe}\"" : exe;
+            var desktop = JsonSerializer.Serialize(new { mcpServers = new Dictionary<string, object> { ["job-orchestrator"] = new { command = exe, args = new[] { "--mcp" } } } },
+                new JsonSerializerOptions { WriteIndented = true });
+            return Results.Ok(new { command = exe, claudeCode = $"claude mcp add job-orchestrator -- {shown} --mcp", desktop });
+        });
         g.MapPut("", async (PrivacySettings body) =>
         {
             await UserSettings.SetAsync(new Dictionary<string, object?> { ["Privacy:LocalOnly"] = body.LocalOnly, ["Retention:Days"] = Math.Clamp(body.RetentionDays, 7, 3650) });

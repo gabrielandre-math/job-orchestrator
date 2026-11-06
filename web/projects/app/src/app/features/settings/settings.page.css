@@ -20,3 +20,4 @@ code { display: inline-block; margin-top: 8px; padding: 6px 10px; border-radius:
 .timers .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--line-strong); transition: background-color 200ms ease; }
 .timers li.on .dot { background: var(--ok); }
 .timers .faint { margin-left: auto; }
+.cmd { display: block; margin-top: 6px; padding: 8px 10px; border-radius: 4px; background: var(--surface-3); font-size: 12px; white-space: pre-wrap; word-break: break-all; }

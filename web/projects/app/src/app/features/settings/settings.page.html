@@ -81,6 +81,23 @@
     </div>
   </section>
 
+  @if (mcp.value(); as m) {
+    <section class="panel">
+      <header><h2>Conector MCP (Claude)</h2><span class="faint small">só lê, menos os rascunhos de currículo e carta; nunca envia nem apaga</span></header>
+      <div class="rows">
+        <div class="row">
+          <span><strong>No Claude Code</strong><p class="muted">Com o app no ar, o Claude busca e lê as suas vagas, o perfil e as candidaturas, e gera o currículo ou a carta de uma vaga, no seu plano. Rode uma vez no terminal:</p>
+            <code class="mono cmd">{{ m.claudeCode }}</code></span>
+          <button type="button" class="btn" (click)="copyText(m.claudeCode, 'code')"><jo-icon [name]="copiedKey() === 'code' ? 'check' : 'copy'" [size]="14" />{{ copiedKey() === 'code' ? 'Copiado' : 'Copiar' }}</button>
+        </div>
+        <div class="row">
+          <span><strong>No Claude Desktop</strong><p class="muted">Em Configurações, Desenvolvedor, Editar configuração, junte isto ao arquivo:</p><pre class="mono cmd">{{ m.desktop }}</pre></span>
+          <button type="button" class="btn" (click)="copyText(m.desktop, 'desktop')"><jo-icon [name]="copiedKey() === 'desktop' ? 'check' : 'copy'" [size]="14" />{{ copiedKey() === 'desktop' ? 'Copiado' : 'Copiar' }}</button>
+        </div>
+      </div>
+    </section>
+  }
+
   <section class="panel danger">
     <header><h2>Apagar tudo</h2></header>
     <div class="rows">

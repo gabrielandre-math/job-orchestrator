@@ -64,5 +64,11 @@ export class SettingsPage {
     await this.revoking.run();
   }
   protected async wipe() { if (this.typed().trim() === PHRASE && (await this.wiping.run()) !== null) { this.typed.set(''); await this.campaigns.reload(); } }
+  /** O comando do conector MCP para o Claude Code e o trecho do Claude Desktop. */
+  protected readonly mcp = query<{ command: string; claudeCode: string; desktop: string }>(() => '/settings/mcp', 0);
+  protected readonly copiedKey = signal<string | null>(null);
+  protected async copyText(text: string, key: string) {
+    try { await navigator.clipboard.writeText(text); this.copiedKey.set(key); setTimeout(() => this.copiedKey.set(null), 1500); } catch { /* sem área de transferência */ }
+  }
   protected async copy() { try { await navigator.clipboard.writeText(this.install); this.copied.set(true); setTimeout(() => this.copied.set(false), 1500); } catch { /* sem área de transferência */ } }
 }
