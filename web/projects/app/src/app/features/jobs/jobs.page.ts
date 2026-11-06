@@ -22,7 +22,7 @@ const FILTERS_OPEN = 'jo.vagas.filtros';
 interface Tally { key: string; value: number }
 interface JobStats { byStatus: Tally[]; bySource: Tally[]; scores: Tally[]; byModality: Tally[]; byContract: Tally[]; bySeniority: Tally[]; topStack: Tally[]; perDay: { day: string; value: number }[]; total: number;
   open: { open: number; brazilOk: number; restricted: number; fresh: number } }
-interface Resume { id: string; language: string; mode: string; writtenBy: string | null; reviewedBy: string | null; reviewed: boolean; pages: number; createdAt: string; fileName: string; threadId: string }
+interface Resume { id: string; language: string; mode: string; writtenBy: string | null; reviewedBy: string | null; reviewed: boolean; pages: number; createdAt: string; fileName: string; threadId: string; profileVersion: number }
 interface Compose { ok: boolean; versionId: string | null; mode: string; reviewed: boolean; error: string | null; threadId: string | null }
 
 const SOURCE_LOGO: Record<string, { file: string; mono: boolean }> = {

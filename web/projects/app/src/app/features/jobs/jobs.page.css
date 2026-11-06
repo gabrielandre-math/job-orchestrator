@@ -160,3 +160,4 @@
 .chart.full .stack { grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); }
 .lh { display: flex; align-items: center; gap: 6px; }
 .fb-label jo-help { margin-left: 4px; vertical-align: -3px; }
+.old { padding: 1px 6px; border-radius: 3px; font-size: 11px; color: var(--warn); background: color-mix(in oklch, var(--warn) 12%, transparent); }

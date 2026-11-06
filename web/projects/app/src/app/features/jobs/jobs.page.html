@@ -333,6 +333,7 @@
                     <jo-icon name="file-text" [size]="18" />
                     <a [href]="'/api/materials/resumes/' + r.id + '/pdf'" target="_blank" rel="noopener">{{ r.fileName }}</a>
                     <span class="faint small">{{ modeLabel(r.mode) }}{{ r.reviewed ? ', revisado por outra família' : '' }} · {{ r.pages }} {{ r.pages === 1 ? 'página' : 'páginas' }} · {{ ago(r.createdAt) }}</span>
+                    @if (profile.value(); as pf) { @if (r.profileVersion < pf.version) { <span class="old" title="Feito antes da última mudança do perfil, como um currículo novo">perfil antigo</span> } }
                   </li>
                 }
               </ul>

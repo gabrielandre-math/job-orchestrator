@@ -48,13 +48,16 @@
           <button type="button" class="chip" [attr.aria-pressed]="baseLang() === 'en'" (click)="baseLang.set('en')">Inglês</button>
         </div>
         <button type="button" class="btn primary" (click)="composeBase()" [disabled]="composing.running()">
-          @if (composing.running()) { <span class="spinner sm" aria-hidden="true"></span>Gerando… } @else { <jo-icon name="file-text" [size]="14" />Gerar o PDF }
+          @if (composing.running()) { <span class="spinner sm" aria-hidden="true"></span>Gerando… } @else { <jo-icon name="file-text" [size]="14" />{{ baseStale() ? 'Gerar de novo' : 'Gerar o PDF' }} }
         </button>
         <span class="faint small">O tema escolhido passa a valer também nos currículos das vagas.</span>
       </div>
+      @if (baseStale()) {
+        <p class="stale"><jo-icon name="warning" [size]="15" />O seu perfil mudou depois do último PDF, por exemplo com um currículo novo. Os PDFs abaixo ainda são do jeito antigo: gere de novo para usar o que está no perfil agora.</p>
+      }
       @if (b.versions.length > 0) {
         <ul class="versions">
-          @for (v of b.versions; track v.id) { <li><a [href]="'/api/materials/resumes/' + v.id + '/pdf'" target="_blank" rel="noopener"><jo-icon name="file-text" [size]="13" />{{ v.language === 'en' ? 'Inglês' : 'Português' }}, {{ v.pages }} {{ v.pages === 1 ? 'página' : 'páginas' }}</a><span class="faint small">{{ v.writtenBy }} · {{ v.createdAt.slice(0, 16).replace('T', ' ') }}</span></li> }
+          @for (v of b.versions; track v.id) { <li><a [href]="'/api/materials/resumes/' + v.id + '/pdf'" target="_blank" rel="noopener"><jo-icon name="file-text" [size]="13" />{{ v.language === 'en' ? 'Inglês' : 'Português' }}, {{ v.pages }} {{ v.pages === 1 ? 'página' : 'páginas' }}</a><span class="faint small">{{ v.writtenBy }} · {{ v.createdAt.slice(0, 16).replace('T', ' ') }}</span>@if (profile.value(); as pf) { @if (v.profileVersion < pf.version) { <span class="old">perfil antigo</span> } }</li> }
         </ul>
       }
     </article>
@@ -114,6 +117,15 @@
                   @if (d.status === 'Failed') {
                     <span class="d-error">{{ d.error }}</span>
                     <button type="button" class="btn" (click)="retry(d.id)" [disabled]="retrying.running()"><jo-icon name="arrows-clockwise" [size]="14" />Ler de novo</button>
+                  }
+                  @if (asking() !== d.id) {
+                    <button type="button" class="btn ghost d-remove" (click)="asking.set(d.id)" [attr.aria-label]="'Excluir ' + d.fileName"><jo-icon name="trash" [size]="14" />Excluir</button>
+                  } @else {
+                    <span class="d-confirm" role="group" aria-label="Confirmar a exclusão">
+                      <span>{{ only(d.id) === 0 ? 'Nenhuma informação do perfil vem só deste arquivo: ele sai e o perfil fica igual.' : only(d.id) + (only(d.id) === 1 ? ' informação vem só deste arquivo e sai do perfil.' : ' informações vêm só deste arquivo e saem do perfil.') }}</span>
+                      <button type="button" class="btn danger" (click)="removeDoc(d.id)" [disabled]="removing.running()">Excluir de vez</button>
+                      <button type="button" class="btn ghost" (click)="asking.set(null)">Cancelar</button>
+                    </span>
                   }
                 </li>
               }

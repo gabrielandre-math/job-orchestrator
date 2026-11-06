@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using System.Text;
+using JobOrchestrator.BuildingBlocks;
 using JobOrchestrator.Profile.Contracts;
 using JobOrchestrator.Profile.Domain;
 using JobOrchestrator.Profile.Import;
@@ -14,6 +15,27 @@ public sealed class LinkedInConnectTests
 
     private static VerifiedFact Fact(CandidateProfile p, SourceDocument d, string kind, string statement, Guid? parent = null, string? org = null, string? role = null, params string[] tech) =>
         VerifiedFact.Create(p.Id, d.Id, kind, statement, FactStatus.Verified, 0, Now, parent, org, role, technologies: tech, quote: statement);
+
+    [Fact]
+    public void Excluir_documento_tira_so_o_que_vinha_so_dele()
+    {
+        var p = CandidateProfile.Create(Now);
+        var cv = p.AddDocument("cv.pdf", "pdf", "a1", "/tmp/cv.pdf", "cv", 1, Now);
+        var job = Fact(p, cv, "experience", "Software Engineer, BOATLUX", org: "BOATLUX", role: "Software Engineer");
+        p.ReplaceFacts(cv, [job, Fact(p, cv, "skill", "C#"), Fact(p, cv, "skill", "Kotlin")], Nobody, "teste", Now);
+        var li = p.AddDocument("Basic_LinkedInDataExport.zip", "linkedin", "b2", "/tmp/li.zip", "li", 1, Now);
+        p.ReplaceFacts(li, [Fact(p, li, "experience", "Software Engineer, BOATLUX", org: "Boatlux", role: "Software engineer"), Fact(p, li, "skill", "C#")], Nobody, "teste", Now);
+        var before = p.Version;
+
+        var (file, removed) = p.RemoveDocument(cv.Id, Now);
+
+        Assert.Equal(("/tmp/cv.pdf", 1), (file, removed));
+        Assert.Equal([li.Id], p.Documents.Select(d => d.Id));
+        Assert.Equal(["C#"], p.Facts.Where(f => f.Kind == "skill").Select(f => f.Statement));
+        Assert.All(p.Facts, f => Assert.Equal(li.Id, f.DocumentId));
+        Assert.True(p.Version > before);
+        Assert.Throws<DomainRuleException>(() => p.RemoveDocument(cv.Id, Now));
+    }
 
     [Fact]
     public void Curriculo_e_LinkedIn_se_somam_sem_repetir()

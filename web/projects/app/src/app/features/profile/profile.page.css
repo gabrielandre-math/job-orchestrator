@@ -16,6 +16,11 @@
 .docs li:last-child { border-bottom: 0; }
 .d-name { font-weight: 600; }
 .d-error { flex-basis: 100%; color: var(--warn); font-size: 12px; }
+.d-remove { margin-left: auto; height: 28px; color: var(--text-3); }
+.d-remove:hover { color: var(--danger); }
+.d-confirm { flex-basis: 100%; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 10px; border-radius: 6px; font-size: 12.5px; color: var(--text-2);
+  border: 1px solid color-mix(in oklch, var(--danger) 40%, var(--line)); background: color-mix(in oklch, var(--danger) 6%, var(--surface-2)); }
+.d-confirm > span { flex: 1 1 260px; }
 .reading { display: flex; align-items: center; gap: 8px; margin: 0; padding: 10px 16px 14px; color: var(--text-2); font-size: 12.5px; }
 .reading a { margin-left: auto; color: var(--accent); }
 .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-3); flex: none; }
@@ -99,4 +104,7 @@
 .versions li { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; font-size: 12.5px; }
 .versions a { display: inline-flex; gap: 6px; align-items: center; }
 .base > :last-child:not(.versions) { padding-bottom: 14px; }
-
+.stale { display: flex; gap: 8px; align-items: flex-start; margin: 0 16px 12px; padding: 10px 12px; border-radius: 6px; font-size: 12.5px; line-height: 1.5; color: var(--text-2);
+  border: 1px solid color-mix(in oklch, var(--warn) 45%, var(--line)); background: color-mix(in oklch, var(--warn) 6%, var(--surface-2)); }
+.stale jo-icon { color: var(--warn); margin-top: 1px; flex: none; }
+.old { padding: 1px 6px; border-radius: 3px; font-size: 11px; color: var(--warn); background: color-mix(in oklch, var(--warn) 12%, transparent); }

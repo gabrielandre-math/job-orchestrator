@@ -60,7 +60,7 @@ internal sealed class ResumeEndpoints : ICarterModule
             theme = config.GetValue("Materials:Theme", "classico"),
             themes = Compose.Template.Themes.Select(t => new { key = t.Key, name = t.Name, note = t.Note }),
             versions = await db.Resumes.AsNoTracking().Where(v => v.JobId == Guid.Empty).OrderByDescending(v => v.CreatedAt).Take(8)
-                .Select(v => new { v.Id, v.Language, v.Pages, v.CreatedAt, v.WrittenBy }).ToListAsync(ct),
+                .Select(v => new { v.Id, v.Language, v.Pages, v.CreatedAt, v.WrittenBy, v.ProfileVersion }).ToListAsync(ct),
         }));
         // O PDF só sai do diretório de materiais e pelo id da versão: nunca por caminho vindo de fora.
         group.MapGet("resumes/{id:guid}/pdf", async (Guid id, MaterialsDbContext db, CancellationToken ct) =>

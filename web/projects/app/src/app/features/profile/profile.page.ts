@@ -31,6 +31,9 @@ export class ProfilePage {
   protected readonly dragging = signal(false);
   protected readonly sending = command((f: File) => upload<{ documentId: string }>('/profile/documents', f), 'Currículo recebido. O Leitor começou a ler.');
   protected readonly retrying = command((id: string) => send('POST', `/profile/documents/${id}/retry`), 'Lendo o documento de novo.');
+  /** Excluir um documento pede um segundo clique, com o que sai do perfil escrito antes. */
+  protected readonly asking = signal<string | null>(null);
+  protected readonly removing = command((id: string) => send<{ removed: number }>('DELETE', `/profile/documents/${id}`), 'Documento excluído da base.');
   protected readonly savingIdentity = command((id: Identity) => send('PUT', '/profile/identity', id), 'Dados pessoais salvos.');
   protected readonly confirming = command((body: { confirmations: Confirmations; decisions: Record<string, boolean> }) => send('PUT', '/profile/confirmations', body), 'Perfil confirmado. Daqui para frente o sistema usa estes dados.');
   protected readonly countries = COUNTRIES;
@@ -93,7 +96,9 @@ export class ProfilePage {
     return { score, items, next: items.filter((i) => !i.done).sort((a, b) => b.weight - a.weight).slice(0, 3) };
   });
   /** Currículo base: sem vaga e sem IA, só os fatos do perfil, no tema e no idioma escolhidos (o tema vale também nos currículos das vagas). */
-  protected readonly base = query<{ theme: string; themes: { key: string; name: string; note: string }[]; versions: { id: string; language: string; pages: number; createdAt: string; writtenBy: string | null }[] }>(() => '/materials/base', 0);
+  protected readonly base = query<{ theme: string; themes: { key: string; name: string; note: string }[]; versions: { id: string; language: string; pages: number; createdAt: string; writtenBy: string | null; profileVersion: number }[] }>(() => '/materials/base', 0);
+  /** O PDF mais novo foi feito antes da última mudança do perfil (um currículo novo, por exemplo): vale gerar de novo. */
+  protected readonly baseStale = computed(() => { const v = this.base.value()?.versions[0]; const p = this.profile.value(); return !!v && !!p && v.profileVersion < p.version; });
   protected readonly theme = signal<string | null>(null);
   protected readonly baseLang = signal<'pt' | 'en'>('pt');
   protected readonly composing = command((b: { language: string; theme: string }) => send<{ ok: boolean; versionId: string | null; error: string | null }>('POST', '/materials/base', b),
@@ -148,6 +153,11 @@ export class ProfilePage {
     if (await this.sending.run(file)) await this.profile.reload();
   }
   protected async retry(id: string) { if ((await this.retrying.run(id)) !== null) await this.profile.reload(); }
+  /** Quantas informações do perfil vêm só deste documento (as que outro também traz ficam). */
+  protected only(id: string) { return (this.profile.value()?.facts ?? []).filter((f) => f.documentId === id && (f.alsoIn ?? []).length === 0 && f.status !== 'Rejected').length; }
+  protected async removeDoc(id: string) {
+    if ((await this.removing.run(id)) !== null) { this.asking.set(null); await this.profile.reload(); }
+  }
 
   protected setId(key: keyof Identity, value: string) { this.identity.update((i) => ({ ...i, [key]: value })); }
   protected async saveIdentity() { if ((await this.savingIdentity.run(this.identity())) !== null) await this.profile.reload(); }

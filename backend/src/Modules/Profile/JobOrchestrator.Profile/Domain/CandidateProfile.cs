@@ -255,6 +255,22 @@ internal sealed class CandidateProfile : AggregateRoot
         Touch(now);
     }
 
+    /// <summary>
+    /// Tira um documento da base (o PDF de um currículo antigo, por exemplo): sai o que só ele trazia; o que outro documento também
+    /// traz fica, em nome do outro. Os seus descartes ficam. Devolve o arquivo para apagar, se nenhum outro documento usa o mesmo.
+    /// </summary>
+    public (string? File, int Removed) RemoveDocument(Guid documentId, DateTime now)
+    {
+        var doc = _documents.FirstOrDefault(d => d.Id == documentId) ?? throw new DomainRuleException("Documento não encontrado.");
+        var gone = _facts.Where(f => f.Status != FactStatus.Rejected && !f.Release(new HashSet<Guid> { documentId })).ToList();
+        _facts.RemoveAll(gone.Contains);
+        foreach (var orphan in _facts.Where(f => f.ParentId is { } pid && gone.Any(g => g.Id == pid)).ToList()) orphan.MoveTo(null);
+        _documents.Remove(doc);
+        Status = _facts.Count == 0 ? ProfileStatus.Empty : Pending ? ProfileStatus.NeedsConfirmation : ProfileStatus.Ready;
+        Touch(now);
+        return (_documents.Any(d => d.StoredPath == doc.StoredPath) ? null : doc.StoredPath, gone.Count);
+    }
+
     /// <summary>Perfil de teste, montado de um arquivo: nunca vai para vaga real (o Guardião confere o host).</summary>
     /// <summary>Recomeça do zero: fatos, documentos, identidade e confirmações saem; a versão sobe.</summary>
     public IReadOnlyList<string> Reset(DateTime now)

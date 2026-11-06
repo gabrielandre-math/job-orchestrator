@@ -131,6 +131,23 @@ internal sealed class ResetProfileHandler(ProfileDbContext db, TimeProvider time
     }
 }
 
+/// <summary>Comando: tirar um documento da base. Sai o que só ele trazia; o arquivo some do disco.</summary>
+internal sealed record RemoveDocumentCommand(Guid Id) : ICommand<RemovedDocument>, IProfileCommand;
+internal sealed record RemovedDocument(int Removed);
+
+internal sealed class RemoveDocumentHandler(ProfileDbContext db, TimeProvider time) : ICommandHandler<RemoveDocumentCommand, RemovedDocument>
+{
+    public async Task<Result<RemovedDocument>> Handle(RemoveDocumentCommand c, CancellationToken ct)
+    {
+        var profile = await db.CurrentAsync(ct);
+        if (profile is null || profile.Documents.All(d => d.Id != c.Id)) return Error.NotFound("document-not-found", "Documento não encontrado.");
+        var (file, removed) = profile.RemoveDocument(c.Id, time.GetUtcNow().UtcDateTime);
+        if (file is not null)
+            try { if (File.Exists(file)) File.Delete(file); } catch (IOException) { /* o arquivo some na próxima limpeza */ }
+        return new RemovedDocument(removed);
+    }
+}
+
 /// <summary>Comando: a tela única. Decide cada fato inferido e responde o que só você pode afirmar.</summary>
 internal sealed record ConfirmProfileCommand(Confirmations Confirmations, Dictionary<Guid, bool>? Decisions) : ICommand<Done>, IProfileCommand;
 
@@ -185,6 +202,7 @@ internal sealed class ProfileEndpoints : ICarterModule
         group.MapPost("documents/{id:guid}/retry", async (Guid id, ISender sender, CancellationToken ct) =>
             (await sender.Send(new RetryDocumentCommand(id), ct)).ToHttp(_ => Results.Accepted()));
         group.MapDelete("", async (ISender sender, CancellationToken ct) => (await sender.Send(new ResetProfileCommand(), ct)).ToHttp(_ => Results.NoContent()));
+        group.MapDelete("documents/{id:guid}", async (Guid id, ISender sender, CancellationToken ct) => (await sender.Send(new RemoveDocumentCommand(id), ct)).ToHttp(Results.Ok));
         group.MapPut("identity", async (SetIdentityCommand body, ISender sender, CancellationToken ct) =>
             (await sender.Send(body, ct)).ToHttp(_ => Results.NoContent()));
         group.MapPut("confirmations", async (ConfirmProfileCommand body, ISender sender, CancellationToken ct) =>
