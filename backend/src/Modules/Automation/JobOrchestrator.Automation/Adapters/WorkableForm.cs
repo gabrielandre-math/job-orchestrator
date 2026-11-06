@@ -31,7 +31,8 @@ internal sealed partial class WorkableForm(BrowserPool browsers, IHttpClientFact
           if (!r) return false;
           // Clica no texto da opção, como uma pessoa: o rádio de verdade fica escondido e a página só registra o clique no rótulo.
           (r.closest('label') || document.querySelector('label[for="' + CSS.escape(r.id) + '"]') || r).click();
-          return new Promise((done) => setTimeout(() => done(r.checked || [...document.querySelectorAll('input[type=radio]')].some(x => x.name === name && x.checked)), 120));
+          return new Promise((done) => setTimeout(() => done(r.checked || r.closest('[role=radio]')?.getAttribute('aria-checked') === 'true'
+            || [...document.querySelectorAll('input[type=radio]')].some(x => x.name === name && (x.checked || x.closest('[role=radio]')?.getAttribute('aria-checked') === 'true'))), 150));
         }
         """;
 
@@ -39,7 +40,7 @@ internal sealed partial class WorkableForm(BrowserPool browsers, IHttpClientFact
     private const string Discover = """
         () => {
           const form = document.querySelector('form'); if (!form) return '[]';
-          const text = (el) => (el?.textContent || '').replace(/\s+/g, ' ').trim();
+          const text = (el) => (el?.textContent || '').replace(/SVGs not supported by this browser\./g, ' ').replace(/\s+/g, ' ').trim();
           const byIds = (ids) => (ids || '').split(/\s+/).map(i => text(document.getElementById(i))).join(' ').trim();
           const labelOf = (e) => {
             if (e.id) { const l = document.querySelector('label[for="' + CSS.escape(e.id) + '"]'); if (l && text(l)) return text(l); }
@@ -71,6 +72,7 @@ internal sealed partial class WorkableForm(BrowserPool browsers, IHttpClientFact
         if (response is null || response.Status is 404 or 410)
             return AdapterResult<PreparedForm>.Fail(AdapterResultKind.PermanentFailure, "posting-closed", "A vaga não está mais no ar.");
         var first = page.Locator("form input[name=firstname]");
+        await DeclineCookiesAsync(page);
         if (await first.CountAsync() == 0)
         {
             // No quadro do Workable, o formulário só aparece depois do "Apply now". O botão vem no HTML antes de a página ligar o clique:
@@ -90,6 +92,7 @@ internal sealed partial class WorkableForm(BrowserPool browsers, IHttpClientFact
                 }
                 catch (Exception ex) when (ex is PlaywrightException or TimeoutException) { await page.WaitForTimeoutAsync(1500); }
             }
+            await DeclineCookiesAsync(page);
             if (await first.CountAsync() == 0)
                 return await page.GetByText(NoLonger()).CountAsync() > 0
                     ? AdapterResult<PreparedForm>.Fail(AdapterResultKind.PermanentFailure, "posting-closed", "A vaga não aceita mais candidaturas.")
@@ -104,7 +107,9 @@ internal sealed partial class WorkableForm(BrowserPool browsers, IHttpClientFact
         var found = JsonSerializer.Deserialize<Found[]>(await page.EvaluateAsync<string>(Discover), JsonSerializerOptions.Web) ?? [];
         var fields = new List<FieldValue>();
         var missing = new List<string>();
-        var resumeDone = false;
+        // O campo do currículo: o primeiro com nome de currículo; sem nenhum, o primeiro que não é o da carta.
+        var resumeAt = found.Where(f => f.Type == "file").FirstOrDefault(f => Resume().IsMatch(Clean(f.Label)))?.Nth
+            ?? found.Where(f => f.Type == "file" && !Cover().IsMatch(Clean(f.Label))).Select(f => (int?)f.Nth).FirstOrDefault();
         // Rádios se agrupam pelo nome; caixas de marcar, pela pergunta (no Workable cada opção de uma lista tem nome próprio).
         foreach (var group in found.GroupBy(f => f.Type == "radio" && f.Name.Length > 0 ? $"radio:{f.Name}"
             : f.Type == "checkbox" && Clean(f.Group).Length > 0 ? $"checkbox:{Clean(f.Group)}" : f.Type == "checkbox" && f.Name.Length > 0 ? $"checkbox:{f.Name}" : f.Id))
@@ -121,8 +126,9 @@ internal sealed partial class WorkableForm(BrowserPool browsers, IHttpClientFact
                     if (group.Any(o => o.Required)) missing.Add(question.Length > 0 ? question : label);
                     continue;
                 }
-                // O Workable gera de novo os ids das opções a cada resposta: marca pelo nome do grupo e pelo texto da opção.
-                if (!await page.EvaluateAsync<bool>(PickRadio, new[] { f.Name, Clean(choice.Label) }))
+                // A opção do Workable é um bloco (role=radio) com o rádio de verdade escondido dentro: clica no bloco, como uma
+                // pessoa, e confere a marca nele (aria-checked). Sem bloco, marca pelo nome do grupo e pelo texto da opção.
+                if (!await PickAsync(page, f.Name, Clean(choice.Label)))
                     return AdapterResult<PreparedForm>.Fail(AdapterResultKind.RetryableFailure, "fill-mismatch", $"A resposta de \"{question}\" não ficou marcada.");
                 fields.Add(new FieldValue(question, Clean(choice.Label), answer!.Value.Source));
                 continue;
@@ -144,11 +150,7 @@ internal sealed partial class WorkableForm(BrowserPool browsers, IHttpClientFact
             }
             if (f.Type == "file")
             {
-                // O campo do currículo no Workable tem um ícone como rótulo: o primeiro campo de arquivo é o do currículo, a não ser
-                // que seja o da carta; os outros só entram quando você responde.
-                var resume = Resume().IsMatch(label) || !resumeDone && !Cover().IsMatch(label);
-                if (!resume || resumeDone) { if (f.Required) missing.Add(label); continue; }
-                resumeDone = true;
+                if (f.Nth != resumeAt) { if (f.Required) missing.Add(label); continue; }
                 await page.Locator("form input[type=file]").Nth(f.Nth).SetInputFilesAsync(m.ResumePdfPath);
                 fields.Add(new FieldValue("Currículo", $"{System.IO.Path.GetFileName(m.ResumePdfPath)} (sha256 {FileHash(m.ResumePdfPath)[..12]})", "currículo"));
                 continue;
@@ -179,6 +181,34 @@ internal sealed partial class WorkableForm(BrowserPool browsers, IHttpClientFact
         if (missing.Count > 0) return Missing(missing);
         if (fields.Count == 0) return AdapterResult<PreparedForm>.Fail(AdapterResultKind.Unsupported, "no-fields", "Nenhum campo com rótulo foi reconhecido.");
         return AdapterResult<PreparedForm>.Ok(new PreparedForm(Id, Version, new Uri(target.ApplyUrl).Authority, PayloadHash(fields), fields));
+    }
+
+    /// <summary>
+    /// O aviso de cookies do Workable abre como janela sobre a página e engole os cliques. O app clica em "Decline all": recusar
+    /// os cookies opcionais não autoriza nada em seu nome (aceitar, sim, seria um consentimento seu, e isso o app nunca faz).
+    /// </summary>
+    private static async Task DeclineCookiesAsync(IPage page)
+    {
+        var decline = page.Locator("[data-ui=cookie-consent-decline]:visible");
+        if (await decline.CountAsync() == 0) return;
+        try { await decline.First.ClickAsync(new LocatorClickOptions { Timeout = 5000 }); await page.Locator("[data-ui=backdrop]").WaitForAsync(new LocatorWaitForOptions { State = WaitForSelectorState.Detached, Timeout = 5000 }); }
+        catch (Exception ex) when (ex is PlaywrightException or TimeoutException) { /* sem a janela de cookies fechar, o clique direto ainda tenta */ }
+    }
+
+    private static async Task<bool> PickAsync(IPage page, string name, string label)
+    {
+        var option = page.Locator($"[role=radio]:has(input[type=radio][name='{name.Replace("'", "\\'")}'])")
+            .Filter(new LocatorFilterOptions { HasTextRegex = new Regex($@"^\s*{Regex.Escape(label)}\s*$", RegexOptions.IgnoreCase) }).First;
+        if (await option.CountAsync() > 0)
+        {
+            try
+            {
+                await option.ClickAsync(new LocatorClickOptions { Timeout = 5000 });
+                if (await option.GetAttributeAsync("aria-checked") == "true" || await option.Locator("input[type=radio]").IsCheckedAsync()) return true;
+            }
+            catch (Exception ex) when (ex is PlaywrightException or TimeoutException) { /* cai no clique direto abaixo */ }
+        }
+        return await page.EvaluateAsync<bool>(PickRadio, new[] { name, label });
     }
 
     /// <summary>Sim ou não que sai do perfil ou das suas respostas; sem base, fica nulo e a pergunta para em você.</summary>
