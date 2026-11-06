@@ -56,3 +56,23 @@ public sealed class MailLoginTests
         Assert.False(MailService.RefusedLogin(new MailKit.Net.Smtp.SmtpProtocolException("The SMTP server has unexpectedly disconnected.")));
     }
 }
+
+/// <summary>Gmail asking for a browser sign-in is told apart from a wrong password.</summary>
+public sealed class MailWebLoginTests
+{
+    [Fact]
+    public void Smtp_5_7_9_asks_for_a_browser_sign_in()
+    {
+        var ex = new MailKit.Net.Smtp.SmtpProtocolException("The SMTP server has unexpectedly disconnected: 5.7.9 Please log in with your web browser and then try again. https://support.google.com/mail/?p=WebLoginRequired");
+        Assert.True(MailService.WebLoginRequired(ex));
+        Assert.True(MailService.RefusedLogin(ex) is false);
+    }
+
+    [Fact]
+    public void Imap_web_alert_asks_for_a_browser_sign_in() =>
+        Assert.True(MailService.WebLoginRequired(new MailKit.Security.AuthenticationException("[ALERT] Please log in via your web browser: https://support.google.com/mail/accounts/answer/78754 (Failure)")));
+
+    [Fact]
+    public void A_wrong_password_is_not_a_browser_sign_in() =>
+        Assert.False(MailService.WebLoginRequired(new MailKit.Net.Smtp.SmtpProtocolException("The SMTP server has unexpectedly disconnected: 5.7.8 Username and Password not accepted.")));
+}

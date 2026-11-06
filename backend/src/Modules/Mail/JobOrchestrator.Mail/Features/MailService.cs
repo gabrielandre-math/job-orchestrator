@@ -106,6 +106,7 @@ internal sealed partial class MailService(
             await smtp.AuthenticateAsync(a.Address, password, ct);
             await smtp.DisconnectAsync(true, ct);
         }
+        catch (Exception ex) when (WebLoginRequired(ex)) { throw new MailRuleException(WebLoginMessage); }
         catch (Exception ex) when (ex is AuthenticationException || RefusedLogin(ex)) { throw new MailRuleException(LoginRefusedMessage(a)); }
         catch (SslHandshakeException) { throw new MailRuleException($"Não foi possível abrir uma conexão segura com {a.SmtpHost}:{a.SmtpPort}: o certificado do servidor não foi aceito."); }
         catch (Exception ex) when (ex is IOException or SmtpCommandException or SmtpProtocolException or System.Net.Sockets.SocketException)
@@ -117,6 +118,15 @@ internal sealed partial class MailService(
         ex is SmtpCommandException or SmtpProtocolException
         && (ex.Message.Contains("5.7.8", StringComparison.Ordinal) || ex.Message.Contains("535", StringComparison.Ordinal)
             || ex.Message.Contains("Username and Password not accepted", StringComparison.OrdinalIgnoreCase));
+
+    // Gmail answers 5.7.9 (SMTP) or a "log in via your web browser" alert (IMAP) when it wants the sign-in confirmed in a browser first.
+    internal static bool WebLoginRequired(Exception ex) =>
+        ex is SmtpCommandException or SmtpProtocolException or AuthenticationException
+        && (ex.Message.Contains("5.7.9", StringComparison.Ordinal) || ex.Message.Contains("WebLoginRequired", StringComparison.OrdinalIgnoreCase)
+            || ex.Message.Contains("web browser", StringComparison.OrdinalIgnoreCase));
+
+    private const string WebLoginMessage = "O Gmail barrou este login por segurança e quer uma confirmação pelo navegador. Entre no gmail.com com esta conta neste computador, "
+        + "confirme em myaccount.google.com/notifications que foi você e tente de novo daqui a um minuto.";
 
     private static string LoginRefusedMessage(MailAccount a) => a.Provider == "gmail"
         ? "O Gmail recusou o login. Use uma senha de app de 16 letras, criada em myaccount.google.com/apppasswords com a verificação em duas etapas ligada. A senha normal da conta não funciona aqui."
@@ -131,6 +141,7 @@ internal sealed partial class MailService(
             await imap.AuthenticateAsync(a.Address, password, ct);
             await imap.DisconnectAsync(true, ct);
         }
+        catch (Exception ex) when (WebLoginRequired(ex)) { throw new MailRuleException(WebLoginMessage); }
         catch (AuthenticationException) { throw new MailRuleException("O envio funcionou, mas a leitura (IMAP) recusou o login. No Gmail, confira se o IMAP está ligado nas configurações."); }
         catch (SslHandshakeException) { throw new MailRuleException($"Não foi possível abrir uma conexão segura com {a.ImapHost}:{a.ImapPort}: o certificado do servidor não foi aceito."); }
         catch (Exception ex) when (ex is IOException or ImapCommandException or ImapProtocolException or System.Net.Sockets.SocketException)
