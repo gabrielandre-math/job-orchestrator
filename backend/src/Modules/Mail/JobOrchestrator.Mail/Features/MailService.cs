@@ -169,7 +169,8 @@ internal sealed partial class MailService(
 
     // ---------- Rascunho ----------
 
-    public async Task<OutgoingMail> DraftAsync(Guid jobId, string kind, CancellationToken ct)
+    /// <param name="plain">Só o esqueleto com dados locais, sem IA: o automático usa quando o Conferente teve de cortar frase do texto da IA.</param>
+    public async Task<OutgoingMail> DraftAsync(Guid jobId, string kind, CancellationToken ct, bool plain = false)
     {
         var target = (await jobs.EmailTargetsAsync(ct)).FirstOrDefault(t => t.Id == jobId) ?? throw new MailRuleException("Esta vaga não publica um e-mail de candidatura.");
         var mine = await db.Outgoing.Where(o => o.JobId == jobId && o.Status != "Cancelled" && o.Status != "Failed").ToListAsync(ct);
@@ -188,7 +189,7 @@ internal sealed partial class MailService(
 
         var (subject, body) = Fill(template, target, p, text, language);
         var by = "modelo";
-        if (kind == "first")
+        if (kind == "first" && !plain)
         {
             var facts = string.Join("\n", p.Facts.Where(f => f.Kind is "experience" or "skill" or "achievement" or "education" or "certification" or "language").Take(50).Select(f => $"- {Line(f)}"));
             var prompt = $"Esqueleto (tom e estrutura):\nAssunto: {template.Subject}\n{template.Body}\n\nVaga: {target.Title} na {target.Company} ({target.Location}).\n{Cut(text?.Description ?? "", 3500)}\n\nFatos verificados do currículo:\n{facts}";
@@ -382,6 +383,22 @@ internal sealed partial class MailService(
 
     // ---------- Modo automático e lembretes (Worker) ----------
 
+    /// <summary>
+    /// No automático nada espera você: o rascunho limpo sai; o que o Conferente teve de cortar troca pelo esqueleto, só com fatos do perfil.
+    /// Fica parado só o que nem o esqueleto resolve, como o currículo que não ficou pronto para o anexo.
+    /// </summary>
+    private async Task ReleaseAsync(OutgoingMail m, bool attach, CancellationToken ct)
+    {
+        if (m.CheckNotes is not null && m.Kind == "first" && m.DraftedBy != "modelo" && (m.AttachmentPath is not null || !attach))
+        {
+            m.Status = "Cancelled";
+            await db.SaveChangesAsync(ct);
+            m = await DraftAsync(m.JobId, "first", ct, plain: true);
+        }
+        if (m.CheckNotes is null) { m.Status = "Scheduled"; m.ApprovedAt = Now; }
+        await db.SaveChangesAsync(ct);
+    }
+
     public async Task TickAsync(CancellationToken ct)
     {
         var s = await SettingsAsync(ct);
@@ -390,15 +407,16 @@ internal sealed partial class MailService(
         {
             if (auto)
             {
+                // Rascunho de antes do automático também sai, pelas mesmas regras.
+                foreach (var old in await db.Outgoing.Where(o => o.Status == "AwaitingApproval").ToListAsync(ct))
+                {
+                    try { await ReleaseAsync(old, s.AttachResume, ct); }
+                    catch (MailRuleException ex) { log.LogInformation("Auto release skipped: {Error}", ex.Message); }
+                }
                 var contacted = await db.Outgoing.Where(o => o.Status != "Cancelled").Select(o => o.JobId).Distinct().ToListAsync(ct);
                 foreach (var t in (await jobs.EmailTargetsAsync(ct)).Where(t => !contacted.Contains(t.Id)).Take(2))
                 {
-                    try
-                    {
-                        var m = await DraftAsync(t.Id, "first", ct);
-                        // Automático aprova sozinho só o rascunho que o Conferente não mexeu; o resto espera a pessoa.
-                        if (m.CheckNotes is null) { m.Status = "Scheduled"; m.ApprovedAt = Now; await db.SaveChangesAsync(ct); }
-                    }
+                    try { await ReleaseAsync(await DraftAsync(t.Id, "first", ct), s.AttachResume, ct); }
                     catch (MailRuleException ex) { log.LogInformation("Auto draft skipped: {Error}", ex.Message); }
                 }
             }

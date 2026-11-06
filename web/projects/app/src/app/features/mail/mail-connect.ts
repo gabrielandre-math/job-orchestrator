@@ -52,6 +52,9 @@ export class MailConnect {
   protected readonly cap = signal(5);
   protected readonly followUp = signal(5);
   protected readonly windowStart = signal(8); protected readonly windowEnd = signal(19);
+  /** O início nunca passa do fim (e o contrário): antes, arrastar o início para 23h com o fim em 19h salvava 23h à meia-noite. */
+  protected setStart(v: number) { this.windowStart.set(v); if (this.windowEnd() <= v) this.windowEnd.set(Math.min(24, v + 1)); }
+  protected setEnd(v: number) { this.windowEnd.set(v); if (this.windowStart() >= v) this.windowStart.set(Math.max(0, v - 1)); }
   protected readonly attach = signal(true);
   protected readonly connecting = command((body: object) => send<{ id: string; address: string }>('POST', '/mail/accounts', body), 'E-mail conectado: envio e leitura testados.');
   protected readonly testing = command((id: string) => send('POST', `/mail/accounts/${id}/test`), 'E-mail de teste enviado para você mesmo.');

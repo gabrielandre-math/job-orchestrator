@@ -83,7 +83,7 @@
           <label class="field">Teto por dia <span class="num accent">{{ cap() }}</span><input type="range" min="1" max="15" [value]="cap()" (input)="cap.set(num($event))" /></label>
           <label class="field">Lembrete depois de <span class="num accent">{{ followUp() }} dias</span><input type="range" min="3" max="21" [value]="followUp()" (input)="followUp.set(num($event))" /></label>
           <label class="field">Janela de envio <span class="num accent">{{ windowStart() }}h às {{ windowEnd() }}h</span>
-            <span class="pair"><input type="range" min="0" max="23" [value]="windowStart()" (input)="windowStart.set(num($event))" aria-label="Início" /><input type="range" min="1" max="24" [value]="windowEnd()" (input)="windowEnd.set(num($event))" aria-label="Fim" /></span>
+            <span class="pair"><input type="range" min="0" max="23" [value]="windowStart()" (input)="setStart(num($event))" aria-label="Início" /><input type="range" min="1" max="24" [value]="windowEnd()" (input)="setEnd(num($event))" aria-label="Fim" /></span>
           </label>
           <label class="line"><input type="checkbox" class="switch" [checked]="attach()" (change)="attach.set($any($event.target).checked)" /><span><strong>Anexar o currículo da vaga</strong><p>O PDF sob medida, perfeito para ATS, com o nome Nome-Sobrenome-Curriculo.pdf.</p></span></label>
         </div>
