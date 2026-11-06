@@ -101,7 +101,7 @@ No topo fica o interruptor do modo privado.
 
 ## 9. Várias contas e ordem de gasto
 
-Cada conta vira um provedor separado, com login, cota e reserva próprios. A ordem abaixo é a padrão pedida pelo usuário e pode ser mudada arrastando na tela Provedores.
+Cada conta vira um provedor separado, com login, cota e reserva próprios. A ordem abaixo é a padrão e pode ser mudada arrastando na tela Provedores.
 
 | Ordem | Provedor | Como conecta | Estado em 05/11 |
 |---|---|---|---|
@@ -122,7 +122,6 @@ Regras:
   - Codex: pelos eventos `rate_limits`;
   - Gemini: por erro de cota e pelas estatísticas do JSON (a validar).
 - Gemini sem interação: `gemini -p ... -o json -m <modelo>`, com extensões e MCP desligados (`-e`, `--allowed-mcp-server-names`) e ferramentas negadas pelo Policy Engine (a validar).
-- As quatro contas são pessoais do usuário (confirmado em 05/11).
 - Nos termos de consumidor da Anthropic não há cláusula contra ter mais de uma conta (lido em 05/11). O sistema não cria conta, não compartilha login e usa cada conta dentro do próprio limite.
 - O Gemini recebe a mesma minimização dos outros, sem PII. A política de uso de dados do plano Google deve ser conferida antes de ligar.
 

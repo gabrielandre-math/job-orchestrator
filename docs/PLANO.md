@@ -325,7 +325,7 @@ Fora do painel:
 
 ## 11. Fases de entrega
 
-Cada fase fecha com testes verdes, commit local e `docs/PROGRESS.md` atualizado.
+Cada fase fecha com testes verdes e commit.
 
 ### Fase 0: auditoria (concluída)
 Host, cinco repos, fontes, provedores. Resultado: núcleo próprio, os cinco como referência (`docs/research/`).
@@ -568,7 +568,7 @@ Envio real fica desligado em toda a suíte.
 | PC pesado à noite | `jobs.slice` com teto, Ollama descarrega modelo ocioso, 1 navegador de envio |
 | Envio indevido ou duplicado | invariantes no banco, token do Guardião, testes de caos |
 | Vazamento de dado | minimização, placeholders de PII, e-mail só local, logs redigidos |
-| Escopo grande | fatia vertical primeiro, aceite por fase, retomada pelo PROGRESS |
+| Escopo grande | fatia vertical primeiro, aceite por fase |
 
 ## 14. O que destrava cada fase
 

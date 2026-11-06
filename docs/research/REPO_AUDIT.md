@@ -49,7 +49,7 @@ Data: 05/11/2026. Clones rasos em `references/` (fora do git). Só leitura de RE
 - **Entrada e saída:** recebe `profile_truth.md`, currículos antigos e a vaga. Gera JSON, LaTeX, PDF, revisão, relatório e guia de entrevista.
 - **Provedores:** só API paga (Anthropic, OpenAI, Gemini, xAI) ou Bedrock, e o `.env` vem com `bedrock` como padrão (README.md:171-182, `src/llm_factory.py:7-22`, `src/bedrock_llm.py`). Nesta máquina o boto3 usaria o perfil `default` do `~/.aws`. Não há Ollama nem CLI.
 - **Custo:** cada execução chama o provedor várias vezes mais do que o número de agentes (README.md:150-155).
-- **Decisão: REFERENCE_ONLY.** Usar com Ollama ou CLI exigiria mudar o código, e a regra do usuário proíbe portar código de terceiros.
+- **Decisão: REFERENCE_ONLY.** Usar com Ollama ou CLI exigiria mudar o código, e a regra do projeto proíbe portar código de terceiros.
 - **Ideias que valem:** `profile_truth.md` com prioridade sobre tudo, base `resume.json` imutável, parar quando a revisão não melhora, guardar a melhor versão, guia de entrevista a partir do currículo final.
 
 ## Instaply
@@ -68,7 +68,7 @@ Data: 05/11/2026. Clones rasos em `references/` (fora do git). Só leitura de RE
   - materiais com proveniência;
   - fila de revisão, digest e DLQ.
   O envio é sempre aprovado por uma pessoa (README.md:140-200). README declara 1720 testes passando em 21/05.
-- **Decisão: REFERENCE_ONLY** (licença e regra do usuário).
+- **Decisão: REFERENCE_ONLY** (licença e regra do projeto).
 - **Ideias que valem:** a separação em camadas e o modelo de segurança ("agents run inside bounded tool registries").
 
 ## Conclusão
