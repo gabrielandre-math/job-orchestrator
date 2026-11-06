@@ -396,6 +396,8 @@ code { padding: 1px 5px; border-radius: 4px; background: var(--surface-2); color
   .os li a { grid-template-columns: 1fr auto; }
   .cmd { grid-template-columns: 1fr auto; }
   .cmd-os { grid-column: 1 / -1; }
+  .oneline { padding: 18px; }
+  .oneline-head { flex-direction: column; align-items: flex-start; gap: 6px; }
   .os .size { display: none; }
   .foot-in p { margin-left: 0; }
 }
