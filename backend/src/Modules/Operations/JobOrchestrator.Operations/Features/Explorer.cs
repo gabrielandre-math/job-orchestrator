@@ -281,10 +281,15 @@ internal sealed class Explorer(IServiceScopeFactory scopes, [FromKeyedServices("
             timeout.CancelAfter(TimeSpan.FromSeconds(source.StartsWith("web:") ? 300 : 75));
             postings = await automation.DiscoverAsync(source, [.. c.Technologies, .. c.Titles ?? []], timeout.Token);
         }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException or JsonException)
+        catch (Exception ex) when (!ct.IsCancellationRequested)
         {
-            var miss = Miss(source, origin, ex is HttpRequestException { StatusCode: System.Net.HttpStatusCode.NotFound } ? "não existe nesta plataforma" : "não respondeu");
-            log.LogInformation("Explorer: {Source} failed: {Error}", source, ex.Message);
+            // Qualquer falha de uma fonte fica nela: a fonte sai com o motivo e o ciclo segue. Antes, um campo faltando no JSON de uma
+            // única empresa (KeyNotFoundException) derrubava o ciclo inteiro, e como a fila tem ordem fixa, todo ciclo caía no mesmo lugar.
+            var expected = ex is HttpRequestException or TaskCanceledException or InvalidOperationException or JsonException;
+            var miss = Miss(source, origin, ex is HttpRequestException { StatusCode: System.Net.HttpStatusCode.NotFound } ? "não existe nesta plataforma"
+                : expected ? "não respondeu" : "respondeu fora do formato que o conector conhece");
+            if (expected) log.LogInformation("Explorer: {Source} failed: {Error}", source, ex.Message);
+            else log.LogWarning(ex, "Explorer: {Source} answered in an unexpected format", source);
             await Note(ai, thread, "Juiz", $"{source}: {miss.Reason}", null, new { stage = "tested", source, origin, total = 0, relevant = 0, fit = false }, ct, ok: false);
             return (miss, []);
         }
@@ -471,7 +476,7 @@ internal sealed class Continuous(Explorer explorer, Hunter hunter, IServiceScope
                     log.LogInformation("Explorer: {Tested} tested, {Added} added, {Frontier} in the queue", s.Tested, s.Added.Count, s.Frontier);
                 }
             }
-            catch (Exception ex) when (ex is not OperationCanceledException) { log.LogWarning("Explorer cycle failed: {Error}", ex.Message); }
+            catch (Exception ex) when (ex is not OperationCanceledException) { log.LogWarning(ex, "Explorer cycle failed: {Error}", ex.Message); }
             await Task.Delay(TimeSpan.FromMinutes(1), stop);
         }
     }

@@ -20,22 +20,36 @@ internal sealed class SolidesSource(IHttpClientFactory http) : PublicSource(http
         for (var page = 1; page <= 4; page++)
         {
             using var doc = await Json.GetAsync(Client, $"https://apigw.solides.com.br/jobs/v3/home/vacancy?slug={Uri.EscapeDataString(slug)}&take=25&page={page}", ct);
-            var data = doc.RootElement.GetProperty("data");
-            foreach (var j in data.GetProperty("data").EnumerateArray())
-            {
-                if (j.Str("currentState") is { Length: > 0 } state && state != "em_andamento") continue;
-                var id = j.GetProperty("id").ToString();
-                var type = j.Str("jobType").ToLowerInvariant();
-                var remote = j.TryGetProperty("homeOffice", out var h) && h.ValueKind == JsonValueKind.True || type == "remoto";
-                var place = string.Join(", ", new[] { j.Obj("city").Str("name"), j.Obj("state").Str("code") }.Where(x => x.Length > 0));
-                list.Add(new DiscoveredPosting(source, id, Json.Company(slug), j.Str("title").Trim(), place.Length > 0 ? place : remote ? "Remoto" : "Brasil",
-                    $"https://{slug}.vagas.solides.com.br/vaga/{id}", Json.Plain(j.Str("description")), j.Date("createdAt"), j.GetRawText(),
-                    Workplace: remote ? "remote" : type == "hibrido" ? "hybrid" : type == "presencial" ? "onsite" : null, ListedAsOpen: true));
-            }
-            if (page >= (data.TryGetProperty("totalPages", out var t) && t.TryGetInt32(out var pages) ? pages : 1)) break;
+            var (postings, pages) = ParsePage(source, slug, doc.RootElement);
+            list.AddRange(postings);
+            if (page >= pages) break;
             await Task.Delay(400, ct);
         }
         return list;
+    }
+
+    /// <summary>
+    /// Uma página da API. Empresa sem vaga (ou slug que não existe) responde "data": {} sem a lista: isso é zero vagas, não erro
+    /// (antes o GetProperty quebrava ali e uma empresa assim travava o Explorador inteiro).
+    /// </summary>
+    internal static (IReadOnlyList<DiscoveredPosting> Postings, int Pages) ParsePage(string source, string slug, JsonElement root)
+    {
+        if (!root.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Object
+            || !data.TryGetProperty("data", out var items) || items.ValueKind != JsonValueKind.Array) return ([], 0);
+        var list = new List<DiscoveredPosting>();
+        foreach (var j in items.EnumerateArray())
+        {
+            if (j.Str("currentState") is { Length: > 0 } state && state != "em_andamento") continue;
+            if (!j.TryGetProperty("id", out var idValue)) continue;
+            var id = idValue.ToString();
+            var type = j.Str("jobType").ToLowerInvariant();
+            var remote = j.TryGetProperty("homeOffice", out var h) && h.ValueKind == JsonValueKind.True || type == "remoto";
+            var place = string.Join(", ", new[] { j.Obj("city").Str("name"), j.Obj("state").Str("code") }.Where(x => x.Length > 0));
+            list.Add(new DiscoveredPosting(source, id, Json.Company(slug), j.Str("title").Trim(), place.Length > 0 ? place : remote ? "Remoto" : "Brasil",
+                $"https://{slug}.vagas.solides.com.br/vaga/{id}", Json.Plain(j.Str("description")), j.Date("createdAt"), j.GetRawText(),
+                Workplace: remote ? "remote" : type == "hibrido" ? "hybrid" : type == "presencial" ? "onsite" : null, ListedAsOpen: true));
+        }
+        return (list, data.TryGetProperty("totalPages", out var t) && t.TryGetInt32(out var pages) ? pages : 1);
     }
 }
 

@@ -54,10 +54,11 @@ internal sealed class RunRequestedConsumer(
                 await SayAsync(thread, "Batedor", $"{Label(source)}: {listed} {(listed == 1 ? "vaga" : "vagas")}, {kept} da sua área", null,
                     new { stage = "source", source, state = "done", listed, kept, seconds = Math.Round(watch.Elapsed.TotalSeconds, 1) }, "Normalizador", true, ct);
             }
-            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException or JsonException)
+            catch (Exception ex) when (!ct.IsCancellationRequested)
             {
-                // Uma fonte fora do ar não derruba a rodada. Só "não existe mais" (404, 410) conta para tirar a fonte; queda passageira não.
-                log.LogWarning("Source {Source} failed: {Error}", source, ex.Message);
+                // Uma fonte fora do ar ou fora do formato não derruba a rodada. Só "não existe mais" (404, 410) conta para tirar a fonte; queda passageira não.
+                if (ex is HttpRequestException or TaskCanceledException or InvalidOperationException or JsonException) log.LogWarning("Source {Source} failed: {Error}", source, ex.Message);
+                else log.LogWarning(ex, "Source {Source} answered in an unexpected format", source);
                 if (ex is HttpRequestException { StatusCode: System.Net.HttpStatusCode.NotFound or System.Net.HttpStatusCode.Gone }) health[source] = health.GetValueOrDefault(source) + 1;
                 await SayAsync(thread, "Batedor", $"{Label(source)} não respondeu", ex.Message,
                     new { stage = "source", source, state = "failed", listed, kept, error = ex.Message.Length > 200 ? ex.Message[..200] : ex.Message, seconds = Math.Round(watch.Elapsed.TotalSeconds, 1) }, "Normalizador", false, ct);
