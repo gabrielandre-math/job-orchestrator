@@ -43,7 +43,7 @@
   }
 
   <div class="chips" role="tablist" aria-label="Seções">
-    @for (t of tabs(); track t.key) { <button type="button" class="chip" role="tab" [attr.aria-pressed]="tab() === t.key" (click)="tab.set(t.key)">{{ t.label }}@if (t.n !== null) { <span class="n">{{ t.n }}</span> }</button> }
+    @for (t of tabs(); track t.key) { <button type="button" class="chip" role="tab" [class.alert]="t.alert" [attr.aria-pressed]="tab() === t.key" (click)="tab.set(t.key)">@if (t.alert) { <span class="alert-dot" aria-hidden="true"></span> }{{ t.label }}@if (t.n !== null) { <span class="n">{{ t.n }}</span> }</button> }
   </div>
 
   @switch (tab()) {
@@ -102,10 +102,28 @@
       <section class="panel">
         <ul class="rows">
           @for (m of done(); track m.id) {
-            <li>
-              <jo-company [name]="m.company" [size]="28" />
-              <span class="what"><strong>{{ m.subject }}</strong><span class="faint small">{{ m.company }} · {{ m.to }} · {{ m.sentAt ? ago(m.sentAt) : ago(m.createdAt) }}@if (m.error && (m.status === 'Failed' || m.status === 'Bounced')) { <span class="warn"> · {{ m.error }}</span> }</span></span>
-              <span [class]="'pill ' + status(m.status).tone">{{ m.replyClass ? classLabel[m.replyClass] ?? status(m.status).label : status(m.status).label }}</span>
+            <li class="sent" [class.bad]="m.status === 'Bounced' || m.status === 'Failed'">
+              <jo-company [name]="m.company" [size]="32" />
+              <div class="what">
+                <strong>{{ m.subject }}</strong>
+                <span class="faint small">{{ m.company }} · {{ m.to }} · {{ m.kind === 'followup' ? 'lembrete' : 'primeiro e-mail' }}</span>
+                <ol class="track" aria-label="Etapas do e-mail">
+                  @for (s of track(m); track s.label) { <li [class]="s.state"><span class="mark" aria-hidden="true"></span>{{ s.label }}@if (s.at) { <span class="at">{{ s.at }}</span> }</li> }
+                </ol>
+                @if (problem(m); as p) {
+                  <div class="why">
+                    <jo-icon name="warning" [size]="15" />
+                    <div>
+                      <p><strong>{{ p.title }}</strong> {{ p.why }} {{ p.next }}</p>
+                      @if (p.raw) { <details><summary>Ver o aviso do servidor</summary><p class="raw">{{ p.raw }}</p></details> }
+                    </div>
+                  </div>
+                } @else if (next(m); as n) { <p class="nextstep">{{ n }}</p> }
+              </div>
+              <div class="side">
+                <span [class]="'pill ' + status(m.status).tone">{{ m.replyClass ? classLabel[m.replyClass] ?? status(m.status).label : status(m.status).label }}</span>
+                <a class="btn ghost" routerLink="/vagas" [queryParams]="{ vaga: m.jobId }"><jo-icon name="briefcase" [size]="13" />Ver a vaga</a>
+              </div>
             </li>
           } @empty { <li class="calm"><span class="muted">Nada enviado ainda.</span></li> }
         </ul>
@@ -115,7 +133,7 @@
       <section class="panel">
         <header><h2>Respostas</h2><span class="faint small">classificadas no modelo local; o texto não sai da máquina</span></header>
         <ul class="rows">
-          @for (i of inbox.value() ?? []; track i.id) {
+          @for (i of replies(); track i.id) {
             <li [class.act]="i.actionNeeded">
               <jo-iso [name]="i.class === 'interview_invite' ? 'you' : i.class === 'rejection' ? 'receipt' : i.class === 'assessment' ? 'form' : 'inbox'" [size]="34" />
               <span class="what"><strong>{{ i.subject }}</strong><span class="faint small">{{ i.from }} · {{ ago(i.date) }}</span><span class="muted small snippet">{{ i.snippet }}</span></span>

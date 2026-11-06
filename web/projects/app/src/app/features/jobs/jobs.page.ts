@@ -58,6 +58,8 @@ export class JobsPage {
   private readonly router = inject(Router);
   private readonly live = inject(Live);
   readonly status = input<string | undefined>();
+  /** Link direto para uma vaga (/vagas?vaga=id), como o da tela de E-mail: abre o painel dela. */
+  readonly vaga = input<string | undefined>();
   protected readonly search = signal('');
   protected readonly remoteOnly = signal(false);
   // Filtros da lista: tecnologias, fonte, modalidade, senioridade e contrato (vários de cada, qualquer um vale), mais os extras e a ordem.
@@ -78,6 +80,7 @@ export class JobsPage {
   protected readonly modes = MODES;
   protected readonly sorts: { key: Sort; label: string }[] = [{ key: 'score', label: 'Nota' }, { key: 'new', label: 'Mais novas' }, { key: 'company', label: 'Empresa' }];
   protected readonly open = signal<string | null>(null);
+  private readonly deepLink = effect(() => { const v = this.vaga(); if (v) untracked(() => this.open.set(v)); });
   protected readonly all = query<JobRow[]>(() => '/jobs', 8000);
   protected readonly stats = query<JobStats>(() => '/jobs/stats', 15000);
   protected readonly profile = query<Profile>(() => '/profile', 0);

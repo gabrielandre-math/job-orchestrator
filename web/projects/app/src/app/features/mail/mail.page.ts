@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { Company } from '@jo/ui/company';
 import { Icon } from '@jo/ui/icon';
 import { Iso } from '@jo/ui/iso';
@@ -26,7 +27,7 @@ const MARKERS = ['{{empresa}}', '{{vaga}}', '{{experiencia}}', '{{competencias}}
  */
 @Component({
   selector: 'app-mail',
-  imports: [Company, Icon, Iso, MailConnect, PageHero, Help],
+  imports: [Company, Icon, Iso, MailConnect, PageHero, Help, RouterLink],
   templateUrl: './mail.page.html',
   styleUrl: './mail.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -59,16 +60,21 @@ export class MailPage {
   protected readonly toWrite = computed(() => (this.targets.value() ?? []).filter((t) => !t.mailStatus));
   protected readonly toReview = computed(() => (this.outgoing.value() ?? []).filter((m) => m.status === 'AwaitingApproval' || m.status === 'Draft' || m.status === 'Scheduled'));
   protected readonly done = computed(() => (this.outgoing.value() ?? []).filter((m) => ['Sent', 'Replied', 'Failed', 'Bounced', 'Cancelled', 'Sending'].includes(m.status)));
+  /** Avisos de falha na entrega ficam no e-mail enviado (como não entregue), não entre as respostas. */
+  protected readonly replies = computed(() => (this.inbox.value() ?? []).filter((i) => i.class !== 'bounce'));
+  /** Não entregues e os que não saíram: o número que pede atenção no topo e na aba. */
+  protected readonly lost = computed(() => (this.outgoing.value() ?? []).filter((m) => m.status === 'Bounced' || m.status === 'Failed').length);
   protected readonly tabs = computed(() => [
-    { key: 'targets' as Tab, label: 'Para escrever', n: this.toWrite().length }, { key: 'review' as Tab, label: 'Para aprovar', n: this.toReview().length },
-    { key: 'sent' as Tab, label: 'Enviados', n: this.done().length }, { key: 'inbox' as Tab, label: 'Respostas', n: (this.inbox.value() ?? []).filter((i) => i.class !== 'bounce').length },
-    { key: 'template' as Tab, label: 'Modelo', n: null },
+    { key: 'targets' as Tab, label: 'Para escrever', n: this.toWrite().length, alert: false }, { key: 'review' as Tab, label: 'Para aprovar', n: this.toReview().length, alert: this.toReview().some((m) => m.status !== 'Scheduled') },
+    { key: 'sent' as Tab, label: 'Enviados', n: this.done().length, alert: this.lost() > 0 }, { key: 'inbox' as Tab, label: 'Respostas', n: this.replies().length, alert: this.replies().some((i) => i.actionNeeded) },
+    { key: 'template' as Tab, label: 'Modelo', n: null, alert: false },
   ]);
   protected readonly stats = computed<HeroStat[]>(() => {
     const o = this.overview.value();
     return [
       { label: 'Enviados hoje', value: o?.sentToday ?? 0, note: o ? `de ${o.dailyCap} por dia` : undefined, tone: 'accent' },
       { label: 'Esperando você', value: o?.awaiting ?? 0, tone: (o?.awaiting ?? 0) > 0 ? 'warn' : undefined },
+      { label: 'Não entregues', value: this.lost(), tone: this.lost() > 0 ? 'danger' : undefined, note: this.lost() > 0 ? 'veja em Enviados' : undefined },
       { label: 'Respostas', value: o?.replied ?? 0, tone: 'ok' },
       { label: 'Entrevistas e testes', value: o?.interviews ?? 0, tone: (o?.interviews ?? 0) > 0 ? 'ok' : undefined },
     ];
@@ -81,6 +87,40 @@ export class MailPage {
   });
 
   protected status(s: string) { return STATUS[s] ?? { label: s, tone: 'muted' }; }
+
+  /** As etapas de um e-mail: escrito, enviado e a resposta (ou onde parou). */
+  protected track(m: OutgoingMail): { label: string; state: Step; at: string | null }[] {
+    const steps: { label: string; state: Step; at: string | null }[] = [{ label: m.kind === 'followup' ? 'Lembrete escrito' : 'Escrito', state: 'done', at: short(m.createdAt) }];
+    if (m.status === 'Cancelled') return [...steps, { label: 'Cancelado', state: 'off', at: null }];
+    if (m.status === 'Failed') return [...steps, { label: 'Não saiu', state: 'bad', at: null }];
+    if (m.status === 'Sending') return [...steps, { label: 'Enviando', state: 'now', at: null }];
+    steps.push({ label: 'Enviado', state: 'done', at: short(m.sentAt) });
+    if (m.status === 'Bounced') return [...steps, { label: 'Não chegou', state: 'bad', at: null }];
+    if (m.status === 'Replied') return [...steps, { label: m.replyClass && CLASS[m.replyClass] ? upper(CLASS[m.replyClass]) : 'Respondido', state: 'done', at: short(m.repliedAt) }];
+    return [...steps, { label: 'Resposta', state: 'wait', at: null }];
+  }
+
+  /** O que deu errado, em português, e o que fazer. O aviso original do servidor fica em "ver detalhes". */
+  protected problem(m: OutgoingMail) {
+    if (m.status !== 'Bounced' && m.status !== 'Failed') return null;
+    const raw = m.error ?? '';
+    if (m.status === 'Failed') return { title: 'Não saiu.', why: raw || 'O envio foi barrado antes de sair.', next: 'Nada foi enviado para a empresa.', raw: null };
+    const why = /block|bloque|policy|spam/i.test(raw) ? 'O servidor da empresa bloqueou a mensagem.'
+      : /not found|does not exist|no such user|user unknown|invalid recipient|inexist|5\.1\.1/i.test(raw) ? 'Esse endereço não existe mais.'
+      : /mailbox full|quota|cheia/i.test(raw) ? 'A caixa de entrada da empresa está cheia.' : 'O servidor da empresa recusou a mensagem.';
+    return { title: 'Não chegou na empresa.', why, next: 'Por e-mail não vai dar para esta vaga: se ela tiver outro caminho, candidate-se por lá.', raw: raw.replace(/^Não chegou na empresa:\s*/, '') };
+  }
+
+  /** O próximo passo de um e-mail que saiu: quando vem o lembrete, ou que a resposta chegou. */
+  protected next(m: OutgoingMail): string | null {
+    if (m.status === 'Replied') return 'A empresa respondeu: a mensagem está na aba Respostas.';
+    if (m.status !== 'Sent' || !m.sentAt) return null;
+    if (m.kind === 'followup') return 'Lembrete enviado. Não sai mais nada para esta vaga.';
+    const f = (this.outgoing.value() ?? []).find((o) => o.followsId === m.id);
+    if (f) return f.status === 'Sent' ? 'Lembrete enviado. Não sai mais nada para esta vaga.' : f.status === 'Cancelled' ? 'Lembrete cancelado.' : 'Lembrete pronto, na fila.';
+    const at = new Date(Date.parse(m.sentAt) + (this.settings.value()?.followUpDays ?? 5) * 86_400_000);
+    return `Sem resposta ainda. Se continuar assim, o lembrete sai em ${at.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}.`;
+  }
   protected edit(m: OutgoingMail) { return this.edits()[m.id] ?? { subject: m.subject, body: m.body }; }
   protected setEdit(m: OutgoingMail, k: 'subject' | 'body', v: string) { this.edits.update((e) => ({ ...e, [m.id]: { ...this.edit(m), [k]: v } })); }
   protected changed(m: OutgoingMail) { const e = this.edits()[m.id]; return !!e && (e.subject !== m.subject || e.body !== m.body); }
@@ -117,3 +157,10 @@ export class MailPage {
 function hours(s: { windowStart: number; windowEnd: number }) {
   return s.windowStart === 0 && s.windowEnd === 24 ? '24 horas, todos os dias' : `das ${s.windowStart}h às ${s.windowEnd}h`;
 }
+
+type Step = 'done' | 'now' | 'bad' | 'wait' | 'off';
+/** 06/11, 00:53 */
+function short(iso: string | null) {
+  return iso ? new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : null;
+}
+function upper(s: string) { return s.charAt(0).toUpperCase() + s.slice(1); }
