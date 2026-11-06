@@ -85,7 +85,7 @@ type Depth = 'rapido' | 'profundo';
     .auto { display: inline-flex; gap: 8px; align-items: center; font-size: 12.5px; color: var(--text-2); white-space: nowrap; cursor: pointer; }
     .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; padding: 0 16px 14px; }
     .seg { display: flex; gap: 6px; flex: 1; min-width: min(420px, 100%); }
-    .seg button { flex: 1; display: grid; gap: 2px; text-align: left; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface-2); color: var(--text-2);
+    .seg button { flex: 1; display: grid; gap: 2px; align-content: center; height: auto; min-height: 54px; line-height: 1.35; text-align: left; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface-2); color: var(--text-2);
       font: inherit; cursor: pointer; transition: border-color 160ms ease, background-color 160ms ease, transform 120ms ease; }
     .seg button:hover { border-color: var(--line-strong); color: var(--text); }
     .seg button:active { transform: scale(0.99); }
