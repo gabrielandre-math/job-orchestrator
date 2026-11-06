@@ -40,7 +40,9 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
         (new Regex(@"english|ingl", RegexOptions.IgnoreCase), "english_level"),
         (new Regex(@"hear about|soube da vaga", RegexOptions.IgnoreCase), "how_heard"),
         (new Regex(@"relocat|mudan[cç]a", RegexOptions.IgnoreCase), "relocation"),
-        (new Regex(@"(which|what) city|current location|where are you based|based in|cidade|onde (você )?mora|localiza", RegexOptions.IgnoreCase), "location"),
+        (new Regex(@"(which|what) city|current location|where are you (currently )?based|based in|cidade|onde (você )?mora|localiza|^address$|^endere[cç]o", RegexOptions.IgnoreCase), "location"),
+        (new Regex(@"^headline$|^t[ií]tulo profissional", RegexOptions.IgnoreCase), "headline"),
+        (new Regex(@"^summary$|^resumo( profissional)?$|^about you$|^sobre voc[eê]", RegexOptions.IgnoreCase), "summary"),
     ];
 
     private static readonly Regex YearsWith = new(@"(?:years|anos)\b.*?\b(?:with|in|de|com|em)\s+([\w#.+]+(?:\s[\w#.+]+)?)", RegexOptions.IgnoreCase);
@@ -229,7 +231,8 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
     }
 
     protected static string FileHash(string path) => Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(path)));
-    protected static string Clean(string label) => Spaces().Replace(label.Replace("*", ""), " ").Trim();
+    // O texto de ícone que a página põe dentro do rótulo ("SVGs not supported by this browser.") não é parte da pergunta.
+    protected static string Clean(string label) => Spaces().Replace(label.Replace("*", "").Replace("SVGs not supported by this browser.", " "), " ").Trim();
 
     [GeneratedRegex(@"\s+")] private static partial Regex Spaces();
     [GeneratedRegex(@"^full name|^name$|^nome completo|^seu nome", RegexOptions.IgnoreCase)] private static partial Regex FullName();

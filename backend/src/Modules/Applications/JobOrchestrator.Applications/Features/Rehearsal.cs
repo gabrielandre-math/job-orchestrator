@@ -61,11 +61,15 @@ internal sealed class Rehearsal(IServiceScopeFactory scopes, TimeProvider time, 
         var targets = await jobs.QueueAsync("ats", limit, CancellationToken.None);
         var items = new List<RehearsalItem>();
         Save(new RehearsalView(started, null, true, targets.Count, null, items));
-        // O anexo do ensaio é o currículo base, sem IA e com o perfil de agora: ele só é testado no campo de arquivo, nunca enviado.
-        var resume = await sp.GetRequiredService<IMaterialsApi>().ComposeBaseAsync("pt", sp.GetRequiredService<IConfiguration>().GetValue("Materials:Theme", "classico")!, CancellationToken.None);
-        if (resume is not { Ok: true, PdfPath: { } pdf })
+        // O anexo do ensaio é o currículo base, sem IA e com o perfil de agora, no idioma da vaga como no envio de verdade
+        // ("o currículo está em inglês?" responde certo). Ele só é testado no campo de arquivo, nunca enviado.
+        var theme = sp.GetRequiredService<IConfiguration>().GetValue("Materials:Theme", "classico")!;
+        var materials = sp.GetRequiredService<IMaterialsApi>();
+        var pt = await materials.ComposeBaseAsync("pt", theme, CancellationToken.None);
+        var en = await materials.ComposeBaseAsync("en", theme, CancellationToken.None);
+        if (pt is not { Ok: true, PdfPath: { } ptPdf } || en is not { Ok: true, PdfPath: { } enPdf })
         {
-            Save(new RehearsalView(started, Now, false, targets.Count, resume.Error ?? "O currículo base não ficou pronto.", items));
+            Save(new RehearsalView(started, Now, false, targets.Count, pt.Error ?? en.Error ?? "O currículo base não ficou pronto.", items));
             return;
         }
         foreach (var t in targets)
@@ -75,6 +79,8 @@ internal sealed class Rehearsal(IServiceScopeFactory scopes, TimeProvider time, 
             RehearsalItem item;
             try
             {
+                var text = await jobs.TextAsync(t.Id, cts.Token);
+                var pdf = Profile.Contracts.Languages.Detect($"{text?.Title} {text?.Description}") == "en" ? enPdf : ptPdf;
                 var bundle = await bundles.ForJobAsync(t.Id, pdf, cts.Token);
                 if (bundle is null)
                 {

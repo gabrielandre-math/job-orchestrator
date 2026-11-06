@@ -19,13 +19,17 @@
   <nav aria-label="Principal" #navEl>
     <span class="glider" aria-hidden="true" [style.transform]="'translateY(' + glide().top + 'px)'" [style.height.px]="glide().height" [style.opacity]="glide().height ? 1 : 0"></span>
     @for (g of nav; track g.group) {
-      <p class="group">{{ g.group }}</p>
-      @for (i of g.items; track i.path) {
-        <a [routerLink]="i.path" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: !!i.exact }" [attr.title]="collapsed() ? i.label : null">
-          <jo-icon [name]="i.icon" [size]="18" />
-          <span class="label">{{ i.label }}</span>
-          @if (count(i.count) > 0) { <span class="count" [attr.aria-label]="count(i.count) + ' pendentes'">{{ count(i.count) }}</span> }
-        </a>
+      @if (g.advanced) {
+        <button type="button" class="group toggle" [attr.aria-expanded]="advanced()" (click)="toggleAdvanced()">{{ g.group }}<jo-icon name="caret-down" [size]="11" /></button>
+      } @else if (g.group) { <p class="group">{{ g.group }}</p> }
+      @if (!g.advanced || advanced()) {
+        @for (i of g.items; track i.label) {
+          <a [routerLink]="i.path" [queryParams]="i.query ?? null" routerLinkActive="active" [routerLinkActiveOptions]="i.query ? { paths: 'exact', queryParams: 'exact', fragment: 'ignored', matrixParams: 'ignored' } : { exact: !!i.exact }" [attr.title]="collapsed() ? i.label : null">
+            <jo-icon [name]="i.icon" [size]="18" />
+            <span class="label">{{ i.label }}</span>
+            @if (count(i.count) > 0) { <span class="count" [attr.aria-label]="count(i.count) + ' pendentes'">{{ count(i.count) }}</span> }
+          </a>
+        }
       }
     }
   </nav>

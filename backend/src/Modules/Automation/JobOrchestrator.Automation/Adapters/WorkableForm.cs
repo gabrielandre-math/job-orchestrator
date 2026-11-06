@@ -20,7 +20,20 @@ internal sealed partial class WorkableForm(BrowserPool browsers, IHttpClientFact
     protected override string[] AssetHosts => ["dcvxs6ggqztsa.cloudfront.net", "workablehr.s3.amazonaws.com", "workablehr-ui.s3.amazonaws.com"];
     protected override Regex FakePath => Path();
 
-    private sealed record Found(string Id, string Name, string Tag, string Type, bool Required, string Label, string Group);
+    private sealed record Found(string Id, string Name, string Tag, string Type, bool Required, string Label, string Group, int Nth);
+
+    /// <summary>Marca a opção do rádio pelo nome do grupo e pelo texto dela, e diz se ficou marcada.</summary>
+    private const string PickRadio = """
+        ([name, label]) => {
+          const norm = (t) => (t || '').replace(/\s+/g, ' ').trim().toLowerCase();
+          const r = [...document.querySelectorAll('input[type=radio]')].filter(x => x.name === name)
+            .find(x => norm(x.closest('label')?.textContent) === norm(label) || norm(document.querySelector('label[for="' + CSS.escape(x.id) + '"]')?.textContent) === norm(label));
+          if (!r) return false;
+          // Clica no texto da opção, como uma pessoa: o rádio de verdade fica escondido e a página só registra o clique no rótulo.
+          (r.closest('label') || document.querySelector('label[for="' + CSS.escape(r.id) + '"]') || r).click();
+          return new Promise((done) => setTimeout(() => done(r.checked || [...document.querySelectorAll('input[type=radio]')].some(x => x.name === name && x.checked)), 120));
+        }
+        """;
 
     /// <summary>Cada campo visível do formulário com o rótulo de verdade (for, rótulo em volta, aria-labelledby ou aria-label) e, no rádio, a pergunta do grupo.</summary>
     private const string Discover = """
@@ -31,21 +44,22 @@ internal sealed partial class WorkableForm(BrowserPool browsers, IHttpClientFact
           const labelOf = (e) => {
             if (e.id) { const l = document.querySelector('label[for="' + CSS.escape(e.id) + '"]'); if (l && text(l)) return text(l); }
             const w = e.closest('label'); if (w && text(w)) return text(w);
-            return byIds(e.getAttribute('aria-labelledby')) || e.getAttribute('aria-label') || '';
+            // Sem rótulo comum: o texto ligado por aria, o exemplo do campo ou, por último, o nome interno dele.
+            return byIds(e.getAttribute('aria-labelledby')) || e.getAttribute('aria-label') || e.getAttribute('placeholder') || (e.name || '').replace(/[_-]+/g, ' ');
           };
           const groupOf = (e) => {
-            const rg = e.closest('[role=radiogroup]');
+            const rg = e.closest('[role=radiogroup], [role=group]');
             const t = rg ? (byIds(rg.getAttribute('aria-labelledby')) || rg.getAttribute('aria-label') || '') : '';
             return t || text(e.closest('fieldset')?.querySelector('legend'));
           };
-          const out = [];
+          const out = []; let files = 0;
           for (const e of form.querySelectorAll('input, select, textarea')) {
             const type = (e.type || '').toLowerCase();
             if (type === 'hidden' || type === 'submit' || e.disabled) continue;
             if (type !== 'file' && type !== 'radio' && type !== 'checkbox' && !(e.offsetWidth || e.offsetHeight || e.getClientRects().length)) continue;
             if (!e.id) e.id = 'jo-' + Math.random().toString(36).slice(2, 10);
             out.push({ id: e.id, name: e.name || '', tag: e.tagName.toLowerCase(), type, required: !!e.required || e.getAttribute('aria-required') === 'true',
-              label: labelOf(e), group: type === 'radio' ? groupOf(e) : '' });
+              label: labelOf(e), group: type === 'radio' || type === 'checkbox' ? groupOf(e) : '', nth: type === 'file' ? files++ : 0 });
           }
           return JSON.stringify(out);
         }
@@ -63,20 +77,24 @@ internal sealed partial class WorkableForm(BrowserPool browsers, IHttpClientFact
             // espera a página assentar e tenta de novo se o primeiro clique caiu cedo demais.
             try { await page.WaitForLoadStateAsync(LoadState.NetworkIdle, new PageWaitForLoadStateOptions { Timeout = 15000 }); }
             catch (TimeoutException) { /* a página segue carregando anúncio ou métrica: o clique tenta mesmo assim */ }
-            var apply = page.Locator("[data-ui=overview-apply-now], [data-ui=apply-button]").Or(page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { NameRegex = ApplyNow() })).First;
+            // A página tem dois "Apply now": o do topo e o que só aparece ao rolar. Clica no que está visível.
+            var apply = page.Locator("[data-ui=overview-apply-now]:visible, [data-ui=apply-button]:visible, [data-ui=sticky-apply-now]:visible").First;
             for (var attempt = 0; attempt < 3 && await first.CountAsync() == 0; attempt++)
             {
                 try
                 {
-                    await apply.ClickAsync(new LocatorClickOptions { Timeout = 10000 });
-                    await first.WaitForAsync(new LocatorWaitForOptions { Timeout = 6000 });
+                    // O aviso de cookies do Workable cobre o botão e o clique do mouse nunca chega. O botão é acionado direto, sem
+                    // aceitar cookies por você (aceitar seria um consentimento seu).
+                    await apply.EvaluateAsync("e => e.click()");
+                    await first.WaitForAsync(new LocatorWaitForOptions { Timeout = 8000 });
                 }
                 catch (Exception ex) when (ex is PlaywrightException or TimeoutException) { await page.WaitForTimeoutAsync(1500); }
             }
             if (await first.CountAsync() == 0)
                 return await page.GetByText(NoLonger()).CountAsync() > 0
                     ? AdapterResult<PreparedForm>.Fail(AdapterResultKind.PermanentFailure, "posting-closed", "A vaga não aceita mais candidaturas.")
-                    : AdapterResult<PreparedForm>.Fail(AdapterResultKind.Unsupported, "no-form", "O formulário do Workable não abriu.");
+                    : AdapterResult<PreparedForm>.Fail(AdapterResultKind.Unsupported, "no-form",
+                        $"O formulário do Workable não abriu ({await page.Locator("[data-ui$=apply-now]").CountAsync()} botões Apply now na página, {await page.Locator("[data-ui$=apply-now]:visible").CountAsync()} visíveis).");
         }
         if (await page.Locator(BotCheck).CountAsync() > 0)
             return AdapterResult<PreparedForm>.Fail(AdapterResultKind.NeedsHuman, "captcha", "A página tem verificação anti-robô (Cloudflare ou CAPTCHA): o app não passa por ela, o envio fica com você.");
@@ -86,8 +104,10 @@ internal sealed partial class WorkableForm(BrowserPool browsers, IHttpClientFact
         var found = JsonSerializer.Deserialize<Found[]>(await page.EvaluateAsync<string>(Discover), JsonSerializerOptions.Web) ?? [];
         var fields = new List<FieldValue>();
         var missing = new List<string>();
-        var files = found.Count(f => f.Type == "file");
-        foreach (var group in found.GroupBy(f => f.Type == "radio" && f.Name.Length > 0 ? $"radio:{f.Name}" : f.Id))
+        var resumeDone = false;
+        // Rádios se agrupam pelo nome; caixas de marcar, pela pergunta (no Workable cada opção de uma lista tem nome próprio).
+        foreach (var group in found.GroupBy(f => f.Type == "radio" && f.Name.Length > 0 ? $"radio:{f.Name}"
+            : f.Type == "checkbox" && Clean(f.Group).Length > 0 ? $"checkbox:{Clean(f.Group)}" : f.Type == "checkbox" && f.Name.Length > 0 ? $"checkbox:{f.Name}" : f.Id))
         {
             var f = group.First();
             var label = Clean(f.Label);
@@ -101,8 +121,19 @@ internal sealed partial class WorkableForm(BrowserPool browsers, IHttpClientFact
                     if (group.Any(o => o.Required)) missing.Add(question.Length > 0 ? question : label);
                     continue;
                 }
-                await page.Locator(Css(choice.Id)).CheckAsync(new LocatorCheckOptions { Force = true });
+                // O Workable gera de novo os ids das opções a cada resposta: marca pelo nome do grupo e pelo texto da opção.
+                if (!await page.EvaluateAsync<bool>(PickRadio, new[] { f.Name, Clean(choice.Label) }))
+                    return AdapterResult<PreparedForm>.Fail(AdapterResultKind.RetryableFailure, "fill-mismatch", $"A resposta de \"{question}\" não ficou marcada.");
                 fields.Add(new FieldValue(question, Clean(choice.Label), answer!.Value.Source));
+                continue;
+            }
+            if (f.Type == "checkbox" && (group.Count() > 1 || Clean(f.Group) is { Length: > 0 } asked && !Declaration().IsMatch(asked) && !Declaration().IsMatch(label)))
+            {
+                // Lista para marcar (quais tecnologias você usa, por exemplo) é escolha sua, não declaração: o app não marca opção por
+                // você. Obrigatória, a vaga fica com você; opcional, fica em branco.
+                var question = Clean(f.Group.Length > 0 ? f.Group : label);
+                if (group.Any(o => o.Required))
+                    return AdapterResult<PreparedForm>.Fail(AdapterResultKind.NeedsHuman, "choice", $"O formulário pede para marcar opções em \"{(question.Length > 120 ? question[..120] + "…" : question)}\". Fica com você.");
                 continue;
             }
             if (f.Type == "checkbox" || Declaration().IsMatch(label))
@@ -113,9 +144,12 @@ internal sealed partial class WorkableForm(BrowserPool browsers, IHttpClientFact
             }
             if (f.Type == "file")
             {
-                // O campo do currículo no Workable tem um ícone como rótulo: com um campo de arquivo só, ele é o do currículo.
-                if (files > 1 && !Resume().IsMatch(label)) { if (f.Required) missing.Add(label); continue; }
-                await page.Locator(Css(f.Id)).SetInputFilesAsync(m.ResumePdfPath);
+                // O campo do currículo no Workable tem um ícone como rótulo: o primeiro campo de arquivo é o do currículo, a não ser
+                // que seja o da carta; os outros só entram quando você responde.
+                var resume = Resume().IsMatch(label) || !resumeDone && !Cover().IsMatch(label);
+                if (!resume || resumeDone) { if (f.Required) missing.Add(label); continue; }
+                resumeDone = true;
+                await page.Locator("form input[type=file]").Nth(f.Nth).SetInputFilesAsync(m.ResumePdfPath);
                 fields.Add(new FieldValue("Currículo", $"{System.IO.Path.GetFileName(m.ResumePdfPath)} (sha256 {FileHash(m.ResumePdfPath)[..12]})", "currículo"));
                 continue;
             }
@@ -125,7 +159,7 @@ internal sealed partial class WorkableForm(BrowserPool browsers, IHttpClientFact
                 if (f.Required) missing.Add(label);
                 continue;
             }
-            var control = page.Locator(Css(f.Id));
+            var control = page.Locator(f.Name.Length > 0 ? $"form [name='{f.Name.Replace("'", "\\'")}']" : Css(f.Id)).First;
             if (f.Tag == "select")
             {
                 var options = await control.Locator("option").AllInnerTextsAsync();
@@ -201,11 +235,11 @@ internal sealed partial class WorkableForm(BrowserPool browsers, IHttpClientFact
     private static string Last8(string s) { var d = new string([.. s.Where(char.IsDigit)]); return d.Length > 8 ? d[^8..] : d; }
 
     [GeneratedRegex(@"^/__sem-formulario-falso__$")] private static partial Regex Path();
-    [GeneratedRegex(@"^apply( now| for this job)?$|^candidatar", RegexOptions.IgnoreCase)] private static partial Regex ApplyNow();
     [GeneratedRegex(@"no longer accepting|not accepting applications|this job is closed|vaga encerrada", RegexOptions.IgnoreCase)] private static partial Regex NoLonger();
     [GeneratedRegex(@"\bI (confirm|agree|accept|declare|certify|acknowledge)\b|\bli e (concordo|aceito)|\bdeclaro\b|\bconcordo com\b|\bcertifico\b", RegexOptions.IgnoreCase)] private static partial Regex Declaration();
     [GeneratedRegex(@"(?<n>\d+)\s*\+?\s*(?:or more\s+)?(?:years?|anos)\b.*?\b(?:with|in|of|de|com|em)\s+(?<tech>[\w#.+]+(?:\s[\w#.+]+)?)\s*\??$", RegexOptions.IgnoreCase)] private static partial Regex Years();
     [GeneratedRegex(@"english|ingl[eê]s", RegexOptions.IgnoreCase)] private static partial Regex English();
+    [GeneratedRegex(@"cover letter|carta", RegexOptions.IgnoreCase)] private static partial Regex Cover();
     [GeneratedRegex(@"\b(cv|resume|curr[ií]culo)\b.*\b(in english|em ingl[eê]s)\b", RegexOptions.IgnoreCase)] private static partial Regex CvInEnglish();
     [GeneratedRegex(@"\b(located|based|living|reside|resident|mora|reside)\b.*?\bin\s+(?<where>[^?(]+)|\b(mora|reside) n[oa]\s+(?<where>[^?(]+)", RegexOptions.IgnoreCase)] private static partial Regex Located();
     [GeneratedRegex(@"latin america|latam|am[eé]rica latina|south america|am[eé]rica do sul", RegexOptions.IgnoreCase)] private static partial Regex LatAm();

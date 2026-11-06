@@ -1,6 +1,6 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { Automate } from './automate';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { Badge } from '@jo/ui/badge';
 import { ChartRow, HBars } from '@jo/ui/charts';
 import { Count } from '@jo/ui/count';
@@ -32,6 +32,15 @@ export class OverviewPage {
   protected readonly search = inject(SearchRun);
   protected readonly hub = inject(WelcomeHub);
   protected readonly automating = signal(false);
+  /** "Configurar tudo" do menu chega aqui como ?configurar=1 e abre o passo a passo guiado. */
+  readonly configurar = input<string | undefined>();
+  private readonly openSetup = effect(() => { if (this.configurar()) untracked(() => this.automating.set(true)); });
+  private readonly router = inject(Router);
+  /** Fechou o passo a passo: tira o ?configurar=1, para recarregar a página não abrir de novo. */
+  protected closeSetup() {
+    this.automating.set(false);
+    if (this.configurar()) void this.router.navigate([], { queryParams: { configurar: null }, queryParamsHandling: 'merge' });
+  }
   /** Configuração pendente: o que falta para a busca andar sozinha. */
   protected readonly setup = computed(() => {
     const o = this.hub.state();

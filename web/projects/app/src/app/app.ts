@@ -15,7 +15,7 @@ import { Quit } from './features/quit/quit';
 import { TermsDialog } from './features/terms/terms';
 import { get } from './core/api';
 
-interface NavItem { path: string; label: string; icon: string; exact?: boolean; count?: 'review' | 'attention'; }
+interface NavItem { path: string; label: string; icon: string; exact?: boolean; count?: 'review' | 'attention' | 'you'; query?: Record<string, string>; }
 
 /** Shell: barra lateral recolhível (lembrada neste navegador), contadores reais e o estado da API. */
 @Component({
@@ -44,27 +44,36 @@ export class App {
   protected readonly quitting = signal(false);
   protected readonly online = computed(() => this.overview.problem() === null && this.overview.value() !== undefined);
   protected readonly mode = computed(() => modeLabel(this.overview.value()?.campaign?.mode ?? ''));
-  protected readonly nav: { group: string; items: NavItem[] }[] = [
-    { group: 'Operação', items: [
-      { path: '/', label: 'Visão geral', icon: 'house', exact: true },
+  /**
+   * Menu do dia a dia à vista; o técnico fica em "Avançado", fechado e lembrado neste navegador. O que depende de você
+   * (Atenção e Revisão) soma no Início, para nada importante ficar escondido.
+   */
+  protected readonly nav: { group: string; advanced?: boolean; items: NavItem[] }[] = [
+    { group: '', items: [
+      { path: '/', label: 'Início', icon: 'house', exact: true, count: 'you' },
+      { path: '/vagas', label: 'Vagas', icon: 'briefcase' },
+      { path: '/candidaturas', label: 'Candidaturas', icon: 'paper-plane-tilt' },
+      { path: '/email', label: 'E-mail', icon: 'envelope-simple' },
+      { path: '/perfil', label: 'Perfil', icon: 'identification-card' },
+      { path: '/', label: 'Configurar tudo', icon: 'lightning', exact: true, query: { configurar: '1' } },
+    ] },
+    { group: 'Avançado', advanced: true, items: [
       { path: '/assistente', label: 'Assistente', icon: 'chats' },
       { path: '/busca', label: 'Busca ao vivo', icon: 'magnifying-glass' },
       { path: '/atencao', label: 'Atenção', icon: 'bell-simple', count: 'attention' },
       { path: '/revisao', label: 'Revisão', icon: 'check-square-offset', count: 'review' },
-    ] },
-    { group: 'Dados', items: [
-      { path: '/perfil', label: 'Perfil', icon: 'identification-card' },
-      { path: '/vagas', label: 'Vagas', icon: 'briefcase' },
-      { path: '/candidaturas', label: 'Candidaturas', icon: 'paper-plane-tilt' },
-      { path: '/email', label: 'E-mail', icon: 'envelope-simple' },
-    ] },
-    { group: 'Sistema', items: [
       { path: '/fontes', label: 'Fontes', icon: 'plugs-connected' },
       { path: '/provedores', label: 'Provedores de IA', icon: 'cpu' },
       { path: '/campanha', label: 'Campanha', icon: 'sliders-horizontal' },
       { path: '/configuracoes', label: 'Configurações', icon: 'gear-six' },
     ] },
   ];
+  protected readonly advanced = signal(storedFlag('jo.nav.avancado'));
+  protected toggleAdvanced() {
+    const open = !this.advanced();
+    this.advanced.set(open);
+    try { localStorage.setItem('jo.nav.avancado', open ? '1' : '0'); } catch { /* sem armazenamento: só não lembra */ }
+  }
 
   /** Primeiro contato: abre sozinho enquanto o ambiente não foi montado; "Agora não" vale até recarregar a página. */
   protected readonly hub = inject(WelcomeHub);
@@ -90,7 +99,7 @@ export class App {
   protected count(kind?: NavItem['count']): number {
     const d = this.overview.value();
     if (!d || !kind) return 0;
-    return kind === 'review' ? d.applications.awaitingApproval : d.pendingTasks;
+    return kind === 'review' ? d.applications.awaitingApproval : kind === 'attention' ? d.pendingTasks : d.applications.awaitingApproval + d.pendingTasks;
   }
 
   protected readonly terms = signal(false);
@@ -110,3 +119,7 @@ function sessionStorageGet(key: string): string | null { try { return sessionSto
 export function sessionStorageSet(key: string, value: string) { try { sessionStorage.setItem(key, value); } catch { /* sem armazenamento */ } }
 function read(key: string): string | null { try { return localStorage.getItem(key); } catch { return null; } }
 function write(key: string, value: string) { try { localStorage.setItem(key, value); } catch { /* armazenamento indisponível */ } }
+
+function storedFlag(key: string) {
+  try { return localStorage.getItem(key) === '1'; } catch { return false; }
+}

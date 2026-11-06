@@ -15,7 +15,7 @@
     @if (!setup() && !linkedinOn()) {
       <a class="panel connect" routerLink="/perfil" [queryParams]="{ conectar: 'linkedin' }">
         <jo-iso name="identity" [size]="56" />
-        <span class="c-text"><strong>Conecte o LinkedIn</strong><span class="muted small">Experiências, formação e competências entram no perfil e nos currículos, somadas ao seu currículo, pelo caminho oficial do LinkedIn. Leva uns 10 minutos.</span></span>
+        <span class="c-text"><strong>Conecte o LinkedIn</strong><span class="muted small">Experiências, formação e competências entram no perfil e nos currículos, somadas ao seu currículo, pelo caminho oficial do LinkedIn: com dados específicos, o arquivo chega em minutos.</span></span>
         <span class="btn">Conectar<jo-icon name="arrow-right" [size]="14" /></span>
       </a>
     }
@@ -148,4 +148,4 @@
   </div>
 </section>
 
-@if (automating()) { <app-automate (close)="automating.set(false); data.reload()" /> }
+@if (automating()) { <app-automate (close)="closeSetup(); data.reload()" /> }

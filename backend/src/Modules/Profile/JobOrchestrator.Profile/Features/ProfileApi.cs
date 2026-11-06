@@ -75,6 +75,9 @@ internal static class AnswerBank
         });
 
         Put("education", p.Facts.Where(f => f.Kind == "education").OrderByDescending(f => f.End ?? "9999").Select(f => f.Statement).FirstOrDefault());
+        // Título e resumo saem dos fatos do currículo, como estão lá: alguns formulários (Workable) pedem os dois.
+        Put("headline", p.Facts.FirstOrDefault(f => f.Kind == "headline")?.Statement);
+        Put("summary", p.Facts.FirstOrDefault(f => f.Kind == "summary")?.Statement);
         Put("how_heard", c.Source switch
         {
             "hn" or "hackernews" => "Hacker News",
