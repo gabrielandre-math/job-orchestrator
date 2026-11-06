@@ -251,6 +251,13 @@
       <p class="eyebrow" data-i18n="dl.e">Download</p>
       <h2 class="h2" data-i18n-html="dl.t">Version <span data-version>1.0.0</span></h2>
       <p class="lead sm" data-i18n="dl.lead">Each download is a single self-contained executable with the panel, the scraper and the browser extension inside. You do not need .NET installed.</p>
+      <div class="oneline">
+        <div class="oneline-head"><span class="rec" data-i18n="dl.rec">Recommended</span><h3 data-i18n="dl.one">Install with one command</h3></div>
+        <div class="cmd"><span class="cmd-os">macOS, Linux</span><code id="cmd-unix">curl -fsSL https://gabrielandre-math.github.io/job-orchestrator/install.sh | sh</code><button class="copy" type="button" data-copy="#cmd-unix" data-i18n="dl.copy">Copy</button></div>
+        <div class="cmd"><span class="cmd-os">Windows</span><code id="cmd-win">irm https://gabrielandre-math.github.io/job-orchestrator/install.ps1 | iex</code><button class="copy" type="button" data-copy="#cmd-win" data-i18n="dl.copy">Copy</button></div>
+        <p class="oneline-why" data-i18n-html="dl.why">The command downloads the same release file, checks its SHA-256 and opens the app's installer. A file fetched this way is not marked as downloaded from the internet, so macOS and Windows open it without the warning they show for apps without a paid signature. <a href="https://github.com/gabrielandre-math/job-orchestrator/blob/main/site/install.sh">Read the script</a>.</p>
+      </div>
+      <p class="or" data-i18n="dl.or">Or download the file for your system</p>
       <div class="os-grid">
         <article class="os" data-os="linux">
           <header><img src="assets/logos/linux.svg" alt="" width="28" height="28"><h3>Linux</h3><span class="tag" data-i18n="dl.yours">Your system</span></header>
