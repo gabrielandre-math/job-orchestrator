@@ -60,7 +60,7 @@ internal static partial class Selector
     // O currículo existe em português e inglês: vaga em outra língua (sueco, espanhol...) recebe o inglês.
     internal static string Language(string text) => Languages.PtOrEn(text);
 
-    private static bool Mentions(string folded, string term)
+    internal static bool Mentions(string folded, string term)
     {
         var t = Claims.Fold(term);
         if (t.Length == 0) return false;

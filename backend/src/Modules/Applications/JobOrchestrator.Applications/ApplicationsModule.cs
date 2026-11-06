@@ -18,6 +18,7 @@ public static class ApplicationsModule
         // O copiloto (API) e o fluxo (Worker) montam o mesmo pacote de candidatura.
         s.TryAddScoped<Bundles>();
         s.AddSingleton<Rehearsal>();
+        s.AddScoped<Interviews>();
         return s;
     }
 

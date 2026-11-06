@@ -398,6 +398,38 @@
             </section>
           }
 
+          @if (d.integrityWarnings.length > 0) {
+            <section class="d-sec">
+              <h3>Integridade do anúncio</h3>
+              <ul class="problem">
+                @for (warning of d.integrityWarnings; track warning) { <li>{{ warning }}</li> }
+              </ul>
+            </section>
+          }
+
+          @if (d.job.open && d.job.status === 'Shortlisted') {
+            <section class="d-sec">
+              <h3>Aderência por evidência</h3>
+              <p class="faint small">Compare os requisitos com fatos do seu perfil. A campanha segue usando a nota da triagem.</p>
+              <button type="button" class="btn ghost" (click)="compareFit(d.job.id)" [disabled]="comparing.running()">
+                {{ comparing.running() ? 'Comparando no modelo local…' : 'Comparar com meu perfil' }}
+              </button>
+              @if (fitComparison(); as fit) {
+                @if (fit.jobId === d.job.id) {
+                  <p><strong>{{ fit.campaignScore }}/100</strong> na triagem · <strong>{{ fit.evidenceScore }}/100</strong> nos requisitos encontrados</p>
+                  <ul>
+                    @for (r of fit.requirements; track r.requirement) {
+                      <li>
+                        <strong>{{ fitLabels[r.match] }}</strong> · {{ r.requirement }}
+                        @for (fact of r.evidence; track fact.factId) { <p class="faint small">{{ fact.statement }}</p> }
+                      </li>
+                    }
+                  </ul>
+                }
+              }
+            </section>
+          }
+
           <section class="d-sec">
             <h3>Descrição</h3>
             <div class="desc">

@@ -51,7 +51,7 @@ internal sealed class ListJobsHandler(IReadDb<JobsDbContext> db) : IQueryHandler
 }
 
 /// <summary>A vaga aberta: dados, fatores da nota e trecho da descrição.</summary>
-internal sealed record JobDetail(JobRow Job, IReadOnlyList<Factor> Factors, string Description, int Snapshots);
+internal sealed record JobDetail(JobRow Job, IReadOnlyList<Factor> Factors, string Description, int Snapshots, IReadOnlyList<string> IntegrityWarnings);
 
 internal sealed record GetJobQuery(Guid Id) : IQuery<JobDetail>;
 
@@ -62,12 +62,13 @@ internal sealed class GetJobHandler(IReadDb<JobsDbContext> db) : IQueryHandler<G
         public string Breakdown { get; init; } = "[]";
         public string Description { get; init; } = "";
         public int Snapshots { get; init; }
+        public int IntegritySignals { get; init; }
     }
 
     private const string Sql = """
         select p.id, p.company, p.title, p.location, p.status, p.score, p.confidence, p.reason, p.apply_url, p.source, p.first_seen_at,
                p.last_verified_at, p.open, p.duplicate_of, p.seniority, p.modality, p.salary_text, p.contract, p.english, p.sponsorship,
-               p.apply_channel, p.apply_email, p.breakdown::text as breakdown, p.description, p.stack, p.company_domain, p.eligibility, p.eligibility_evidence,
+               p.apply_channel, p.apply_email, p.breakdown::text as breakdown, p.description, p.integrity_signals, p.stack, p.company_domain, p.eligibility, p.eligibility_evidence,
                (select count(*)::int from jobs.snapshots s where s.job_id = p.id) as snapshots
         from jobs.postings p where p.id = @Id
         """;
@@ -78,7 +79,9 @@ internal sealed class GetJobHandler(IReadDb<JobsDbContext> db) : IQueryHandler<G
         if (r is null) return Error.NotFound("job-not-found", "Vaga não encontrada.");
         JobRow job = r with { };
         var factors = JsonSerializer.Deserialize<List<Factor>>(r.Breakdown, JsonSerializerOptions.Web) ?? [];
-        return new JobDetail(job, factors, r.Description.Length > 12000 ? r.Description[..12000] + "…" : r.Description, r.Snapshots);
+        var content = PostingIntegrity.Inspect(r.Description);
+        var warnings = PostingIntegrity.Warnings((PostingSignals)r.IntegritySignals | content.Signals);
+        return new JobDetail(job, factors, content.Text.Length > 12000 ? content.Text[..12000] + "…" : content.Text, r.Snapshots, warnings);
     }
 }
 
@@ -90,6 +93,8 @@ internal sealed class JobEndpoints : ICarterModule
         var group = app.MapGroup("/api/jobs").WithTags("Jobs");
         group.MapGet("", async (string? status, string? q, ISender sender, CancellationToken ct) => (await sender.Send(new ListJobsQuery(status, q), ct)).ToHttp(Results.Ok));
         group.MapGet("{id:guid}", async (Guid id, ISender sender, CancellationToken ct) => (await sender.Send(new GetJobQuery(id), ct)).ToHttp(Results.Ok));
+        group.MapPost("{id:guid}/compare-fit", async (Guid id, ISender sender, CancellationToken ct) =>
+            (await sender.Send(new CompareFitQuery(id), ct)).ToHttp(Results.Ok));
         group.MapGet("stats", async (ISender sender, CancellationToken ct) => (await sender.Send(new JobStatsQuery(), ct)).ToHttp(Results.Ok));
     }
 }
@@ -109,9 +114,17 @@ internal sealed class JobsApi(IReadDb<JobsDbContext> db, ISender sender) : IJobs
 
     public async Task<JobCounts> CountsAsync(CancellationToken ct) => await db.FirstAsync<JobCounts>(Sql, null, ct) ?? new JobCounts(0, 0, 0, 0, 0, 0);
 
-    public Task<JobText?> TextAsync(Guid jobId, CancellationToken ct) => db.FirstAsync<JobText>(
-        "select id, title, company, location, description, source, seniority, modality, contract, english, salary_currency from jobs.postings where id = @jobId",
-        new { jobId }, ct);
+    public async Task<JobText?> TextAsync(Guid jobId, CancellationToken ct)
+    {
+        var job = await db.FirstAsync<JobText>(
+            "select id, title, company, location, description, source, seniority, modality, contract, english, salary_currency from jobs.postings where id = @jobId",
+            new { jobId }, ct);
+        return job is null ? null : job with
+        {
+            Title = PostingIntegrity.Inspect(job.Title).Text, Company = PostingIntegrity.Inspect(job.Company).Text,
+            Location = PostingIntegrity.Inspect(job.Location).Text, Description = PostingIntegrity.Inspect(job.Description).Text
+        };
+    }
 
     // Aberta e única: não duplicada e não encerrada (a vaga que some da fonte vira Expired, sem apagar o histórico).
     private const string Open = "duplicate_of is null and status not in ('Expired', 'Duplicate')";

@@ -19,7 +19,7 @@ internal static partial class Json
     public static JsonElement Obj(this JsonElement e, string name) =>
         e.ValueKind == JsonValueKind.Object && e.TryGetProperty(name, out var v) ? v : default;
 
-    public static string Plain(string html) => Spaces().Replace(WebUtility.HtmlDecode(Tags().Replace(html.Replace("<p>", "\n").Replace("<br>", "\n"), " ")), " ").Trim();
+    public static string Plain(string html) => Spaces().Replace(PostingIntegrity.Visible(html).Text, " ").Trim();
 
     /// <summary>"acme-labs" vira "Acme Labs": as APIs de Lever e Ashby não trazem o nome da empresa.</summary>
     public static string Company(string slug) =>
@@ -30,7 +30,6 @@ internal static partial class Json
 
     public static DateTime? Date(this JsonElement e, string name) => DateTime.TryParse(e.Str(name), out var d) ? d.ToUniversalTime() : null;
 
-    [GeneratedRegex("<[^>]+>")] private static partial Regex Tags();
     [GeneratedRegex(@"[ \t]+")] private static partial Regex Spaces();
 }
 
@@ -111,7 +110,8 @@ internal sealed class AshbySource(IHttpClientFactory http) : PublicSource(http, 
         var workplace = j.Str("workplaceType") is { Length: > 0 } w ? w : remote ? "remote" : null;
         return new DiscoveredPosting(source, j.Str("id"), Json.Company(board), j.Str("title"), j.Str("location"), j.Str("jobUrl"),
             j.Str("descriptionPlain"), j.Date("publishedAt"), j.GetRawText(),
-            Workplace: workplace, Compensation: j.Obj("compensation").Str("compensationTierSummary"), Employment: j.Str("employmentType"), ListedAsOpen: true);
+            Workplace: workplace, Compensation: j.Obj("compensation").Str("compensationTierSummary"), Employment: j.Str("employmentType"), ListedAsOpen: true,
+            DescriptionMarkup: j.Str("descriptionHtml") is { Length: > 0 } html ? html : null);
     }
 }
 

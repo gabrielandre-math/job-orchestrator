@@ -209,6 +209,46 @@ namespace JobOrchestrator.Applications.Data.Migrations
                     b.ToTable("human_tasks", "applications");
                 });
 
+            modelBuilder.Entity("JobOrchestrator.Applications.Domain.InterviewRound", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ApplicationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("application_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Feedback")
+                        .HasMaxLength(3000)
+                        .HasColumnType("character varying(3000)")
+                        .HasColumnName("feedback");
+
+                    b.Property<string>("Pack")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("pack");
+
+                    b.Property<string>("Stage")
+                        .IsRequired()
+                        .HasMaxLength(12)
+                        .HasColumnType("character varying(12)")
+                        .HasColumnName("stage");
+
+                    b.HasKey("Id")
+                        .HasName("pk_interviews");
+
+                    b.HasIndex("ApplicationId", "CreatedAt")
+                        .HasDatabaseName("ix_interviews_application_id_created_at");
+
+                    b.ToTable("interviews", "applications");
+                });
+
             modelBuilder.Entity("JobOrchestrator.Applications.Domain.JobApplication", b =>
                 {
                     b.Property<Guid>("Id")
@@ -545,6 +585,16 @@ namespace JobOrchestrator.Applications.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_events_applications_application_id");
+                });
+
+            modelBuilder.Entity("JobOrchestrator.Applications.Domain.InterviewRound", b =>
+                {
+                    b.HasOne("JobOrchestrator.Applications.Domain.JobApplication", null)
+                        .WithMany()
+                        .HasForeignKey("ApplicationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_interviews_applications_application_id");
                 });
 
             modelBuilder.Entity("JobOrchestrator.Applications.Domain.JobApplication", b =>

@@ -1,6 +1,7 @@
 import { inject, ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { Copilot } from './copilot';
+import { InterviewPanel } from './interview-panel';
 import { Badge } from '@jo/ui/badge';
 import { ApplicationDetail, send } from '../../core/api';
 import { command } from '../../core/command';
@@ -10,7 +11,7 @@ import { clock, evidenceLabel, stateLabel, stateTone } from '../../core/format';
 /** Uma candidatura: linha do tempo, formulário exato, provas, pendências e as ações que cabem no estado atual. */
 @Component({
   selector: 'app-application',
-  imports: [RouterLink, Badge, Copilot],
+  imports: [RouterLink, Badge, Copilot, InterviewPanel],
   templateUrl: './application.page.html',
   styleUrl: './application.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

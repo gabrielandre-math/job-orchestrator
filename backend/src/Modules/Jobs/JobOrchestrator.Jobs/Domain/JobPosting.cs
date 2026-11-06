@@ -22,6 +22,7 @@ internal sealed class JobPosting : AggregateRoot
     public string Location { get; private set; } = "";
     public string ApplyUrl { get; private set; } = "";
     public string Description { get; private set; } = "";
+    public PostingSignals IntegritySignals { get; private set; }
     public DateTime? SourceUpdatedAt { get; private set; }
     public DateTime FirstSeenAt { get; private set; }
     public DateTime LastSeenAt { get; private set; }
@@ -67,13 +68,13 @@ internal sealed class JobPosting : AggregateRoot
         Title = Cut(p.Title.Trim(), 300),
         Location = Cut(p.Location.Trim(), 200),
         ApplyUrl = Cut(p.ApplyUrl.Trim(), 1000),
-        Description = p.Description.Length > 20_000 ? p.Description[..20_000] : p.Description,
         SourceUpdatedAt = p.UpdatedAt,
         FirstSeenAt = now,
         LastSeenAt = now,
         Status = JobStatus.Discovered,
         AllowedCountries = [.. (p.AllowedCountries ?? []).Take(60)]
         };
+        job.SetDescription(p);
         job.Apply(Normalizer.From(job.Title, job.Description, job.Location, job.ApplyUrl, p.Workplace, p.Compensation, p.Employment, p.ApplyEmail));
         return job;
     }
@@ -86,9 +87,16 @@ internal sealed class JobPosting : AggregateRoot
         Location = Cut(p.Location.Trim(), 200);
         LastSeenAt = now;
         SourceUpdatedAt = p.UpdatedAt;
-        Description = p.Description.Length > 20_000 ? p.Description[..20_000] : p.Description;
+        SetDescription(p);
         AllowedCountries = [.. (p.AllowedCountries ?? []).Take(60)];
         Apply(Normalizer.From(Title, Description, Location, ApplyUrl, p.Workplace, p.Compensation, p.Employment, p.ApplyEmail));
+    }
+
+    private void SetDescription(DiscoveredPosting posting)
+    {
+        var content = PostingIntegrity.Inspect(Cut(posting.DescriptionMarkup ?? posting.Description, 100_000));
+        Description = Cut(content.Text, 20_000);
+        IntegritySignals = content.Signals | PostingIntegrity.Inspect(Title).Signals | PostingIntegrity.Inspect(Company).Signals;
     }
 
     /// <summary>Fonte externa não define o tamanho dos nossos campos: corta no limite da coluna, sem derrubar a rodada.</summary>

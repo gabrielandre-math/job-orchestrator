@@ -208,8 +208,10 @@ internal sealed partial class ScrapyRunner(ScraperEnv env, IIntelligenceApi ai, 
         // Página igual à da última leitura (mesmo texto) reaproveita a extração: a IA só lê o que mudou.
         var cache = ExtractCache.Load();
         var reused = 0;
-        foreach (var c in candidates.Take(aiPages ?? config.GetValue("Scraper:MaxAiPages", 8)))
+        foreach (var candidate in candidates.Take(aiPages ?? config.GetValue("Scraper:MaxAiPages", 8)))
         {
+            var c = candidate with { Title = PostingIntegrity.Inspect(candidate.Title).Text, Text = PostingIntegrity.Inspect(candidate.Text).Text };
+            if (c.Text.Length == 0) continue;
             // Sem números ("há 2 minutos", contadores): a mesma lista de vagas dá a mesma chave mesmo com a página mudando o relógio.
             var key = Hash(Digits().Replace(c.Text.ToLowerInvariant(), "").ReplaceLineEndings(" "));
             string json;

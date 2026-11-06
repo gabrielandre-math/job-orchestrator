@@ -61,6 +61,13 @@ Vai atrás de fonte nova sem você passar link, a cada 10 minutos. Lê os links 
 - **Campanha:** critérios, cargos-alvo, palavras-chave, locais, limites e o modo (só descobrir, só preparar, revisão sua ou automático com autorização).
 - **Configurações:** busca sozinha (intervalo da campanha e do Explorador), timers da noite com um botão, modo privado, retenção, exportar, revogar tudo e apagar tudo.
 
+## Aderência, entrevistas e materiais
+
+- Em **Vagas**, abra uma vaga da fila e clique em **Comparar com meu perfil**. A comparação local mostra a nota da campanha e a cobertura dos requisitos encontrados, com as evidências que sustentam cada associação. A seleção e a autorização de envio continuam usando a nota da campanha.
+- Em **Candidaturas**, abra uma candidatura enviada e escolha **Preparar entrevista**. Selecione a etapa, gere o guia e simule uma pergunta por vez. Salve o feedback recebido para ele entrar no contexto da próxima etapa. O guia usa o currículo vinculado quando a versão e o hash do arquivo conferem.
+- **Integridade do anúncio** aparece no detalhe quando o app remove conteúdo oculto, caracteres invisíveis ou instruções reconhecidas. A inspeção lê a marcação recebida e sinais no texto.
+- Quando o currículo por vaga passa do limite de páginas, o app prioriza as evidências relacionadas aos requisitos e as que só aparecem uma vez. O Inspetor ATS também mede a distribuição do texto no PDF final.
+
 ## Envio automático
 
 Nada é enviado sem o seu ok até você criar uma **autorização** em Campanha › Automático. A autorização tem validade (1 a 30 dias), teto por dia, nota mínima e quais formulários podem enviar. Fora disso a vaga volta para a sua revisão. CAPTCHA, login, MFA, declaração legal e pergunta nova sempre param para você. Revogar devolve tudo para a revisão.

@@ -12,6 +12,7 @@ internal sealed class ApplicationsDbContext(DbContextOptions<ApplicationsDbConte
     public DbSet<SubmissionIntent> Intents => Set<SubmissionIntent>();
     public DbSet<Evidence> Evidence => Set<Evidence>();
     public DbSet<HumanTask> Tasks => Set<HumanTask>();
+    public DbSet<InterviewRound> Interviews => Set<InterviewRound>();
     public DbSet<ApprovalDecision> Approvals => Set<ApprovalDecision>();
 
     protected override void OnModelCreating(ModelBuilder b)
@@ -92,6 +93,16 @@ internal sealed class ApplicationsDbContext(DbContextOptions<ApplicationsDbConte
             e.Property(x => x.Detail).HasMaxLength(500);
             e.Property(x => x.Resolution).HasMaxLength(200);
             e.HasIndex(x => x.ApplicationId);
+        });
+        b.Entity<InterviewRound>(e =>
+        {
+            e.ToTable("interviews");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Stage).HasMaxLength(12);
+            e.Property(x => x.Pack).HasColumnType("jsonb");
+            e.Property(x => x.Feedback).HasMaxLength(3000);
+            e.HasOne<JobApplication>().WithMany().HasForeignKey(x => x.ApplicationId);
+            e.HasIndex(x => new { x.ApplicationId, x.CreatedAt });
         });
         b.Entity<ApprovalDecision>(e =>
         {

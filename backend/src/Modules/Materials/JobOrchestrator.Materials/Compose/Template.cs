@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace JobOrchestrator.Materials.Compose;
 
@@ -87,6 +88,14 @@ internal static class Template
         return sb.ToString();
 
         static string Year(string text, ProfileFact? f) => f?.End is { Length: >= 4 } y && !text.Contains(y[..4], StringComparison.Ordinal) ? $" ({y[..4]})" : "";
+    }
+
+    internal static string InterviewText(string html)
+    {
+        // HTML final do próprio renderizador, antes de preencher nome e contato.
+        var body = Regex.Match(html, @"<body>(.*?)</body>", RegexOptions.Singleline).Groups[1].Value;
+        body = body.Replace("{{NOME}}", "").Replace("{{CONTATO}}", "");
+        return WebUtility.HtmlDecode(Regex.Replace(body, "<[^>]+>", " ")).Trim();
     }
 
     /// <summary>O único lugar onde dados pessoais entram: na hora de gerar o PDF.</summary>

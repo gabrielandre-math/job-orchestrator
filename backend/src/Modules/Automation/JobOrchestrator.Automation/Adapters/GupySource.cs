@@ -41,20 +41,22 @@ internal sealed partial class GupySource(IHttpClientFactory http) : PublicSource
             var location = address.ValueKind == JsonValueKind.Object ? string.Join(", ", new[] { address.Str("city"), address.Str("stateShortName"), address.Str("country") }.Where(x => x.Length > 0)) : "";
             var type = place.ValueKind == JsonValueKind.Object ? place.Str("workplaceType") : "";
             var description = $"{j.Str("department")}. {title}. {location}.";
+            string? markup = null;
             DateTime? published = null;
             if (i++ < MaxDetails)
             {
                 try
                 {
                     var job = (await PagePropsAsync(url, ct)).GetProperty("job");
-                    description = Json.Plain($"{job.Str("description")}\n{job.Str("responsibilities")}\n{job.Str("prerequisites")}\n{job.Str("relevantExperiences")}");
+                    markup = $"{job.Str("description")}\n{job.Str("responsibilities")}\n{job.Str("prerequisites")}\n{job.Str("relevantExperiences")}";
+                    description = Json.Plain(markup);
                     published = job.Date("publishedAt");
                 }
                 catch (Exception ex) when (ex is HttpRequestException or JsonException or KeyNotFoundException or InvalidOperationException) { /* fica a descrição curta da lista */ }
                 await Task.Delay(250, ct);
             }
             list.Add(new DiscoveredPosting(source, id, name, title, location, url, description, published, j.GetRawText(),
-                Workplace: type switch { "remote" => "remote", "hybrid" => "hybrid", "on-site" => "onsite", _ => null }, ListedAsOpen: true));
+                Workplace: type switch { "remote" => "remote", "hybrid" => "hybrid", "on-site" => "onsite", _ => null }, ListedAsOpen: true, DescriptionMarkup: markup));
         }
         return list;
     }

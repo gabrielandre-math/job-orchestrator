@@ -125,9 +125,25 @@ public sealed class RouterTests : IAsyncLifetime
         await using var db = Db();
         var local = new Fake("ollama", "local");
         var r = await Router(db, [new Fake("claude-pro", "anthropic", false), new Fake("codex", "openai", false), local])
-            .CompleteAsync(LlmRequest.For(LlmTasks.InterviewPrep, "s", "p", "{}"), default);
+            .CompleteAsync(new LlmRequest("test.cloud-only", "s", "p", "{}", Rung.Medium), default);
         Assert.False(r.Ok);
         Assert.Empty(local.Calls);
+    }
+
+    [Fact]
+    public async Task Tarefa_privada_permanece_local_mesmo_com_degrau_da_nuvem_configurado()
+    {
+        await using var db = Db();
+        var cloud = new Fake("claude-pro", "anthropic");
+        var local = new Fake("ollama", "local");
+        var api = Router(db, [cloud, local], new()
+        {
+            ["Llm:Tasks:interview.prep:Rung"] = "Top", ["Llm:Tasks:interview.prep:Budget"] = "10"
+        });
+        var result = await api.CompleteAsync(LlmRequest.For(LlmTasks.InterviewPrep, "s", "p", "{}"), default);
+        Assert.True(result.Ok);
+        Assert.Empty(cloud.Calls);
+        Assert.Equal(Rung.LocalStrong, Assert.Single(local.Calls).Rung);
     }
 
     [Fact]

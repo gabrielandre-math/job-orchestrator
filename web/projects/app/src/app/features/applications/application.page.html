@@ -76,6 +76,10 @@
       </section>
 
       <div class="side">
+        @if (d.application.state === 'SubmittedConfirmed' || d.application.state === 'SubmittedDeclared') {
+          <app-interview-panel [applicationId]="d.application.id" />
+        }
+
         <section class="panel">
           <header><h2>Formulário preparado</h2>@if (d.payloadHash) {<span class="mono faint">{{ d.payloadHash.slice(0, 12) }}</span>}</header>
           @if (d.fields.length === 0) {
