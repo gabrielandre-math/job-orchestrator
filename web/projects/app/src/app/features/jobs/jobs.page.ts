@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, WritableSignal, computed, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, WritableSignal, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { Badge } from '@jo/ui/badge';
 import { Company } from '@jo/ui/company';
@@ -183,6 +183,17 @@ export class JobsPage {
     };
     return list.sort(by[this.sort()]);
   });
+
+  /** A lista monta 60 cartões por vez (500 de uma vez eram 44 mil elementos e travavam a tela ao abrir); o filtro novo volta para o começo. */
+  protected readonly page = signal(1);
+  protected readonly shown = computed(() => this.rows().slice(0, this.page() * 60));
+  private readonly backToStart = effect(() => {
+    // Só filtro e ordem voltam a lista para o começo; a releitura das vagas a cada 8 s não.
+    void [this.search(), this.status(), this.sort(), this.remoteOnly(), this.techSel(), this.sourceSel(), this.modeSel(), this.levelSel(), this.contractSel(),
+      this.eligSel(), this.hideRestricted(), this.withSalary(), this.atsOnly(), this.minScore()];
+    untracked(() => this.page.set(1));
+  });
+  protected readonly Math = Math;
 
   protected toggle(sel: WritableSignal<ReadonlySet<string>>, key: string) {
     transition(() => sel.update((s) => { const n = new Set(s); if (n.has(key)) n.delete(key); else n.add(key); return n; }));

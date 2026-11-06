@@ -229,6 +229,9 @@ export class FlowPage implements AfterViewInit {
 
   /** Pacotes de luz nas arestas de cima: quando um número aumenta entre duas leituras, um pacote corre por aquela aresta. */
   private previous = new Map<string, number>();
+  /** Quando cada aresta recebeu algo por último: só ela pulsa, por 30 s. Pulsar todas o tempo todo pesava a página. */
+  private readonly bumped = new Map<string, number>();
+  protected fresh(id: string) { return this.now() - (this.bumped.get(id) ?? 0) < 30_000; }
   protected readonly flowPackets = signal<{ id: string; d: string; lane: string }[]>([]);
 
   /** Pacotes de luz: cada passagem de uma estação para a próxima nos últimos 1,4 s corre pela aresta. */
@@ -320,7 +323,10 @@ export class FlowPage implements AfterViewInit {
       const fresh: { id: string; d: string; lane: string }[] = [];
       for (const e of edges) {
         const before = this.previous.get(e.id);
-        if (before !== undefined && e.count > before && e.tone === 'flow') fresh.push({ id: `${e.id}-${e.count}-${Date.now()}`, d: e.d, lane: e.lane });
+        if (before !== undefined && e.count > before && e.tone === 'flow') {
+          fresh.push({ id: `${e.id}-${e.count}-${Date.now()}`, d: e.d, lane: e.lane });
+          this.bumped.set(e.id, Date.now());
+        }
         this.previous.set(e.id, e.count);
       }
       if (fresh.length > 0) {
@@ -436,6 +442,8 @@ export class FlowPage implements AfterViewInit {
   protected move(e: PointerEvent) {
     const prev = this.pointers.get(e.pointerId);
     if (!prev) return;
+    // Mouse sem botão apertado no meio de um arrasto: o "soltar" se perdeu (comum em área de trabalho remota). O arrasto acaba aqui.
+    if (e.pointerType === 'mouse' && e.buttons === 0) { this.up(e); return; }
     this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (this.gesture) this.gesture.travel += Math.hypot(e.clientX - prev.x, e.clientY - prev.y);
     if (this.pinch && this.pointers.size >= 2) {

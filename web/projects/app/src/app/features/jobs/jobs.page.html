@@ -166,7 +166,7 @@
     <div class="cards">@for (i of [1, 2, 3, 4, 5, 6]; track i) { <div class="panel card skeleton"></div> }</div>
   } @else {
     <div class="cards">
-      @for (j of rows(); track j.id) {
+      @for (j of shown(); track j.id) {
         <button type="button" class="panel card" [style.view-transition-name]="'job-' + j.id" [class.current]="open() === j.id" [class.cut]="j.status === 'Rejected' || j.status === 'Duplicate' || j.status === 'Expired'" (click)="open.set(j.id)">
           <span class="c-head">
             <jo-company [name]="j.company" [domain]="j.companyDomain" [size]="44" />
@@ -201,6 +201,9 @@
         </button>
       }
     </div>
+    @if (rows().length > shown().length) {
+      <div class="more"><button type="button" class="btn" (click)="page.set(page() + 1)">Mostrar mais {{ Math.min(60, rows().length - shown().length) }} de {{ rows().length - shown().length }}</button></div>
+    }
   }
 
   @if (open()) {

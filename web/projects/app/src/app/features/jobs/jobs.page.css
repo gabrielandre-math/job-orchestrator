@@ -124,4 +124,4 @@
 @media (max-width: 760px) { .calm { grid-template-columns: 1fr; padding: 18px; } }
 .nudge { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0; color: var(--text-2); }
 .nudge jo-icon { color: var(--accent); }
-
+.more { display: flex; justify-content: center; padding: 6px 0 2px; }

@@ -37,7 +37,7 @@
         </defs>
         @for (e of edges(); track e.id) {
           <path [attr.d]="e.d" [attr.class]="'edge ' + e.tone + (e.tone === 'flow' ? ' ' + e.lane : '')" [attr.marker-end]="'url(#arrow-' + (e.tone === 'flow' ? e.lane : e.tone) + ')'" />
-          @if (e.tone === 'flow') { <path [attr.d]="e.d" [attr.class]="'pulse ' + e.lane" /> }
+          @if (e.tone === 'flow' && fresh(e.id)) { <path [attr.d]="e.d" [attr.class]="'pulse ' + e.lane" /> }
         }
         @for (e of aiEdges(); track e.id) {
           <path [attr.d]="e.d" [attr.class]="'edge ai-edge' + (e.hot ? ' hot' : e.text ? ' done' : '')" [attr.marker-end]="'url(#arrow-' + (e.hot || e.text ? 'ai' : 'idle') + ')'" />
