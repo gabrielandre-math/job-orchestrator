@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
+import { ModelMark } from '../../shared/model-mark';
 import { NgTemplateOutlet } from '@angular/common';
 import { Router } from '@angular/router';
 import { Icon } from '@jo/ui/icon';
@@ -34,7 +35,7 @@ const SUGGESTIONS = [
  */
 @Component({
   selector: 'app-assistant',
-  imports: [Icon, Iso, Mark, NgTemplateOutlet],
+  imports: [Icon, Iso, Mark, NgTemplateOutlet, ModelMark],
   templateUrl: './assistant.page.html',
   styleUrl: './assistant.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -75,9 +76,11 @@ export class AssistantPage {
     if (!this.asking.running()) return null;
     const mine = this.live.feed().filter((l) => l.kind === 'assistant' && (!this.current() || l.threadId === this.current()));
     const last = mine.filter((l) => l.message.kind === 'ask' || l.message.kind === 'working').at(-1);
-    if (!last) return { agent: 'Roteador', text: 'lendo a pergunta' };
+    if (!last) return { agent: 'Roteador', text: 'lendo a pergunta', provider: 'ollama' as string | null, model: null as string | null };
     const m = last.message;
-    return { agent: m.agent, text: m.agent === 'Roteador' ? 'classificando a pergunta no modelo local' : `escrevendo com ${m.model ?? m.providerId ?? 'o modelo'}${m.effort ? ` (${m.effort})` : ''}` };
+    // O Roteador classifica no modelo local; quem escreve é o modelo da resposta: o logo dele anima enquanto escreve.
+    return { agent: m.agent, text: m.agent === 'Roteador' ? 'classificando a pergunta no modelo local' : `escrevendo com ${m.model ?? m.providerId ?? 'o modelo'}${m.effort ? ` (${m.effort})` : ''}`,
+      provider: m.agent === 'Roteador' ? 'ollama' : m.providerId ?? null, model: m.model ?? null };
   });
 
   protected async open(id: string | null) {

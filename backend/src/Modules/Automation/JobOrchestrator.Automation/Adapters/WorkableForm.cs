@@ -59,19 +59,24 @@ internal sealed partial class WorkableForm(BrowserPool browsers, IHttpClientFact
         var first = page.Locator("form input[name=firstname]");
         if (await first.CountAsync() == 0)
         {
-            // No quadro do Workable, o formulário só aparece depois do "Apply now".
-            try
+            // No quadro do Workable, o formulário só aparece depois do "Apply now". O botão vem no HTML antes de a página ligar o clique:
+            // espera a página assentar e tenta de novo se o primeiro clique caiu cedo demais.
+            try { await page.WaitForLoadStateAsync(LoadState.NetworkIdle, new PageWaitForLoadStateOptions { Timeout = 15000 }); }
+            catch (TimeoutException) { /* a página segue carregando anúncio ou métrica: o clique tenta mesmo assim */ }
+            var apply = page.Locator("[data-ui=overview-apply-now], [data-ui=apply-button]").Or(page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { NameRegex = ApplyNow() })).First;
+            for (var attempt = 0; attempt < 3 && await first.CountAsync() == 0; attempt++)
             {
-                await page.Locator("[data-ui=overview-apply-now], [data-ui=apply-button]").Or(page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { NameRegex = ApplyNow() })).First
-                    .ClickAsync(new LocatorClickOptions { Timeout = 20000 });
-                await first.WaitForAsync(new LocatorWaitForOptions { Timeout = 20000 });
+                try
+                {
+                    await apply.ClickAsync(new LocatorClickOptions { Timeout = 10000 });
+                    await first.WaitForAsync(new LocatorWaitForOptions { Timeout = 6000 });
+                }
+                catch (Exception ex) when (ex is PlaywrightException or TimeoutException) { await page.WaitForTimeoutAsync(1500); }
             }
-            catch (Exception ex) when (ex is PlaywrightException or TimeoutException)
-            {
+            if (await first.CountAsync() == 0)
                 return await page.GetByText(NoLonger()).CountAsync() > 0
                     ? AdapterResult<PreparedForm>.Fail(AdapterResultKind.PermanentFailure, "posting-closed", "A vaga não aceita mais candidaturas.")
                     : AdapterResult<PreparedForm>.Fail(AdapterResultKind.Unsupported, "no-form", "O formulário do Workable não abriu.");
-            }
         }
         if (await page.Locator(BotCheck).CountAsync() > 0)
             return AdapterResult<PreparedForm>.Fail(AdapterResultKind.NeedsHuman, "captcha", "A página tem verificação anti-robô (Cloudflare ou CAPTCHA): o app não passa por ela, o envio fica com você.");

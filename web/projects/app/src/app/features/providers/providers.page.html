@@ -115,7 +115,7 @@
             @for (m of c.models; track m.name) {
               <tr [class.off]="!m.installed">
                 <td><input type="checkbox" [checked]="m.installed || picks().has(m.name)" [disabled]="m.installed" (change)="pick(m.name)" [attr.aria-label]="'Baixar ' + m.name" /></td>
-                <td class="mono">{{ m.name }}@if (m.installed) { <span class="faint"> · baixado</span> }</td>
+                <td><span class="mname"><jo-model-mark provider="ollama" [model]="m.name" [size]="18" /><span class="mono">{{ m.name }}</span>@if (m.installed) { <span class="got">baixado</span> }</span></td>
                 <td class="r num">{{ m.diskGb }} GB</td>
                 <td class="r num" [class.bad]="m.vramGb > c.recommendation.budgetGb && c.hardware.gpus.length > 0">{{ m.vramGb }} GB</td>
                 <td class="r num strong">{{ m.benchScore ?? m.score ?? '' }}{{ (m.benchScore ?? m.score) !== null ? '%' : '' }}</td>
@@ -172,16 +172,16 @@
     <header><h2>Últimas chamadas</h2><span class="faint">cada chamada fica registrada</span></header>
     <div class="scroll">
       <table class="grid">
-        <thead><tr><th>Hora</th><th>Tarefa</th><th>Quem respondeu</th><th>Esforço</th><th class="r">Tempo</th><th>Resultado</th></tr></thead>
+        <thead><tr><th>Quem respondeu</th><th>Tarefa</th><th>Esforço</th><th class="r">Tempo</th><th>Resultado</th><th class="r">Quando</th></tr></thead>
         <tbody>
           @for (c of calls.value() ?? []; track $index) {
-            <tr>
-              <td class="num">{{ date(c.at) }} {{ time(c.at) }}</td>
+            <tr class="call">
+              <td><span class="who"><jo-model-mark [provider]="c.providerId" [model]="c.model" [size]="22" /><span class="who-t"><strong>{{ c.model || c.providerId }}</strong><span class="faint small">{{ providerName(c.providerId) }}</span></span></span></td>
               <td>{{ task(c.task) }}</td>
-              <td class="mono">{{ c.providerId }} · {{ c.model }}</td>
-              <td>{{ c.effort }}</td>
-              <td class="r num">{{ c.seconds.toFixed(1) }} s</td>
-              <td [class.bad]="!c.ok">{{ c.ok ? (c.cached ? 'do cache' : c.degraded ? 'rascunho local' : 'ok') : (c.error ?? 'falhou') }}</td>
+              <td class="faint">{{ c.effort }}</td>
+              <td class="r"><span class="secs"><span class="sbar" [style.width.%]="secsPct(c.seconds)"></span><span class="num">{{ c.seconds.toFixed(1) }} s</span></span></td>
+              <td><span [class]="'res ' + (c.ok ? (c.cached ? 'cache' : c.degraded ? 'local' : 'ok') : 'bad')">{{ c.ok ? (c.cached ? 'do cache' : c.degraded ? 'rascunho local' : 'ok') : (c.error ?? 'falhou') }}</span></td>
+              <td class="r faint num">{{ date(c.at) }} {{ time(c.at) }}</td>
             </tr>
           } @empty {
             <tr><td colspan="6" class="faint">Nenhuma chamada ainda.</td></tr>

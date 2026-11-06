@@ -36,7 +36,7 @@
         <ng-template #bot let-b>
           <article class="msg bot" [class.failed]="b.role === 'error'">
             <header>
-              @if (logo(b.provider); as l) { <img class="plogo" [class.mono]="l === 'openai' || l === 'ollama'" [src]="'/logos/' + l + '.svg'" alt="" /> } @else { <jo-iso name="router" [size]="22" /> }
+              @if (logo(b.provider) || b.model) { <jo-model-mark [provider]="b.provider" [model]="b.model" [size]="20" /> } @else { <jo-iso name="router" [size]="22" /> }
               <span class="who">{{ b.model || b.provider }}</span>
               @if (b.rung) { <span class="rung">{{ rungLabel(b.rung) }}</span> }
               @if (b.escalatedFrom) { <span class="up" title="A pergunta subiu de degrau"><jo-icon name="arrow-up" [size]="11" />de {{ rungLabel(b.escalatedFrom) }}</span> }
@@ -58,7 +58,7 @@
           </article>
         </ng-template>
         @if (working(); as w) {
-          <div class="thinking"><jo-iso [name]="w.agent === 'Roteador' ? 'router' : 'writer'" [size]="30" /><span><strong>{{ w.agent }}</strong> {{ w.text }}</span><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span></div>
+          <div class="thinking">@if (w.provider || w.model) { <jo-model-mark [provider]="w.provider" [model]="w.model" [size]="28" [busy]="true" /> } @else { <jo-iso [name]="w.agent === 'Roteador' ? 'router' : 'writer'" [size]="30" /> }<span><strong>{{ w.agent }}</strong> {{ w.text }}</span><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span></div>
         }
         @if (reading()) {
           <div class="thinking"><jo-iso name="reader" [size]="30" /><span><strong>Leitor</strong> lendo o currículo e conferindo cada fato</span><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span></div>

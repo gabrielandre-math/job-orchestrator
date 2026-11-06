@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { ModelMark } from '../../shared/model-mark';
 import { Badge } from '@jo/ui/badge';
 import { Icon } from '@jo/ui/icon';
 import { Iso } from '@jo/ui/iso';
@@ -39,7 +40,7 @@ const KINDS = [
  */
 @Component({
   selector: 'app-providers',
-  imports: [Badge, Icon, Iso, PageHero, Connect, Sensors],
+  imports: [Badge, Icon, Iso, PageHero, Connect, Sensors, ModelMark],
   templateUrl: './providers.page.html',
   styleUrl: './providers.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -202,6 +203,10 @@ export class ProvidersPage {
 
   protected async refresh() { await Promise.all([this.list.reload(), this.accounts.reload(), this.local.reload()]); }
 
+  /** Nome do provedor na conta: "Claude Pro", "Codex", "Ollama (local)". */
+  protected providerName(id: string | null) { return ({ 'claude-pro': 'Claude Pro', 'claude-max': 'Claude Max', codex: 'Codex (ChatGPT)', ollama: 'Ollama, no seu PC' } as Record<string, string>)[id ?? ''] ?? id ?? ''; }
+  /** A barra do tempo, contra a chamada mais lenta da lista. */
+  protected secsPct(s: number) { const max = Math.max(1, ...(this.calls.value() ?? []).map((c) => c.seconds)); return Math.max(4, Math.round((s / max) * 100)); }
   protected task(name: string) { return TASKS[name] ?? name; }
   protected rung(name: string) { return RUNGS[name] ?? name; }
   protected pct(x: number) { return `${Math.round(x)}%`; }
