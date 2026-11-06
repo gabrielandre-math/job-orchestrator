@@ -12,7 +12,7 @@ public static class SourceKeys
             {
                 // Workday: o quadro é o host do cliente mais o nome do site (accenture.wd103.myworkdayjobs.com/AccentureCareers).
                 if (platform is "workday" or "oracle") { if (Reserved.Contains(m.Groups[2].Value.ToLowerInvariant())) continue; return $"{platform}:{slug.ToLowerInvariant()}/{m.Groups[2].Value}"; }
-                return $"{platform}:{(platform is "gupy" or "recruitee" or "breezy" or "personio" or "workable" or "teamtailor" or "solides" or "inhire" or "pandape" ? slug.ToLowerInvariant() : slug)}";
+                return $"{platform}:{(platform is "gupy" or "recruitee" or "breezy" or "personio" or "workable" or "teamtailor" or "solides" or "inhire" or "pandape" or "pinpoint" or "bamboohr" or "recruiterbox" ? slug.ToLowerInvariant() : slug)}";
             }
         return null;
     }
@@ -32,6 +32,9 @@ public static class SourceKeys
         "smartrecruiters" => $"https://jobs.smartrecruiters.com/{slug}",
         "teamtailor" => $"https://{slug}",
         "breezy" => $"https://{slug}.breezy.hr",
+        "pinpoint" => $"https://{slug}.pinpointhq.com",
+        "bamboohr" => $"https://{slug}.bamboohr.com/careers",
+        "recruiterbox" => $"https://{slug}.recruiterbox.com",
         _ => "",
     });
 
@@ -50,6 +53,9 @@ public static class SourceKeys
         (new(@"https?://([a-z0-9-]+)\.workable\.com", RegexOptions.IgnoreCase), "workable"),
         (new(@"https?://([a-z0-9-]+(?:\.[a-z]{2})?)\.teamtailor\.com", RegexOptions.IgnoreCase), "teamtailor"),
         (new(@"https?://([a-z0-9-]+)\.vagas\.solides\.com\.br", RegexOptions.IgnoreCase), "solides"),
+        (new(@"https?://([a-z0-9-]+)\.pinpointhq\.com", RegexOptions.IgnoreCase), "pinpoint"),
+        (new(@"https?://([a-z0-9-]+)\.bamboohr\.com/(?:careers|jobs)", RegexOptions.IgnoreCase), "bamboohr"),
+        (new(@"https?://([a-z0-9-]+)\.(?:recruiterbox\.com|hire\.trakstar\.com)", RegexOptions.IgnoreCase), "recruiterbox"),
         (new(@"https?://([a-z0-9-]+)\.inhire\.app", RegexOptions.IgnoreCase), "inhire"),
         (new(@"jobs\.quickin\.io/([A-Za-z0-9_-]+)", RegexOptions.IgnoreCase), "quickin"),
         (new(@"https?://([a-z0-9-]+)\.pandape\.(?:infojobs|catho)\.com\.br", RegexOptions.IgnoreCase), "pandape"),

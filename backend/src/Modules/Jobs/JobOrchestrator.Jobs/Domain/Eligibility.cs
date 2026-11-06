@@ -71,7 +71,7 @@ internal static partial class Eligibility
     [GeneratedRegex(@"\b(worldwide|anywhere in the world|work from anywhere|from anywhere|global(ly)? remote|remote[ -]+global|fully distributed|any (country|location|timezone)|qualquer lugar do mundo|de qualquer lugar|todo el mundo|cualquier lugar)\b", RegexOptions.IgnoreCase)]
     private static partial Regex Worldwide();
 
-    [GeneratedRegex(@"\b(visa sponsorship (is )?(available|provided|offered)|we (will |can |do )?sponsor (your )?(work )?visas?|sponsor(s|ing)? (work )?visas?|relocation (package|support|assistance|bonus) (is )?(available|provided|offered|included)?|relocation (package|support|assistance)|blue card|skilled worker visa|lmia|patroc[ií]nio de visto|ajuda (de|com) (mudan[cç]a|realoca[cç][aã]o)|apoyo (de|con) reubicaci[oó]n)\b", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"\b(visa sponsorship (is )?(available|provided|offered)|we (will |can |do )?sponsor (your )?(work )?visas?|sponsor(s|ing)? (work )?visas?|relocation (package|support|assistance|bonus) (is )?(available|provided|offered|included)?|relocation (package|support|assistance)|blue card|skilled worker visa|lmia|zam[eě]stnaneck[aá] karta|employee card|cart[aã]o de funcion[aá]rio tcheco|patroc[ií]nio de visto|ajuda (de|com) (mudan[cç]a|realoca[cç][aã]o)|apoyo (de|con) reubicaci[oó]n)\b", RegexOptions.IgnoreCase)]
     private static partial Regex Relocation();
 
     [GeneratedRegex(@"\b(no|not|unable to|cannot|can't|won't|will not|do not|does not) (provide |offer )?(visa )?sponsor(ship)?|sem patroc[ií]nio", RegexOptions.IgnoreCase)]

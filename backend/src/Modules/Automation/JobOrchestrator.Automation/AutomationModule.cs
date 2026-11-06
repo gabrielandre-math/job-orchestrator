@@ -65,6 +65,11 @@ public static class AutomationModule
         s.AddScoped<ISourceConnector, ReliefWebSource>();
         s.AddScoped<ISourceConnector, RipplingSource>();
         s.AddScoped<ISourceConnector, JobLinksSource>();
+        s.AddScoped<ISourceConnector, MpsvSource>();
+        s.AddScoped<ISourceConnector, NvaSource>();
+        s.AddScoped<ISourceConnector, PinpointSource>();
+        s.AddScoped<ISourceConnector, BambooHrSource>();
+        s.AddScoped<ISourceConnector, RecruiterboxSource>();
         s.AddScoped<ISourceConnector, GetOnBoardSource>();
         s.AddScoped<ISourceConnector, PersonioSource>();
         s.AddScoped<ISourceConnector, WorkableSource>();

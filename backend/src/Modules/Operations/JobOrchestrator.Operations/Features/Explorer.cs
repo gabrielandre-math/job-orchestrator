@@ -44,7 +44,7 @@ internal sealed class Explorer(IServiceScopeFactory scopes, [FromKeyedServices("
 
     /// <summary>APIs públicas que buscam por texto: cada palavra (e cargo, onde a busca entende frase) vira uma fonte candidata. A Remotive pede
     /// poucas chamadas por dia: entra só com as duas primeiras palavras e só se a campanha ainda não tiver uma busca nela.</summary>
-    private static readonly (string Api, bool Titles)[] SearchApis = [("getonbrd", true), ("himalayas", true), ("workable-search", true), ("freehire", true), ("jobtech", false), ("remotive", false), ("jobicy", false), ("remoteok", false)];
+    private static readonly (string Api, bool Titles)[] SearchApis = [("getonbrd", true), ("himalayas", true), ("workable-search", true), ("freehire", true), ("jobtech", false), ("mpsv", false), ("nva", false), ("remotive", false), ("jobicy", false), ("remoteok", false)];
 
     /// <summary>Repositórios brasileiros de vagas em issues, por comunidade (backend, front, mobile, QA, PHP, Java): qualquer área testa os seus.</summary>
     internal static readonly string[] JobRepos =
