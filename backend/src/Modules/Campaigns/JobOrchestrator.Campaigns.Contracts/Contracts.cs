@@ -24,6 +24,12 @@ public sealed record RunRequestedV1(Guid RunId, Guid CampaignId, DateTime Reques
     public const string EventType = "campaigns.run-requested.v1";
 }
 
+/// <summary>Evento de integração: o envio automático foi desligado (revogado ou trocado de modo). O que estava pronto pela autorização volta para você.</summary>
+public sealed record AutoSubmitEndedV1(Guid CampaignId, DateTime At)
+{
+    public const string EventType = "campaigns.auto-submit-ended.v1";
+}
+
 /// <summary>Contrato público do módulo Campaigns.</summary>
 /// <summary>Pede rodadas sem o botão: o timer da noite pede uma para cada campanha ligada e com fontes.</summary>
 public interface ICampaignRuns

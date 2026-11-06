@@ -24,6 +24,14 @@ public sealed class GuardTests
     [Fact] public void Adapter_fora_da_autorizacao_nao_envia() => Assert.Equal("adapter-not-authorized", SubmissionGuard.CanSubmit(Auto(Auth(adapters: "lever-form"), adapter: "greenhouse-form")).Code);
     [Fact] public void Teto_da_autorizacao_bloqueia() => Assert.Equal("authorization-daily-limit", SubmissionGuard.CanSubmit(Auto(Auth(max: 2), today: 2)).Code);
     [Fact] public void Mesma_empresa_no_dia_bloqueia_o_automatico() => Assert.Equal("company-spacing", SubmissionGuard.CanSubmit(Auto(Auth(), sameCompany: 1)).Code);
+    [Fact] public void Teto_cheio_e_mesma_empresa_esperam_o_dia_seguinte_e_o_resto_barra() =>
+        Assert.Equal(new[] { true, true, true, false, false }, new[] { "daily-limit", "authorization-daily-limit", "company-spacing", "consent-required", "score-below-authorization" }.Select(SubmissionGuard.WaitsForTomorrow));
+    [Fact] public void O_dia_vira_no_fuso_da_campanha() =>
+        Assert.Equal(new DateTime(2026, 11, 5, 3, 0, 0), SubmissionGuard.StartOfDay(new DateTime(2026, 11, 6, 2, 0, 0, DateTimeKind.Utc), "America/Sao_Paulo"));
+    [Fact] public void Fuso_desconhecido_vira_a_meia_noite_utc() =>
+        Assert.Equal(new DateTime(2026, 11, 6), SubmissionGuard.StartOfDay(new DateTime(2026, 11, 6, 2, 0, 0, DateTimeKind.Utc), "Lugar/Nenhum"));
+    [Fact] public void Aprovacao_da_autorizacao_nao_vale_com_o_automatico_desligado() =>
+        Assert.Equal("consent-required", SubmissionGuard.CanSubmit(Input(approval: ByAuthorization)).Code);
     [Fact] public void Aprovacao_sua_vale_mesmo_no_automatico() => Assert.True(SubmissionGuard.CanSubmit(Auto(null, approval: Approved)).Allowed);
 
     /// <summary>Varredura de combinações: modo que não envia nunca libera, e automático sem autorização válida nunca libera sozinho.</summary>

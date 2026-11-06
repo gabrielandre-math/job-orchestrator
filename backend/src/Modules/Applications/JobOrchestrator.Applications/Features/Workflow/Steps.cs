@@ -199,19 +199,40 @@ internal sealed class SubmitStep(StepKit k, TokenIssuer tokens) : IStep
         }
 
         var campaign = await k.CampaignAsync(app.CampaignId, ct);
-        var today = k.Now.Date;
+        var today = SubmissionGuard.StartOfDay(k.Now, campaign.TimeZone);
+        var dayAgo = k.Now.AddDays(-1);
+        const string confirmed = nameof(ApplicationState.SubmittedConfirmed);
         var input = new GuardInput(
             campaign.Mode, app.State, app.PayloadHash,
             await db.Approvals.Where(a => a.ApplicationId == app.Id).OrderByDescending(a => a.At).FirstOrDefaultAsync(ct),
-            // Teto do dia conta o que já saiu e o que está saindo ou incerto: envio incerto pode ter chegado.
-            await db.Applications.CountAsync(a => a.CampaignId == app.CampaignId && a.Id != app.Id && (a.State == ApplicationState.SubmittedConfirmed && a.UpdatedAt >= today
-                || a.State == ApplicationState.SubmissionUnknown || a.State == ApplicationState.Submitting), ct),
+            // Teto do dia conta o que saiu hoje, pela hora da confirmação no histórico (marcar entrevista ou arquivar não é envio),
+            // e o que está saindo ou incerto: envio incerto pode ter chegado.
+            await db.Applications.CountAsync(a => a.CampaignId == app.CampaignId && a.Id != app.Id && (a.State == ApplicationState.SubmissionUnknown || a.State == ApplicationState.Submitting
+                || db.Events.Any(e => e.ApplicationId == a.Id && e.To == confirmed && e.At >= today)), ct),
             campaign.MaxSubmissionsPerDay,
             await db.Intents.AnyAsync(i => i.ApplicationId == app.Id && (i.State == IntentState.Open || i.State == IntentState.SentUnverified), ct),
             await db.Tasks.CountAsync(t => t.ApplicationId == app.Id && t.ResolvedAt == null, ct),
             campaign.Authorization, k.Now, app.Score, app.PreparedBy,
-            await db.Applications.CountAsync(a => a.Id != app.Id && a.Company == app.Company && a.State == ApplicationState.SubmittedConfirmed && a.UpdatedAt >= k.Now.AddDays(-1), ct));
+            await db.Applications.CountAsync(a => a.Id != app.Id && a.Company == app.Company && db.Events.Any(e => e.ApplicationId == a.Id && e.To == confirmed && e.At >= dayAgo), ct));
         var decision = SubmissionGuard.CanSubmit(input);
+        if (!decision.Allowed && decision.Code == "consent-required")
+        {
+            // Sem autorização valendo, nada sai sozinho: a vaga volta para a sua aprovação em vez de travar.
+            app.Move(ApplicationState.AwaitingApproval, decision.Reason, "Guardião", k.Now);
+            item.Complete(k.Now);
+            await db.SaveChangesAsync(ct);
+            return;
+        }
+        if (!decision.Allowed && SubmissionGuard.WaitsForTomorrow(decision.Code))
+        {
+            // Teto cheio não perde a vaga: ela continua pronta e o Guardião olha de novo quando o dia virar no fuso da campanha.
+            app.Postpone($"{decision.Reason} O envio fica para amanhã.", "Guardião", k.Now);
+            if (!await db.WorkItems.AnyAsync(w => w.ApplicationId == app.Id && w.Step == WorkStep.Submit && w.CompletedAt == null && w.Id != item.Id, ct))
+                k.Enqueue(app.Id, WorkStep.Submit, today.AddDays(1) - k.Now);
+            item.Complete(k.Now);
+            await db.SaveChangesAsync(ct);
+            return;
+        }
         if (!decision.Allowed)
         {
             app.Move(ApplicationState.BlockedByPolicy, decision.Reason, "Guardião", k.Now, new { decision.Code });

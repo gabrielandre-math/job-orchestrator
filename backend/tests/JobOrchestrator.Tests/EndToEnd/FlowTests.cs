@@ -70,13 +70,19 @@ public sealed class FlowTests
 
         await s.RunAsync();
         await s.WaitAsync(async () => await s.SubmissionsAsync() >= 1, Settle, "o primeiro envio automático");
-        await SettledAsync(s, 4);
         // Teto de 1 por dia da autorização: um envio só, mesmo com duas vagas prontas (a lenta conta enquanto está incerta).
+        // A outra não se perde: continua pronta, com o envio para quando o dia virar.
+        await s.WaitAsync(async () => (await s.GetAsync("/applications")).EnumerateArray().Any(a => a.GetProperty("state").GetString() == "ReadyToSubmit"
+            && a.GetProperty("lastReason").GetString()?.Contains("fica para amanhã") == true), Settle, "a segunda pronta esperar o dia seguinte");
         Assert.Equal(1, await s.SubmissionsAsync());
 
         var auth = (await s.GetAsync($"/campaigns/{id}/authorizations"))[0].GetProperty("id").GetString();
         Assert.Equal(HttpStatusCode.NoContent, (await s.Http.DeleteAsync($"{s.Api}/campaigns/{id}/authorizations/{auth}")).StatusCode);
         Assert.Equal("ReviewRequired", (await s.GetAsync("/campaigns"))[0].GetProperty("mode").GetString());
+        // A que esperava o dia seguinte pela autorização volta já para a sua aprovação: nada sai sozinho depois de revogar.
+        await s.WaitAsync(async () => (await s.GetAsync("/applications")).EnumerateArray().Any(a => a.GetProperty("state").GetString() == "AwaitingApproval"
+            && a.GetProperty("lastReason").GetString()?.Contains("foi desligado") == true), Settle, "a pronta pela autorização voltar para você");
+        Assert.Equal(1, await s.SubmissionsAsync());
     }
 
     [Fact]

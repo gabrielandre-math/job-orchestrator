@@ -122,6 +122,15 @@ internal sealed class JobApplication : AggregateRoot
         Move(ApplicationState.ReadyToSubmit, "Aprovada por você.", "Você", now, new { payloadHash });
     }
 
+    /// <summary>Pronta, mas o teto do dia já foi: continua pronta e o envio fica para depois. O histórico ganha a linha com o motivo.</summary>
+    public void Postpone(string reason, string actor, DateTime now)
+    {
+        if (State != ApplicationState.ReadyToSubmit) throw new DomainRuleException("Só dá para adiar o envio de candidatura pronta para enviar.");
+        LastReason = reason;
+        UpdatedAt = now;
+        _history.Add(ApplicationEvent.Create(Id, State, State, reason, actor, null, now));
+    }
+
     public void Confirmed(SubmissionReceipt receipt, string actor, DateTime now)
     {
         if (receipt.EvidenceLevel < 3) throw new DomainRuleException("Confirmação exige página de confirmação, recibo ou e-mail casado.");

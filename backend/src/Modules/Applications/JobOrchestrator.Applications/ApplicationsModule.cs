@@ -23,6 +23,7 @@ public static class ApplicationsModule
     public static IServiceCollection AddApplicationsWorker(this IServiceCollection s, IConfiguration config)
     {
         s.AddEventConsumer<JobShortlistedConsumer>();
+        s.AddEventConsumer<AutoSubmitEndedConsumer>();
         s.AddHostedService<OutboxPublisher<ApplicationsDbContext>>();
         s.AddSingleton(new WorkQueue(NpgsqlDataSource.Create(config.ConnectionFor("Applications"))));
         s.TryAddSingleton<GuardKey>();

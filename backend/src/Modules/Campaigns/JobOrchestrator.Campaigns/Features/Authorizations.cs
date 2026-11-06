@@ -49,7 +49,11 @@ internal sealed class AuthorizationEndpoints : ICarterModule
             var auth = await db.Authorizations.FirstOrDefaultAsync(a => a.Id == authId && a.CampaignId == id, ct);
             if (auth is null) return Results.NotFound();
             auth.RevokedAt ??= now;
-            if (await db.Campaigns.FirstOrDefaultAsync(c => c.Id == id, ct) is { } campaign) campaign.DisableAuto(now);
+            if (await db.Campaigns.FirstOrDefaultAsync(c => c.Id == id, ct) is { Mode: SubmissionMode.AutoSubmit } campaign)
+            {
+                campaign.DisableAuto(now);
+                db.Publish(AutoSubmitEndedV1.EventType, new AutoSubmitEndedV1(id, now), now);
+            }
             await db.SaveChangesAsync(ct);
             return Results.NoContent();
         });

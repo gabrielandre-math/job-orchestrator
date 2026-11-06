@@ -75,6 +75,19 @@ public sealed class TransitionTests
         return app;
     }
 
+    [Fact]
+    public void Adiar_o_envio_deixa_pronta_e_poe_o_motivo_no_historico()
+    {
+        var app = Ready();
+        var before = app.History.Count;
+        app.Postpone("Teto de 3 envios por dia da autorização atingido. O envio fica para amanhã.", "Guardião", Now);
+        Assert.Equal(ApplicationState.ReadyToSubmit, app.State);
+        Assert.Equal(before + 1, app.History.Count);
+        Assert.Equal(("ReadyToSubmit", "ReadyToSubmit"), (app.History[^1].From, app.History[^1].To));
+        Assert.Contains("amanhã", app.LastReason ?? "");
+        Assert.Throws<DomainRuleException>(() => Prepared().Postpone("teto", "Guardião", Now));
+    }
+
     private static JobApplication Ready()
     {
         var app = Prepared();

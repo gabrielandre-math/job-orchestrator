@@ -21,7 +21,8 @@ internal static class Transitions
         [ApplicationState.FormPreparing] = [ApplicationState.FormValidated, ApplicationState.NeedsHuman, ApplicationState.RetryScheduled, ApplicationState.Failed, ApplicationState.BlockedByPolicy, ApplicationState.Withdrawn, ApplicationState.DeadLetter],
         [ApplicationState.FormValidated] = [ApplicationState.AwaitingApproval, ApplicationState.ReadyToSubmit, ApplicationState.BlockedByPolicy, ApplicationState.FormPreparing, ApplicationState.Withdrawn],
         [ApplicationState.AwaitingApproval] = [ApplicationState.ReadyToSubmit, ApplicationState.FormPreparing, ApplicationState.Withdrawn],
-        [ApplicationState.ReadyToSubmit] = [ApplicationState.Submitting, ApplicationState.BlockedByPolicy, ApplicationState.Withdrawn],
+        // Pronta pela autorização que acabou volta para a sua aprovação.
+        [ApplicationState.ReadyToSubmit] = [ApplicationState.Submitting, ApplicationState.AwaitingApproval, ApplicationState.BlockedByPolicy, ApplicationState.Withdrawn],
         // Saídas de Submitting que não são confirmação nem incerteza exigem prova de que nada foi clicado (o adapter só devolve essas antes do clique).
         [ApplicationState.Submitting] = [ApplicationState.SubmittedConfirmed, ApplicationState.SubmissionUnknown, ApplicationState.Failed, ApplicationState.NeedsHuman, ApplicationState.BlockedByPolicy, ApplicationState.ReadyToSubmit],
         [ApplicationState.SubmissionUnknown] = [ApplicationState.SubmittedConfirmed, ApplicationState.NeedsHuman, ApplicationState.Failed],

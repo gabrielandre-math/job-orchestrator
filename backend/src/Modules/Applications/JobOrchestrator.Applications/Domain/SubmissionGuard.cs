@@ -33,6 +33,9 @@ internal static class SubmissionGuard
     {
         if (i.Mode is SubmissionMode.DiscoveryOnly or SubmissionMode.PrepareOnly)
             return new(false, "mode-forbids", "A campanha está em um modo que não envia.");
+        // Aprovação dada pela autorização só vale com o automático ligado: desligou, a vaga volta a precisar de você.
+        if (i.Mode != SubmissionMode.AutoSubmit && i.Approval is { ByAuthorization: true })
+            return new(false, "consent-required", "O envio automático foi desligado: esta vaga espera a sua aprovação.");
         if (i.Mode == SubmissionMode.AutoSubmit && i.Approval is not { Approved: true, ByAuthorization: false })
         {
             // Automático: vale só a autorização ativa, dentro do escopo e dos limites dela.
@@ -58,5 +61,18 @@ internal static class SubmissionGuard
         if (i.ConfirmedToday >= i.MaxPerDay)
             return new(false, "daily-limit", $"Limite diário de {i.MaxPerDay} envios atingido.");
         return new(true, "allowed", "Todas as checagens passaram.");
+    }
+
+    /// <summary>Teto do dia e espaço entre envios para a mesma empresa não perdem a vaga: ela continua pronta e espera o dia seguinte.</summary>
+    public static bool WaitsForTomorrow(string code) => code is "daily-limit" or "authorization-daily-limit" or "company-spacing";
+
+    /// <summary>Meia-noite de hoje no fuso da campanha, em UTC: o "por dia" vira junto com o seu dia, não às 21h de Brasília.</summary>
+    public static DateTime StartOfDay(DateTime utcNow, string? timeZone)
+    {
+        var zone = timeZone is { Length: > 0 } && TimeZoneInfo.TryFindSystemTimeZoneById(timeZone, out var found) ? found : TimeZoneInfo.Utc;
+        var midnight = TimeZoneInfo.ConvertTimeFromUtc(utcNow, zone).Date;
+        // Fuso que pula a meia-noite no horário de verão: o dia começa na primeira hora que existe.
+        if (zone.IsInvalidTime(midnight)) midnight = midnight.AddHours(1);
+        return TimeZoneInfo.ConvertTimeToUtc(midnight, zone);
     }
 }
