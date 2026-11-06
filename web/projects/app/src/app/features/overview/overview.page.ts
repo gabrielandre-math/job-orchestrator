@@ -8,7 +8,7 @@ import { Empty } from '@jo/ui/empty';
 import { Icon } from '@jo/ui/icon';
 import { Iso } from '@jo/ui/iso';
 import { RouteHero, RouteStop } from '@jo/ui/route-hero';
-import { ExploreStatus, Overview, Profile, send, TaskRow } from '../../core/api';
+import { ApplicationRow, ExploreStatus, JobRow, MailOverview, OutgoingMail, Overview, Profile, send, TaskRow } from '../../core/api';
 import { command } from '../../core/command';
 import { ago, clock, modeLabel, plural, stateLabel, stateTone } from '../../core/format';
 import { AGENT_ICON, Live, PROVIDER_LOGO } from '../../core/live';
@@ -63,6 +63,41 @@ export class OverviewPage {
     ].map((x, i) => ({ ...x, state: at < 0 ? 'idle' : i < at ? 'done' : i === at && s?.running ? 'working' : at === 5 ? 'done' : 'idle' }));
   });
   protected readonly data = query<Overview>(() => '/overview', 4000);
+  private readonly mail = query<MailOverview>(() => '/mail/overview', 15000);
+  private readonly outgoing = query<OutgoingMail[]>(() => '/mail/outgoing', 30000);
+  private readonly apps = query<ApplicationRow[]>(() => '/applications', 15000);
+  private readonly rehearsal = query<{ running: boolean; last: { items: { kind: string; reason: string | null; detail: string | null }[] } | null }>(() => '/applications/rehearsal', 30000);
+  private readonly queue = query<JobRow[]>(() => '/jobs?status=Shortlisted', 60000);
+
+  /** O Início responde três perguntas: o que saiu, o que voltou e o que depende de você, cada linha com o caminho para resolver. */
+  protected readonly today = computed(() => {
+    const d = this.data.value(), m = this.mail.value(), apps = this.apps.value() ?? [], mails = this.outgoing.value() ?? [];
+    const lost = mails.filter((x) => x.status === 'Bounced' || x.status === 'Failed').length;
+    const outcome = (o: string) => apps.filter((a) => a.outcome === o).length;
+    const questions = new Set((this.rehearsal.value()?.last?.items ?? []).filter((i) => i.reason === 'unsupported-field').flatMap((i) => [...(i.detail ?? '').matchAll(/"([^"]+)"/g)].map((x) => x[1]))).size;
+    const bySite = (this.queue.value() ?? []).filter((j) => j.applyChannel === 'manual').length;
+    type Line = { n: number; label: string; link: string; query?: Record<string, string>; tone?: string };
+    const sent: Line[] = [
+      { n: d?.confirmedToday ?? 0, label: word(d?.confirmedToday ?? 0, 'candidatura enviada hoje', 'candidaturas enviadas hoje'), link: '/candidaturas' },
+      { n: m?.sentToday ?? 0, label: word(m?.sentToday ?? 0, 'e-mail enviado hoje', 'e-mails enviados hoje'), link: '/email' },
+      { n: lost, label: word(lost, 'e-mail não chegou', 'e-mails não chegaram'), link: '/email', tone: 'bad' },
+      { n: d?.applications.confirmed ?? 0, label: 'enviadas no total', link: '/candidaturas' },
+    ];
+    const back: Line[] = [
+      { n: m?.replied ?? 0, label: word(m?.replied ?? 0, 'resposta por e-mail', 'respostas por e-mail'), link: '/email' },
+      { n: outcome('Entrevista') + (m?.interviews ?? 0), label: word(outcome('Entrevista') + (m?.interviews ?? 0), 'entrevista', 'entrevistas'), link: '/candidaturas', tone: 'ok' },
+      { n: outcome('Oferta'), label: word(outcome('Oferta'), 'oferta', 'ofertas'), link: '/candidaturas', tone: 'ok' },
+      { n: outcome('Recusada'), label: word(outcome('Recusada'), 'recusa', 'recusas'), link: '/candidaturas' },
+    ];
+    const you: Line[] = [
+      { n: d?.applications.awaitingApproval ?? 0, label: word(d?.applications.awaitingApproval ?? 0, 'formulário para aprovar', 'formulários para aprovar'), link: '/revisao', tone: 'warn' },
+      { n: d?.pendingTasks ?? 0, label: word(d?.pendingTasks ?? 0, 'pendência para resolver', 'pendências para resolver'), link: '/atencao', tone: 'warn' },
+      { n: m?.awaiting ?? 0, label: word(m?.awaiting ?? 0, 'e-mail para aprovar', 'e-mails para aprovar'), link: '/email', tone: 'warn' },
+      { n: questions, label: word(questions, 'pergunta de formulário sem resposta', 'perguntas de formulário sem resposta'), link: '/candidaturas', tone: 'warn' },
+      { n: bySite, label: word(bySite, 'vaga para você enviar pelo site', 'vagas para você enviar pelo site'), link: '/vagas', tone: 'warn' },
+    ];
+    return { sent, back, you, sentN: (d?.confirmedToday ?? 0) + (m?.sentToday ?? 0), backN: back.slice(0, 3).reduce((n, l) => n + l.n, 0), youN: you.reduce((n, l) => n + l.n, 0) };
+  });
   protected readonly tasks = query<TaskRow[]>(() => '/tasks', 4000);
   protected readonly profile = query<Profile>(() => '/profile', 0);
   protected readonly linkedinOn = computed(() => (this.profile.value()?.documents ?? []).some((d) => d.kind === 'linkedin' && d.status === 'Ready'));
@@ -97,7 +132,9 @@ export class OverviewPage {
     const waiting = d.applications.awaitingApproval + d.applications.needsHuman;
     const queue = plural(d.jobs.shortlisted, 'vaga na fila', 'vagas na fila');
     const prepared = plural(d.applications.prepared, 'candidatura preparada', 'candidaturas preparadas');
-    const you = waiting === 0 ? 'nada esperando por você' : plural(waiting, 'coisa esperando por você', 'coisas esperando por você');
+    // A mesma conta do bloco "O que depende de você": formulários, pendências, e-mails, perguntas e envios pelo site.
+    const all = Math.max(waiting, this.today().youN);
+    const you = all === 0 ? 'nada esperando por você' : plural(all, 'coisa esperando por você', 'coisas esperando por você');
     return `${queue}, ${prepared} e ${you}.`;
   });
 
@@ -143,19 +180,6 @@ export class OverviewPage {
     ];
   });
 
-  protected readonly cells = computed(() => {
-    const d = this.data.value();
-    if (!d) return [];
-    const a = d.applications;
-    return [
-      { label: 'Vagas encontradas', value: d.jobs.total, note: `${plural(d.jobs.duplicates, 'duplicada')}, ${plural(d.jobs.rejected, 'cortada')}`, tone: '' },
-      { label: 'Na fila', value: d.jobs.shortlisted, note: 'acima do corte', tone: '' },
-      { label: 'Preparadas', value: a.prepared, note: 'prontas, sem envio', tone: '' },
-      { label: 'Esperando você', value: a.awaitingApproval + a.needsHuman, note: `${plural(a.awaitingApproval, 'aprovação', 'aprovações')}, ${plural(a.needsHuman, 'pendência')}`, tone: a.awaitingApproval + a.needsHuman > 0 ? 'warn' : '' },
-      { label: 'Confirmadas', value: a.confirmed, note: `${d.confirmedToday} hoje`, tone: a.confirmed > 0 ? 'ok' : '' },
-      { label: 'Incertas', value: a.unknown, note: 'em reconciliação', tone: a.unknown > 0 ? 'warn' : '' },
-    ];
-  });
 
   protected readonly funnel = computed<ChartRow[]>(() => {
     const d = this.data.value();
@@ -178,3 +202,6 @@ export class OverviewPage {
     await this.data.reload();
   }
 }
+
+/** Só a palavra no singular ou no plural: o número vai à parte, em destaque. */
+function word(n: number, one: string, many: string) { return n === 1 ? one : many; }

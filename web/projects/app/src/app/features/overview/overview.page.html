@@ -50,14 +50,25 @@
 
   @if (data.problem(); as p) { <p class="problem">{{ p.detail }}</p> }
 
-  <div class="strip" role="list">
-    @for (c of cells(); track c.label; let i = $index) {
-      <div class="panel cell" role="listitem" [class]="'panel cell ' + c.tone">
-        <span class="value num"><jo-count [value]="c.value" /></span>
-        <span class="label">{{ c.label }}</span>
-        <span class="note">{{ c.note }}</span>
-      </div>
-    }
+  <div class="today">
+    <article class="panel col sent">
+      <header><jo-iso name="send" [size]="40" /><div><h2>O que saiu</h2><span class="big num"><jo-count [value]="today().sentN" /></span><span class="faint small">{{ today().sentN === 1 ? 'enviado hoje' : 'enviados hoje' }}</span></div></header>
+      <ul>@for (l of today().sent; track l.label) { @if (l.n > 0 || $first) { <li><a [routerLink]="l.link" [class]="l.tone ?? ''"><strong class="num">{{ l.n }}</strong>{{ l.label }}<jo-icon name="caret-right" [size]="12" /></a></li> } }</ul>
+    </article>
+    <article class="panel col back">
+      <header><jo-iso name="inbox" [size]="40" /><div><h2>O que voltou</h2><span class="big num"><jo-count [value]="today().backN" /></span><span class="faint small">respostas e entrevistas</span></div></header>
+      <ul>
+        @for (l of today().back; track l.label) { @if (l.n > 0) { <li><a [routerLink]="l.link" [class]="l.tone ?? ''"><strong class="num">{{ l.n }}</strong>{{ l.label }}<jo-icon name="caret-right" [size]="12" /></a></li> } }
+        @if (today().backN === 0) { <li class="calm faint small">Nada voltou ainda. As respostas das empresas aparecem aqui assim que chegam.</li> }
+      </ul>
+    </article>
+    <article class="panel col you" [class.due]="today().youN > 0">
+      <header><jo-iso name="you" [size]="40" /><div><h2>O que depende de você</h2><span class="big num"><jo-count [value]="today().youN" /></span><span class="faint small">{{ today().youN === 0 ? 'nada esperando' : 'esperando você' }}</span></div></header>
+      <ul>
+        @for (l of today().you; track l.label) { @if (l.n > 0) { <li><a [routerLink]="l.link" [class]="l.tone ?? ''"><strong class="num">{{ l.n }}</strong>{{ l.label }}<span class="go">Resolver<jo-icon name="caret-right" [size]="12" /></span></a></li> } }
+        @if (today().youN === 0) { <li class="calm faint small">Tudo em dia. Quando algo precisar de você, aparece aqui com o botão para resolver.</li> }
+      </ul>
+    </article>
   </div>
 
   <a class="panel live-run" routerLink="/busca" [class.running]="search.state()?.running">
