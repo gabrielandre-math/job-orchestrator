@@ -91,10 +91,12 @@ internal sealed class MaterialsStep(StepKit k) : IStep
                 };
                 app.MaterialsReady(result.PdfPath!, result.Hash!, k.Now, $"Currículo pronto: {how}.",
                     new { resumeHash = result.Hash, result.Mode, result.Reviewed, result.Language, result.VersionId, result.ThreadId }, vetted: result.Mode == "plain" || result.Reviewed);
-                if (app.ApplyChannel == "ats") k.Enqueue(app.Id, WorkStep.Prepare, TimeSpan.Zero);
+                // A link to a site with an open form is tried like a platform; the login and CAPTCHA checks still hand it to you.
+                if (app.ApplyChannel == "ats" || app.ApplyChannel == "link" && k.Automation.CapabilityOf(app.ApplyUrl, app.ApplyChannel).Prepare)
+                    k.Enqueue(app.Id, WorkStep.Prepare, TimeSpan.Zero);
                 else
                 {
-                    // LinkedIn, Gupy, e-mail ou link: nenhum robô envia; o kit fica pronto para você (copiloto).
+                    // LinkedIn, Gupy, e-mail ou link de agregador: nenhum robô envia; o kit fica pronto para você (copiloto).
                     app.Move(ApplicationState.ManualHandoff, "A candidatura vai pelo site original. O currículo está pronto para você enviar.", "Supervisor", k.Now, new { app.ApplyChannel });
                     k.Db.AddTask(app.Id, HumanTaskKind.Review, "Candidatar-se pelo site da vaga", $"{app.Title}, {app.Company}", k.Now);
                 }
@@ -161,6 +163,14 @@ internal sealed class PrepareStep(StepKit k, Answerer answerer) : IStep
                 {
                     app.Move(ApplicationState.RetryScheduled, round.Reason, "Respondente", now, new { round.Answered, round.Provider, outcome.Route });
                     k.Enqueue(app.Id, WorkStep.Prepare, round.Delay);
+                    break;
+                }
+                if (app.ApplyChannel == "link" && outcome.Questions is null)
+                {
+                    // A site the app only tries: what stops it (login, CAPTCHA, no open form) sends the application the usual way, by you.
+                    var why = outcome.Detail.Length > 300 ? outcome.Detail[..299] + "…" : outcome.Detail;
+                    app.Move(ApplicationState.ManualHandoff, $"A candidatura vai pelo site original. {why} O currículo está pronto para você enviar.", "Preparador", now, new { outcome.ReasonCode, outcome.Route });
+                    k.Db.AddTask(app.Id, HumanTaskKind.Review, "Candidatar-se pelo site da vaga", $"{app.Title}, {app.Company}", now);
                     break;
                 }
                 var detail = outcome.Questions is { Count: > 0 } && await answerer.RefusalsAsync(app.Id, ct) is { } refused ? $"{outcome.Detail} {refused}" : outcome.Detail;

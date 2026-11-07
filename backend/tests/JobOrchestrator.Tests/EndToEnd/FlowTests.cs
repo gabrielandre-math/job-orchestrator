@@ -130,4 +130,24 @@ public sealed class FlowTests
         await s.WaitAsync(async () => await s.StateAsync("Ponte Logística") == "SubmittedConfirmed", Settle, "confirmação depois da queda");
         Assert.Equal(1, await s.SubmissionsAsync(103));
     }
+
+    [Fact]
+    public async Task Site_sem_adapter_proprio_envia_pelo_formulario_aberto_com_a_declaracao_autorizada()
+    {
+        await using var s = await Stack.StartAsync();
+        await s.SourcesAsync("ReviewRequired", $"greenhouse:{s.Ats}/boards/site");
+        var id = (await s.GetAsync("/campaigns"))[0].GetProperty("id").GetString();
+        Assert.Equal(HttpStatusCode.OK, await s.PostAsync($"/campaigns/{id}/authorizations",
+            new { days = 1, maxPerDay = 5, minScore = 80, adapters = Array.Empty<string>(), accepted = true, acceptDeclarations = true }));
+        await s.RunAsync();
+        // A link to a site with no adapter of its own: the form opens behind "Candidatar-se", has no form tag and labels beside the fields.
+        await s.WaitAsync(async () => await s.StateAsync("Brisa Sistemas") == "SubmittedConfirmed", Settle, "o envio pelo formulário aberto do site");
+        Assert.Equal(1, await s.SubmissionsAsync(501));
+        var app = await s.ApplicationAsync("Brisa Sistemas");
+        var fields = (await s.GetAsync($"/applications/{app!.Value.GetProperty("id").GetString()}")).GetProperty("fields").EnumerateArray()
+            .Select(f => $"{f.GetProperty("label").GetString()}={f.GetProperty("value").GetString()}").ToList();
+        // Privacy accepted by the authorization; the newsletter box stays blank.
+        Assert.Contains(fields, f => f.StartsWith("Li e aceito a Política de Privacidade", StringComparison.Ordinal) && f.EndsWith("=Aceito", StringComparison.Ordinal));
+        Assert.DoesNotContain(fields, f => f.Contains("novidades", StringComparison.Ordinal));
+    }
 }

@@ -35,6 +35,7 @@ export class ApplicationPage {
   /** O que o app faz nesta vaga, antes de você confiar a noite a ele. */
   protected capability(c: ApplyCapability) {
     if (c.channel === 'email') return 'Nesta vaga o app escreve o e-mail e envia pela sua conta. A confirmação é o servidor aceitar; um envio interrompido fica em dúvida e espera você.';
+    if (c.channel === 'site') return 'Nesta vaga o app tenta o formulário aberto do site, sem login, e confirma pela página de agradecimento. Se o site pedir login ou CAPTCHA, ou o formulário for em etapas, a vaga volta para você com o currículo pronto.';
     if (c.channel === 'ats') return `Nesta vaga o app preenche e envia o ${(c.platform ?? 'formulário').replace('Formulário', 'formulário')}, com o recibo da página de confirmação. `
       + (c.recover === 'portal' ? 'Se cair no meio, ele pergunta ao próprio site.' : 'Se cair no meio, você confere o e-mail de confirmação.');
     return 'Nesta vaga o envio é seu: o copiloto traz o currículo e as respostas prontas, e você registra o envio.';

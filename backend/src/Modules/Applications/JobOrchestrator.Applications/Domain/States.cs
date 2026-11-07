@@ -18,7 +18,7 @@ internal static class Transitions
     {
         [ApplicationState.Shortlisted] = [ApplicationState.MaterialsReady, ApplicationState.NeedsHuman, ApplicationState.PausedProvider, ApplicationState.RetryScheduled, ApplicationState.Withdrawn, ApplicationState.DeadLetter],
         [ApplicationState.MaterialsReady] = [ApplicationState.FormPreparing, ApplicationState.ManualHandoff, ApplicationState.Withdrawn],
-        [ApplicationState.FormPreparing] = [ApplicationState.FormValidated, ApplicationState.NeedsHuman, ApplicationState.RetryScheduled, ApplicationState.Failed, ApplicationState.BlockedByPolicy, ApplicationState.Withdrawn, ApplicationState.DeadLetter],
+        [ApplicationState.FormPreparing] = [ApplicationState.FormValidated, ApplicationState.NeedsHuman, ApplicationState.RetryScheduled, ApplicationState.Failed, ApplicationState.BlockedByPolicy, ApplicationState.ManualHandoff, ApplicationState.Withdrawn, ApplicationState.DeadLetter],
         [ApplicationState.FormValidated] = [ApplicationState.AwaitingApproval, ApplicationState.ReadyToSubmit, ApplicationState.BlockedByPolicy, ApplicationState.FormPreparing, ApplicationState.Withdrawn],
         [ApplicationState.AwaitingApproval] = [ApplicationState.ReadyToSubmit, ApplicationState.FormPreparing, ApplicationState.Withdrawn],
         // Pronta pela autorização que acabou volta para a sua aprovação.

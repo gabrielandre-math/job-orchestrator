@@ -54,7 +54,12 @@ internal sealed class ListJobsHandler(IReadDb<JobsDbContext> db, IAutomationApi 
         // Collecting a job is not sending it: each row says if an adapter of the app sends it, before you trust the night with it.
         return Result<IReadOnlyList<JobRow>>.Ok([.. rows.Select(r => r with
         {
-            SentBy = automation.CapabilityOf(r.ApplyUrl, r.ApplyChannel) is { Channel: "ats", Platform: { } p } ? p.Replace("Formulário ", "") : null
+            SentBy = automation.CapabilityOf(r.ApplyUrl, r.ApplyChannel) switch
+            {
+                { Channel: "ats", Platform: { } p } => p.Replace("Formulário ", ""),
+                { Channel: "site" } => "site da vaga (tentativa)",
+                _ => null
+            }
         })]);
     }
 }
