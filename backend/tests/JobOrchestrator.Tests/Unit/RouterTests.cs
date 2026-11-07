@@ -147,6 +147,18 @@ public sealed class RouterTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Classificar_email_nunca_vai_para_a_nuvem_mesmo_com_degrau_e_orcamento()
+    {
+        await using var db = Db();
+        var cloud = new Fake("claude-pro", "anthropic");
+        var local = new Fake("ollama", "local");
+        var api = Router(db, [cloud, local], new() { ["Llm:Tasks:email.classify:Rung"] = "Top", ["Llm:Tasks:email.classify:Budget"] = "10" });
+        var result = await api.CompleteAsync(LlmRequest.For(LlmTasks.EmailClassify, "s", "p", "{}"), default);
+        Assert.True(result.Ok);
+        Assert.Empty(cloud.Calls);
+    }
+
+    [Fact]
     public async Task Teto_diario_corta_a_nuvem()
     {
         await using var db = Db();

@@ -55,7 +55,7 @@ public static class LlmTasks
     public static readonly LlmTask JobFit = new("job.fit", Rung.Local, false, 0, "fatos do perfil e vaga, no modelo local", LocalOnly: true);
     public static readonly LlmTask JobExtract = new("job.extract", Rung.Local, false, 0, "pública");
     public static readonly LlmTask QuestionMap = new("question.map", Rung.Local, false, 0, "perfil minimizado");
-    public static readonly LlmTask EmailClassify = new("email.classify", Rung.Local, false, 0, "privada, nunca vai para a nuvem");
+    public static readonly LlmTask EmailClassify = new("email.classify", Rung.Local, false, 0, "privada, nunca vai para a nuvem", LocalOnly: true);
     public static readonly LlmTask ProfileExtract = new("profile.extract", Rung.Medium, true, 6, "currículo sem dados pessoais");
     public static readonly LlmTask ResumeTailor = new("resume.tailor", Rung.Medium, true, 15, "perfil minimizado + vaga");
     public static readonly LlmTask ResumeFactcheck = new("resume.factcheck", Rung.Light, true, 15, "perfil minimizado");
