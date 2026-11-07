@@ -15,6 +15,10 @@ A amostra prioriza os projetos relevantes para vagas no [tópico do GitHub](http
 
 ## Como rodar
 
+Para rodar tudo de uma vez, sem `uv`, use `scripts/labs.sh`. Ele sobe um Fake ATS de laboratório na porta 5471 (ou `FAKEATS_LAB_PORT`), separado do Fake ATS de desenvolvimento na 5470, instala o lxml em `.dev/labvenv`, roda os dois resolvedores, a coleta paginada, o cenário sem resolvedor e os 11 testes, e desliga o servidor no fim.
+
+Para rodar passo a passo:
+
 Na raiz do repositório, suba o Fake ATS em um terminal. Use o SDK .NET 10 e Python 3.11 ou mais recente. O extrator HTML usa `lxml`. Os exemplos com `uv` instalam essa dependência no ambiente de execução.
 
 ```sh
