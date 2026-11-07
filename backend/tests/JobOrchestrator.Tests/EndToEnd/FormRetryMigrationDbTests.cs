@@ -47,7 +47,7 @@ public sealed class FormRetryMigrationDbTests
             db.AddTask(question.Id, HumanTaskKind.Question, "Responder pergunta nova", "PJ", now);
             await db.SaveChangesAsync();
 
-            await db.Database.MigrateAsync();
+            await db.GetService<IMigrator>().MigrateAsync("20261107093000_RetryFormsWithAiAnswers");
 
             await using var c = new NpgsqlConnection(conn);
             await c.OpenAsync();
@@ -112,6 +112,53 @@ public sealed class FormRetryMigrationDbTests
             Assert.Equal("ManualHandoff", await State(linkedin.Id));
             Assert.Equal(1L, await c.ExecuteScalarAsync<long>("select count(*) from applications.work_items where application_id = @Id and step = 'Prepare'", new { site.Id }));
             Assert.Equal(0L, await c.ExecuteScalarAsync<long>("select count(*) from applications.human_tasks where application_id = @Id and resolved_at is null", new { site.Id }));
+        }
+        finally
+        {
+            NpgsqlConnection.ClearAllPools();
+            await using var admin = new NpgsqlConnection(Admin);
+            await admin.OpenAsync();
+            await admin.ExecuteAsync($"drop database if exists {name} with (force)");
+        }
+    }
+
+    [Fact]
+    public async Task Questions_lost_by_1_1_0_go_back_to_the_form_on_platforms_and_sites()
+    {
+        var name = $"jo_qfx_{Guid.NewGuid():N}"[..20];
+        await using (var admin = new NpgsqlConnection(Admin))
+        {
+            await admin.OpenAsync();
+            await admin.ExecuteAsync($"create database {name}");
+        }
+        var conn = new NpgsqlConnectionStringBuilder(Admin) { Database = name }.ConnectionString;
+        try
+        {
+            var options = new DbContextOptionsBuilder<ApplicationsDbContext>();
+            options.UseModuleDatabase(conn, "applications");
+            await using var db = new ApplicationsDbContext(options.Options);
+            await db.GetService<IMigrator>().MigrateAsync("20261107110000_TrySiteFormsOnce");
+            var now = DateTime.UtcNow;
+            JobApplication Stuck(string key, string channel, string reason)
+            {
+                var a = JobApplication.Create(new JobShortlistedV1(Guid.NewGuid(), Guid.NewGuid(), key, key, "Dev .NET", "Remoto", $"https://example.com/{key}", 80, channel), now);
+                a.Move(ApplicationState.NeedsHuman, reason, "Preparador", now);
+                db.Applications.Add(a);
+                return a;
+            }
+            var platform = Stuck("p", "ats", "Perguntas obrigatórias sem resposta aprovada: \"Walk us through a feature you owned end-to-end.\".");
+            var site = Stuck("s", "link", "Pergunta obrigatória sem resposta aprovada: \"Cargo pretendido\".");
+            var captcha = Stuck("c", "link", "A página tem CAPTCHA ou verificação anti-robô: o app não passa por ela.");
+            await db.SaveChangesAsync();
+
+            await db.Database.MigrateAsync();
+
+            await using var c = new NpgsqlConnection(conn);
+            await c.OpenAsync();
+            async Task<string?> State(Guid id) => await c.ExecuteScalarAsync<string>("select state from applications.applications where id = @id", new { id });
+            Assert.Equal("RetryScheduled", await State(platform.Id));
+            Assert.Equal("RetryScheduled", await State(site.Id));
+            Assert.Equal("NeedsHuman", await State(captcha.Id));
         }
         finally
         {

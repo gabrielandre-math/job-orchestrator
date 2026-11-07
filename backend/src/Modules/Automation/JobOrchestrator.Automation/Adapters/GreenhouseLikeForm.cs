@@ -58,9 +58,8 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
         await using var lease = await LeaseAsync(target, ct);
         var page = await lease.Context.NewPageAsync();
         var filled = await FillAsync(page, target, materials);
-        return filled.Kind == AdapterResultKind.Completed
-            ? AdapterResult<PreparedForm>.Ok(filled.Value!, "Formulário preenchido e conferido. Nada foi enviado.")
-            : AdapterResult<PreparedForm>.Fail(filled.Kind, filled.ReasonCode!, filled.Detail);
+        // A failure goes back as it came, with the questions the form asked: they are what the AI answers next.
+        return filled.Kind == AdapterResultKind.Completed ? AdapterResult<PreparedForm>.Ok(filled.Value!, "Formulário preenchido e conferido. Nada foi enviado.") : filled;
     }
 
     public async Task<AdapterResult<SubmissionReceipt>> SubmitAsync(ApplyTarget target, MaterialBundle materials, SubmitToken token, CancellationToken ct)

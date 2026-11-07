@@ -29,6 +29,12 @@ public sealed class FlowTests
         Assert.Equal("NeedsHuman", await s.StateAsync("Atlas Saúde"));
         Assert.Equal("NeedsHuman", await s.StateAsync("Lume Educação"));
         Assert.Equal(0, await s.SubmissionsAsync());
+        // The open question reaches the workflow whole (kind and all), for the AI to answer; here the AI is off, so it stops with you.
+        var lume = await s.ApplicationAsync("Lume Educação");
+        var stop = (await s.GetAsync($"/applications/{lume!.Value.GetProperty("id").GetString()}")).GetProperty("history").EnumerateArray()
+            .Last(h => h.GetProperty("to").GetString() == "NeedsHuman").GetProperty("detail").GetString()!;
+        Assert.Contains("\"kind\":\"textarea\"", stop.Replace(" ", ""));
+        Assert.Contains("favorite design pattern", stop);
 
         var jobs = (await s.GetAsync("/jobs")).EnumerateArray().GroupBy(j => j.GetProperty("status").GetString()).ToDictionary(g => g.Key!, g => g.Count());
         Assert.Equal(1, jobs["Duplicate"]);
@@ -83,6 +89,10 @@ public sealed class FlowTests
         await s.WaitAsync(async () => (await s.GetAsync("/applications")).EnumerateArray().Any(a => a.GetProperty("state").GetString() == "AwaitingApproval"
             && a.GetProperty("lastReason").GetString()?.Contains("foi desligado") == true), Settle, "a pronta pela autorização voltar para você");
         Assert.Equal(1, await s.SubmissionsAsync());
+
+        // A new authorization picks up what waited for you: the form is checked again and the Guardian sends it under the new limit.
+        Assert.Equal(HttpStatusCode.OK, await s.PostAsync($"/campaigns/{id}/authorizations", new { days = 1, maxPerDay = 5, minScore = 80, adapters = new[] { "greenhouse-form" }, accepted = true }));
+        await s.WaitAsync(async () => await s.SubmissionsAsync() >= 2, Settle, "a que esperava você sair com a autorização nova");
     }
 
     [Fact]
