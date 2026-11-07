@@ -20,13 +20,21 @@ public static partial class Claims
     public static IReadOnlyList<string> Unsupported(string claim, IEnumerable<string> sources)
     {
         var source = Fold(string.Join("\n", sources));
+        var folded = Fold(claim);
         var values = Numbers(source).ToHashSet();
         var missing = new List<string>();
-        foreach (var n in Numbers(Fold(claim)).Distinct())
+        foreach (var n in Numbers(folded).Distinct())
             if (!values.Contains(n)) missing.Add(n.ToString(CultureInfo.InvariantCulture));
-        foreach (var term in Terms(claim).Distinct(StringComparer.OrdinalIgnoreCase))
+        // The same number with another unit is another fact: "40%" is not backed by "40 chamados", nor "R$ 40 mil" by "40 pessoas".
+        var percents = Values(Percent(), source).ToHashSet();
+        foreach (var p in Values(Percent(), folded).Distinct())
+            if (!percents.Contains(p)) missing.Add($"{p.ToString(CultureInfo.InvariantCulture)}%");
+        var money = Values(Money(), source).ToHashSet();
+        foreach (var v in Values(Money(), folded).Distinct())
+            if (!money.Contains(v)) missing.Add($"valor {v.ToString(CultureInfo.InvariantCulture)}");
+        foreach (var term in Terms(claim).Concat(LowerTech().Matches(folded).Select(m => m.Value)).Distinct(StringComparer.OrdinalIgnoreCase))
             if (!Generic.Contains(term) && !Present(Fold(term), source)) missing.Add(term);
-        return missing;
+        return [.. missing.Distinct(StringComparer.OrdinalIgnoreCase)];
     }
 
     // Senioridade, liderança e gestão são afirmação mesmo no começo da frase ("Senior Engineer", "Led the team").
@@ -113,6 +121,24 @@ public static partial class Claims
         }
     }
 
+    private static IEnumerable<decimal> Values(Regex pattern, string folded)
+    {
+        foreach (Match m in pattern.Matches(folded))
+        {
+            var raw = m.Groups["n"].Value;
+            var digits = ThousandGroups().IsMatch(raw) ? raw.Replace(".", "").Replace(",", "") : raw.Replace(',', '.');
+            if (!decimal.TryParse(digits, NumberStyles.Number, CultureInfo.InvariantCulture, out var value)) continue;
+            value *= m.Groups["u"].Value.Trim() switch
+            {
+                "k" or "mil" or "thousand" => 1000,
+                "mi" or "m" or "milhoes" or "milhao" or "million" or "millions" => 1_000_000,
+                "bi" or "bilhoes" or "bilhao" or "billion" or "billions" => 1_000_000_000,
+                _ => 1
+            };
+            yield return value;
+        }
+    }
+
     /// <summary>Minúsculas, sem acento, aspas e travessões unificados, espaços colapsados.</summary>
     public static string Fold(string s)
     {
@@ -130,4 +156,11 @@ public static partial class Claims
     [GeneratedRegex(@"(?<![\p{L}\p{N}.,])(?<n>\d+(?:[.,]\d+)*)(?<u>\s?(?:k|mil|mi|milhoes|milhao|million|millions|thousand|m|bi|bilhoes|bilhao|billion|billions)\b)?")] private static partial Regex Number();
     [GeneratedRegex(@"^\d{1,3}(?:[.,]\d{3})+$")] private static partial Regex ThousandGroups();
     [GeneratedRegex(@"\s+")] private static partial Regex Spaces();
+    // Technologies often written in lowercase, which the capitalization rule above misses ("implementei kubernetes"). Words that are also
+    // common words (go, swift, spark, node) stay out.
+    [GeneratedRegex(@"(?<![\p{L}\p{N}.#+])(?:kubernetes|k8s|docker|python|terraform|kafka|redis|postgres(?:ql)?|mysql|mongodb|aws|azure|gcp|linux|java|kotlin|golang|typescript|javascript|node\.?js|react(?:\.?js)?|angular|vue(?:\.?js)?|flutter|django|laravel|spring|rails|graphql|grpc|jenkins|nginx|airflow|snowflake|databricks|elasticsearch|rabbitmq|dynamodb|sqs|lambda|pyspark|rust|scala|elixir|dotnet|csharp|terraform|ansible|helm|istio|prometheus|grafana|datadog|oracle|sap|salesforce)(?![\p{L}\p{N}#+])")]
+    private static partial Regex LowerTech();
+    [GeneratedRegex(@"(?<![\p{L}\p{N}.,])(?<n>\d+(?:[.,]\d+)?)\s?(?:%|por cento|percent\b)")] private static partial Regex Percent();
+    [GeneratedRegex(@"(?:r\$|us\$|\$|€|£|\b(?:brl|usd|eur)\b)\s?(?<n>\d+(?:[.,]\d+)*)(?<u>\s?(?:k|mil|mi|milhoes|milhao|million|millions|thousand|m|bi|bilhoes|bilhao|billion|billions)\b)?")]
+    private static partial Regex Money();
 }
