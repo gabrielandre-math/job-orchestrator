@@ -4,6 +4,7 @@ using System.IO.Compression;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using Npgsql;
+using System.Text.Json;
 
 namespace JobOrchestrator.BuildingBlocks.Data;
 
@@ -221,6 +222,7 @@ public static class PortablePostgres
                 // A WAL do começo ao fim do backup (o wal_keep_size segura os segmentos); o segmento em uso entra pela metade, o que a recuperação aceita.
                 foreach (var wal in Directory.EnumerateFiles(Path.Combine(Cluster, "pg_wal")))
                     await AddAsync(zip, wal, "data/pg_wal/" + Path.GetFileName(wal), ct);
+                await AddAppFilesAsync(zip, AppPaths.Data, AppPaths.Config, ct);
             }
             File.Move(tmp, file, overwrite: true);
         }
@@ -242,6 +244,61 @@ public static class PortablePostgres
         }
     }
 
+    /// <summary>The app files the database points to (resumes, generated PDFs, reports) and the settings, by their name in the backup.</summary>
+    private static (string Name, string Path)[] AppFiles(string data, string config) =>
+    [
+        ("profile", Path.Combine(data, "profile")), ("resumes", Path.Combine(data, "resumes")), ("materials", Path.Combine(data, "materials")),
+        ("reports", Path.Combine(data, "reports")), ("settings.json", Path.Combine(config, "settings.json")),
+    ];
+
+    /// <summary>
+    /// The database alone points to files a restore would not bring back, so they go in the backup too, with a manifest of what is
+    /// there. Passwords and keys stay in the system keychain and never enter a backup: the manifest says to connect them again.
+    /// </summary>
+    internal static async Task AddAppFilesAsync(ZipArchive zip, string data, string config, CancellationToken ct)
+    {
+        var included = new List<string>();
+        foreach (var (name, path) in AppFiles(data, config))
+        {
+            if (Directory.Exists(path))
+            {
+                foreach (var file in Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories))
+                    await AddAsync(zip, file, $"files/{name}/{Path.GetRelativePath(path, file).Replace('\\', '/')}", ct);
+                included.Add(name);
+            }
+            else if (File.Exists(path)) { await AddAsync(zip, path, $"files/{name}", ct); included.Add(name); }
+        }
+        await using var manifest = new StreamWriter(zip.CreateEntry("manifest.json", CompressionLevel.Fastest).Open());
+        await manifest.WriteAsync(JsonSerializer.Serialize(new
+        {
+            version = 2, at = DateTime.UtcNow, database = "data/", files = included,
+            notIncluded = "Senhas e chaves ficam no chaveiro do sistema e não entram no backup: depois de restaurar em outra máquina, conecte de novo as contas de e-mail e de IA."
+        }, new JsonSerializerOptions { WriteIndented = true }));
+    }
+
+    /// <summary>Puts the app files of a backup back; what was there goes aside with the same stamp as the database. A backup without files leaves them as they are.</summary>
+    internal static void RestoreAppFiles(string zipFile, string data, string config, string stamp)
+    {
+        using var zip = ZipFile.OpenRead(zipFile);
+        foreach (var (name, path) in AppFiles(data, config))
+        {
+            var prefix = $"files/{name}";
+            var entries = zip.Entries.Where(e => e.FullName == prefix || e.FullName.StartsWith(prefix + "/", StringComparison.Ordinal)).ToList();
+            if (entries.Count == 0) continue;
+            if (Directory.Exists(path)) Directory.Move(path, $"{path}.antes-{stamp}");
+            else if (File.Exists(path)) File.Move(path, $"{path}.antes-{stamp}");
+            var root = Path.GetFullPath(path);
+            foreach (var entry in entries)
+            {
+                var dest = entry.FullName == prefix ? root : Path.GetFullPath(Path.Combine(root, entry.FullName[(prefix.Length + 1)..]));
+                if (dest != root && !dest.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.Ordinal)) continue;
+                if (entry.FullName.EndsWith('/')) { Directory.CreateDirectory(dest); continue; }
+                Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
+                entry.ExtractToFile(dest, overwrite: true);
+            }
+        }
+    }
+
     /// <summary>Arquivo que o Postgres pode estar gravando (ou apagando) agora: abre compartilhado e pula o que sumiu no meio.</summary>
     private static async Task AddAsync(ZipArchive zip, string path, string name, CancellationToken ct)
     {
@@ -258,7 +315,8 @@ public static class PortablePostgres
     public static string Restore(string zipFile)
     {
         if (File.Exists(Path.Combine(Cluster, "postmaster.pid"))) throw new InvalidOperationException("Pare o app antes (job-orchestrator --stop).");
-        var aside = $"{Cluster}.antes-{DateTime.Now:yyyyMMdd-HHmmss}";
+        var stamp = $"{DateTime.Now:yyyyMMdd-HHmmss}";
+        var aside = $"{Cluster}.antes-{stamp}";
         var staging = Cluster + ".restore";
         if (Directory.Exists(staging)) Directory.Delete(staging, recursive: true);
         using (var zip = ZipFile.OpenRead(zipFile))
@@ -274,6 +332,7 @@ public static class PortablePostgres
         if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(staging, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
         if (Directory.Exists(Cluster)) Directory.Move(Cluster, aside);
         Directory.Move(staging, Cluster);
+        RestoreAppFiles(zipFile, AppPaths.Data, AppPaths.Config, stamp);
         return aside;
     }
 

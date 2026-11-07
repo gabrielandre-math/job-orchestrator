@@ -76,6 +76,7 @@ internal static class Maintenance
         await Launcher.StopAsync();
         var aside = PortablePostgres.Restore(zip);
         if (!await PortablePostgres.StartAsync(Console.WriteLine, CancellationToken.None)) return Launcher.Print($"Restaurado, mas o Postgres não subiu. Veja {PortablePostgres.Log}; o banco de antes está em {aside}.") + 1;
-        return Launcher.Print($"Banco restaurado de {Path.GetFileName(zip)}. O de antes ficou em {aside}. Abra o app para continuar.");
+        return Launcher.Print($"Banco e arquivos restaurados de {Path.GetFileName(zip)}. Os de antes ficaram ao lado, com .antes- no nome ({aside}). "
+            + "Senhas não entram no backup: se for outra máquina, conecte de novo as contas de e-mail e de IA. Abra o app para continuar.");
     }
 }
