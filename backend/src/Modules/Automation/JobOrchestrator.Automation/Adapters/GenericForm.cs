@@ -67,8 +67,7 @@ internal sealed partial class GenericForm(BrowserPool browsers, IHttpClientFacto
 
     protected override ILocator SubmitControl(IPage page) =>
         page.Locator($"{Scope} button[type=submit]:visible, {Scope} input[type=submit]:visible")
-            .Or(page.Locator($"{Scope} button:visible, {Scope} [role=button]:visible").Filter(new LocatorFilterOptions { HasTextRegex = Send() }))
-            .Or(page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { NameRegex = Send() })).First;
+            .Or(page.Locator($"{Scope} button:visible, {Scope} [role=button]:visible").Filter(new LocatorFilterOptions { HasTextRegex = Send() })).First;
 
     protected override Regex Confirmed => Thanks();
 

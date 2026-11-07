@@ -28,8 +28,9 @@ internal abstract partial class LabelForm
           if (!r) return false;
           // Clica no texto da opção, como uma pessoa: o rádio de verdade fica escondido e a página só registra o clique no rótulo.
           (r.closest('label') || document.querySelector('label[for="' + CSS.escape(r.id) + '"]') || r.closest('[role=radio]') || r).click();
-          return new Promise((done) => setTimeout(() => done(r.checked || r.closest('[role=radio]')?.getAttribute('aria-checked') === 'true'
-            || [...document.querySelectorAll('input[type=radio]')].some(x => x.name === name && (x.checked || x.closest('[role=radio]')?.getAttribute('aria-checked') === 'true'))), 150));
+          // Read the current DOM after React redraws it. Another checked option is not proof this answer stayed selected.
+          return new Promise((done) => setTimeout(() => done([...document.querySelectorAll('input[type=radio]')].some(x => x.name === name
+            && texts(x).some(t => norm(t) === norm(label)) && (x.checked || x.closest('[role=radio]')?.getAttribute('aria-checked') === 'true'))), 150));
         }
         """;
 
@@ -205,7 +206,7 @@ internal abstract partial class LabelForm
             {
                 // A field with a mask of its own (a salary that takes only the number) keeps the digits: typed as digits, the same number counts.
                 var digits = Digits(value);
-                if (f.Type != "tel" && digits.Length > 0)
+                if (AllowsNumericMask(f.Tag, f.Type, label) && digits.Length > 0)
                 {
                     if (Digits(got) != digits) { await control.FillAsync(digits); got = await control.InputValueAsync(); }
                     if (Digits(got) == digits || Digits(got) == digits + "00") { fields.Add(new FieldValue(label, got, source)); continue; }
@@ -218,6 +219,10 @@ internal abstract partial class LabelForm
         if (fields.Count == 0) return AdapterResult<PreparedForm>.Fail(AdapterResultKind.Unsupported, "no-fields", "Nenhum campo com rótulo foi reconhecido.");
         return AdapterResult<PreparedForm>.Ok(new PreparedForm(Id, Version, new Uri(target.ApplyUrl).Authority, PayloadHash(fields), fields));
     }
+
+    // A salary mask can strip currency text. The same digits in a name or free-text answer do not preserve the answer.
+    internal static bool AllowsNumericMask(string tag, string type, string label) => tag == "input"
+        && (type == "number" || type == "text" && Regex.IsMatch(label, @"sal[aá]r|pretens[aã]o|remunera|salary|compensation|expected pay|pay expectation", RegexOptions.IgnoreCase));
 
     protected static async Task<bool> PickAsync(IPage page, string name, string label)
     {

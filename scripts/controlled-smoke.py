@@ -1,6 +1,7 @@
 """HTTP integration with a disposable database. --external also exercises Cloudflare's public test credentials."""
 import argparse
 import json
+from http.cookiejar import CookieJar
 import os
 from pathlib import Path
 import re
@@ -9,7 +10,7 @@ import subprocess
 import time
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
-from urllib.request import Request, ProxyHandler, build_opener
+from urllib.request import Request, ProxyHandler, HTTPCookieProcessor, build_opener
 
 args = argparse.ArgumentParser(description=__doc__)
 args.add_argument('--external', action='store_true')
@@ -17,7 +18,7 @@ options = args.parse_args()
 repo = Path(__file__).resolve().parents[1]
 work = Path(os.environ['JO_TEST_TEMP'])
 dotnet = os.environ.get('JO_DOTNET', 'dotnet')
-client = build_opener(ProxyHandler({}))
+client = build_opener(ProxyHandler({}), HTTPCookieProcessor(CookieJar()))
 processes = []
 logs = []
 

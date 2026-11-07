@@ -72,7 +72,7 @@ O Job Orchestrator se candidata em seu nome. Leia o que ele prepara antes de dei
 
 ## Dentro das regras
 
-- O LinkedIn nunca é automatizado, porque os termos dele proíbem. Importe a exportação de dados do LinkedIn para preencher o perfil e salve vagas do LinkedIn pelo link para acompanhar as candidaturas que você mesmo fizer.
+- A busca opcional do LinkedIn usa uma sessão autenticada no navegador local, com limites de consultas. Login e desafios exigem sua ação; Easy Apply permanece assistido. A extensão captura o conteúdo da página que você abriu. Veja o [guia e os limites de validação real](docs/REAL_LINKEDIN_AND_CAPTCHA.md); testes de DOM não comprovam acesso autenticado ao serviço.
 - CAPTCHAs de sites externos ficam com você. Quando um site bloqueia acesso automático, a fonte fica de fora.
 - O coletor segue o robots.txt, espera entre as requisições e abre uma conexão por site.
 - Fontes cujos termos não permitem esse uso ficam no registro como bloqueadas (LinkedIn Jobs, France Travail) ou apenas com parceria (a API de empregador da Gupy e o MyCareersFuture de Singapura), com o motivo à vista.

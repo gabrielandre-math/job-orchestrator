@@ -2,16 +2,21 @@ using System.Collections.Concurrent;
 using System.Globalization;
 using System.Net;
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 
 /// <summary>A deployable private test form. External widgets use their real verification endpoints; local images have no alphabet oracle.</summary>
 internal sealed class ControlledCaptchaServer(ControlledCaptchaSetup setup, HttpClient http, TimeProvider time)
 {
     private readonly ConcurrentDictionary<Guid, Challenge> challenges = new();
-    private sealed class Challenge(string answer, DateTimeOffset expires)
+    private const string SessionCookie = "jo-controlled-session";
+    private sealed class Challenge(string answer, DateTimeOffset expires, string session)
     {
         public string Answer = answer;
         public DateTimeOffset Expires = expires;
+        public string Session = session;
+        public int Attempts;
+        public string? PayloadHash;
         public string? Receipt;
         public readonly SemaphoreSlim Gate = new(1);
     }
@@ -19,16 +24,16 @@ internal sealed class ControlledCaptchaServer(ControlledCaptchaSetup setup, Http
     public void Map(WebApplication app)
     {
         app.MapGet("/controlled-test", Page);
-        app.MapGet("/controlled-test/image/{id:guid}", (Guid id) =>
+        app.MapGet("/controlled-test/image/{id:guid}", (Guid id, HttpRequest request) =>
         {
-            if (!challenges.TryGetValue(id, out var c) || c.Expires <= time.GetUtcNow()) return Results.NotFound();
+            if (!challenges.TryGetValue(id, out var c) || c.Expires <= time.GetUtcNow() || request.Cookies[SessionCookie] != c.Session) return Results.NotFound();
             var svg = $"""<svg xmlns="http://www.w3.org/2000/svg" width="250" height="80"><rect width="250" height="80" fill="white"/><path d="M0 20 L250 65 M0 65 L250 15" stroke="#ddd"/><text x="22" y="56" font-family="monospace" font-size="46" letter-spacing="5" fill="#111">{c.Answer}</text></svg>""";
             return Results.Content(svg, "image/svg+xml");
         });
         app.MapPost("/controlled-test/submit", SubmitAsync);
     }
 
-    private IResult Page(HttpResponse response)
+    private IResult Page(HttpRequest request, HttpResponse response)
     {
         response.Headers.CacheControl = "no-store";
         foreach (var c in challenges.Where(c => c.Value.Expires <= time.GetUtcNow()).ToArray()) challenges.TryRemove(c.Key, out _);
@@ -36,7 +41,13 @@ internal sealed class ControlledCaptchaServer(ControlledCaptchaSetup setup, Http
         var id = Guid.NewGuid();
         var left = RandomNumberGenerator.GetInt32(10, 100); var right = RandomNumberGenerator.GetInt32(1, 10);
         var answer = setup.Provider == "math" ? (left + right).ToString(CultureInfo.InvariantCulture) : RandomNumberGenerator.GetInt32(10000, 100000).ToString(CultureInfo.InvariantCulture);
-        challenges[id] = new(answer, time.GetUtcNow().AddMinutes(5));
+        var session = request.Cookies[SessionCookie];
+        if (session is null || session.Length != 64 || !session.All(Uri.IsHexDigit))
+        {
+            session = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+        }
+        response.Cookies.Append(SessionCookie, session, new CookieOptions { HttpOnly = true, Secure = request.IsHttps, SameSite = SameSiteMode.Lax, Path = "/controlled-test", MaxAge = TimeSpan.FromMinutes(10) });
+        challenges[id] = new(answer, time.GetUtcNow().AddMinutes(5), session);
         var widget = setup.Provider switch
         {
             "turnstile" => $"""<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script><div class="cf-turnstile" data-sitekey="{E(setup.SiteKey)}" data-action="job_orchestrator_test"></div>""",
@@ -65,9 +76,14 @@ internal sealed class ControlledCaptchaServer(ControlledCaptchaSetup setup, Http
         await challenge.Gate.WaitAsync(ct);
         try
         {
-            if (challenge.Receipt is { } receipt) return Receipt(receipt);
+            if (request.Cookies[SessionCookie] != challenge.Session) return Error("O desafio pertence a outra sessão. Abra o teste neste navegador.");
             if (challenge.Expires <= time.GetUtcNow()) return Error("O desafio expirou. Abra um teste novo.");
             if (string.IsNullOrWhiteSpace(form["name"]) || string.IsNullOrWhiteSpace(form["email"])) return Error("Nome e e-mail de teste são obrigatórios.");
+            var payloadHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { Name = form["name"].ToString(), Email = form["email"].ToString() }))));
+            // Idempotent receipt lookup is not a second CAPTCHA acceptance. It requires the same session and submitted payload.
+            if (challenge.Receipt is { } receipt)
+                return challenge.PayloadHash == payloadHash ? Receipt(receipt) : Error("Este desafio já foi usado para outro envio.");
+            if (++challenge.Attempts > 5) return Error("Limite de tentativas atingido. Abra um desafio novo.");
             bool success;
             if (setup.Provider is "image" or "math") success = form["answer"] == challenge.Answer;
             else
@@ -77,6 +93,7 @@ internal sealed class ControlledCaptchaServer(ControlledCaptchaSetup setup, Http
                 success = result.Success;
             }
             if (!success) return Error("O servidor rejeitou a resposta: incorreta, expirada ou não validada pelo provedor.");
+            challenge.PayloadHash = payloadHash;
             challenge.Receipt = "JO-" + Guid.NewGuid().ToString("N");
             return Receipt(challenge.Receipt);
         }
@@ -134,6 +151,7 @@ internal static class ControlledCaptchaVerifier
             if (!response.IsSuccessStatusCode) return new(false, "provider-http-error");
             using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
             var data = json.RootElement;
+            if (data.ValueKind != JsonValueKind.Object) return new(false, "invalid-provider-response");
             if (!data.TryGetProperty("success", out var ok) || ok.ValueKind != JsonValueKind.True) return new(false, "rejected");
             if (!setup.TestKeys)
             {

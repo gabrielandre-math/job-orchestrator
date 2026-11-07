@@ -149,6 +149,9 @@ internal sealed class IntelligenceApi(ProviderSet set, IntelligenceDbContext db,
     public async Task<LlmResult> CompleteOnAsync(string providerId, LlmRequest request, CancellationToken ct)
     {
         if (config.GetValue("Llm:Disabled", false)) return new LlmResult(false, null, "nenhum", "", "", "IA desligada nesta instalação.", 0);
+        // Recheck at the call boundary: privacy or enabled accounts may have changed since the ladder/status was cached.
+        if (providerId != "ollama" && (config.GetValue("Privacy:LocalOnly", false) || !Order.Contains(providerId, StringComparer.Ordinal)))
+            return new LlmResult(false, null, providerId, "", "", "Provedor externo desligado pelas preferências atuais de privacidade ou de contas.", 0);
         var view = (await ProvidersAsync(ct)).FirstOrDefault(v => v.Id == providerId);
         var provider = providers.FirstOrDefault(p => p.Id == providerId);
         if (view is not { Available: true } || provider is null) return new LlmResult(false, null, providerId, "", "", "Modelo indisponível agora.", 0);
