@@ -57,7 +57,7 @@ publish() {
   rm -rf "$out" && mkdir -p "$out"
   dotnet publish "$R/backend/src/Bootstrappers/JobOrchestrator.App" -c Release -r "$rid" --self-contained \
     -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=false -p:EnableCompressionInSingleFile=true -p:DebugType=none \
-    -p:GenerateDocumentationFile=false -p:UseSharedCompilation=false -p:SourceRevisionId="$SOURCE_SHA" "${extra[@]}" -o "$out" -v q -nologo -m:2 -nodeReuse:false
+    -p:GenerateDocumentationFile=false -p:UseSharedCompilation=false -p:SourceRevisionId="$SOURCE_SHA" "${extra[@]}" -o "$out" -v q -nologo -m:1 -nodeReuse:false
   rm -f "$out/playwright.ps1" "$out"/*.staticwebassets.endpoints.json
   # O driver do Playwright (Node) só da plataforma do pacote: o publish traz também o da máquina que compila (uns 120 MB a mais).
   local plat
@@ -72,7 +72,9 @@ publish() {
 
 linux() {
   local rid="$1" n="job-orchestrator-$V-$1" p="$D/job-orchestrator-$V-$1"
-  publish "$rid" "$p" && resources "$p" "$rid" && chmod +x "$p/job-orchestrator"
+  publish "$rid" "$p"
+  resources "$p" "$rid"
+  chmod +x "$p/job-orchestrator"
   rm -f "$p.tar.gz" && tar -C "$D" -czf "$p.tar.gz" "$n"
   local i="$D/job-orchestrator-instalador$([ "$rid" = linux-x64 ] || echo "-${rid#linux-}").run"
   cat > "$i" <<'HEAD'
@@ -131,7 +133,8 @@ PLIST
 
 win() {
   local rid="$1" n="job-orchestrator-$V-$1" p="$D/job-orchestrator-$V-$1"
-  publish "$rid" "$p" && resources "$p" "$rid"
+  publish "$rid" "$p"
+  resources "$p" "$rid"
   # Sobras do modelo de hospedagem no IIS (o app sobe o próprio Kestrel): não servem para nada aqui.
   rm -f "$p/web.config" "$p/aspnetcorev2_inprocess.dll"
   rm -f "$p.zip" && (cd "$D" && zip -qr "$p.zip" "$n")

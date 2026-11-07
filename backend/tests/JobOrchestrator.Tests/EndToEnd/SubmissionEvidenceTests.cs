@@ -17,6 +17,23 @@ namespace JobOrchestrator.Tests.EndToEnd;
 [Trait("Category", "E2E")]
 public sealed class SubmissionEvidenceTests
 {
+    [Theory]
+    [InlineData("Pretensão salarial mensal", "R$ 6.000 por mês (PJ)", AdapterResultKind.Completed)]
+    [InlineData("Describe project 2026", "Delivered project 2026", AdapterResultKind.Unsupported)]
+    public async Task Numeric_masks_preserve_salary_but_cannot_discard_words_from_other_answers(string question, string answer, AdapterResultKind expected)
+    {
+        var html = Form("accepted").Replace("<button type=\"submit\">", $"<label for=masked>{question}</label><input id=masked required oninput=\"this.value=this.value.replace(/\\D/g,'')\"><button type=\"submit\">", StringComparison.Ordinal);
+        await using var site = await TestSite.StartAsync(app => app.MapGet("/job", () => Results.Content(html, "text/html")));
+        var options = Options.Create(new AutomationOptions { FakeAtsHosts = [new Uri(site.Url).Authority], Browser = new() { TimeoutSeconds = 2 } });
+        await using var browser = new BrowserPool(options, NullLogger<BrowserPool>.Instance);
+        using var folder = new TestFiles();
+        var adapter = new GenericForm(browser, new HttpFactory(), folder.Key, TimeProvider.System, options);
+        var bundle = folder.Bundle with { Answers = new Dictionary<string, string> { [CustomAnswer.Key(question)] = answer } };
+        var result = await adapter.PrepareAsync(new(Guid.NewGuid(), site.Url + "/job"), bundle, default);
+        Assert.Equal(expected, result.Kind);
+        if (expected == AdapterResultKind.Completed) Assert.Contains(result.Value!.Fields, f => f.Label == question && f.Value == "6000");
+    }
+
     [Fact]
     public async Task Unanswered_required_questions_reach_the_answerer_contract()
     {
