@@ -196,7 +196,16 @@ internal abstract partial class LabelForm
             var got = await control.InputValueAsync();
             // O telefone ganha máscara do país: vale se os dígitos batem.
             if (f.Type == "tel" ? Last8(got) != Last8(value) : got != value)
+            {
+                // A field with a mask of its own (a salary that takes only the number) keeps the digits: typed as digits, the same number counts.
+                var digits = Digits(value);
+                if (f.Type != "tel" && digits.Length > 0)
+                {
+                    if (Digits(got) != digits) { await control.FillAsync(digits); got = await control.InputValueAsync(); }
+                    if (Digits(got) == digits || Digits(got) == digits + "00") { fields.Add(new FieldValue(label, got, source)); continue; }
+                }
                 return AdapterResult<PreparedForm>.Fail(AdapterResultKind.RetryableFailure, "fill-mismatch", $"O campo \"{label}\" não guardou o valor.");
+            }
             fields.Add(new FieldValue(label, value, source));
         }
         if (missing.Count > 0) return Missing(missing);

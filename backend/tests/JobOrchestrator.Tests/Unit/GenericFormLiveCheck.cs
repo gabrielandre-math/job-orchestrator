@@ -26,14 +26,17 @@ public sealed class GenericFormLiveCheck(ITestOutputHelper output)
         await File.WriteAllTextAsync(pdf, "%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj 2 0 obj<</Type/Pages/Kids[]/Count 0>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n");
         var options = Options.Create(new AutomationOptions { Browser = new BrowserOptions { TimeoutSeconds = 20 } });
         await using var pool = new BrowserPool(options, NullLogger<BrowserPool>.Instance);
-        var form = new GenericForm(pool, new NoHttp(), new GuardKey(Path.Combine(dir, "guard.key")), TimeProvider.System, options);
+        var key = new GuardKey(Path.Combine(dir, "guard.key"));
+        // The adapter the router would pick: the platform's own when there is one, the open-site form otherwise.
+        LabelForm[] forms = [new WorkableForm(pool, new NoHttp(), key, TimeProvider.System, options), new GenericForm(pool, new NoHttp(), key, TimeProvider.System, options)];
         var bundle = new MaterialBundle("Teste", "Exemplo", "teste.exemplo@example.com", "+55 21 90000-0000", "https://www.linkedin.com/in/teste-exemplo", pdf,
             new Dictionary<string, string> { ["location"] = "Rio de Janeiro, RJ", ["salary_expectation"] = "R$ 6.000 por mês (PJ)", ["salary_pj"] = "R$ 6.000 por mês (PJ)",
                 ["start_date"] = "Imediata", ["english_level"] = "Avançado" }, AcceptDeclarations: true);
         foreach (var url in Environment.GetEnvironmentVariable("JO_FORM_CHECK")!.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
         {
             var uri = new Uri(url);
-            output.WriteLine($"== {url}\n   fit {form.Fit(uri)}");
+            var form = forms.OrderByDescending(f => f.Fit(uri)).First();
+            output.WriteLine($"== {url}\n   {form.Id}, fit {form.Fit(uri)}");
             if (form.Fit(uri) == 0) continue;
             var clock = System.Diagnostics.Stopwatch.StartNew();
             try
