@@ -12,6 +12,23 @@ public sealed class TailorTests
         new(Guid.NewGuid(), kind, statement, parent, kind == "experience" ? "Acme" : null, kind == "experience" ? "Engenheiro de Software" : null, "2024-01", null, tech, null, "cv");
 
     [Fact]
+    public void A_sentence_appears_once_in_the_resume()
+    {
+        var exp = Fact("experience", "Engenheiro de software no time de pagamentos da Acme, com APIs em .NET e filas na AWS.", null, "C#");
+        var other = Fact("experience", "Desenvolvedor no time de dados da Beta, com pipelines em Python.", null, "Python");
+        var s = new Selection([new Picked("F1", exp, null), new Picked("F2", other, null)], "pt", [], []);
+        var d = new Draft(null, new Claim("Reduzi o tempo de deploy de 40 para 8 minutos.", ["F1"]),
+            [new DraftExperience("F1", "Engenheiro de Software", [new Claim("Criei a API de pagamentos em .NET.", ["F1"]), new Claim("criei a API de pagamentos em .NET", ["F1"]),
+                new Claim("Reduzi o tempo de deploy de 40 para 8 minutos.", ["F1"])]),
+             new DraftExperience("F2", "Desenvolvedor", [new Claim("Criei a API de pagamentos em .NET!", ["F2"]), new Claim("Montei pipelines de dados em Python.", ["F2"])])], [], [], []);
+
+        var done = Tailor.Finish(d, s);
+
+        Assert.Equal(["Criei a API de pagamentos em .NET."], done.Experiences[0].Bullets.Select(b => b.Text));
+        Assert.Equal(["Montei pipelines de dados em Python."], done.Experiences[1].Bullets.Select(b => b.Text));
+    }
+
+    [Fact]
     public void Job_keywords_the_candidate_has_lead_the_skills()
     {
         var exp = Fact("experience", "Engenheiro de software no time de pagamentos da Acme, com APIs em .NET e filas na AWS.", null, "C#", ".NET", "AWS");

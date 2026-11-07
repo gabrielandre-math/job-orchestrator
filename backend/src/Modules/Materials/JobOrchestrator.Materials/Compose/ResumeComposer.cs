@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace JobOrchestrator.Materials.Compose;
 
@@ -350,7 +351,10 @@ internal static class Tailor
     {
         var skills = s.Matched.Concat(d.Skills).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase).Take(18).ToArray();
         var headline = d.Headline is { } h ? h with { Text = Fit(h.Text, 64) } : null;
-        var experiences = d.Experiences.Select(e =>
+        // The same sentence only once in the document (the summary counts): a fact may come back in another resume, never twice in one.
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        if (d.Summary is { } summary) seen.Add(Same(summary.Text));
+        var experiences = d.Experiences.Select(e => e with { Bullets = [.. e.Bullets.Where(b => seen.Add(Same(b.Text)))] }).Select(e =>
         {
             if (e.Bullets.Length > 0 || s.Get(e.Fact) is not { } parent) return e;
             var own = s.Children(e.Fact).Prepend(parent).Where(p => p.Fact.Statement.Length > 30 && Languages.Detect(p.Fact.Statement) == s.Language).Take(2);
@@ -358,6 +362,8 @@ internal static class Tailor
         }).ToArray();
         return d with { Skills = skills, Headline = headline, Experiences = experiences };
     }
+
+    private static string Same(string text) => Regex.Replace(Claims.Fold(text), @"[^\p{L}\p{N}]+", " ").Trim();
 
     /// <summary>Título comprido corta no último " | " que cabe (um título que quebra em duas linhas parece improvisado e o ATS lê pela metade).</summary>
     internal static string Fit(string text, int max)
