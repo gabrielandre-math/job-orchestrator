@@ -68,6 +68,8 @@ export class Automate {
   protected readonly mailConsentText = signal('');
 
   protected readonly confirming = command((body: { confirmations: Confirmations; decisions: Record<string, boolean> }) => send('PUT', '/profile/confirmations', body), 'Perfil confirmado.');
+  protected readonly preparingFound = command((_: void) => send<{ queued: number }>('POST', '/jobs/prepare-found'),
+    (r) => r.queued ? `${r.queued} ${r.queued === 1 ? 'vaga já encontrada foi' : 'vagas já encontradas foram'} para o preparo.` : 'Nenhuma vaga da fila esperando preparo.');
   protected readonly granting = command((x: { id: string; body: object }) => send('POST', `/campaigns/${x.id}/authorizations`, x.body), 'Envio automático autorizado.');
   protected readonly saving = command((x: { path: string; method: 'PUT' | 'POST'; body: object }) => send(x.method, x.path, x.body));
 
@@ -210,7 +212,10 @@ export class Automate {
 
   private async putCampaign(c: Campaign, patch: { mode?: string; night?: boolean }) {
     const body = { mode: patch.mode ?? c.mode, minFitScore: c.minFitScore, maxSubmissionsPerDay: c.maxSubmissionsPerDay, technologies: c.technologies, titles: c.titles, locations: c.locations, sources: c.sources, night: patch.night ?? c.enabled };
-    return (await this.saving.run({ method: 'PUT', path: `/campaigns/${c.id}`, body })) !== null;
+    const saved = (await this.saving.run({ method: 'PUT', path: `/campaigns/${c.id}`, body })) !== null;
+    // Saindo de "só buscar": as vagas que já estavam na fila também vão para o preparo, não só as que chegarem depois.
+    if (saved && c.mode === 'DiscoveryOnly' && body.mode !== 'DiscoveryOnly') await this.preparingFound.run();
+    return saved;
   }
 
   protected back() { this.step.update((s) => Math.max(1, s - 1)); }
