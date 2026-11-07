@@ -4,13 +4,14 @@ Esta versão acrescenta busca real pelo navegador conectado ao LinkedIn, captura
 
 ## Antes de testar
 
-Use o código da branch `codex/controlled-captcha-linkedin`. Instaladores da release 1.0.7 não contêm estas mudanças. Para executar pelo código, siga o modo de desenvolvimento do README: API e Worker precisam estar ativos. O frontend compilado é servido pela API; um navegador Chrome/Chromium/Edge/Brave instalado é necessário. O login requer uma sessão gráfica na máquina em que a API roda.
+Use o código atualizado da branch `main`. Instaladores da release 1.0.7 não contêm estas mudanças. Para executar pelo código, siga o modo de desenvolvimento do README: API e Worker precisam estar ativos. O frontend compilado é servido pela API; um navegador Chrome/Chromium/Edge/Brave instalado é necessário. O login requer uma sessão gráfica na máquina em que a API roda.
 
 Na cópia local do repositório, com .NET 10, Node e Docker instalados:
 
 ```sh
-git fetch origin codex/controlled-captcha-linkedin
-git switch codex/controlled-captcha-linkedin
+git fetch origin main
+git switch main
+git pull --ff-only origin main
 npm ci --prefix web
 npm run build --prefix web
 scripts/dev.sh

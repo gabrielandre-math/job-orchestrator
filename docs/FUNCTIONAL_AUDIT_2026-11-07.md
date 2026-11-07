@@ -1,5 +1,7 @@
 # Auditoria funcional — Job Orchestrator
 
+**Registro histórico:** os achados abaixo se referem ao commit auditado. A main recebeu correções posteriores e a nova integração de LinkedIn e CAPTCHA; este documento não representa uma revalidação do estado atual. Consulte [o guia atual](REAL_LINKEDIN_AND_CAPTCHA.md).
+
 Auditoria de 6–7 de novembro de 2026. Base: `6e1d04a978b06b747cf4dffcbf4a85543aed62bc`.
 
 ## Veredito
@@ -12,9 +14,9 @@ Não existe evidência nesta auditoria de aumento de entrevistas ou contrataçõ
 
 ## Integração e padrão de prova
 
-Foram mesclados os [PRs #1](https://github.com/gabrielandre-math/job-orchestrator/pull/1) e [#2](https://github.com/gabrielandre-math/job-orchestrator/pull/2), preservando as alterações recentes do proprietário. As branches eram `codex/captcha-lab` e `codex/candidate-workflow`. A árvore auditada corresponde à main integrada acima. A release disponível consultada era `v1.0.4`: merge não atualiza os instaladores já publicados.
+Foram mesclados os [PRs #1](https://github.com/gabrielandre-math/job-orchestrator/pull/1) e [#2](https://github.com/gabrielandre-math/job-orchestrator/pull/2), preservando as alterações recentes do proprietário. Os trabalhos correspondem aos laboratórios locais e ao fluxo de candidatura. A árvore auditada corresponde à main integrada acima. A release disponível consultada era `v1.0.4`: merge não atualiza os instaladores já publicados.
 
-Esta entrega documenta defeitos; **não aplica as correções funcionais propostas**. Inclusive uma regressão introduzida pela feature de entrevistas que eu integrei está identificada abaixo.
+Esta entrega documenta defeitos; **não aplica as correções funcionais propostas**. Inclusive uma regressão introduzida pela feature de entrevistas integrada no PR #2 está identificada abaixo.
 
 Legenda: **R** = reproduzido nesta auditoria; **C** = confirmado pelo caminho de código, sem execução completa do cenário; **L** = limitação explícita; **NV** = não verificado. P1 bloqueia confiança na operação autônoma ou afeta dados/envios; P2 reduz cobertura, qualidade ou previsibilidade. Prioridade é julgamento técnico, não classificação de vulnerabilidade.
 
@@ -88,7 +90,7 @@ Os dados de testes foram sintéticos, os bancos temporários foram removidos e a
 
 `Settings.cs` trunca `applications.applications`, mas não inclui a nova tabela `applications.interviews`, que possui FK. PostgreSQL rejeita a operação. A API retornou 500 e as duas entrevistas sintéticas continuaram consultáveis.
 
-**Responsabilidade:** esta regressão veio da feature de entrevistas que eu integrei. A suíte anterior não cobria o cenário. A correção precisa incluir a tabela e um teste de exclusão com o schema completo; não basta testar entrevistas isoladamente. Depois, inventariar também arquivos, alertas, cache, backups e credenciais para que o alcance do botão seja explícito.
+**Responsabilidade:** esta regressão veio da feature de entrevistas integrada no PR #2. A suíte anterior não cobria o cenário. A correção precisa incluir a tabela e um teste de exclusão com o schema completo; não basta testar entrevistas isoladamente. Depois, inventariar também arquivos, alertas, cache, backups e credenciais para que o alcance do botão seja explícito.
 
 ### A05 — P1/R — Checagem lexical permite afirmações sem suporte
 
@@ -154,7 +156,7 @@ Há cinco adaptadores de formulário registrados. Canais diferentes de `ats` vir
 
 Na nova comparação, um requisito literal “Experiência com Kubernetes” recebeu `direct` ligado ao ID de “Concluí curso de gastronomia.”; o parser retornou 100. Existência do ID não demonstra suporte. Requisitos omitidos pelo modelo também não penalizam a nota.
 
-**Aceite:** exigir evidência que suporte o requisito e cobertura dos requisitos materiais. Manter a nota como consultiva enquanto isso. Ela não altera o ranking principal automaticamente. É outra limitação da feature que eu integrei.
+**Aceite:** exigir evidência que suporte o requisito e cobertura dos requisitos materiais. Manter a nota como consultiva enquanto isso. Ela não altera o ranking principal automaticamente. É outra limitação da feature integrada no PR #2.
 
 ### A16 — P2/C — Ranking não incorpora todas as preferências
 
