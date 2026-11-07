@@ -74,6 +74,33 @@ public sealed class RouterTests : IAsyncLifetime
         LlmRequest.For(LlmTasks.ResumeTailor, "sistema", prompt, """{"type":"object"}""", avoid);
 
     [Fact]
+    public async Task Explicit_escalation_cannot_bypass_local_only_privacy()
+    {
+        await using var db = Db();
+        var cloud = new Fake("codex", "openai");
+        var local = new Fake("ollama", "local");
+        var router = Router(db, [cloud, local], new() { ["Privacy:LocalOnly"] = "true" });
+        Assert.Equal(["ollama"], (await router.LadderAsync(default)).Select(p => p.Id));
+        Assert.False((await router.CompleteOnAsync("codex", Tailor(), default)).Ok);
+        Assert.Empty(cloud.Calls);
+        Assert.True((await router.CompleteOnAsync("ollama", Tailor(), default)).Ok);
+        Assert.Single(local.Calls);
+    }
+
+    [Fact]
+    public async Task Disabling_an_account_takes_effect_even_with_a_cached_ready_status()
+    {
+        await using var db = Db();
+        var cloud = new Fake("codex", "openai");
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["Llm:Order:0"] = "codex" }).Build();
+        var router = new IntelligenceApi(new ProviderSet([cloud], []), db, config, TimeProvider.System, NullLogger<IntelligenceApi>.Instance);
+        Assert.True((await router.ProvidersAsync(default)).Single().Available);
+        config["Llm:Order:0"] = "ollama";
+        Assert.False((await router.CompleteOnAsync("codex", Tailor(), default)).Ok);
+        Assert.Empty(cloud.Calls);
+    }
+
+    [Fact]
     public async Task Claude_sem_login_cai_para_o_codex()
     {
         await using var db = Db();

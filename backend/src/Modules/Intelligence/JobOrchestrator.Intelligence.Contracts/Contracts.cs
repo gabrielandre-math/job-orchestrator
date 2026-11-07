@@ -99,6 +99,18 @@ public interface IIntelligenceApi
 {
     Task<IReadOnlyList<ProviderView>> ProvidersAsync(CancellationToken ct);
     Task<LlmResult> CompleteAsync(LlmRequest request, CancellationToken ct);
+
+    /// <summary>
+    /// The models ready on this machine, cheapest first: the local model, then ChatGPT, then Claude, then other API accounts. For an
+    /// escalation: what one model could not do goes to the next.
+    /// </summary>
+    Task<IReadOnlyList<ProviderView>> LadderAsync(CancellationToken ct);
+
+    /// <summary>The AI is turned off in this installation (Llm:Disabled): nothing waits for a model to come back.</summary>
+    bool Off { get; }
+
+    /// <summary>The request on the one model the caller picked from the ladder: recorded like any call, kept to the task's daily budget in the cloud.</summary>
+    Task<LlmResult> CompleteOnAsync(string providerId, LlmRequest request, CancellationToken ct);
     Task<LlmResult> TestAsync(string providerId, CancellationToken ct);
     Task<IReadOnlyList<LocalModelView>> LocalModelsAsync(CancellationToken ct);
     Task<IReadOnlyList<AgentThreadView>> ThreadsAsync(int limit, CancellationToken ct);

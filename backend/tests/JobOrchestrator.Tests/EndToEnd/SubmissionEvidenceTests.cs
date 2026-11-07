@@ -30,7 +30,7 @@ public sealed class SubmissionEvidenceTests
         var adapter = new GenericForm(browser, new HttpFactory(), folder.Key, TimeProvider.System, options);
         var bundle = folder.Bundle with { Answers = new Dictionary<string, string> { [CustomAnswer.Key(question)] = answer } };
         var result = await adapter.PrepareAsync(new(Guid.NewGuid(), site.Url + "/job"), bundle, default);
-        Assert.Equal(expected, result.Kind);
+        Assert.True(expected == result.Kind, $"Expected {expected}, got {result.Kind}: {result.ReasonCode}: {result.Detail}");
         if (expected == AdapterResultKind.Completed) Assert.Contains(result.Value!.Fields, f => f.Label == question && f.Value == "6000");
     }
 
@@ -90,7 +90,7 @@ public sealed class SubmissionEvidenceTests
     }
 
     private static string Form(string mode) => $$"""
-        <!doctype html><html><body>
+        <!doctype html><html><head><meta charset="utf-8"></head><body>
         {{(mode == "stale" ? "<p>Thank you for applying. Application received.</p>" : "")}}
         {{(mode == "hidden" ? "<p hidden>Application received</p>" : "")}}
         {{(mode == "generic" ? "<button onclick=\"document.body.innerHTML='Unrelated newsletter';\">Send</button>" : "")}}
