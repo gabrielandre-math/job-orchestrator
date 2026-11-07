@@ -32,6 +32,14 @@ public sealed class GenericFormLiveCheck(ITestOutputHelper output)
         var bundle = new MaterialBundle("Teste", "Exemplo", "teste.exemplo@example.com", "+55 21 90000-0000", "https://www.linkedin.com/in/teste-exemplo", pdf,
             new Dictionary<string, string> { ["location"] = "Rio de Janeiro, RJ", ["salary_expectation"] = "R$ 6.000 por mês (PJ)", ["salary_pj"] = "R$ 6.000 por mês (PJ)",
                 ["start_date"] = "Imediata", ["english_level"] = "Avançado" }, AcceptDeclarations: true);
+        // Answers as the AI gives them (question = answer, one per line), to replay a form the app filled with them.
+        if (Environment.GetEnvironmentVariable("JO_FORM_ANSWERS") is { Length: > 0 } replay)
+        {
+            var answers = new Dictionary<string, string>(bundle.Answers);
+            foreach (var line in replay.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+                if (line.Split(" = ", 2) is [var q, var a]) answers[CustomAnswer.AiKey(q.Trim())] = a.Trim().Replace("\\n", "\n");
+            bundle = bundle with { Answers = answers };
+        }
         foreach (var url in Environment.GetEnvironmentVariable("JO_FORM_CHECK")!.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
         {
             var uri = new Uri(url);

@@ -151,7 +151,7 @@ public sealed class FormRetryMigrationDbTests
             var captcha = Stuck("c", "link", "A página tem CAPTCHA ou verificação anti-robô: o app não passa por ela.");
             await db.SaveChangesAsync();
 
-            await db.Database.MigrateAsync();
+            await db.GetService<IMigrator>().MigrateAsync("20261107190000_RetryFormsAfterQuestionFix");
 
             await using var c = new NpgsqlConnection(conn);
             await c.OpenAsync();
@@ -159,6 +159,56 @@ public sealed class FormRetryMigrationDbTests
             Assert.Equal("RetryScheduled", await State(platform.Id));
             Assert.Equal("RetryScheduled", await State(site.Id));
             Assert.Equal("NeedsHuman", await State(captcha.Id));
+        }
+        finally
+        {
+            NpgsqlConnection.ClearAllPools();
+            await using var admin = new NpgsqlConnection(Admin);
+            await admin.OpenAsync();
+            await admin.ExecuteAsync($"drop database if exists {name} with (force)");
+        }
+    }
+
+    [Fact]
+    public async Task Dead_letters_from_the_radio_bug_and_paused_workable_go_back_to_the_form()
+    {
+        var name = $"jo_fil_{Guid.NewGuid():N}"[..20];
+        await using (var admin = new NpgsqlConnection(Admin))
+        {
+            await admin.OpenAsync();
+            await admin.ExecuteAsync($"create database {name}");
+        }
+        var conn = new NpgsqlConnectionStringBuilder(Admin) { Database = name }.ConnectionString;
+        try
+        {
+            var options = new DbContextOptionsBuilder<ApplicationsDbContext>();
+            options.UseModuleDatabase(conn, "applications");
+            await using var db = new ApplicationsDbContext(options.Options);
+            await db.GetService<IMigrator>().MigrateAsync("20261107190000_RetryFormsAfterQuestionFix");
+            var now = DateTime.UtcNow;
+            JobApplication Stuck(string key, string reason)
+            {
+                var a = JobApplication.Create(new JobShortlistedV1(Guid.NewGuid(), Guid.NewGuid(), key, key, "Dev .NET", "Remoto", $"https://jobs.workable.com/view/{key}", 86), now);
+                a.Move(ApplicationState.NeedsHuman, reason, "Preparador", now);
+                db.Applications.Add(a);
+                return a;
+            }
+            var paused = Stuck("w", "Nenhum adapter testado atende este domínio e esta etapa.");
+            var captcha = Stuck("c", "A página tem verificação anti-robô (Cloudflare ou CAPTCHA): o app não passa por ela, o envio fica com você.");
+            var dead = Stuck("d", "Preenchendo o formulário.");
+            await db.SaveChangesAsync();
+            var gaveUp = "A etapa Prepare falhou 4 vezes: A resposta de \"How many years?\" não ficou marcada.";
+            await db.Database.ExecuteSqlInterpolatedAsync($"update applications.applications set state = 'DeadLetter', last_reason = {gaveUp} where id = {dead.Id}");
+
+            await db.Database.MigrateAsync();
+
+            await using var c = new NpgsqlConnection(conn);
+            await c.OpenAsync();
+            async Task<string?> State(Guid id) => await c.ExecuteScalarAsync<string>("select state from applications.applications where id = @id", new { id });
+            Assert.Equal("RetryScheduled", await State(paused.Id));
+            Assert.Equal("RetryScheduled", await State(dead.Id));
+            Assert.Equal("NeedsHuman", await State(captcha.Id));
+            Assert.Equal("DeadLetter", await c.ExecuteScalarAsync<string>("""select "from" from applications.events where application_id = @Id and "to" = 'RetryScheduled'""", new { dead.Id }));
         }
         finally
         {
