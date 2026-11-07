@@ -42,6 +42,8 @@ internal sealed partial class GreenhouseLikeSource(IHttpClientFactory http, IOpt
                 Description: PostingIntegrity.Visible(html).Text,
                 UpdatedAt: job.TryGetProperty("updated_at", out var u) && u.TryGetDateTime(out var at) ? at.ToUniversalTime() : null,
                 RawJson: job.GetRawText(),
+                // A board that asks for the resume by e-mail says so under "how to apply"; a job with a form stays a form job.
+                ApplyEmail: GitHubIssuesSource.ApplyContact(PostingIntegrity.Visible(html).Text).Email,
                 // A API pública só lista vagas abertas; boards por URL (como o ATS de teste) são conferidos um por um.
                 ListedAsOpen: !board.StartsWith("http", StringComparison.OrdinalIgnoreCase), DescriptionMarkup: html));
         }
