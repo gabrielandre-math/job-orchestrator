@@ -10,6 +10,8 @@ public sealed class ClaimsAdversarialTests
     [InlineData("Reduzi custos em 40%.", "Resolvi 40 chamados.", "40%")]
     [InlineData("Gerenciei um orçamento de R$ 40 mil.", "Atendi 40 mil clientes.", "valor 40000")]
     [InlineData("Automatizei deploys com docker e terraform.", "Automatizei deploys com Docker.", "terraform")]
+    [InlineData("Trabalhei com Kubernetes em produção.", "Não trabalhei com Kubernetes em produção; só estudei.", "Kubernetes (negado no fato)")]
+    [InlineData("Led the migration to Kafka.", "Did not use Kafka; the team chose RabbitMQ.", "Kafka (negado no fato)")]
     public void An_unrelated_fact_does_not_back_the_claim(string claim, string fact, string flagged) =>
         Assert.Contains(flagged, Claims.Unsupported(claim, [fact]));
 
@@ -18,6 +20,8 @@ public sealed class ClaimsAdversarialTests
     [InlineData("Mantive clusters kubernetes em produção.", "Operei clusters Kubernetes (EKS) em produção.")]
     [InlineData("Gerenciei um orçamento de R$ 40 mil.", "Gerenciei o orçamento de R$ 40.000 por trimestre.")]
     [InlineData("Resolvi 40 chamados por semana.", "Resolvi 40 chamados por semana no suporte N2.")]
+    [InlineData("Não usei Kubernetes nesse projeto.", "Não usei Kubernetes nesse projeto, só Docker.")]
+    [InlineData("Operei Kubernetes em produção.", "Não tinha Kubernetes no começo; depois operei Kubernetes em produção.")]
     public void The_fact_that_says_it_backs_the_claim(string claim, string fact) =>
         Assert.Empty(Claims.Unsupported(claim, [fact]));
 }

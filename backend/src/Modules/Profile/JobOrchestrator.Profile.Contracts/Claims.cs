@@ -32,8 +32,15 @@ public static partial class Claims
         var money = Values(Money(), source).ToHashSet();
         foreach (var v in Values(Money(), folded).Distinct())
             if (!money.Contains(v)) missing.Add($"valor {v.ToString(CultureInfo.InvariantCulture)}");
+        var denies = Negation().IsMatch(folded);
         foreach (var term in Terms(claim).Concat(LowerTech().Matches(folded).Select(m => m.Value)).Distinct(StringComparer.OrdinalIgnoreCase))
-            if (!Generic.Contains(term) && !Present(Fold(term), source)) missing.Add(term);
+        {
+            if (Generic.Contains(term)) continue;
+            var t = Fold(term);
+            if (!Present(t, source)) missing.Add(term);
+            // "Não trabalhei com Kubernetes" does not back "Trabalhei com Kubernetes": the fact denies what the claim affirms.
+            else if (!denies && Denied(t, source)) missing.Add($"{term} (negado no fato)");
+        }
         return [.. missing.Distinct(StringComparer.OrdinalIgnoreCase)];
     }
 
@@ -85,6 +92,19 @@ public static partial class Claims
         ["native", "nativo", "nativa"], ["fluent", "fluente"], ["advanced", "avancado"], ["intermediate", "intermediario"], ["basic", "basico"],
         ["brazil", "brasil"], ["present", "atual"]
     ];
+
+    /// <summary>The term shows up in the source only right after a negation ("não", "nunca", "never", "not", within four words).</summary>
+    private static bool Denied(string term, string source)
+    {
+        var any = false;
+        foreach (Match m in Regex.Matches(source, @"(?<![\p{L}\p{N}])" + Regex.Escape(term) + @"(?![\p{L}\p{N}#+])"))
+        {
+            any = true;
+            var before = source[Math.Max(0, m.Index - 60)..m.Index].Split([' ', '\n'], StringSplitOptions.RemoveEmptyEntries).TakeLast(4);
+            if (!before.Any(w => Negation().IsMatch($" {w} "))) return false;
+        }
+        return any;
+    }
 
     private static bool Present(string term, string source)
     {
@@ -156,6 +176,7 @@ public static partial class Claims
     [GeneratedRegex(@"(?<![\p{L}\p{N}.,])(?<n>\d+(?:[.,]\d+)*)(?<u>\s?(?:k|mil|mi|milhoes|milhao|million|millions|thousand|m|bi|bilhoes|bilhao|billion|billions)\b)?")] private static partial Regex Number();
     [GeneratedRegex(@"^\d{1,3}(?:[.,]\d{3})+$")] private static partial Regex ThousandGroups();
     [GeneratedRegex(@"\s+")] private static partial Regex Spaces();
+    [GeneratedRegex(@"(?<![\p{L}])(?:nao|nunca|jamais|never|not|didn't|didnt)(?![\p{L}])")] private static partial Regex Negation();
     // Technologies often written in lowercase, which the capitalization rule above misses ("implementei kubernetes"). Words that are also
     // common words (go, swift, spark, node) stay out.
     [GeneratedRegex(@"(?<![\p{L}\p{N}.#+])(?:kubernetes|k8s|docker|python|terraform|kafka|redis|postgres(?:ql)?|mysql|mongodb|aws|azure|gcp|linux|java|kotlin|golang|typescript|javascript|node\.?js|react(?:\.?js)?|angular|vue(?:\.?js)?|flutter|django|laravel|spring|rails|graphql|grpc|jenkins|nginx|airflow|snowflake|databricks|elasticsearch|rabbitmq|dynamodb|sqs|lambda|pyspark|rust|scala|elixir|dotnet|csharp|terraform|ansible|helm|istio|prometheus|grafana|datadog|oracle|sap|salesforce)(?![\p{L}\p{N}#+])")]
