@@ -68,6 +68,8 @@ internal sealed class OutgoingMail
     public string Status { get; set; } = "Draft";
     public DateTime CreatedAt { get; init; }
     public DateTime? ApprovedAt { get; set; }
+    /// <summary>"you" or "auto". What the automatic mode released goes back to you when it is switched off.</summary>
+    public string? ApprovedBy { get; set; }
     public DateTime? SentAt { get; set; }
     public string? MessageId { get; set; }
     public string? AttachmentPath { get; set; }
@@ -134,6 +136,7 @@ internal sealed class MailDbContext(DbContextOptions<MailDbContext> options) : D
             e.HasIndex(x => new { x.AccountId, x.SentAt });
             e.Property(x => x.Status).HasMaxLength(20);
             e.Property(x => x.AttachmentSha256).HasMaxLength(64);
+            e.Property(x => x.ApprovedBy).HasMaxLength(8);
         });
         b.Entity<IncomingMail>(e => { e.ToTable("incoming"); e.HasKey(x => x.Id); e.HasIndex(x => x.MessageId).IsUnique(); });
         b.Entity<AlertPosting>(e => { e.ToTable("alert_postings"); e.HasKey(x => x.Id); e.HasIndex(x => x.Url).IsUnique(); e.HasIndex(x => x.ReceivedAt); });

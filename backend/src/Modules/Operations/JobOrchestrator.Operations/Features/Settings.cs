@@ -82,6 +82,9 @@ internal sealed class SettingsEndpoints : ICarterModule
             var auth = await c.ExecuteAsync("update campaigns.authorizations set revoked_at = now() where revoked_at is null");
             await c.ExecuteAsync("update campaigns.campaigns set mode = 'ReviewRequired' where mode = 'AutoSubmit'");
             var mail = await c.ExecuteAsync("update mail.settings set mode = 'Review', auto_consent_at = null where mode = 'Auto'");
+            // What the automatic mode had released and has not left goes back to your approval, as when the mode is switched off on the Mail screen.
+            await c.ExecuteAsync("update mail.outgoing set status = 'AwaitingApproval', approved_at = null, approved_by = null, error = @Note where status = 'Scheduled' and approved_by = 'auto'",
+                new { Note = "O envio automático foi desligado depois que este e-mail foi liberado: ele espera a sua aprovação." });
             return Results.Ok(new { authorizations = auth, mail });
         });
 

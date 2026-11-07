@@ -316,6 +316,11 @@ namespace JobOrchestrator.Mail.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("approved_at");
 
+                    b.Property<string>("ApprovedBy")
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)")
+                        .HasColumnName("approved_by");
+
                     b.Property<string>("AttachmentName")
                         .HasColumnType("text")
                         .HasColumnName("attachment_name");

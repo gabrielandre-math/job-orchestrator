@@ -167,7 +167,11 @@ internal sealed partial class MailService(
         if (input.Mode is not ("Draft" or "Review" or "Auto")) throw new MailRuleException("Modo desconhecido.");
         if (input.Mode == "Auto" && !input.Consent && s.AutoConsentAt is null) throw new MailRuleException("O modo automático precisa do seu consentimento marcado na tela.");
         if (input.Mode == "Auto" && input.Consent) { s.AutoConsentAt = Now; s.AutoConsentText = ConsentText; }
-        if (input.Mode != "Auto") s.AutoConsentAt = null;
+        if (input.Mode != "Auto")
+        {
+            s.AutoConsentAt = null;
+            await SuspendAutoAsync(ct);
+        }
         s.Mode = input.Mode;
         s.DailyCap = Math.Clamp(input.DailyCap, 1, 50);
         s.FollowUpDays = Math.Clamp(input.FollowUpDays, 3, 21);
@@ -321,6 +325,7 @@ internal sealed partial class MailService(
         await AttachmentAsync(m, ct);
         m.Status = "Scheduled";
         m.ApprovedAt = Now;
+        m.ApprovedBy = "you";
         m.Error = null;
         await db.SaveChangesAsync(ct);
         await SendDueAsync(ct);
@@ -333,6 +338,25 @@ internal sealed partial class MailService(
         if (m.Status is "Sent" or "Replied" or "Sending") throw new MailRuleException("Este e-mail já saiu.");
         m.Status = "Cancelled";
         await db.SaveChangesAsync(ct);
+    }
+
+    internal const string Unreleased = "O envio automático foi desligado depois que este e-mail foi liberado: ele espera a sua aprovação.";
+
+    /// <summary>E-mails the automatic mode released and that have not left go back to your approval. Your own approvals stay.</summary>
+    public async Task<int> SuspendAutoAsync(CancellationToken ct)
+    {
+        var released = await db.Outgoing.Where(o => o.Status == "Scheduled" && o.ApprovedBy == "auto").ToListAsync(ct);
+        foreach (var m in released) Unrelease(m);
+        await db.SaveChangesAsync(ct);
+        return released.Count;
+    }
+
+    private static void Unrelease(OutgoingMail m)
+    {
+        m.Status = "AwaitingApproval";
+        m.ApprovedAt = null;
+        m.ApprovedBy = null;
+        m.Error = Unreleased;
     }
 
     /// <summary>You checked the account's Sent folder: it left (Sent) or it did not (back to the queue, with the same Message-ID).</summary>
@@ -379,6 +403,8 @@ internal sealed partial class MailService(
         }
         await db.SaveChangesAsync(ct);
         var settings = await SettingsAsync(ct);
+        // Automatic mode off (on the Mail screen or by "revogar tudo"): what it released goes back to you before anything is picked.
+        if (!(settings.Mode == "Auto" && settings.AutoConsentAt is not null)) await SuspendAutoAsync(ct);
         var accounts = await db.Accounts.OrderBy(a => a.CreatedAt).ToListAsync(ct);
         var sentToday = await SentTodayAsync(ct);
         var due = await db.Outgoing.Where(o => o.Status == "Scheduled").OrderBy(o => o.ApprovedAt).Take(10).ToListAsync(ct);
@@ -553,6 +579,7 @@ internal sealed partial class MailService(
                 await AttachmentAsync(m, ct);
                 m.Status = "Scheduled";
                 m.ApprovedAt = Now;
+                m.ApprovedBy = "auto";
             }
             catch (MailRuleException ex) { m.Error = ex.Message; }
         }
@@ -596,7 +623,7 @@ internal sealed partial class MailService(
                 try
                 {
                     var f = await DraftAsync(first.JobId, "followup", ct);
-                    if (auto) { f.Status = "Scheduled"; f.ApprovedAt = Now; await db.SaveChangesAsync(ct); }
+                    if (auto) { f.Status = "Scheduled"; f.ApprovedAt = Now; f.ApprovedBy = "auto"; await db.SaveChangesAsync(ct); }
                 }
                 catch (MailRuleException ex) { log.LogInformation("Follow-up skipped: {Error}", ex.Message); }
             }
