@@ -16,7 +16,7 @@ public static class MailModule
     }
 
     /// <summary>Só no Worker: o ciclo do automático, dos lembretes e da caixa.</summary>
-    public static IServiceCollection AddMailWorker(this IServiceCollection s) => s.AddHostedService<Features.MailWorker>();
+    public static IServiceCollection AddMailWorker(this IServiceCollection s) => s.AddHostedService<Features.MailWorker>().AddHostedService<OutboxPublisher<MailDbContext>>();
 
     public static async Task MigrateMailAsync(this IServiceProvider sp)
     {

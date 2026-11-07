@@ -100,8 +100,11 @@ internal sealed class JobEndpoints : ICarterModule
 }
 
 /// <summary>O que o módulo mostra aos outros.</summary>
-internal sealed class JobsApi(IReadDb<JobsDbContext> db, ISender sender) : IJobsApi
+internal sealed class JobsApi(IReadDb<JobsDbContext> db, ISender sender, ICampaignsApi campaigns) : IJobsApi
 {
+    public async Task<bool> SendingAllowedAsync(CancellationToken ct) =>
+        (await campaigns.ListAsync(ct)).FirstOrDefault() is { Mode: not (SubmissionMode.DiscoveryOnly or SubmissionMode.PrepareOnly) };
+
     private const string Sql = """
         select count(*)::int as total,
                count(*) filter (where status in ('Discovered','Scored'))::int as discovered,

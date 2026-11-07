@@ -26,6 +26,8 @@ public static class ApplicationsModule
     {
         s.AddEventConsumer<JobShortlistedConsumer>();
         s.AddEventConsumer<AutoSubmitEndedConsumer>();
+        s.AddEventConsumer<JobEmailSentConsumer>();
+        s.AddEventConsumer<JobEmailRepliedConsumer>();
         s.AddHostedService<OutboxPublisher<ApplicationsDbContext>>();
         s.AddSingleton(new WorkQueue(NpgsqlDataSource.Create(config.ConnectionFor("Applications"))));
         s.TryAddSingleton<GuardKey>();

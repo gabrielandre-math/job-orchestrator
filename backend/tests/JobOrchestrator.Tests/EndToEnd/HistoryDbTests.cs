@@ -75,7 +75,7 @@ public sealed class HistoryDbTests
             // O quadro com vaga aberta conferida vira pista do Explorador.
             Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
             await using var read = new ReadDb<JobsDbContext>(NpgsqlDataSource.Create(conn));
-            Assert.Equal(new[] { new HistoryLead("greenhouse:acme", 1) }, await new JobsApi(read, null!).HistoryLeadsAsync(10, default));
+            Assert.Equal(new[] { new HistoryLead("greenhouse:acme", 1) }, await new JobsApi(read, null!, null!).HistoryLeadsAsync(10, default));
         }
         finally
         {

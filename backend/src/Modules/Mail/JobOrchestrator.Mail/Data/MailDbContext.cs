@@ -116,8 +116,12 @@ internal sealed class AlertPosting
     public DateTime ReceivedAt { get; set; }
 }
 
-internal sealed class MailDbContext(DbContextOptions<MailDbContext> options) : DbContext(options)
+internal sealed class MailDbContext(DbContextOptions<MailDbContext> options) : DbContext(options), IOutboxDbContext
 {
+    public DbSet<OutboxMessage> Outbox => Set<OutboxMessage>();
+
+    public void Publish<T>(string eventType, T evt, DateTime now) => Outbox.Add(OutboxMessage.Create(eventType, evt, now));
+
     public DbSet<AlertPosting> AlertPostings => Set<AlertPosting>();
     public DbSet<MailAccount> Accounts => Set<MailAccount>();
     public DbSet<MailSettings> Settings => Set<MailSettings>();
@@ -127,7 +131,7 @@ internal sealed class MailDbContext(DbContextOptions<MailDbContext> options) : D
 
     protected override void OnModelCreating(ModelBuilder b)
     {
-        b.HasDefaultSchema("mail");
+        b.HasDefaultSchema("mail").MapOutbox();
         b.Entity<MailAccount>(e => { e.ToTable("accounts"); e.HasKey(x => x.Id); e.Property(x => x.Address).HasMaxLength(200); e.Property(x => x.Sends).HasDefaultValue(true); });
         b.Entity<MailSettings>(e => { e.ToTable("settings"); e.HasKey(x => x.Id); e.Property(x => x.Id).ValueGeneratedNever(); });
         b.Entity<MailTemplate>(e => { e.ToTable("templates"); e.HasKey(x => x.Id); e.HasIndex(x => new { x.Kind, x.Language }).IsUnique(); });

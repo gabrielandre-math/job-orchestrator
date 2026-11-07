@@ -101,9 +101,23 @@ public sealed record HistoryCheck(int Boards, int Checked, int Open, int Closed,
 /// <summary>Quadro do histórico com vaga aberta conferida ao vivo e que quem mora no Brasil pode disputar: pista para o Explorador.</summary>
 public sealed record HistoryLead(string Source, int Open);
 
+/// <summary>Published by Mail: the application e-mail of this job left your account and the mail server took it (not proof of delivery).</summary>
+public sealed record JobEmailSentV1(Guid JobId, string To, string MessageId, DateTime SentAt, string Kind)
+{
+    public const string EventType = "mail.job-email-sent.v1";
+}
+
+/// <summary>Published by Mail: the company answered the e-mail of this job. Class is what the local model read (interview_invite, offer, rejection...).</summary>
+public sealed record JobEmailRepliedV1(Guid JobId, string? Class, DateTime At)
+{
+    public const string EventType = "mail.job-email-replied.v1";
+}
+
 /// <summary>Contrato público do módulo Jobs.</summary>
 public interface IJobsApi
 {
+    /// <summary>False while the campaign only searches or only prepares: nothing leaves on its own, e-mails included.</summary>
+    Task<bool> SendingAllowedAsync(CancellationToken ct);
     Task<JobCounts> CountsAsync(CancellationToken ct);
     Task<IReadOnlyList<SourceCount>> SourcesAsync(CancellationToken ct);
     Task<JobText?> TextAsync(Guid jobId, CancellationToken ct);

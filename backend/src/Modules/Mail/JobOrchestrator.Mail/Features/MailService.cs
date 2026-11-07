@@ -403,8 +403,9 @@ internal sealed partial class MailService(
         }
         await db.SaveChangesAsync(ct);
         var settings = await SettingsAsync(ct);
-        // Automatic mode off (on the Mail screen or by "revogar tudo"): what it released goes back to you before anything is picked.
-        if (!(settings.Mode == "Auto" && settings.AutoConsentAt is not null)) await SuspendAutoAsync(ct);
+        // Automatic mode off (on the Mail screen or by "revogar tudo"), or a campaign that only searches or prepares: what the automatic
+        // mode released goes back to you before anything is picked.
+        if (!(settings.Mode == "Auto" && settings.AutoConsentAt is not null) || !await jobs.SendingAllowedAsync(ct)) await SuspendAutoAsync(ct);
         var accounts = await db.Accounts.OrderBy(a => a.CreatedAt).ToListAsync(ct);
         var sentToday = await SentTodayAsync(ct);
         var due = await db.Outgoing.Where(o => o.Status == "Scheduled").OrderBy(o => o.ApprovedAt).Take(10).ToListAsync(ct);
@@ -441,6 +442,8 @@ internal sealed partial class MailService(
                     m.Status = "Sent";
                     m.SentAt = Now;
                     m.Error = null;
+                    // Applications learns it in the same commit: the e-mail application is sent, with the server's acceptance as evidence.
+                    db.Publish(JobEmailSentV1.EventType, new JobEmailSentV1(m.JobId, m.To, m.MessageId!, m.SentAt.Value, m.Kind), Now);
                     sentToday[account.Id] = sentToday.GetValueOrDefault(account.Id) + 1;
                     sent++;
                     await db.SaveChangesAsync(ct);
@@ -589,7 +592,7 @@ internal sealed partial class MailService(
     public async Task TickAsync(CancellationToken ct)
     {
         var s = await SettingsAsync(ct);
-        var auto = s.Mode == "Auto" && s.AutoConsentAt is not null;
+        var auto = s.Mode == "Auto" && s.AutoConsentAt is not null && await jobs.SendingAllowedAsync(ct);
         if (s.Mode != "Draft" && await db.Accounts.AnyAsync(ct))
         {
             if (auto)
@@ -717,6 +720,7 @@ internal sealed partial class MailService(
                         o.Status = "Replied";
                         o.RepliedAt = Now;
                         o.ReplyClass = cls;
+                        db.Publish(JobEmailRepliedV1.EventType, new JobEmailRepliedV1(o.JobId, cls, Now), Now);
                         // A empresa respondeu: o lembrete agendado não sai mais.
                         foreach (var f in await db.Outgoing.Where(x => x.FollowsId == id && (x.Status == "AwaitingApproval" || x.Status == "Scheduled")).ToListAsync(ct)) f.Status = "Cancelled";
                     }
