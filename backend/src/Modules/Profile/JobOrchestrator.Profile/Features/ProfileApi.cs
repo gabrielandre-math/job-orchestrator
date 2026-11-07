@@ -65,6 +65,7 @@ internal static class AnswerBank
             // A form may ask the PJ or the CLT amount whatever the job says: each comes from its own floor.
             Put("salary_pj", Salary(conf, c with { Contract = "pj", Currency = "BRL" }, en));
             Put("salary_clt", Salary(conf, c with { Contract = "clt", Currency = "BRL" }, en));
+            Put("salary_usd", Salary(conf, c with { Currency = "USD" }, en));
             Put("start_date", conf.StartAvailability);
             Put("relocation", conf.Relocate ? T("Sim", "Yes") : T("Não", "No"));
             Put("work_modality", string.Join(", ", conf.Modalities.Select(m => m switch
