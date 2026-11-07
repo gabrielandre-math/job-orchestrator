@@ -19,6 +19,8 @@ internal sealed class MailAccount
     public DateTime? CheckedAt { get; set; }
     public string? LastError { get; set; }
     public long LastUid { get; set; }
+    /// <summary>The mailbox's UIDVALIDITY when LastUid was read: when the server renumbers the box, the cursor starts over.</summary>
+    public long UidValidity { get; set; }
     public bool Sends { get; set; } = true;
     public DateTime? PausedUntil { get; set; }
     public string? PauseReason { get; set; }
@@ -96,6 +98,8 @@ internal sealed class IncomingMail
     public string? Class { get; set; }
     public bool ActionNeeded { get; set; }
     public Guid? OutgoingId { get; set; }
+    /// <summary>The sender's domain got more than one of your e-mails and the message has no thread reference: which job it answers is for you to say.</summary>
+    public bool Ambiguous { get; set; }
     public DateTime ReceivedAt { get; init; }
 }
 

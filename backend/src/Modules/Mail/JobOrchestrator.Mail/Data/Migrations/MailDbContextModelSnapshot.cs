@@ -88,6 +88,10 @@ namespace JobOrchestrator.Mail.Data.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("action_needed");
 
+                    b.Property<bool>("Ambiguous")
+                        .HasColumnType("boolean")
+                        .HasColumnName("ambiguous");
+
                     b.Property<string>("Class")
                         .HasColumnType("text")
                         .HasColumnName("class");
@@ -208,6 +212,10 @@ namespace JobOrchestrator.Mail.Data.Migrations
                     b.Property<bool>("SmtpSsl")
                         .HasColumnType("boolean")
                         .HasColumnName("smtp_ssl");
+
+                    b.Property<long>("UidValidity")
+                        .HasColumnType("bigint")
+                        .HasColumnName("uid_validity");
 
                     b.HasKey("Id")
                         .HasName("pk_accounts");

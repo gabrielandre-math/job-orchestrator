@@ -142,7 +142,7 @@
           @for (i of replies(); track i.id) {
             <li [class.act]="i.actionNeeded">
               <jo-iso [name]="i.class === 'interview_invite' ? 'you' : i.class === 'rejection' ? 'receipt' : i.class === 'assessment' ? 'form' : 'inbox'" [size]="34" />
-              <span class="what"><strong>{{ i.subject }}</strong><span class="faint small">{{ i.from }} · {{ ago(i.date) }}</span><span class="muted small snippet">{{ i.snippet }}</span></span>
+              <span class="what"><strong>{{ i.subject }}</strong><span class="faint small">{{ i.from }} · {{ ago(i.date) }}</span><span class="muted small snippet">{{ i.snippet }}</span>@if (i.ambiguous) { <span class="faint small">Você escreveu para mais de uma vaga neste domínio e a mensagem não diz qual: confira antes de responder.</span> }</span>
               <span [class]="'pill ' + (i.class === 'rejection' || i.class === 'bounce' ? 'muted' : i.class === 'interview_invite' || i.class === 'offer' || i.class === 'assessment' ? 'ok' : 'accent')">{{ classLabel[i.class ?? 'other'] ?? 'outro' }}@if (i.actionNeeded) { · responder }</span>
             </li>
           } @empty { <li class="calm"><span class="muted">Nenhuma resposta ainda. A caixa é lida a cada 10 minutos, só para o que é da busca.</span></li> }

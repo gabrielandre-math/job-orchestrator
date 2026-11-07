@@ -634,6 +634,17 @@ internal sealed partial class MailService(
     // ---------- Caixa de entrada (IMAP) ----------
 
     /// <summary>
+    /// Which of your e-mails a message answers: the thread references first; then the sender's domain, only when one of your e-mails
+    /// went there. Several jobs at that domain and no reference: ambiguous, for you to say.
+    /// </summary>
+    internal static (Guid? Link, bool Ambiguous) ReplyLink(IReadOnlyDictionary<string, Guid> byId, IReadOnlyDictionary<string, Guid?> domains, IEnumerable<string> refs, string from)
+    {
+        var threaded = refs.Select(r => byId.TryGetValue(r, out var g) ? g : (Guid?)null).FirstOrDefault(g => g is not null);
+        if (threaded is not null) return (threaded, false);
+        return domains.TryGetValue(from.Split('@').Last().ToLowerInvariant(), out var only) ? (only, only is null) : (null, false);
+    }
+
+    /// <summary>
     /// Lê só o que pode ser da busca: respostas aos e-mails enviados (pelo Message-ID), mensagens dos domínios para onde a pessoa escreveu
     /// e assuntos de processo seletivo. Classifica no modelo local (nunca vai para a nuvem) e para o lembrete quando a empresa respondeu.
     /// </summary>
@@ -652,19 +663,25 @@ internal sealed partial class MailService(
                 await imap.AuthenticateAsync(a.Address, password, ct);
                 var inbox = imap.Inbox;
                 await inbox.OpenAsync(FolderAccess.ReadOnly, ct);
+                if (inbox.UidValidity != a.UidValidity)
+                {
+                    // Renumbered box (or the first read): the cursor starts over; Message-IDs already stored keep it from counting twice.
+                    a.LastUid = 0;
+                    a.UidValidity = inbox.UidValidity;
+                }
                 SearchQuery query = a.LastUid > 0 ? SearchQuery.Uids(new UniqueIdRange(new UniqueId((uint)a.LastUid + 1), UniqueId.MaxValue)) : SearchQuery.DeliveredAfter(Now.AddDays(-14));
                 var uids = await inbox.SearchAsync(query, ct);
                 var sent = await db.Outgoing.Where(o => o.MessageId != null).Select(o => new { o.Id, o.MessageId, o.To, o.Status }).ToListAsync(ct);
                 var byId = sent.ToDictionary(o => o.MessageId!.Trim('<', '>'), o => o.Id);
-                var domains = sent.GroupBy(o => o.To.Split('@').Last().ToLowerInvariant()).ToDictionary(g => g.Key, g => g.Last().Id);
+                // By domain only when one of your e-mails went there; with several jobs at the same company or agency, guessing would pick wrong.
+                var domains = sent.GroupBy(o => o.To.Split('@').Last().ToLowerInvariant()).ToDictionary(g => g.Key, g => g.Count() == 1 ? g.Single().Id : (Guid?)null);
                 foreach (var summary in await inbox.FetchAsync(uids.Take(300).ToList(), MessageSummaryItems.UniqueId | MessageSummaryItems.Envelope | MessageSummaryItems.References | MessageSummaryItems.PreviewText, ct))
                 {
                     a.LastUid = Math.Max(a.LastUid, summary.UniqueId.Id);
                     if (summary.Envelope is not { } env) continue;
                     var from = env.From.Mailboxes.FirstOrDefault()?.Address ?? "";
                     var refs = (summary.References ?? []).Append(env.InReplyTo ?? "").Select(r => r.Trim('<', '>')).Where(r => r.Length > 0);
-                    Guid? link = refs.Select(r => byId.TryGetValue(r, out var g) ? g : (Guid?)null).FirstOrDefault(g => g is not null)
-                        ?? (domains.TryGetValue(from.Split('@').Last().ToLowerInvariant(), out var d) ? d : null);
+                    var (link, ambiguous) = ReplyLink(byId, domains, refs, from);
                     var subject = env.Subject ?? "";
                     // Alerta de vaga (LinkedIn, Indeed, Catho, InfoJobs...): as vagas do corpo vão para a fonte "alertas:email".
                     if (link is null && AlertParser.IsAlert(from, subject))
@@ -678,7 +695,7 @@ internal sealed partial class MailService(
                             }
                         continue;
                     }
-                    if (link is null && !Hiring().IsMatch(subject)) continue;
+                    if (link is null && !ambiguous && !Hiring().IsMatch(subject)) continue;
                     var messageId = env.MessageId ?? $"{a.Id}:{summary.UniqueId.Id}";
                     if (await db.Incoming.AnyAsync(x => x.MessageId == messageId, ct)) continue;
                     var preview = Cut(summary.PreviewText ?? "", 600);
@@ -692,8 +709,9 @@ internal sealed partial class MailService(
                         continue;
                     }
                     (string? cls, bool action) = await ClassifyAsync(from, subject, preview, ct);
-                    if (link is null && cls is "other" or "recruiter_outreach" or null) continue;
-                    db.Incoming.Add(new IncomingMail { MessageId = messageId, From = from, Subject = Cut(subject, 300), Date = env.Date?.UtcDateTime ?? Now, Snippet = preview, Class = cls, ActionNeeded = action, OutgoingId = link, ReceivedAt = Now });
+                    // A recruiter writing first is a new opportunity, kept without a job; only unrelated mail is skipped.
+                    if (link is null && !ambiguous && cls is "other" or null) continue;
+                    db.Incoming.Add(new IncomingMail { MessageId = messageId, From = from, Subject = Cut(subject, 300), Date = env.Date?.UtcDateTime ?? Now, Snippet = preview, Class = cls, ActionNeeded = action || ambiguous, OutgoingId = link, Ambiguous = ambiguous, ReceivedAt = Now });
                     if (link is { } id && await db.Outgoing.FindAsync([id], ct) is { } o && o.Status is "Sent")
                     {
                         o.Status = "Replied";
