@@ -76,11 +76,17 @@ public static class TrailWeb
             finally
             {
                 var ms = (int)Stopwatch.GetElapsedTime(start).TotalMilliseconds;
-                var status = failed ? 500 : ctx.Response.StatusCode;
+                // A request the page gave up on (it moved to another page) is the client's choice, not a server error: 499, as nginx says.
+                var status = ctx.RequestAborted.IsCancellationRequested ? 499 : failed ? 500 : ctx.Response.StatusCode;
                 var method = ctx.Request.Method;
-                // Polling reads that went well are not events; everything that changes something, fails or is slow is.
-                if (method != "GET" || status >= 400 || ms > 1500)
-                    trail.Add("http", status >= 500 ? "error" : status >= 400 || ms > 1500 ? "warn" : "info", $"{method} {path}", ms > 1500 && status < 400 ? "lenta" : null, ms,
+                // Polling reads that went well are not events; everything that changes something, fails or is slow is. A stream (the
+                // live map, the search) stays open by design: its length is not slowness.
+                var stream = ctx.Response.ContentType?.StartsWith("text/event-stream", StringComparison.Ordinal) == true;
+                // Only a read is slow at 1.5 s: an action that tests a source or asks the AI takes what it takes.
+                var slow = method == "GET" && ms > 1500 && !stream;
+                if (method != "GET" || status >= 400 || slow)
+                    trail.Add("http", status == 499 ? "info" : status >= 500 ? "error" : status >= 400 || slow ? "warn" : "info", $"{method} {path}",
+                        status == 499 ? "cancelada pela página" : slow && status < 400 ? "lenta" : null, ms,
                         status.ToString(System.Globalization.CultureInfo.InvariantCulture),
                         ctx.Request.Headers["X-Jo-Page"].ToString() is { Length: > 0 } page ? new Dictionary<string, string?> { ["page"] = page.Length > 200 ? page[..200] : page } : null);
             }

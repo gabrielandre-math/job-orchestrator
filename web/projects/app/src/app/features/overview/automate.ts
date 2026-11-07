@@ -1,3 +1,4 @@
+import { englishFromFacts } from '../../core/english';
 import { ChangeDetectionStrategy, Component, computed, inject, output, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { Icon } from '@jo/ui/icon';
@@ -125,8 +126,7 @@ export class Automate {
     if (m?.connected) this.mailSettings = await get<MailSettings>('/mail/settings').catch(() => null);
     if (first) {
       if (p) {
-        const english = p.facts.find((f) => f.kind === 'language' && /ingl|english/i.test(f.statement))?.level ?? null;
-        this.form.set({ ...p.confirmations, englishLevel: p.confirmations.englishLevel ?? this.level(english) });
+        this.form.set({ ...p.confirmations, englishLevel: p.confirmations.englishLevel ?? englishFromFacts(p.facts) });
       }
       if (c) {
         this.sendMode.set(c.mode === 'AutoSubmit' ? 'AutoSubmit' : c.mode === 'DiscoveryOnly' ? 'ReviewRequired' : 'ReviewRequired');
@@ -142,12 +142,6 @@ export class Automate {
   }
 
   /** O nível do fato do currículo ("avançado") vira a opção do formulário. */
-  private level(text: string | null) {
-    if (!text) return null;
-    const t = text.toLowerCase();
-    return t.includes('nativ') ? 'native' : t.includes('flu') ? 'fluent' : t.includes('avan') || t.includes('advanced') ? 'advanced' : t.includes('inter') ? 'intermediate' : t.includes('bás') || t.includes('basic') ? 'basic' : null;
-  }
-
   protected set<K extends keyof Confirmations>(key: K, value: Confirmations[K]) { this.form.update((f) => (f ? { ...f, [key]: value } : f)); this.dirty.set(true); }
   protected toggleIn(key: 'authorizedCountries' | 'modalities', value: string) {
     const list = this.form()?.[key] ?? [];

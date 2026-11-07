@@ -62,7 +62,7 @@ internal sealed class JobPosting : AggregateRoot
             Id = Guid.CreateVersion7(),
         CampaignId = campaignId,
         Source = Cut(p.Source, 300),
-        ExternalId = Cut(p.ExternalId, 120),
+        ExternalId = Key(p.ExternalId),
         CanonicalKey = Fingerprint.For(p.Company, p.Title, p.Location, p.ApplyUrl),
         Company = Cut(p.Company.Trim(), 200),
         Title = Cut(p.Title.Trim(), 300),
@@ -101,6 +101,14 @@ internal sealed class JobPosting : AggregateRoot
 
     /// <summary>Fonte externa não define o tamanho dos nossos campos: corta no limite da coluna, sem derrubar a rodada.</summary>
     private static string Cut(string value, int max) => value.Length <= max ? value : value[..max];
+
+    /// <summary>
+    /// The source's id as the column keeps it (120 characters). A longer one (a URL, as Himalayas uses) keeps its start and ends in a
+    /// hash of the whole id: cut short, two jobs of the same company became one id and the unique index failed the whole run.
+    /// </summary>
+    public static string Key(string externalId) =>
+        externalId.Length <= 120 ? externalId
+            : $"{externalId[..103]}~{Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(externalId)))[..16]}";
 
     private void Apply(Normalized n)
     {

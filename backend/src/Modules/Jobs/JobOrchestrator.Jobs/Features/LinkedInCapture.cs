@@ -87,7 +87,7 @@ internal sealed class CaptureLinkedInHandler(JobsDbContext db, ICampaignsApi cam
             if (shortlisted)
                 db.Publish(JobShortlistedV1.EventType, new JobShortlistedV1(job.Id, campaign.Id, job.CanonicalKey, job.Company, job.Title, job.Location, job.ApplyUrl, job.Score!.Value, job.ApplyChannel), now);
             var hash = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(raw)));
-            db.Snapshots.Add(new JobSnapshot { Id = Guid.CreateVersion7(), JobId = job.Id, FetchedAt = now, PayloadHash = hash, Payload = raw });
+            db.Snapshots.Add(new JobSnapshot { Id = Guid.CreateVersion7(), JobId = job.Id, FetchedAt = now, PayloadHash = hash, Payload = RunRequestedConsumer.AsJson(raw) });
             results.Add(new(job.Id, url, existing is not null, contact.Email, contact.Status));
         }
         return Result<IReadOnlyList<LinkedInCaptured>>.Ok(results);

@@ -91,7 +91,8 @@ internal sealed class CompanyEndpoints : ICarterModule
         app.MapGet("/api/companies/{domain}/logo", async (string domain, CompanyLogos logos, HttpContext http, CancellationToken ct) =>
         {
             var path = await logos.PathAsync(domain.ToLowerInvariant(), ct);
-            if (path is null) return Results.NotFound();
+            // No icon for this site: 204, so the page draws the initials without a failed load in the console. Asked again tomorrow.
+            if (path is null) { http.Response.Headers.CacheControl = "public, max-age=86400"; return Results.NoContent(); }
             http.Response.Headers.CacheControl = "public, max-age=604800";
             return Results.File(path, "image/png");
         }).WithTags("Jobs");

@@ -1,3 +1,4 @@
+import { englishFromFacts } from '../../core/english';
 import { ChangeDetectionStrategy, Component, computed, output, signal } from '@angular/core';
 import { Iso } from '@jo/ui/iso';
 import { Icon } from '@jo/ui/icon';
@@ -29,7 +30,7 @@ export class FormProfile {
     this.loadError.set('');
     try {
       const [p, answers] = await Promise.all([get<Profile>('/profile'), get<{ key: string; question: string; answer: string }[]>('/applications/answers')]);
-      this.identity.set(p.identity); this.preferences.set(p.confirmations);
+      this.identity.set(p.identity); this.preferences.set({ ...p.confirmations, englishLevel: p.confirmations.englishLevel ?? englishFromFacts(p.facts) });
       this.birthDate.set(answers.find(a => a.key === 'custom:birth_date')?.answer ?? '');
       this.loaded.set(true);
     } catch { this.loadError.set('Não foi possível carregar seus dados. Tente de novo.'); }

@@ -73,10 +73,18 @@ export class Welcome {
 
   constructor() { void this.refresh(); }
 
+  private resumed = false;
   private async refresh() {
     try {
       const [state, accounts, providers, profile] = await Promise.all([get<OnboardingView>('/onboarding'), get<Account[]>('/accounts'), get<Provider[]>('/providers'), get<Profile>('/profile')]);
       this.state.set(state); this.accounts.set(accounts); this.providers.set(providers); this.profile.set(profile);
+      // Opened again, the assistant picks up at the first step not done: the CV read and the data confirmed are not asked twice.
+      if (!this.resumed) {
+        this.resumed = true;
+        if (this.realProfile() && profile.confirmations.confirmedAt) void this.propose();
+        else if (this.realProfile()) this.step.set(4);
+        else if (this.readyAccounts().length) this.step.set(3);
+      }
     } catch { /* a tela mostra o que tiver */ }
   }
 

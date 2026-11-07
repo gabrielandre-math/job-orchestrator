@@ -84,7 +84,7 @@ internal sealed class RunRequestedConsumer(
         var now = time.GetUtcNow().UtcDateTime;
         if (!await db.RegisterInInboxAsync(message.MessageId, now, ct)) return;
         // Encerradas pela fonte: a vaga que existe vira Expired (o histórico fica); a que não existe é ignorada.
-        var keys = tombstones.Select(t => t.ExternalId).Distinct().ToList();
+        var keys = tombstones.Select(t => JobPosting.Key(t.ExternalId)).Distinct().ToList();
         var known = keys.Count == 0 ? [] : await db.Postings.Where(x => x.CampaignId == campaign.Id && keys.Contains(x.ExternalId)).ToListAsync(ct);
         var closed = Close(known, tombstones, now);
         int shortlisted = 0, fresh = 0, again = 0, duplicates = 0, scored = 0;
@@ -92,7 +92,10 @@ internal sealed class RunRequestedConsumer(
         var bands = new int[10];
         foreach (var (p, status) in found)
         {
-            var posting = await db.Postings.FirstOrDefaultAsync(x => x.CampaignId == campaign.Id && x.Source == p.Source && x.ExternalId == p.ExternalId, ct);
+            // The same job twice in one answer from a source (two pages, two lists) is one posting: the second sees the first before saving.
+            var key = JobPosting.Key(p.ExternalId);
+            var posting = db.Postings.Local.FirstOrDefault(x => x.CampaignId == campaign.Id && x.Source == p.Source && x.ExternalId == key)
+                ?? await db.Postings.FirstOrDefaultAsync(x => x.CampaignId == campaign.Id && x.Source == p.Source && x.ExternalId == key, ct);
             if (posting is null)
             {
                 posting = JobPosting.Discover(campaign.Id, p, now);
@@ -149,7 +152,7 @@ internal sealed class RunRequestedConsumer(
     /// <summary>Fecha as vagas que a fonte declarou encerradas (mesma fonte e mesmo id externo). Devolve quantas fecharam agora.</summary>
     internal static int Close(IEnumerable<JobPosting> existing, IReadOnlyCollection<DiscoveredPosting> tombstones, DateTime now)
     {
-        var dead = tombstones.Select(t => (t.Source, t.ExternalId)).ToHashSet();
+        var dead = tombstones.Select(t => (t.Source, JobPosting.Key(t.ExternalId))).ToHashSet();
         var count = 0;
         foreach (var posting in existing.Where(x => dead.Contains((x.Source, x.ExternalId)) && x.Status is not (JobStatus.Expired or JobStatus.Duplicate)))
         {
@@ -183,9 +186,28 @@ internal sealed class RunRequestedConsumer(
 
     private async Task SnapshotAsync(Guid jobId, string raw, DateTime now, CancellationToken ct)
     {
+        raw = AsJson(raw);
         var hash = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(raw)));
         if (await db.Snapshots.AnyAsync(s => s.JobId == jobId && s.PayloadHash == hash, ct) || db.Snapshots.Local.Any(s => s.JobId == jobId && s.PayloadHash == hash)) return;
         db.Snapshots.Add(new JobSnapshot { Id = Guid.CreateVersion7(), JobId = jobId, FetchedAt = now, PayloadHash = hash, Payload = raw });
+    }
+
+    /// <summary>
+    /// What the snapshot column (jsonb) takes. A source that hands back XML or HTML (an RSS feed, a careers page) goes in as a JSON string,
+    /// and the NUL character Postgres refuses comes out: one odd payload used to fail the whole run, with no job saved from any source.
+    /// </summary>
+    internal static string AsJson(string raw)
+    {
+        var clean = raw.Replace("\\u0000", "", StringComparison.Ordinal).Replace("\0", "", StringComparison.Ordinal);
+        try
+        {
+            using var _ = JsonDocument.Parse(clean);
+            return clean;
+        }
+        catch (JsonException)
+        {
+            return JsonSerializer.Serialize(new { raw = clean });
+        }
     }
 }
 

@@ -1,3 +1,4 @@
+import { englishFromFacts } from '../../core/english';
 import { FormProfile } from './form-profile';
 import { Wizard } from '../../shared/wizard';
 import { ChangeDetectionStrategy, Component, computed, effect, input, signal } from '@angular/core';
@@ -124,14 +125,10 @@ export class ProfilePage {
       if (!p || p.version === this.loadedVersion) return;
       this.loadedVersion = p.version;
       this.identity.set({ ...p.identity });
-      this.form.set({ ...p.confirmations, englishLevel: p.confirmations.englishLevel ?? this.englishFromFacts(p.facts) });
+      this.form.set({ ...p.confirmations, englishLevel: p.confirmations.englishLevel ?? englishFromFacts(p.facts) });
       this.decisions.set({});
       void this.answers.reload();
     });
-  }
-
-  private englishFromFacts(facts: ProfileFact[]) {
-    return facts.find((f) => f.kind === 'language' && /ingl|english/i.test(f.statement))?.level ?? null;
   }
 
   protected readonly linkedin = signal(false);

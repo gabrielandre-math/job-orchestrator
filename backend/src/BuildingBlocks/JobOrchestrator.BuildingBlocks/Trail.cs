@@ -142,6 +142,8 @@ public sealed class TrailLoggerProvider(Trail trail) : ILoggerProvider
             if (category.StartsWith("Microsoft.EntityFrameworkCore.Query", StringComparison.Ordinal)) return;
             if (level == LogLevel.Information && category.EndsWith(".IntelligenceApi", StringComparison.Ordinal)) return;
             var message = formatter(state, exception);
+            // A new database has no migration history yet: EF reports the first read of it as an error and then creates the table.
+            if (category == "Microsoft.EntityFrameworkCore.Database.Command" && message.Contains("__EFMigrationsHistory", StringComparison.Ordinal)) return;
             var detail = exception is null ? message : $"{message} | {exception.GetType().Name}: {exception.Message}";
             var name = category.Length > 60 ? category[(category.LastIndexOf('.', 50) + 1)..] : category;
             trail.Add("log", level >= LogLevel.Error ? "error" : level == LogLevel.Warning ? "warn" : "info", name, detail,

@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { Router } from '@angular/router';
 import { Icon } from '@jo/ui/icon';
 import { Iso } from '@jo/ui/iso';
 import { Mark } from '@jo/ui/mark';
@@ -45,8 +46,15 @@ export class InstallPage {
   });
   protected readonly current = computed(() => this.state()?.steps.find((s) => s.state === 'working') ?? null);
 
+  private readonly router = inject(Router);
+
   constructor() {
-    void get<Info>('/setup/info').then((i) => this.info.set(i)).catch(() => undefined);
+    // The installer page only exists while the installer runs (job-orchestrator --setup). With the app already installed and running,
+    // the address leads to the panel instead of a wizard whose calls have nowhere to go.
+    void fetch('/api/setup/info', { headers: { accept: 'application/json' } }).then(async (r) => {
+      if (r.ok) this.info.set(await r.json() as Info);
+      else if (r.status === 404) void this.router.navigateByUrl('/');
+    }).catch(() => undefined);
     inject(DestroyRef).onDestroy(() => clearInterval(this.timer));
   }
 
