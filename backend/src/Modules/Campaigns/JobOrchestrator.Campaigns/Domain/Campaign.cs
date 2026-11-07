@@ -136,6 +136,8 @@ internal sealed class SubmitAuthorization
     public int MaxPerDay { get; init; }
     public int MinScore { get; init; }
     public List<string> Adapters { get; init; } = [];
+    /// <summary>The privacy, data processing and terms boxes of application forms may be ticked in your name.</summary>
+    public bool AcceptDeclarations { get; init; }
     public string Text { get; init; } = "";
     public DateTime? RevokedAt { get; set; }
     public bool Active(DateTime now) => RevokedAt is null && now < ExpiresAt;

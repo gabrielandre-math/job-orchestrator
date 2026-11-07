@@ -84,6 +84,10 @@ import { Wizard } from '../../shared/wizard';
               <input type="checkbox" [checked]="accepted()" (change)="accepted.set($any($event.target).checked)" />
               <span><strong>Autorizo</strong><p>{{ text() }}</p></span>
             </label>
+            <label class="consent optional" [class.on]="declarations()">
+              <input type="checkbox" [checked]="declarations()" (change)="declarations.set($any($event.target).checked)" />
+              <span><strong>Aceito as declarações</strong><p>{{ declarationsText() }} Sem isto, o formulário que pede essa caixa fica com você.</p></span>
+            </label>
             @if (granting.problem(); as p) { <p class="problem">{{ p.detail }}</p> }
           </div>
         }
@@ -121,6 +125,7 @@ import { Wizard } from '../../shared/wizard';
     .consent { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 6px; border: 1px solid color-mix(in oklch, var(--warn) 45%, var(--line)); background: color-mix(in oklch, var(--warn) 6%, var(--surface-2)); cursor: pointer; transition: border-color 200ms ease, background-color 200ms ease; }
     .consent.on { border-color: color-mix(in oklch, var(--ok) 50%, var(--line)); background: color-mix(in oklch, var(--ok) 6%, var(--surface-2)); }
     .consent p { margin: 4px 0 0; color: var(--text-2); font-size: 12.5px; line-height: 1.55; }
+    .consent.optional { margin-top: 10px; border-color: var(--line); background: var(--surface-2); }
     .small { font-size: 12px; }
     @media (max-width: 640px) { .limits { grid-template-columns: 1fr; } }
   `,
@@ -134,7 +139,9 @@ export class Authorize {
   protected readonly perDay = signal(3);
   protected readonly minScore = signal(85);
   protected readonly accepted = signal(false);
+  protected readonly declarations = signal(false);
   protected readonly text = signal('');
+  protected readonly declarationsText = signal('');
   protected readonly adapters = signal<Adapter[]>([]);
   protected readonly picked = signal<Set<string>>(new Set());
   protected readonly forms = computed(() => this.adapters().filter((a) => a.capabilities.includes('SubmitApplication')));
@@ -142,16 +149,17 @@ export class Authorize {
   protected readonly granting = command((body: object) => send('POST', `/campaigns/${this.campaign().id}/authorizations`, body), 'Envio automático autorizado.');
 
   constructor() {
-    void get<{ text: string }>('/authorizations/text').then((t) => this.text.set(t.text)).catch(() => undefined);
+    void get<{ text: string; declarations: string }>('/authorizations/text').then((t) => { this.text.set(t.text); this.declarationsText.set(t.declarations); }).catch(() => undefined);
     void get<Adapter[]>('/adapters').then((a) => { this.adapters.set(a); this.picked.set(new Set(a.filter((x) => x.capabilities.includes('SubmitApplication')).map((x) => x.id))); }).catch(() => undefined);
-    queueMicrotask(() => this.minScore.set(Math.max(this.campaign().minFitScore, 85)));
+    // Every job that passes the campaign's cut, up to the most a day allows: you narrow it here if you want fewer.
+    queueMicrotask(() => { this.minScore.set(this.campaign().minFitScore); this.perDay.set(this.maxCap()); });
   }
 
   protected toggle(id: string) { this.picked.update((p) => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n; }); }
   protected num(e: Event) { return +(e.target as HTMLInputElement).value; }
   protected async grant() {
     const all = this.forms().length === this.picked().size;
-    if ((await this.granting.run({ days: this.days(), maxPerDay: this.perDay(), minScore: this.minScore(), adapters: all ? [] : [...this.picked()], accepted: this.accepted() })) === null) return;
+    if ((await this.granting.run({ days: this.days(), maxPerDay: this.perDay(), minScore: this.minScore(), adapters: all ? [] : [...this.picked()], accepted: this.accepted(), acceptDeclarations: this.declarations() })) === null) return;
     this.changed.emit();
     this.step.set(4);
   }

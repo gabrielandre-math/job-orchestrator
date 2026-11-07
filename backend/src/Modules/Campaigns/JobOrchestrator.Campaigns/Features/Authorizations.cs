@@ -1,7 +1,8 @@
 namespace JobOrchestrator.Campaigns.Features;
 
-internal sealed record GrantInput(int Days, int MaxPerDay, int MinScore, string[]? Adapters, bool Accepted);
-internal sealed record AuthorizationItem(Guid Id, DateTime GrantedAt, DateTime ExpiresAt, int MaxPerDay, int MinScore, IReadOnlyList<string> Adapters, DateTime? RevokedAt, string Status);
+internal sealed record GrantInput(int Days, int MaxPerDay, int MinScore, string[]? Adapters, bool Accepted, bool AcceptDeclarations = false);
+internal sealed record AuthorizationItem(Guid Id, DateTime GrantedAt, DateTime ExpiresAt, int MaxPerDay, int MinScore, IReadOnlyList<string> Adapters, DateTime? RevokedAt, string Status,
+    bool AcceptDeclarations);
 
 /// <summary>
 /// Autorizações de envio automático. Só nascem por esta rota, com o texto aceito na tela; o arquivo de configuração não liga o automático.
@@ -12,16 +13,19 @@ internal sealed class AuthorizationEndpoints : ICarterModule
     public const string Text = "Autorizo o Job Orchestrator a enviar candidaturas sem me perguntar a cada vez, só nesta campanha, só para vagas com a nota mínima abaixo, " +
         "só pelos adapters escolhidos, até o teto diário e até a data de validade. Cada envio passa pelo Guardião e fica registrado com evidência. Posso revogar a qualquer momento.";
 
+    /// <summary>What the person also accepts when the declarations box is ticked; it is stored with the authorization's text.</summary>
+    public const string DeclarationsText = " Aceito em meu nome as declarações de privacidade, tratamento de dados pessoais e termos que os formulários pedem para a candidatura.";
+
     public void AddRoutes(IEndpointRouteBuilder app)
     {
         var g = app.MapGroup("/api/campaigns/{id:guid}/authorizations").WithTags("Campaigns");
-        app.MapGet("/api/authorizations/text", () => Results.Ok(new { text = Text })).WithTags("Campaigns");
+        app.MapGet("/api/authorizations/text", () => Results.Ok(new { text = Text, declarations = DeclarationsText.Trim() })).WithTags("Campaigns");
         g.MapGet("", async (Guid id, CampaignsDbContext db, TimeProvider time, CancellationToken ct) =>
         {
             var now = time.GetUtcNow().UtcDateTime;
             return Results.Ok((await db.Authorizations.AsNoTracking().Where(a => a.CampaignId == id).OrderByDescending(a => a.GrantedAt).Take(20).ToListAsync(ct))
                 .Select(a => new AuthorizationItem(a.Id, a.GrantedAt, a.ExpiresAt, a.MaxPerDay, a.MinScore, a.Adapters, a.RevokedAt,
-                    a.RevokedAt is not null ? "revogada" : a.ExpiresAt <= now ? "vencida" : "ativa")));
+                    a.RevokedAt is not null ? "revogada" : a.ExpiresAt <= now ? "vencida" : "ativa", a.AcceptDeclarations)));
         });
         g.MapPost("", async (Guid id, GrantInput body, CampaignsDbContext db, TimeProvider time, CancellationToken ct) =>
         {
@@ -36,7 +40,8 @@ internal sealed class AuthorizationEndpoints : ICarterModule
             var auth = new SubmitAuthorization
             {
                 CampaignId = id, GrantedAt = now, ExpiresAt = now.AddDays(body.Days), MaxPerDay = body.MaxPerDay, MinScore = body.MinScore,
-                Adapters = [.. (body.Adapters ?? []).Where(a => a.Length > 0).Distinct()], Text = Text,
+                Adapters = [.. (body.Adapters ?? []).Where(a => a.Length > 0).Distinct()], AcceptDeclarations = body.AcceptDeclarations,
+                Text = body.AcceptDeclarations ? Text + DeclarationsText : Text,
             };
             db.Authorizations.Add(auth);
             campaign.EnableAuto(auth, now);

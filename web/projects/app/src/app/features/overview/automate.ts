@@ -55,7 +55,9 @@ export class Automate {
   protected readonly perDay = signal(3);
   protected readonly minScore = signal(85);
   protected readonly accepted = signal(false);
+  protected readonly declarations = signal(false);
   protected readonly authText = signal('');
+  protected readonly declarationsText = signal('');
 
   protected readonly searchOn = signal(true);
   protected readonly searchEvery = signal(60);
@@ -106,7 +108,7 @@ export class Automate {
   });
 
   constructor() {
-    void get<{ text: string }>('/authorizations/text').then((t) => this.authText.set(t.text)).catch(() => undefined);
+    void get<{ text: string; declarations: string }>('/authorizations/text').then((t) => { this.authText.set(t.text); this.declarationsText.set(t.declarations); }).catch(() => undefined);
     void get<{ text: string }>('/mail/consent').then((t) => this.mailConsentText.set(t.text)).catch(() => undefined);
     void this.load(true);
   }
@@ -128,8 +130,9 @@ export class Automate {
       }
       if (c) {
         this.sendMode.set(c.mode === 'AutoSubmit' ? 'AutoSubmit' : c.mode === 'DiscoveryOnly' ? 'ReviewRequired' : 'ReviewRequired');
-        this.minScore.set(Math.max(c.minFitScore, 85));
-        this.perDay.set(Math.min(3, this.maxCap()));
+        // Every job that passes the campaign's cut, up to the most a day allows: you narrow it here if you want fewer.
+        this.minScore.set(c.minFitScore);
+        this.perDay.set(this.maxCap());
       }
       if (e) { this.explorerOn.set(e.enabled); this.explorerEvery.set(e.intervalMinutes); this.searchEvery.set(e.searchIntervalMinutes); }
       this.nightOn.set(this.nightAll() || !!u?.available);
@@ -189,7 +192,7 @@ export class Automate {
         if (!c) return true;
         if (this.sendMode() === 'AutoSubmit') {
           if (this.active()) return c.mode === 'AutoSubmit' || (await this.putCampaign(c, { mode: 'AutoSubmit' }));
-          return (await this.granting.run({ id: c.id, body: { days: this.days(), maxPerDay: this.perDay(), minScore: this.minScore(), adapters: [], accepted: this.accepted() } })) !== null;
+          return (await this.granting.run({ id: c.id, body: { days: this.days(), maxPerDay: this.perDay(), minScore: this.minScore(), adapters: [], accepted: this.accepted(), acceptDeclarations: this.declarations() } })) !== null;
         }
         return c.mode === this.sendMode() || (await this.putCampaign(c, { mode: this.sendMode() }));
       }

@@ -5,8 +5,11 @@ namespace JobOrchestrator.Campaigns.Contracts;
 /// <summary>Até onde a campanha pode ir sozinha. O envio automático só existe com autorização dada no painel.</summary>
 public enum SubmissionMode { DiscoveryOnly, PrepareOnly, ReviewRequired, AutoSubmit }
 
-/// <summary>Autorização de envio automático dada na tela: validade, teto por dia, nota mínima e quais adapters podem enviar (vazio = todos com envio testado).</summary>
-public sealed record SubmitAuthorizationView(Guid Id, DateTime GrantedAt, DateTime ExpiresAt, int MaxPerDay, int MinScore, IReadOnlyList<string> Adapters)
+/// <summary>
+/// Autorização de envio automático dada na tela: validade, teto por dia, nota mínima e quais adapters podem enviar (vazio = todos com
+/// envio testado). AcceptDeclarations: you also accept, in your name, the privacy, data processing and terms boxes forms require.
+/// </summary>
+public sealed record SubmitAuthorizationView(Guid Id, DateTime GrantedAt, DateTime ExpiresAt, int MaxPerDay, int MinScore, IReadOnlyList<string> Adapters, bool AcceptDeclarations = false)
 {
     public bool ValidAt(DateTime now) => now < ExpiresAt;
     public bool Allows(string? adapterId) => Adapters.Count == 0 || adapterId is not null && Adapters.Contains(adapterId);

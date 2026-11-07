@@ -209,6 +209,10 @@ namespace JobOrchestrator.Campaigns.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<bool>("AcceptDeclarations")
+                        .HasColumnType("boolean")
+                        .HasColumnName("accept_declarations");
+
                     b.PrimitiveCollection<List<string>>("Adapters")
                         .IsRequired()
                         .HasColumnType("text[]")

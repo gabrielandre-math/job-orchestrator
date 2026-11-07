@@ -31,6 +31,7 @@ input[type="range"] { padding: 0; height: 20px; accent-color: var(--accent); bor
 .consent.on { border-color: color-mix(in oklch, var(--ok) 50%, var(--line)); background: color-mix(in oklch, var(--ok) 6%, var(--surface-2)); }
 .consent input { width: auto; height: auto; margin-top: 3px; }
 .consent p { margin: 4px 0 0; color: var(--text-2); font-size: 12.5px; line-height: 1.55; }
+.consent.optional { margin-top: 10px; border-color: var(--line); background: var(--surface-2); }
 .opts { display: grid; gap: 10px; }
 .opt { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 14px; border-radius: 6px; border: 1px solid var(--line-strong); background: var(--surface-2); }
 .opt select { width: auto; min-width: 150px; }

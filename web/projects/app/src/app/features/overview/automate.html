@@ -137,6 +137,10 @@
               <input type="checkbox" [checked]="accepted()" (change)="accepted.set($any($event.target).checked)" />
               <span><strong>Autorizo</strong><p>{{ authText() }}</p></span>
             </label>
+            <label class="consent optional" [class.on]="declarations()">
+              <input type="checkbox" [checked]="declarations()" (change)="declarations.set($any($event.target).checked)" />
+              <span><strong>Aceito as declarações</strong><p>{{ declarationsText() }} Sem isto, o formulário que pede essa caixa fica com você.</p></span>
+            </label>
           }
         }
         @if (granting.problem() ?? saving.problem(); as p) { <p class="problem">{{ p.detail }}</p> }
