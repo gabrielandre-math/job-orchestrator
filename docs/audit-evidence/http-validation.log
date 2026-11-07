@@ -1,0 +1,5 @@
+HTTP smoke passou: migrações, vaga sanitizada, nota preservada, política local, entrevista por etapa, currículo vinculado, feedback e simulação.
+Additional live source probes: [('inhire:somosed', True, 4), ('workable-search:asp.net core', True, 60), ('workday:accenture.wd103.myworkdayjobs.com/AvanadeCareers', True, 20), ('quickin:igma', True, 3)]
+SMTP delivered to local collector; missing attachment silently omitted
+CRASH REPRO: accepted message sent twice after restart, with different Message-ID
+WIPE REPRO: HTTP 500 and interview data still present

@@ -1,0 +1,34 @@
+{
+  "smtp": "real TLS SMTP connection to local fixture only",
+  "syntheticKeyring": true,
+  "mailbox": [
+    {
+      "subject": "Audit message 1",
+      "to": "recruiter@example.test",
+      "messageId": "<6S61S0IJRUU4.4SVDC65X3X9T1@example.test>",
+      "attachments": 0
+    },
+    {
+      "subject": "Audit message 2",
+      "to": "recruiter@example.test",
+      "messageId": "<DQORS0IJRUU4.PG7K4EM6HQ5Q3@example.test>",
+      "attachments": 0
+    },
+    {
+      "subject": "Audit message 2",
+      "to": "recruiter@example.test",
+      "messageId": "<OG2Y91IJRUU4.Y0DDAC4HXR4O1@example.test>",
+      "attachments": 0
+    },
+    {
+      "subject": "Audit message 3",
+      "to": "recruiter@example.test",
+      "messageId": "<6QHNA1IJRUU4.OLWTDO0Z2LFA1@example.test>",
+      "attachments": 0
+    }
+  ],
+  "crashSecondMessageAcceptedTwice": true,
+  "missingAttachmentSent": true,
+  "wipeStatus": 500,
+  "wipeInterviewRowsRemaining": 2
+}
