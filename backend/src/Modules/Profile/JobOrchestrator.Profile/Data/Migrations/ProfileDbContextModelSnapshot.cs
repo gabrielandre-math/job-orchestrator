@@ -225,6 +225,10 @@ namespace JobOrchestrator.Profile.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("profile_id");
 
+                    b.Property<bool>("ReplacesProfile")
+                        .HasColumnType("boolean")
+                        .HasColumnName("replaces_profile");
+
                     b.Property<string>("Sha256")
                         .IsRequired()
                         .HasMaxLength(64)

@@ -123,9 +123,9 @@ export class AssistantPage {
     if (!file) return;
     this.reading.set(true);
     try {
+      // The old profile is swapped on the server only after the new file is read without error.
       const before = await get<Profile>('/profile');
-      if (before.facts.length > 0) await send('DELETE', '/profile');
-      await upload('/profile/documents', file);
+      await upload(`/profile/documents${before.facts.length > 0 ? '?replace=true' : ''}`, file);
       for (let i = 0; i < 120; i++) {
         await new Promise((r) => setTimeout(r, 1500));
         const p = await get<Profile>('/profile');
@@ -133,7 +133,7 @@ export class AssistantPage {
         if (d?.status === 'Ready') { this.reading.set(false); await this.ask(`Enviei o meu currículo (${file.name}). Leia o meu perfil e proponha a minha busca: palavras-chave, locais e fontes.`); return; }
         if (d?.status === 'Failed') break;
       }
-      this.bubbles.update((b) => [...b, { id: crypto.randomUUID(), role: 'error', text: 'Não deu para ler o currículo. Tente PDF, DOCX ou TXT.', html: '', actions: [], model: null, provider: null, rung: null, escalatedFrom: null, seconds: null, compare: false }]);
+      this.bubbles.update((b) => [...b, { id: crypto.randomUUID(), role: 'error', text: 'Não foi possível ler o currículo. O perfil anterior continua como estava. Tente PDF, DOCX ou TXT.', html: '', actions: [], model: null, provider: null, rung: null, escalatedFrom: null, seconds: null, compare: false }]);
     } catch { /* o aviso de erro vem do toast */ }
     this.reading.set(false);
   }

@@ -28,6 +28,10 @@ internal sealed class SourceDocument
     public string? ExtractedBy { get; private set; }
     public DateTime ImportedAt { get; private set; }
     public DateTime? ExtractedAt { get; private set; }
+    /// <summary>Sent to replace the whole profile: the swap happens only once this document has been read without error.</summary>
+    public bool ReplacesProfile { get; private set; }
+
+    internal void MarkReplacement() => ReplacesProfile = true;
 
     internal static SourceDocument Create(Guid profileId, string fileName, string kind, string sha256, string path, string text, int pages, DateTime now) =>
         new() { Id = Guid.CreateVersion7(), ProfileId = profileId, FileName = fileName, Kind = kind, Sha256 = sha256, StoredPath = path, Text = text, Pages = pages, Status = DocumentStatus.Stored, ImportedAt = now };
@@ -222,6 +226,24 @@ internal sealed class CandidateProfile : AggregateRoot
         doc.Ready(by, now);
         Status = Pending ? ProfileStatus.NeedsConfirmation : ProfileStatus.Ready;
         Touch(now);
+    }
+
+    /// <summary>
+    /// A document sent to replace the profile was read: the other documents, every fact, the personal data and the confirmations go,
+    /// so two people never mix. Called only after a successful reading, never before, so a bad file leaves the old profile as it was.
+    /// Returns the files of the documents that left.
+    /// </summary>
+    public IReadOnlyList<string> Supersede(SourceDocument doc, DateTime now)
+    {
+        var others = _documents.Where(d => d.Id != doc.Id).ToList();
+        _documents.RemoveAll(others.Contains);
+        _facts.Clear();
+        FullName = "";
+        Email = Phone = Location = LinkedIn = GitHub = Website = null;
+        ConfirmationsJson = "{}";
+        ConfirmedAt = null;
+        Touch(now);
+        return [.. others.Select(d => d.StoredPath)];
     }
 
     public void ExtractionFailed(SourceDocument doc, string error, DateTime now)

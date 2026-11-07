@@ -53,8 +53,7 @@ export class Welcome {
   protected readonly icons = AGENT_ICON;
   protected readonly describe = describeSource;
 
-  protected readonly importing = command((f: File) => upload<unknown>('/profile/documents', f));
-  protected readonly resetting = command((_: void) => send('DELETE', '/profile'));
+  protected readonly importing = command((x: { file: File; replace: boolean }) => upload<unknown>(`/profile/documents${x.replace ? '?replace=true' : ''}`, x.file));
   protected readonly proposing = command((_: void) => send<SetupProposal>('POST', '/assistant/setup'));
   protected readonly applying = command(async (_: void) => {
     const campaigns = await get<Campaign[]>('/campaigns');
@@ -93,19 +92,24 @@ export class Welcome {
     if (f) await this.read(f);
   }
 
-  /** Um currículo novo substitui o perfil inteiro (o de teste ou o antigo), para nunca misturar duas pessoas. */
+  /**
+   * Um currículo novo substitui o perfil inteiro (o de teste ou o antigo), para nunca misturar duas pessoas. A troca acontece no servidor
+   * só depois que o arquivo novo foi lido sem erro: um arquivo ruim deixa o perfil anterior como estava.
+   */
   private async read(file: File) {
-    if (this.profile()?.facts.length) await this.resetting.run();
-    if ((await this.importing.run(file)) === null) return;
+    if ((await this.importing.run({ file, replace: !!this.profile()?.facts.length })) === null) return;
     this.reading.set(true);
-    for (let i = 0; i < 120; i++) {
-      await new Promise((r) => setTimeout(r, 1500));
-      const p = await get<Profile>('/profile');
-      this.profile.set(p);
-      const d = p.documents.at(-1);
-      if (d && (d.status === 'Ready' || d.status === 'Failed')) break;
+    try {
+      for (let i = 0; i < 120; i++) {
+        await new Promise((r) => setTimeout(r, 1500));
+        const p = await get<Profile>('/profile');
+        this.profile.set(p);
+        const d = p.documents.at(-1);
+        if (d && (d.status === 'Ready' || d.status === 'Failed')) break;
+      }
+    } finally {
+      this.reading.set(false);
     }
-    this.reading.set(false);
   }
 
   protected async propose() {

@@ -10,7 +10,7 @@ internal sealed record ImportedView(Guid DocumentId, string Status, int Pages);
 /// Comando: guarda o CV (ou o export do LinkedIn) no diretório de dados, tira o texto e pede a leitura ao Worker.
 /// O mesmo arquivo de novo não duplica nada.
 /// </summary>
-internal sealed record ImportDocumentCommand(string FileName, byte[] Content) : ICommand<ImportedView>, IProfileCommand;
+internal sealed record ImportDocumentCommand(string FileName, byte[] Content, bool Replace = false) : ICommand<ImportedView>, IProfileCommand;
 
 internal sealed class ImportDocumentValidator : AbstractValidator<ImportDocumentCommand>
 {
@@ -53,6 +53,7 @@ internal sealed class ImportDocumentHandler(ProfileDbContext db, TimeProvider ti
         }
         var known = profile.Documents.Any(d => d.Sha256 == sha);
         var doc = profile.AddDocument(Path.GetFileName(c.FileName), text.Kind, sha, path, text.Text, text.Pages, now);
+        if (c.Replace && profile.Documents.Count > 1) doc.MarkReplacement();
         if (!known || doc.Status == DocumentStatus.Failed)
         {
             profile.Extracting(doc);
@@ -104,6 +105,7 @@ internal sealed class DocumentImportedConsumer(ProfileDbContext db, IIntelligenc
 
         var thread = AgentThread.New("profile", $"Leitura de {doc.FileName}");
         var now = time.GetUtcNow().UtcDateTime;
+        IReadOnlyList<string> superseded = [];
         try
         {
             if (doc.Kind == "linkedin")
@@ -112,6 +114,7 @@ internal sealed class DocumentImportedConsumer(ProfileDbContext db, IIntelligenc
                 var (facts, found) = LinkedInFacts.Map(text.Tables!, profile.Id, doc.Id, now);
                 await ai.NoteAsync(thread, "Leitor", $"Li o export do LinkedIn: {Count(facts, "experience")} experiências, {Count(facts, "education")} formações e {Count(facts, "skill")} skills",
                     "Cada linha dos CSVs já é estruturada, então os fatos saem verificados, sem IA, com a evidência arquivo e linha.", "Conferente", true, ct);
+                superseded = doc.ReplacesProfile ? profile.Supersede(doc, now) : [];
                 profile.ReplaceFacts(doc, facts, found, "export do LinkedIn (sem IA)", now);
                 await ai.NoteAsync(thread, "Conferente", $"{facts.Count} fatos verificados", null, "Você", true, ct);
             }
@@ -129,6 +132,7 @@ internal sealed class DocumentImportedConsumer(ProfileDbContext db, IIntelligenc
                 }
                 else
                 {
+                    superseded = doc.ReplacesProfile ? profile.Supersede(doc, time.GetUtcNow().UtcDateTime) : [];
                     profile.ReplaceFacts(doc, extraction.Facts, extraction.Found, extraction.By, time.GetUtcNow().UtcDateTime);
                     var pending = extraction.Facts.Where(f => f.Status == FactStatus.Inferred).ToList();
                     await ai.NoteAsync(thread, "Conferente",
@@ -138,6 +142,8 @@ internal sealed class DocumentImportedConsumer(ProfileDbContext db, IIntelligenc
                 }
             }
             await db.SaveChangesAsync(ct);
+            foreach (var file in superseded)
+                try { if (File.Exists(file)) File.Delete(file); } catch (IOException) { /* goes with the next cleanup */ }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

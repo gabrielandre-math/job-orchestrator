@@ -193,11 +193,11 @@ internal sealed class ProfileEndpoints : ICarterModule
     {
         var group = app.MapGroup("/api/profile").WithTags("Profile");
         group.MapGet("", async (ISender sender, CancellationToken ct) => (await sender.Send(new GetProfileQuery(), ct)).ToHttp(Results.Ok));
-        group.MapPost("documents", async (IFormFile file, ISender sender, CancellationToken ct) =>
+        group.MapPost("documents", async (IFormFile file, bool? replace, ISender sender, CancellationToken ct) =>
         {
             using var buffer = new MemoryStream();
             await file.CopyToAsync(buffer, ct);
-            return (await sender.Send(new ImportDocumentCommand(file.FileName, buffer.ToArray()), ct)).ToHttp(v => Results.Accepted(value: v));
+            return (await sender.Send(new ImportDocumentCommand(file.FileName, buffer.ToArray(), replace == true), ct)).ToHttp(v => Results.Accepted(value: v));
         }).DisableAntiforgery();
         group.MapPost("documents/{id:guid}/retry", async (Guid id, ISender sender, CancellationToken ct) =>
             (await sender.Send(new RetryDocumentCommand(id), ct)).ToHttp(_ => Results.Accepted()));
