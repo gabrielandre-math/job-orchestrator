@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Job Orchestrator: find jobs using your own GPU</title>
-  <meta name="description" content="Self-hosted job search with a local AI model. It finds openings, scores them against your CV, writes a résumé per job from your own facts and applies only with your OK.">
+  <meta name="description" content="Self-hosted job search with your own AI models. It finds openings, writes a résumé per job from your facts, fills the application forms and sends them within the limits you set.">
   <meta name="theme-color" content="#141414">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <meta property="og:type" content="website">
@@ -33,6 +33,7 @@
         <span>Job Orchestrator</span>
       </a>
       <nav class="links" aria-label="Sections">
+        <a href="#answers" data-i18n="nav.forms">Forms</a>
         <a href="#how" data-i18n="nav.how">How it works</a>
         <a href="#self-hosted" data-i18n="nav.self">Self-hosted</a>
         <a href="#recruiters"><span data-i18n="nav.recruiters">Recruiters</span> <em data-i18n="soon.short">soon</em></a>
@@ -56,7 +57,7 @@
     <section class="hero" id="top">
       <div class="hero-copy">
         <h1 class="h1"><span data-i18n="hero.l1">Find jobs using</span><br><span class="accent" data-i18n="hero.l2">your own GPU.</span></h1>
-        <p class="lead" data-i18n="hero.lead">A local app that reads job boards and career pages, scores every opening against your CV with a model on your GPU and prepares each application for you to approve.</p>
+        <p class="lead" data-i18n="hero.lead">A local app that finds openings, writes a résumé for each one from your own facts, fills the application form with your AI models and sends it within the limits you set.</p>
         <div class="cta">
           <a class="btn primary" id="hero-download" href="#download">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 19h16"/></svg>
@@ -66,9 +67,11 @@
         </div>
         <p class="hero-meta" data-i18n-html="hero.meta">Version <span data-version>1.0.4</span> for Linux, macOS and Windows. Free for personal use.</p>
       </div>
-      <figure class="hero-art">
-        <div id="hero-art" aria-hidden="true"></div>
-        <figcaption data-i18n="hero.run">Counts from a real run on the author's machine.</figcaption>
+      <figure class="hero-story">
+        <div class="board" id="board" aria-hidden="true"></div>
+        <div class="rail" id="rail" role="group" aria-label="How it works, step by step"></div>
+        <p class="story-text" id="story-text"></p>
+        <figcaption data-i18n="hero.cap">Fictional companies. The counts come from a real run on the author's machine.</figcaption>
       </figure>
     </section>
 
@@ -82,8 +85,8 @@
         <p data-i18n="p2.d">CV, profile, résumés and history live in your user folder. The panel only listens on 127.0.0.1.</p>
       </div>
       <div class="pillar">
-        <h3 data-i18n="p3.t">Nothing goes out without you</h3>
-        <p data-i18n="p3.d">Every application waits for your approval or an authorization you set, with a daily cap and a time window.</p>
+        <h3 data-i18n="p3.t">Your rules, your numbers</h3>
+        <p data-i18n="p3.d">Applications go out under an authorization you give: the minimum score, the daily limit and the end date are yours to set, and one click revokes it.</p>
       </div>
     </section>
 
@@ -100,6 +103,34 @@
         <div><dt data-i18n="s3">countries and territories mapped</dt><dd data-count="249">249</dd></div>
         <div><dt data-i18n="s4">accounts, servers or trackers</dt><dd>0</dd></div>
       </dl>
+    </section>
+
+    <section class="section answers" id="answers">
+      <p class="eyebrow" data-i18n="ans.e">Forms</p>
+      <h2 class="h2" data-i18n="ans.t">Every question gets an answer with a source.</h2>
+      <p class="lead sm" data-i18n="ans.lead">Greenhouse, Lever, Ashby, Workable and SmartRecruiters forms, and the open forms of any career site without a login, are filled field by field. Each answer comes from one of three places, in this order.</p>
+      <figure class="ans-form">
+        <div class="apply" id="apply" aria-hidden="true"></div>
+        <figcaption data-i18n="ans.cap">Each value shows where it came from: your profile, your models or your own answer.</figcaption>
+      </figure>
+      <div class="ans-grid">
+        <article>
+          <span class="ans-n">01</span>
+          <h3 data-i18n="a1.t">Your profile</h3>
+          <p data-i18n="a1.d">Name, contact, the résumé written for the job, the salary floor of each contract and currency, and the years with each technology counted from the dates of your jobs.</p>
+        </article>
+        <article>
+          <span class="ans-n">02</span>
+          <h3 data-i18n="a2.t">Your models, in turn</h3>
+          <p data-i18n="a2.d">Open questions and choices go to the local model first. What it gets wrong goes to ChatGPT, then to Claude, each one told why the last answer was refused. A written answer that names a tool, a company or a number your profile does not have is refused.</p>
+          <ol class="ladder-mini" aria-label="Llama, then ChatGPT, then Claude"><li>Llama</li><li>ChatGPT</li><li>Claude</li></ol>
+        </article>
+        <article>
+          <span class="ans-n">03</span>
+          <h3 data-i18n="a3.t">You, once</h3>
+          <p data-i18n="a3.d">What only you know, such as your birth date, your current pay or a privacy box, is asked in one window. The answer stays on this machine, never reaches a model, and every form that asks again gets it.</p>
+        </article>
+      </div>
     </section>
 
     <section class="section how" id="how">
@@ -126,7 +157,7 @@
             <li class="step" data-station="guardian">
               <div class="step-mini" aria-hidden="true"></div>
               <span class="step-n">04</span>
-              <div><h3 data-i18n="st4.t">Apply, with your OK</h3><p data-i18n="st4.d">Forms are filled in a real browser, with a rehearsal that stops before the submit button. Nothing goes out without your approval or an authorization you set, and CAPTCHAs and logins are handed to you.</p></div>
+              <div><h3 data-i18n="st4.t">Apply, within your rules</h3><p data-i18n="st4.d">Forms are filled in a real browser and sent under your authorization, with the score, the daily limit and the end date you chose. Every send waits for the site's confirmation; one the app cannot confirm is asked to you. CAPTCHAs and logins stay with you.</p></div>
             </li>
             <li class="step" data-station="inbox">
               <div class="step-mini" aria-hidden="true"></div>
@@ -153,7 +184,7 @@
           <li data-i18n="self.b1">A private PostgreSQL that the installer downloads, about 60 MB, with no Docker needed.</li>
           <li data-i18n-html="self.b2">Your data lives in <code>~/.local/share/job-orchestrator</code>, <code>~/Library/Application Support/JobOrchestrator</code> or <code>%LOCALAPPDATA%\JobOrchestrator</code>.</li>
           <li data-i18n="self.b3">API keys go to the system keyring, never to a file.</li>
-          <li data-i18n="self.b4">Claude Code or the Codex CLI can help with the heavier writing, with a reserve that protects the quota you need for your own work.</li>
+          <li data-i18n="self.b4">Claude Code or the Codex CLI step in where the local model falls short, for the heavier writing and the form answers it gets wrong, with a reserve that protects the quota you need for your own work.</li>
           <li data-i18n="self.b5">No telemetry. What leaves the computer is what a source needs to answer and the applications you approve.</li>
         </ul>
       </div>
@@ -191,6 +222,7 @@
         <button role="tab" aria-selected="true" data-tab="jobs" data-i18n="scr.jobs">Jobs</button>
         <button role="tab" aria-selected="false" data-tab="live-map" data-i18n="scr.map">Live map</button>
         <button role="tab" aria-selected="false" data-tab="coverage" data-i18n="scr.cov">Coverage</button>
+        <button role="tab" aria-selected="false" data-tab="questions" data-i18n="scr.q">Questions</button>
       </div>
       <figure class="screen-stage">
         <div class="screen on" data-screen="jobs">
@@ -205,11 +237,16 @@
           <img class="t-dark" src="assets/screen-coverage-dark.webp" width="1440" height="900" loading="lazy" alt="">
           <img class="t-light" src="assets/screen-coverage-light.webp" width="1440" height="900" loading="lazy" alt="">
         </div>
+        <div class="screen" data-screen="questions">
+          <img class="t-dark" src="assets/screen-questions-dark.webp" width="1440" height="900" loading="lazy" alt="">
+          <img class="t-light" src="assets/screen-questions-light.webp" width="1440" height="900" loading="lazy" alt="">
+        </div>
       </figure>
       <figcaption class="screen-cap">
         <p data-cap="jobs" class="on" data-i18n="cap.jobs">Open jobs, the funnel from found to queued, jobs per source and the tools employers ask for most.</p>
         <p data-cap="live-map" data-i18n="cap.map">Every agent and what passes between them, updated while the search runs.</p>
         <p data-cap="coverage" data-i18n="cap.cov">249 countries and territories: where a source works, where jobs show up and what is still unchecked.</p>
+        <p data-cap="questions" data-i18n="cap.q">What only you can answer, asked once, with how many applications wait for each answer. The answers stay on your machine.</p>
         <p class="dim sm" data-i18n="scr.note">The interface is in Brazilian Portuguese. Résumés and answers come out in Portuguese for jobs in Brazil and in English everywhere else.</p>
       </figcaption>
     </section>
@@ -327,7 +364,7 @@ job-orchestrator --uninstall   <span class="c"># removes the app and keeps your 
         <div><h3 data-i18n="h1.t">Backend</h3><p data-i18n="h1.d">.NET 10, a modular monolith in vertical slices with DDD and CQRS, an outbox and an inbox for events, Carter endpoints and Dapper over PostgreSQL.</p></div>
         <div><h3 data-i18n="h2.t">Panel</h3><p data-i18n="h2.d">Angular 22 with signals. The live map is a hand-drawn SVG canvas, and every isometric icon comes from one shared geometry.</p></div>
         <div><h3 data-i18n="h3.t">Collection</h3><p data-i18n="h3.d">Official APIs first, Scrapy spiders for career pages and a Playwright browser pool for pages that need JavaScript and for forms.</p></div>
-        <div><h3 data-i18n="h4.t">Tests</h3><p data-i18n="h4.d">Unit and end-to-end suites against a fake ATS, plus chaos tests that kill the process around the submit click.</p></div>
+        <div><h3 data-i18n="h4.t">Tests and releases</h3><p data-i18n="h4.d">Unit and end-to-end suites against a fake ATS, chaos tests that kill the process around the submit click and a night rehearsal of hours. Each release is built by GitHub Actions from the tested commit, with its SHA-256 and source revision.</p></div>
       </div>
     </section>
 
@@ -362,7 +399,6 @@ job-orchestrator --uninstall   <span class="c"># removes the app and keeps your 
 
   <script src="vendor/gsap/gsap.min.js" defer></script>
   <script src="vendor/gsap/ScrollTrigger.min.js" defer></script>
-  <script src="vendor/gsap/MotionPathPlugin.min.js" defer></script>
   <script src="vendor/gsap/DrawSVGPlugin.min.js" defer></script>
   <script type="module" src="js/site.js"></script>
 </body>
