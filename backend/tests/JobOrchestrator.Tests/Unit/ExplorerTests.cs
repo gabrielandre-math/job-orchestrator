@@ -154,5 +154,14 @@ public sealed class CopilotMatchTests
         Assert.True(right > other && other > 0);
         Assert.Equal(0, JobOrchestrator.Applications.Features.CopilotMatch.Score("https://jobs.lever.co/acme/123", page));
     }
-}
 
+    [Fact]
+    public void Structured_data_keeps_the_end_date_of_the_ad()
+    {
+        const string json = """
+            {"@type":"JobPosting","title":"Desenvolvedor .NET","hiringOrganization":"Acme","datePosted":"2020-01-10","validThrough":"2020-02-10T23:59:00Z","url":"https://acme.com.br/vagas/1"}
+            """;
+        var p = Assert.Single(JobOrchestrator.Automation.Adapters.PageReader.JobPostings("web:acme.com.br", "https://acme.com.br/vagas", json));
+        Assert.Equal(new DateTime(2020, 2, 10, 23, 59, 0, DateTimeKind.Utc), p.ValidThrough);
+    }
+}

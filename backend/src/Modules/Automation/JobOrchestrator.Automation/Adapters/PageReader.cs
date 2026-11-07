@@ -211,7 +211,7 @@ internal sealed partial class PageReader(IOptions<AutomationOptions> options, IH
             var employment = j.TryGetProperty("employmentType", out var e) ? e.ValueKind == JsonValueKind.Array ? string.Join(", ", e.EnumerateArray().Select(x => x.GetString())) : e.GetString() : null;
             yield return new DiscoveredPosting(source, ScrapyRunner.Hash(url + title), org.Length > 0 ? org : ScrapyRunner.Host(pageUrl), title, Place(j), url, Json.Plain(j.Str("description")),
                 j.Date("datePosted"), $"{{\"page\":{JsonSerializer.Serialize(pageUrl)},\"jsonld\":{j.GetRawText()}}}", Workplace: remote ? "remote" : null,
-                Employment: employment is { Length: > 0 } ? employment : null, ListedAsOpen: true, DescriptionMarkup: j.Str("description"));
+                Employment: employment is { Length: > 0 } ? employment : null, ListedAsOpen: true, DescriptionMarkup: j.Str("description"), ValidThrough: j.Date("validThrough"));
         }
     }
 

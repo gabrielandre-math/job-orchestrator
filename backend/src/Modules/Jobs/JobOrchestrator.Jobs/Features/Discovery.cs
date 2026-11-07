@@ -48,7 +48,9 @@ internal sealed class RunRequestedConsumer(
                     // Sem nenhuma palavra essencial da campanha, a vaga nem entra: boards grandes têm centenas de vagas de outras áreas.
                     if (!Scoring.Relevant(campaign, p.Title, p.Description)) { ignored++; continue; }
                     kept++;
-                    found.Add((p, p.ListedAsOpen ? new PostingStatus(true, "Listada agora pela API oficial.") : await automation.CheckOpenAsync(p.ApplyUrl, ct)));
+                    // A page that still shows an ad whose structured data says it ended does not keep it open.
+                    found.Add((p, p.ValidThrough is { } until && until < time.GetUtcNow().UtcDateTime ? new PostingStatus(false, $"O anúncio venceu em {until:dd/MM/yyyy}, pelo dado estruturado da página.")
+                        : p.ListedAsOpen ? new PostingStatus(true, "Listada agora pela API oficial.") : await automation.CheckOpenAsync(p.ApplyUrl, ct)));
                 }
                 health.Remove(source);
                 await SayAsync(thread, "Batedor", $"{Label(source)}: {listed} {(listed == 1 ? "vaga" : "vagas")}, {kept} da sua área", null,
