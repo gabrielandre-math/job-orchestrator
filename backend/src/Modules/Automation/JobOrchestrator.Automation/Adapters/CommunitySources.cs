@@ -37,11 +37,35 @@ internal sealed partial class GitHubIssuesSource(IHttpClientFactory http) : Publ
         var company = CompanyOf(clean) ?? (fromBody.Success ? fromBody.Groups[1].Value.Trim() : $"Vaga em {repo}");
         var role = CompanyOf(clean) is { } found ? RoleTail().Replace(clean[..clean.LastIndexOf(found, StringComparison.Ordinal)], "").Trim() : clean;
         var location = string.Join(", ", tags.Concat(labels).Where(t => Place().IsMatch(t)).Distinct(StringComparer.OrdinalIgnoreCase));
-        var link = Links().Matches(body).Select(m => m.Value.TrimEnd(')', '.', ',')).FirstOrDefault(u => !u.Contains("github.com", StringComparison.OrdinalIgnoreCase));
-        var email = Emails().Match(body) is { Success: true } e ? e.Value : null;
+        var (email, link) = ApplyContact(body);
         return new DiscoveredPosting(source, issue.GetProperty("number").ToString(), company, role.Length > 0 ? role : clean, location,
             link ?? issue.Str("html_url"), $"{title}\n{string.Join(", ", labels)}\n{body}", issue.Date("updated_at"), issue.GetRawText(),
             Workplace: tags.Concat(labels).FirstOrDefault(t => Remote().IsMatch(t)), Employment: labels.FirstOrDefault(t => Contract().IsMatch(t)), ApplyEmail: email, ListedAsOpen: true);
+    }
+
+    /// <summary>
+    /// The address and link to apply, taken from the part of the text that says how to apply ("Como se candidatar", "How to apply") or,
+    /// without such a section, from lines that talk about applying. The first address or link of a posting is often privacy, support or
+    /// the company page, so without that context there is no apply address (no automatic e-mail) and the link stays the issue itself.
+    /// </summary>
+    internal static (string? Email, string? Link) ApplyContact(string body)
+    {
+        var section = ApplySection(body);
+        var text = section ?? string.Join("\n", body.Split('\n').Where(l => ApplyWords().IsMatch(l)));
+        var email = Emails().Matches(text).Select(m => m.Value).FirstOrDefault(e => !NotForApplying().IsMatch(e));
+        // Inside "how to apply" any link counts; on a loose line only one that looks like an application (an ATS, a form, a jobs page).
+        var link = Links().Matches(text).Select(m => m.Value.TrimEnd(')', '.', ','))
+            .FirstOrDefault(u => !u.Contains("github.com", StringComparison.OrdinalIgnoreCase) && (section is not null || ApplyLink().IsMatch(u)));
+        return (email, link);
+    }
+
+    private static string? ApplySection(string body)
+    {
+        var heading = ApplyHeading().Match(body);
+        if (!heading.Success) return null;
+        var rest = body[heading.Index..];
+        var next = NextHeading().Match(rest, heading.Length);
+        return next.Success ? rest[..next.Index] : rest;
     }
 
     /// <summary>"Desenvolvedor .NET na Empresa X" ou "Backend @ Empresa X": o que vem depois do último separador.</summary>
@@ -61,6 +85,14 @@ internal sealed partial class GitHubIssuesSource(IHttpClientFactory http) : Publ
     [GeneratedRegex(@"^(clt|pj|cooperado|contractor|freela)", RegexOptions.IgnoreCase)] private static partial Regex Contract();
     [GeneratedRegex(@"https?://[^\s<>()\]]+", RegexOptions.IgnoreCase)] private static partial Regex Links();
     [GeneratedRegex(@"[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}", RegexOptions.IgnoreCase)] private static partial Regex Emails();
+    [GeneratedRegex(@"(?im)^[ \t]*(?:#{1,6}[ \t]*|\*\*|__)?[ \t]*(?:como (?:se |me )?candidatar|como aplicar|para se candidatar|candidatura|how to apply|to apply|application process)\b[^\n]*$")]
+    private static partial Regex ApplyHeading();
+    [GeneratedRegex(@"(?m)^[ \t]*(?:#{1,6}[ \t]+\S|\*\*[^*\n]+\*\*[ \t]*:?[ \t]*$)")] private static partial Regex NextHeading();
+    [GeneratedRegex(@"candidat|curr[ií]culo|\bcv\b|apply|resume|envie|inscri", RegexOptions.IgnoreCase)] private static partial Regex ApplyWords();
+    [GeneratedRegex(@"^(?:privacy|privacidade|dpo|lgpd|no-?reply|abuse|security|seguranca|legal|juridico|support|suporte|sac|ouvidoria|billing|financeiro)@", RegexOptions.IgnoreCase)]
+    private static partial Regex NotForApplying();
+    [GeneratedRegex(@"apply|candidat|/jobs?\b|/vagas?\b|careers|carreiras|trabalhe|gupy\.io|lever\.co|greenhouse\.io|workable\.com|ashbyhq\.com|smartrecruiters|recruitee|breezy|forms\.gle|/forms/|typeform", RegexOptions.IgnoreCase)]
+    private static partial Regex ApplyLink();
 }
 
 /// <summary>

@@ -50,6 +50,26 @@ public sealed class SourceTests
     }
 
     [Theory]
+    [InlineData("Dados tratados conforme a LGPD: privacy@empresa.example. Conheça a empresa: https://empresa.example/about\n\n## Como se candidatar\nEnvie o CV para jobs@empresa.example ou acesse https://empresa.example/apply\n\n## Benefícios\nVR: beneficios@empresa.example",
+        "jobs@empresa.example", "https://empresa.example/apply")]
+    [InlineData("## Como se candidatar\nDúvidas: suporte@empresa.example\nCurrículo para rh@empresa.example", "rh@empresa.example", null)]
+    [InlineData("Fale com contato@empresa.example. Site: https://empresa.example", null, null)]
+    [InlineData("Interessados, enviem o currículo para talentos@empresa.example. Site: https://empresa.example", "talentos@empresa.example", null)]
+    [InlineData("Candidate-se em https://empresa.gupy.io/jobs/123 até sexta. Site: https://empresa.example", null, "https://empresa.gupy.io/jobs/123")]
+    public void The_apply_contact_comes_from_how_to_apply_not_the_first_address(string body, string? email, string? link) =>
+        Assert.Equal((email, link), GitHubIssuesSource.ApplyContact(body));
+
+    [Fact]
+    public void Without_an_apply_link_the_posting_points_to_the_issue()
+    {
+        var p = GitHubIssuesSource.Parse("github:backend-br/vagas", "backend-br/vagas", J("""
+            {"number":7,"title":"Dev .NET na Acme","html_url":"https://github.com/backend-br/vagas/issues/7","body":"Conheça a Acme: https://acme.example/about","labels":[]}
+            """));
+        Assert.Equal("https://github.com/backend-br/vagas/issues/7", p.ApplyUrl);
+        Assert.Null(p.ApplyEmail);
+    }
+
+    [Theory]
     [InlineData("Developer ASP.NET/C# Junior/Pleno - Dimensa", "Dimensa", "Developer ASP.NET/C# Junior/Pleno")]
     [InlineData("[Remoto] Back-end developer .NET (Strider)", "Strider", "Back-end developer .NET")]
     public void Issue_com_empresa_depois_de_traco_ou_entre_parenteses(string title, string company, string role)
