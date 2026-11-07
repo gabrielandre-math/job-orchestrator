@@ -176,7 +176,7 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
                 else if (tag == "select")
                 {
                     var options = await control.Locator("option").AllInnerTextsAsync();
-                    var match = options.FirstOrDefault(o => o.Trim().Equals(value, StringComparison.OrdinalIgnoreCase));
+                    var match = options.FirstOrDefault(o => SameAnswer(o, value));
                     if (match is null) return AdapterResult<PreparedForm>.Fail(AdapterResultKind.Unsupported, "unsupported-option", $"A resposta aprovada não existe nas opções de \"{text}\".");
                     await control.SelectOptionAsync(new SelectOptionValue { Label = match.Trim() });
                     fields.Add(new FieldValue(text, match.Trim(), source));
@@ -197,6 +197,24 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
         if (fields.Count == 0) return AdapterResult<PreparedForm>.Fail(AdapterResultKind.Unsupported, "no-fields", "Nenhum campo com rótulo foi reconhecido.");
         var hash = PayloadHash(fields);
         return AdapterResult<PreparedForm>.Ok(new PreparedForm(Id, Version, new Uri(target.ApplyUrl).Authority, hash, fields));
+    }
+
+    private static readonly string[][] Equivalents =
+    [
+        ["Sim", "Yes", "Sí"], ["Não", "Nao", "No"],
+        ["Prefiro não informar", "Prefiro não responder", "I don't wish to answer", "I do not wish to answer", "Decline to self-identify", "Prefer not to say"],
+    ];
+
+    /// <summary>
+    /// An option is the approved answer in the form's own language too: a form in English gets "Yes" for an approved "Sim". Brazilian
+    /// companies often write the job in Portuguese and keep the ATS's standard questions in English.
+    /// </summary>
+    internal static bool SameAnswer(string option, string answer)
+    {
+        var o = option.Trim();
+        var a = answer.Trim();
+        return o.Equals(a, StringComparison.OrdinalIgnoreCase)
+            || Equivalents.Any(g => g.Contains(o, StringComparer.OrdinalIgnoreCase) && g.Contains(a, StringComparer.OrdinalIgnoreCase));
     }
 
     /// <summary>As perguntas obrigatórias sem resposta, todas no detalhe, entre aspas: a tela do ensaio abre um campo para cada uma.</summary>

@@ -165,7 +165,7 @@ internal sealed partial class WorkableForm(BrowserPool browsers, IHttpClientFact
             if (f.Tag == "select")
             {
                 var options = await control.Locator("option").AllInnerTextsAsync();
-                var match = options.FirstOrDefault(o => o.Trim().Equals(value, StringComparison.OrdinalIgnoreCase));
+                var match = options.FirstOrDefault(o => SameAnswer(o, value));
                 if (match is null) { if (f.Required) missing.Add(label); continue; }
                 await control.SelectOptionAsync(new SelectOptionValue { Label = match.Trim() });
                 fields.Add(new FieldValue(label, match.Trim(), source));
