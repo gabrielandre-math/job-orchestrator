@@ -14,4 +14,5 @@ div.field { display: grid; gap: 6px; align-content: start; font-size: 12px; colo
 .save p { margin: 0; max-width: 80ch; }
 
 .auth { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 16px 14px; padding: 10px 14px; border-radius: 6px; border: 1px solid color-mix(in oklch, var(--accent) 40%, var(--line)); background: color-mix(in oklch, var(--accent) 6%, var(--surface-2)); }
+.auth-actions { display: flex; gap: 8px; flex-shrink: 0; }
 .small { font-size: 12px; }

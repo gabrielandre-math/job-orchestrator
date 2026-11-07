@@ -39,7 +39,10 @@
       @if (active(); as a) {
         <div class="auth">
           <span><strong>Envio automático autorizado até {{ until(a) }}</strong><span class="faint small"> · até {{ a.maxPerDay }} por dia · nota a partir de {{ a.minScore }} · {{ a.adapters.length ? a.adapters.join(', ') : 'todos os formulários com envio testado' }}</span></span>
-          <button class="btn" type="button" (click)="revoke(c, a.id)" [disabled]="revoking.running()">Revogar</button>
+          <span class="auth-actions">
+            <button class="btn" type="button" (click)="authorizing.set(true)">Mudar limites</button>
+            <button class="btn" type="button" (click)="revoke(c, a.id)" [disabled]="revoking.running()">Revogar</button>
+          </span>
         </div>
       }
     </section>
