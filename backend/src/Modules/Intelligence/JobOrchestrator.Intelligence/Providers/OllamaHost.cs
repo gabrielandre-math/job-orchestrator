@@ -16,10 +16,13 @@ internal static class OllamaHost
 
     public static bool Systemd => OperatingSystem.IsLinux() && Platform.Which("systemctl") is not null && Environment.GetEnvironmentVariable("XDG_RUNTIME_DIR") is { Length: > 0 };
 
+    /// <summary>8 GB of memory or less (an entry-level Mac): a loaded model is most of what the machine has free.</summary>
+    public static bool Tight { get; } = Machine.Describe().RamTotalMb is > 0 and <= 8 * 1024;
+
     /// <summary>Um modelo carregado por vez, contexto de 8 mil tokens e preso em 127.0.0.1: cabe ao lado do resto da máquina.</summary>
     public static IReadOnlyDictionary<string, string> Env { get; } = new Dictionary<string, string>
     {
-        ["OLLAMA_HOST"] = "127.0.0.1:11434", ["OLLAMA_KEEP_ALIVE"] = "5m", ["OLLAMA_MAX_LOADED_MODELS"] = "1", ["OLLAMA_NUM_PARALLEL"] = "1", ["OLLAMA_CONTEXT_LENGTH"] = "8192",
+        ["OLLAMA_HOST"] = "127.0.0.1:11434", ["OLLAMA_KEEP_ALIVE"] = Tight ? "30s" : "5m", ["OLLAMA_MAX_LOADED_MODELS"] = "1", ["OLLAMA_NUM_PARALLEL"] = "1", ["OLLAMA_CONTEXT_LENGTH"] = "8192",
     };
 
     /// <summary>Written once every file of the package is out. Without it, an install of ours stopped halfway.</summary>

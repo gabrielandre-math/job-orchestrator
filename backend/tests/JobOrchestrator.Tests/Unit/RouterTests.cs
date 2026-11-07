@@ -183,6 +183,13 @@ public sealed class RouterTests : IAsyncLifetime
         Assert.NotEqual(before, after);
     }
 
+    [Theory]
+    [InlineData("job.fit", false, "2m")]
+    [InlineData("assistant.chat", false, "10m")]
+    [InlineData("job.fit", true, "30s")]
+    [InlineData("assistant.chat", true, "1m")]
+    public void Maquina_com_pouca_memoria_solta_o_modelo_logo(string task, bool tight, string keep) => Assert.Equal(keep, OllamaLocal.KeepAlive(task, tight));
+
     [Fact]
     public void Modelo_forte_ausente_diz_o_que_para()
     {

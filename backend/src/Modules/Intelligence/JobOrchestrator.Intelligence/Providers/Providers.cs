@@ -280,6 +280,10 @@ internal sealed class OllamaLocal(IHttpClientFactory http, IConfiguration config
     internal static string NotPulled(string model, Rung rung) =>
         $"O modelo {(rung == Rung.LocalStrong ? "forte" : "rápido")} {model} não está baixado: {(rung == Rung.LocalStrong ? "textos longos e rascunhos com a nuvem fora" : "as tarefas locais")} ficam paradas até instalar em Provedores.";
 
+    /// <summary>How long the model stays in memory after a call. On a machine with 8 GB or less it leaves soon: the desktop needs it more.</summary>
+    internal static string KeepAlive(string task, bool tight) =>
+        task.StartsWith("assistant.", StringComparison.Ordinal) ? tight ? "1m" : "10m" : tight ? "30s" : "2m";
+
     public string ModelFor(Rung rung) =>
         rung == Rung.LocalStrong && config["Llm:Ollama:Models:LocalStrong"] is { Length: > 0 } strong ? strong : config["Llm:Ollama:Models:Local"] ?? "gemma4:e4b";
 
@@ -350,7 +354,7 @@ internal sealed class OllamaLocal(IHttpClientFactory http, IConfiguration config
             ["messages"] = new[] { new { role = "system", content = r.System }, new { role = "user", content = r.Prompt } },
             // Quanto o modelo fica carregado depois da resposta (documentação do Ollama): a conversa do Assistente segura 10 minutos,
             // as tarefas de fundo (Explorador, e-mail, páginas) soltam a placa de vídeo em 2 minutos parados.
-            ["keep_alive"] = r.Task.StartsWith("assistant.", StringComparison.Ordinal) ? "10m" : "2m",
+            ["keep_alive"] = KeepAlive(r.Task, OllamaHost.Tight),
         };
         if (think is { } t) body["think"] = t;
         using var response = await http.CreateClient("ollama").PostAsync($"{Url}/api/chat", new StringContent(JsonSerializer.Serialize(body), System.Text.Encoding.UTF8, "application/json"), ct);
