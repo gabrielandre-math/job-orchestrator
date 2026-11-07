@@ -70,13 +70,43 @@ internal sealed class CompareFitHandler(JobsDbContext db, IProfileApi profiles, 
             if (quote.Length < 8 || start < 0 || !seen.Add(quote)) continue;
 
             var evidence = (match.FactIds ?? []).Distinct().Where(byId.ContainsKey).Take(3).Select(f => byId[f]).ToArray();
-            var kind = evidence.Length > 0 && match.Match is "direct" or "adjacent" ? match.Match : "gap";
-            requirements.Add(new(source.Substring(start, quote.Length), kind, kind == "gap" ? [] : evidence));
+            var requirement = source.Substring(start, quote.Length);
+            var kind = evidence.Length > 0 && match.Match is "direct" or "adjacent" ? Backed(requirement, evidence, match.Match) : "gap";
+            requirements.Add(new(requirement, kind, kind == "gap" ? [] : evidence));
         }
         if (requirements.Count == 0) return null;
+        // A technology the job asks for that the model left out, and that no fact mentions, is a gap too: leaving it out cannot raise the score.
+        var listed = Stack.Detect("", string.Join("\n", requirements.Select(r => r.Requirement)));
+        var known = Stack.Detect("", string.Join("\n", facts.Select(f => f.Statement)));
+        foreach (var tech in Stack.Detect("", description).Except(listed).Except(known)) requirements.Add(new(tech, "gap", []));
         var evidenceScore = (int)Math.Round(100 * requirements.Average(x => x.Match switch { "direct" => 1.0, "adjacent" => .5, _ => 0 }));
         return new(id, score, evidenceScore, model, requirements);
     }
+
+    /// <summary>
+    /// The cited facts must say what the requirement asks: a fact ID that exists is not support. A requirement with specific terms
+    /// (technologies, numbers, seniority) needs them in the facts; a generic one needs at least a word in common to stay direct.
+    /// Adjacent is a judgement about transferable experience, so it only drops when the facts share nothing with a specific requirement.
+    /// </summary>
+    internal static string Backed(string requirement, IReadOnlyList<FitEvidence> evidence, string kind)
+    {
+        var statements = evidence.Select(e => e.Statement).ToList();
+        var asked = Claims.Unsupported(requirement, []).Count;
+        var missing = Claims.Unsupported(requirement, statements).Count;
+        var shared = Words(requirement).Overlaps(Words(string.Join(" ", statements)));
+        if (asked > 0) return missing == asked && !shared ? "gap" : missing > 0 && kind == "direct" ? "adjacent" : kind;
+        return kind == "direct" && !shared ? "adjacent" : kind;
+    }
+
+    private static readonly HashSet<string> Filler = new(StringComparer.Ordinal)
+    {
+        "experiencia", "conhecimento", "conhecimentos", "vivencia", "atuacao", "dominio", "nivel", "solido", "solida", "boas", "bons", "pratica", "praticas",
+        "desejavel", "diferencial", "requisito", "requisitos", "anos", "experience", "knowledge", "with", "strong", "solid", "years", "skills", "ability",
+        "using", "para", "como", "sobre", "entre", "pelo", "pela", "trabalho", "work"
+    };
+
+    private static HashSet<string> Words(string text) =>
+        [.. Regex.Split(Claims.Fold(text), @"[^\p{L}\p{N}]+").Where(w => w.Length >= 4 && !Filler.Contains(w))];
 
     private static string Normalize(string value) => Regex.Replace(value.Trim(), @"\s+", " ");
     private static string Cut(string value, int max) => value.Length <= max ? value : value[..max];

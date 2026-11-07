@@ -29,6 +29,27 @@ public sealed class FitComparisonTests
         Assert.Empty(result.Requirements[2].Evidence);
     }
 
+    [Fact]
+    public void A_fact_that_does_not_say_what_the_requirement_asks_is_no_evidence()
+    {
+        var cooking = new FitEvidence(Guid.NewGuid(), "Concluí curso de gastronomia.");
+        var json = JsonSerializer.Serialize(new { requirements = new[] { new { requirement = "Experiência com Kubernetes", match = "direct", factIds = new[] { cooking.FactId } } } });
+
+        var result = Assert.IsType<FitComparison>(CompareFitHandler.Parse(Guid.NewGuid(), 82, "local", "Experiência com Kubernetes e Terraform.", [cooking], json));
+
+        Assert.Equal(["gap", "gap"], result.Requirements.Select(x => x.Match));
+        Assert.Equal("Terraform", result.Requirements[1].Requirement);
+        Assert.Equal(0, result.EvidenceScore);
+    }
+
+    [Theory]
+    [InlineData("Experiência com Kubernetes em produção", "direct", "Operei clusters Kubernetes em produção na Acme.", "direct")]
+    [InlineData("5 anos com C#", "direct", "Desenvolvi serviços em C# na Acme.", "adjacent")]
+    [InlineData("Experiência com APIs REST", "direct", "Construí APIs REST em .NET.", "direct")]
+    [InlineData("Experiência com times ágeis", "direct", "Concluí curso de gastronomia.", "adjacent")]
+    public void Direct_needs_the_requirement_in_the_fact(string requirement, string model, string fact, string expected) =>
+        Assert.Equal(expected, CompareFitHandler.Backed(requirement, [new FitEvidence(Guid.NewGuid(), fact)], model));
+
     [Theory]
     [InlineData("{}")]
     [InlineData("{\"requirements\":[null]}")]
