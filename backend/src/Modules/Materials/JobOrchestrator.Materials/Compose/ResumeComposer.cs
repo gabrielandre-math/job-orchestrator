@@ -136,8 +136,9 @@ internal sealed class ResumeComposer(IProfileApi profiles, IJobsApi jobs, IIntel
         await ai.NoteAsync(thread, "Inspetor ATS", $"Leitura como ATS: {check.Score}% ({check.Items.Count(i => i.Passed)} de {check.Items.Count} itens)",
             string.Join("\n", check.Items.Select(i => $"{(i.Passed ? "ok" : i.Critical ? "REPROVADO" : "atenção")}: {i.Name} ({i.Detail})")), "Guardião", check.Problems.Count == 0, ct);
 
+        // Provenance of the document as it went out: after the review and the cuts, not of the first draft.
         var version = ResumeVersion.Create(r.ApplicationId, r.JobId, profile, s.Language, mode, by, reviewer, reviewed, html, path, sha, pages,
-            checkedDraft.Lines, thread.Id, time.GetUtcNow().UtcDateTime);
+            Conferente.Check(draft, s).Lines, thread.Id, time.GetUtcNow().UtcDateTime);
         db.Resumes.Add(version);
         await db.SaveChangesAsync(ct);
         log.LogInformation("Currículo {Version} para {Application}: {Mode}, {Pages} páginas, revisado {Reviewed}", version.Id, r.ApplicationId, mode, pages, reviewed);

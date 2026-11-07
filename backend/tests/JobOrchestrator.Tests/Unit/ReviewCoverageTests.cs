@@ -24,4 +24,18 @@ public sealed class ReviewCoverageTests
 
     [Fact]
     public void One_verdict_per_claim_is_a_review() => Assert.Null(Conferente.Gap(Two, [V("C2"), V("C1")]));
+
+    [Fact]
+    public void Provenance_follows_the_draft_that_went_out()
+    {
+        var fact = new JobOrchestrator.Profile.Contracts.ProfileFact(Guid.NewGuid(), "experience", "Engenheiro de software na Acme, com APIs de pagamento em .NET.", null, "Acme",
+            "Engenheiro de Software", "2024-01", null, [".NET"], null, "cv");
+        var s = new Selection([new Picked("F1", fact, null)], "pt", [], []);
+        var bullet = new Claim("APIs de pagamento em .NET na Acme.", ["F1"]);
+        var first = new Draft(null, null, [new DraftExperience("F1", "Engenheiro de Software", [bullet, new Claim("Engenheiro de software na Acme.", ["F1"])])], [], [], []);
+        var cut = first with { Experiences = [first.Experiences[0] with { Bullets = [bullet] }] };
+
+        Assert.Equal(2, Conferente.Check(first, s).Lines.Count(l => l.Section == "bullet"));
+        Assert.Equal(["APIs de pagamento em .NET na Acme."], Conferente.Check(cut, s).Lines.Where(l => l.Section == "bullet").Select(l => l.Text));
+    }
 }
