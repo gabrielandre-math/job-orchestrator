@@ -16,7 +16,9 @@ internal sealed class AutoSubmitGrantedConsumer(ApplicationsDbContext db, TimePr
         if (!await db.RegisterInInboxAsync(message.MessageId, now, ct)) return;
         var granted = message.Read<AutoSubmitGrantedV1>();
         var waiting = await db.Applications.Where(a => a.CampaignId == granted.CampaignId && (a.State == ApplicationState.AwaitingApproval
-            || granted.AcceptDeclarations && a.State == ApplicationState.NeedsHuman && a.LastReason!.StartsWith("O formulário pede uma declaração"))).ToListAsync(ct);
+            || granted.AcceptDeclarations && a.State == ApplicationState.NeedsHuman && a.LastReason!.StartsWith("O formulário pede uma declaração")
+            // A site link stopped on the same box was handed to you; with the declarations accepted, the app tries it again.
+            || granted.AcceptDeclarations && a.State == ApplicationState.ManualHandoff && a.ApplyChannel == "link" && a.LastReason!.Contains("O formulário pede uma declaração"))).ToListAsync(ct);
         var ids = waiting.Select(a => a.Id).ToList();
         // A send left scheduled from before would block the new one: the form is prepared again and schedules its own.
         foreach (var w in await db.WorkItems.Where(w => ids.Contains(w.ApplicationId) && w.Step == WorkStep.Submit && w.CompletedAt == null).ToListAsync(ct)) w.Complete(now);

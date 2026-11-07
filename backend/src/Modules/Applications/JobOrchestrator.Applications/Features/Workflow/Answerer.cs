@@ -58,6 +58,17 @@ internal sealed partial class Answerer(ApplicationsDbContext db, IProfileApi pro
         var sources = Sources(facts, profile.Confirmations, job?.Company ?? app.Company);
         var target = new JobText { Title = job?.Title ?? app.Title, Company = job?.Company ?? app.Company, Location = job?.Location ?? app.Location, Contract = job?.Contract, Modality = job?.Modality, Description = job?.Description ?? "" };
         var livesIn = Country(profile.Identity.Location);
+        // A choice the AI already made from your profile for the same question in another form is taken again, without asking.
+        var earlier = await ReusedAsync(app.Id, fresh, ct);
+        foreach (var (q, answer) in earlier)
+            db.FormAnswers.Add(new FormAnswer
+            {
+                Id = Guid.CreateVersion7(), ApplicationId = app.Id, QuestionKey = CustomAnswer.Normalize(q.Label), Question = Cut(q.Label, 1000), Kind = q.Kind,
+                Answer = Cut(answer.Answer, 4000), Accepted = true, Basis = Cut(answer.Basis, 2000), ProviderId = "reuse", Model = Cut(answer.Model, 80), CreatedAt = now
+            });
+        fresh = [.. fresh.Where(q => !earlier.ContainsKey(q))];
+        if (fresh.Count == 0)
+            return new(true, TimeSpan.Zero, $"Respostas que a IA já tinha dado pelo seu perfil, em outro formulário, valem aqui ({earlier.Count}); o formulário é preenchido de novo.", earlier.Count, "reuse");
         // The ladder of models on this machine, cheapest first: each one gets only what the ones before it could not answer.
         var ladder = await ai.LadderAsync(ct);
         if (ladder.Count == 0) return await WaitAsync(app, "nenhum modelo disponível agora", ct);
@@ -84,6 +95,33 @@ internal sealed partial class Answerer(ApplicationsDbContext db, IProfileApi pro
         return answered == 0
             ? new(false, TimeSpan.Zero, "", 0, null)
             : new(true, TimeSpan.Zero, $"A IA respondeu {answered} de {fresh.Count} {(fresh.Count == 1 ? "pergunta" : "perguntas")} pelos fatos do seu perfil ({models}); o formulário é preenchido de novo.", answered, models);
+    }
+
+    /// <summary>
+    /// The AI's accepted answers to the same questions in other forms, for the choices only (yes or no, options, boxes, a number):
+    /// those come from your profile, not from the job. A written answer is always written again for the job it goes to. An answer
+    /// that is not one of this form's options is not taken.
+    /// </summary>
+    private async Task<Dictionary<FormQuestion, FormAnswer>> ReusedAsync(Guid applicationId, IReadOnlyList<FormQuestion> questions, CancellationToken ct)
+    {
+        var choices = questions.Where(q => q.Kind is "select" or "radio" or "checkboxes" or "confirm" or "number").ToList();
+        if (choices.Count == 0) return [];
+        var keys = choices.Select(q => CustomAnswer.Normalize(q.Label)).ToList();
+        var known = (await db.FormAnswers.AsNoTracking().Where(f => f.Accepted && f.ApplicationId != applicationId && keys.Contains(f.QuestionKey))
+            .OrderByDescending(f => f.CreatedAt).ToListAsync(ct)).DistinctBy(f => f.QuestionKey).ToDictionary(f => f.QuestionKey);
+        var reused = new Dictionary<FormQuestion, FormAnswer>();
+        foreach (var q in choices)
+        {
+            if (!known.TryGetValue(CustomAnswer.Normalize(q.Label), out var f) || f.Kind != q.Kind) continue;
+            var fits = q.Kind switch
+            {
+                "select" or "radio" => Option(q.Options, f.Answer) is not null,
+                "checkboxes" => f.Answer.Split(FormQuestion.ChoiceSeparator).All(c => Option(q.Options, c) is not null),
+                _ => true
+            };
+            if (fits) reused[q] = f;
+        }
+        return reused;
     }
 
     /// <summary>An answer and the model call that gave it.</summary>

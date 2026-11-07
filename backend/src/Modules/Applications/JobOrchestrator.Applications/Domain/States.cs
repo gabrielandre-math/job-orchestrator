@@ -26,7 +26,7 @@ internal static class Transitions
         // Saídas de Submitting que não são confirmação nem incerteza exigem prova de que nada foi clicado (o adapter só devolve essas antes do clique).
         [ApplicationState.Submitting] = [ApplicationState.SubmittedConfirmed, ApplicationState.SubmissionUnknown, ApplicationState.Failed, ApplicationState.NeedsHuman, ApplicationState.BlockedByPolicy, ApplicationState.ReadyToSubmit],
         [ApplicationState.SubmissionUnknown] = [ApplicationState.SubmittedConfirmed, ApplicationState.NeedsHuman, ApplicationState.Failed],
-        [ApplicationState.ManualHandoff] = [ApplicationState.SubmittedConfirmed, ApplicationState.SubmittedDeclared, ApplicationState.Withdrawn],
+        [ApplicationState.ManualHandoff] = [ApplicationState.SubmittedConfirmed, ApplicationState.SubmittedDeclared, ApplicationState.FormPreparing, ApplicationState.Withdrawn],
         [ApplicationState.NeedsHuman] = [ApplicationState.FormPreparing, ApplicationState.MaterialsReady, ApplicationState.SubmittedDeclared, ApplicationState.Failed, ApplicationState.Withdrawn],
         [ApplicationState.PausedProvider] = [ApplicationState.Shortlisted, ApplicationState.MaterialsReady],
         [ApplicationState.RetryScheduled] = [ApplicationState.Shortlisted, ApplicationState.MaterialsReady, ApplicationState.FormPreparing, ApplicationState.DeadLetter],
