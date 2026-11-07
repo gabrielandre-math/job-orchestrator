@@ -127,6 +127,8 @@ internal sealed class SmartRecruitersSource(IHttpClientFactory http) : PublicSou
         var company = Key(source);
         var api = $"https://api.smartrecruiters.com/v1/companies/{Uri.EscapeDataString(company)}/postings";
         using var list = await Json.GetAsync(Client, $"{api}?limit=100", ct);
+        var listed = list.RootElement.GetProperty("content").GetArrayLength();
+        SourceCoverage.Report(source, Math.Min(listed, MaxDetails), list.RootElement.TryGetProperty("totalFound", out var tf) && tf.TryGetInt32(out var all) ? Math.Max(all, listed) : listed);
         var result = new List<DiscoveredPosting>();
         foreach (var j in list.RootElement.GetProperty("content").EnumerateArray().Take(MaxDetails))
         {

@@ -70,6 +70,22 @@ public sealed class SourceTests
     }
 
     [Theory]
+    [InlineData("<https://api.github.com/repositories/1/issues?state=open&per_page=100&page=2>; rel=\"next\", <https://api.github.com/repositories/1/issues?state=open&per_page=100&page=5>; rel=\"last\"",
+        "https://api.github.com/repositories/1/issues?state=open&per_page=100&page=2")]
+    [InlineData("<https://api.github.com/repositories/1/issues?page=4>; rel=\"prev\", <https://api.github.com/repositories/1/issues?page=1>; rel=\"first\"", null)]
+    [InlineData(null, null)]
+    public void GitHub_issues_follow_the_next_page(string? link, string? next) => Assert.Equal(next, GitHubIssuesSource.NextPage(link));
+
+    [Fact]
+    public void A_capped_list_says_it_is_partial()
+    {
+        JobOrchestrator.Automation.Contracts.SourceCoverage.Report("teste:parcial", 25, 87);
+        Assert.Equal("lista parcial: 25 de 87", JobOrchestrator.Automation.Contracts.SourceCoverage.Of("teste:parcial"));
+        JobOrchestrator.Automation.Contracts.SourceCoverage.Report("teste:parcial", 30, 30);
+        Assert.Null(JobOrchestrator.Automation.Contracts.SourceCoverage.Of("teste:parcial"));
+    }
+
+    [Theory]
     [InlineData("Developer ASP.NET/C# Junior/Pleno - Dimensa", "Dimensa", "Developer ASP.NET/C# Junior/Pleno")]
     [InlineData("[Remoto] Back-end developer .NET (Strider)", "Strider", "Back-end developer .NET")]
     public void Issue_com_empresa_depois_de_traco_ou_entre_parenteses(string title, string company, string role)

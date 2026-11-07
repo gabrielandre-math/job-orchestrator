@@ -14,17 +14,33 @@ internal sealed partial class GitHubIssuesSource(IHttpClientFactory http) : Publ
     public override async Task<IReadOnlyList<DiscoveredPosting>> DiscoverAsync(string source, CancellationToken ct)
     {
         var repo = Key(source);
-        using var request = new HttpRequestMessage(HttpMethod.Get, $"https://api.github.com/repos/{repo}/issues?state=open&per_page=100");
-        request.Headers.Accept.ParseAdd("application/vnd.github+json");
-        if (await ApiKeys.GetAsync("github", "token", ct) is { Length: > 0 } token) request.Headers.Authorization = new("Bearer", token);
-        using var response = await Client.SendAsync(request, ct);
-        response.EnsureSuccessStatusCode();
-        using var doc = await HttpBodies.JsonAsync(response.Content, ct);
-        return [.. doc.RootElement.EnumerateArray().Where(i => !i.TryGetProperty("pull_request", out _)).Select(i => Parse(source, repo, i))];
+        var token = await ApiKeys.GetAsync("github", "token", ct);
+        var result = new List<DiscoveredPosting>();
+        // Page by page through the Link header, up to five pages (500 issues); what is left is reported as a partial list.
+        string? next = $"https://api.github.com/repos/{repo}/issues?state=open&per_page=100";
+        for (var page = 0; page < MaxPages && next is not null; page++)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, next);
+            request.Headers.Accept.ParseAdd("application/vnd.github+json");
+            if (token is { Length: > 0 }) request.Headers.Authorization = new("Bearer", token);
+            using var response = await Client.SendAsync(request, ct);
+            response.EnsureSuccessStatusCode();
+            using var doc = await HttpBodies.JsonAsync(response.Content, ct);
+            result.AddRange(doc.RootElement.EnumerateArray().Where(i => !i.TryGetProperty("pull_request", out _)).Select(i => Parse(source, repo, i)));
+            next = NextPage(response.Headers.TryGetValues("Link", out var links) ? string.Join(",", links) : null);
+        }
+        SourceCoverage.Report(source, result.Count, next is null ? result.Count : result.Count + 1);
+        return result;
     }
 
     /// <summary>A lista só traz issues abertas; conferir uma por uma gastaria o limite da API à toa.</summary>
     public override Task<PostingStatus> CheckOpenAsync(string applyUrl, CancellationToken ct) => Task.FromResult(new PostingStatus(true, "Issue aberta no repositório."));
+
+    private const int MaxPages = 5;
+
+    /// <summary>The rel="next" address of a GitHub Link header, or null on the last page.</summary>
+    internal static string? NextPage(string? link) =>
+        link?.Split(',').Select(part => part.Split(';')).FirstOrDefault(p => p.Length > 1 && p[1].Contains("rel=\"next\"", StringComparison.Ordinal))?[0].Trim().Trim('<', '>');
 
     internal static DiscoveredPosting Parse(string source, string repo, JsonElement issue)
     {

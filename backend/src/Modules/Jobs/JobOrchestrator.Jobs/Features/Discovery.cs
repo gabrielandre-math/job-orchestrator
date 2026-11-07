@@ -56,7 +56,7 @@ internal sealed class RunRequestedConsumer(
                         : p.ListedAsOpen ? new PostingStatus(true, "Listada agora pela API oficial.") : await automation.CheckOpenAsync(p.ApplyUrl, ct)));
                 }
                 health.Remove(source);
-                await SayAsync(thread, "Batedor", $"{Label(source)}: {listed} {(listed == 1 ? "vaga" : "vagas")}, {kept} da sua área", null,
+                await SayAsync(thread, "Batedor", $"{Label(source)}: {listed} {(listed == 1 ? "vaga" : "vagas")}, {kept} da sua área{(SourceCoverage.Of(source) is { } partial ? $" ({partial})" : "")}", null,
                     new { stage = "source", source, state = "done", listed, kept, seconds = Math.Round(watch.Elapsed.TotalSeconds, 1) }, "Normalizador", true, ct);
             }
             catch (Exception ex) when (!ct.IsCancellationRequested)

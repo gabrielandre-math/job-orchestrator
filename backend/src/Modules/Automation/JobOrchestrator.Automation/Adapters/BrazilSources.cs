@@ -210,16 +210,20 @@ internal sealed partial class WorkdaySource(IHttpClientFactory http) : PublicSou
         var api = $"https://{host}/wday/cxs/{tenant}/{site}";
         // Uma busca por palavra essencial (no máximo duas) e uma puxando para o Brasil; sem palavra, as mais novas.
         var found = new Dictionary<string, JsonElement>();
+        var total = 0;
         foreach (var text in hints.Count > 0 ? hints.Take(2).Append($"{hints[0]} Brazil") : [""])
         {
             using var content = new StringContent(JsonSerializer.Serialize(new { appliedFacets = new { }, limit = 20, offset = 0, searchText = text }), Encoding.UTF8, "application/json");
             using var response = await Client.PostAsync($"{api}/jobs", content, ct);
             response.EnsureSuccessStatusCode();
             using var doc = await HttpBodies.JsonAsync(response.Content, ct);
+            if (doc.RootElement.TryGetProperty("total", out var t) && t.TryGetInt32(out var n)) total = Math.Max(total, n);
             foreach (var j in doc.RootElement.GetProperty("jobPostings").EnumerateArray())
                 if (j.Str("externalPath") is { Length: > 0 } path) found.TryAdd(path, j.Clone());
             await Task.Delay(400, ct);
         }
+        // Details are capped at 25 per run: the board says how many it has, and the rest is reported as a partial list.
+        SourceCoverage.Report(source, Math.Min(found.Count, 25), Math.Max(total, found.Count));
         var list = new List<DiscoveredPosting>();
         foreach (var (path, card) in found.Take(25))
         {
