@@ -159,6 +159,8 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
     /// <summary>The words of the page that says the application arrived.</summary>
     protected virtual Regex Confirmed => Confirmation();
 
+    internal static bool SaysSubmitted(string text) => Confirmation().IsMatch(text);
+
     protected BrowserPool Browsers => browsers;
     /// <summary>CAPTCHA e verificação anti-robô (reCAPTCHA, hCaptcha, Cloudflare Turnstile): o robô para e a vaga fica com você.</summary>
     protected const string BotCheck = "[data-sitekey], .g-recaptcha, .h-captcha, .cf-turnstile, iframe[src*='captcha'], iframe[src*='challenges.cloudflare.com'], [data-captcha]";
@@ -381,7 +383,9 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
     [GeneratedRegex(@"linkedin", RegexOptions.IgnoreCase)] private static partial Regex LinkedIn();
     [GeneratedRegex(@"resume|cv|curr[ií]culo", RegexOptions.IgnoreCase)] protected static partial Regex Resume();
     [GeneratedRegex(@"submit|send application|enviar candidatura", RegexOptions.IgnoreCase)] private static partial Regex SubmitButton();
-    [GeneratedRegex(@"thank(s| you) for applying|application (was )?(received|submitted)|candidatura recebida", RegexOptions.IgnoreCase)] private static partial Regex Confirmation();
+    // Workable says "Your application has been submitted successfully."
+    [GeneratedRegex(@"thank(s| you)( so much)? for (applying|your application)|application (has been |was )?(received|submitted|sent)|submitted successfully|candidatura (foi )?(recebida|enviada)", RegexOptions.IgnoreCase)]
+    private static partial Regex Confirmation();
     [GeneratedRegex(@"already (applied|submitted)|j[aá] se candidatou", RegexOptions.IgnoreCase)] private static partial Regex AlreadyApplied();
     [GeneratedRegex(@"verification code|c[oó]digo de verifica[cç][aã]o|two-factor|autentica[cç][aã]o em dois", RegexOptions.IgnoreCase)] protected static partial Regex Mfa();
     [GeneratedRegex(@"application id:?\s*([A-Z0-9-]{4,})", RegexOptions.IgnoreCase)] private static partial Regex ReceiptId();
