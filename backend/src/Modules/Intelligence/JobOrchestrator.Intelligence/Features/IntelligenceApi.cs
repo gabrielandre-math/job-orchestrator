@@ -134,6 +134,46 @@ internal sealed class IntelligenceApi(ProviderSet set, IntelligenceDbContext db,
         return none;
     }
 
+    public bool Off => config.GetValue("Llm:Disabled", false);
+
+    public async Task<IReadOnlyList<ProviderView>> LadderAsync(CancellationToken ct)
+    {
+        if (Off) return [];
+        var order = Order;
+        var localOnly = config.GetValue("Privacy:LocalOnly", false);
+        static int Step(ProviderView v) => v.Family switch { "local" => 0, "openai" => 1, "anthropic" => 2, _ => 3 };
+        return [.. (await ProvidersAsync(ct)).Where(v => v.Available && (v.Id == "ollama" || order.Contains(v.Id)) && (!localOnly || v.Family == "local"))
+            .OrderBy(Step).ThenBy(v => v.Order)];
+    }
+
+    public async Task<LlmResult> CompleteOnAsync(string providerId, LlmRequest request, CancellationToken ct)
+    {
+        if (config.GetValue("Llm:Disabled", false)) return new LlmResult(false, null, "nenhum", "", "", "IA desligada nesta instalação.", 0);
+        var view = (await ProvidersAsync(ct)).FirstOrDefault(v => v.Id == providerId);
+        var provider = providers.FirstOrDefault(p => p.Id == providerId);
+        if (view is not { Available: true } || provider is null) return new LlmResult(false, null, providerId, "", "", "Modelo indisponível agora.", 0);
+        var local = providerId == "ollama";
+        // On the local model the strong slot writes; in the cloud the task keeps its rung and its daily budget.
+        var r = request with { Rung = local ? Rung.LocalStrong : request.Rung };
+        if (!local)
+        {
+            var budget = config.GetValue($"Llm:Tasks:{r.Task}:Budget", LlmTasks.Find(r.Task)?.DailyBudget ?? 10);
+            if (await db.Calls.CountAsync(x => x.Task == r.Task && x.Ok && !x.Cached && x.ProviderId != "ollama" && x.At > Now.AddDays(-1), ct) >= budget)
+                return new LlmResult(false, null, providerId, "", "", $"Teto de {budget} chamadas por dia de {r.Task} atingido.", 0);
+        }
+        if (provider is IMetered metered)
+        {
+            var month = new DateTime(Now.Year, Now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+            if (metered.MonthlyTokens <= 0 || await db.Calls.Where(x => x.ProviderId == providerId && x.At >= month).SumAsync(x => (long)x.Tokens, ct) >= metered.MonthlyTokens)
+                return new LlmResult(false, null, providerId, "", "", "Cota de tokens do mês atingida.", 0);
+        }
+        var result = await provider.RunAsync(r, ct);
+        if (result.Ok && r.JsonSchema.Length > 0 && !JsonShape.Matches(r.JsonSchema, result.Json)) result = result with { Ok = false, Error = "A resposta não segue o formato pedido." };
+        await RecordAsync(r, result, ct);
+        if (result.Error == "quota") PausedUntil[providerId] = Now.AddHours(1);
+        return result;
+    }
+
     /// <summary>Teste mínimo pedido por você na tela: degrau leve, resposta de uma linha, conta pouca cota.</summary>
     public async Task<LlmResult> TestAsync(string providerId, CancellationToken ct)
     {

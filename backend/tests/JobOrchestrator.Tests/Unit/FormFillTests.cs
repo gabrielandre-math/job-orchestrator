@@ -1,5 +1,7 @@
+using System.Text.Json;
 using JobOrchestrator.Applications.Features.Workflow;
 using JobOrchestrator.Automation.Adapters;
+using JobOrchestrator.Intelligence.Contracts;
 using JobOrchestrator.Profile.Contracts;
 
 namespace JobOrchestrator.Tests.Unit;
@@ -127,5 +129,63 @@ public sealed class FormFillTests
         var q = new FormQuestion("How have you used Kubernetes in production?", "textarea", []);
         Assert.NotNull(One(q, "I have not used Kubernetes in production yet; at Acme I shipped the billing migration to .NET 8 and PostgreSQL.").Value);
         Assert.Null(One(q, "I run Kubernetes clusters at Acme.").Value);
+    }
+
+    private static LlmResult Reply(string model, params (int Index, string Answer)[] answers) =>
+        new(true, JsonSerializer.Serialize(new { answers = answers.Select(a => new { index = a.Index, answer = a.Answer, choices = Array.Empty<string>(), facts = new[] { "f1" } }) }), model, model, "", null, 1);
+
+    private static IReadOnlyList<Answerer.Checked> Checks(IReadOnlyList<FormQuestion> questions, IReadOnlyList<Answerer.ModelAnswer> answers) =>
+        Answerer.Check(questions, answers, Facts, Sources);
+
+    [Fact]
+    public async Task What_one_model_gets_wrong_goes_up_the_ladder_with_the_reason()
+    {
+        var radio = new FormQuestion("Which framework do you know best?", "radio", ["React", "Angular", "Vue"]);
+        var open = new FormQuestion("Walk us through a feature you owned end-to-end.", "textarea", []);
+        var asked = new List<(string Model, string[] Questions, string[]? Problems)>();
+        var replies = new Dictionary<string, LlmResult>
+        {
+            ["ollama"] = Reply("ollama", (0, "Angular"), (1, "I ran Kubernetes clusters at Acme.")),
+            ["codex"] = Reply("codex", (0, "Na Acme migrei o faturamento para .NET 8 com PostgreSQL.")),
+            ["claude-max"] = Reply("claude-max", (0, "At Acme I owned the billing migration to .NET 8 and PostgreSQL, from the analysis to the release.")),
+        };
+        var result = await Answerer.EscalateAsync(["ollama", "codex", "claude-max"], [radio, open],
+            (model, questions, problems) => { asked.Add((model, [.. questions.Select(q => q.Label)], problems?.ToArray())); return Task.FromResult(replies[model]); }, Checks);
+
+        Assert.Equal(("Angular", "ollama"), (result.Single(r => r.Checked.Question == radio).Checked.Value, result.Single(r => r.Checked.Question == radio).By.ProviderId));
+        Assert.Equal("claude-max", result.Single(r => r.Checked.Question == open).By.ProviderId);
+        Assert.Equal(["ollama", "codex", "claude-max"], asked.Select(a => a.Model));
+        // Each step gets only what is still open, with why the last answer was refused.
+        Assert.Equal([open.Label], asked[1].Questions);
+        Assert.StartsWith("fora dos fatos", asked[1].Problems![0]);
+        Assert.Equal("escrita em outra língua", asked[2].Problems![0]);
+    }
+
+    [Fact]
+    public async Task A_no_about_you_is_final_and_a_model_that_fails_passes_its_turn()
+    {
+        var statement = new FormQuestion("I confirm I hold a US security clearance", "confirm", []);
+        var calls = new List<string>();
+        var result = await Answerer.EscalateAsync(["ollama", "codex", "claude-max"], [statement], (model, _, _) =>
+        {
+            calls.Add(model);
+            return Task.FromResult(model == "ollama" ? new LlmResult(false, null, "ollama", "", "", "tempo esgotado", 60) : Reply(model, (0, "No")));
+        }, Checks);
+        // The local model timed out, ChatGPT said no; Claude is not asked to turn that into a yes.
+        Assert.Equal(["ollama", "codex"], calls);
+        Assert.True(result.Single().Checked.Final);
+        Assert.Null(result.Single().Checked.Value);
+        Assert.Empty(await Answerer.EscalateAsync(["ollama"], [statement], (_, _, _) => Task.FromResult(new LlmResult(false, null, "ollama", "", "", "fora do ar", 0)), Checks));
+    }
+
+    [Fact]
+    public async Task A_single_model_gets_a_second_try_with_the_reason()
+    {
+        var open = new FormQuestion("Walk us through a feature you owned end-to-end.", "textarea", []);
+        var tries = 0;
+        var result = await Answerer.EscalateAsync(["claude-max"], [open], (_, _, problems) =>
+            Task.FromResult(++tries == 1 ? Reply("claude-max", (0, "I don't know.")) : Reply("claude-max", (0, "At Acme I owned the billing migration to .NET 8 and PostgreSQL."))), Checks);
+        Assert.Equal(2, tries);
+        Assert.NotNull(result.Single().Checked.Value);
     }
 }

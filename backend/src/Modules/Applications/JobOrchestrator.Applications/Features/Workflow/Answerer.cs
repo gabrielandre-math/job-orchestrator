@@ -8,10 +8,11 @@ internal sealed record AnswerRound(bool Retry, TimeSpan Delay, string Reason, in
 
 /// <summary>
 /// Agente Respondente. The required questions a form asked that neither your answers nor the bank cover go to the AI with your
-/// profile's facts and confirmations (never your name, e-mail or phone) and the job. A choice comes back as one of the options the
-/// form offers; a written answer passes the same provenance check as the resume (every number, technology and company must be in
-/// the facts) and gets one rewrite when it fails. What passes is kept with the application and the form is filled again; what does
-/// not pass, and every question already tried once, stays with you.
+/// profile's facts and confirmations (never your name, e-mail or phone) and the job, up a ladder of the models on this machine:
+/// the local model first, then ChatGPT, then Claude, each one getting only what the ones before it could not answer and why. A
+/// choice comes back as one of the options the form offers; a written answer passes the same provenance check as the resume (every
+/// number, technology and company must be in the facts), in the question's language. What passes is kept with the application and
+/// the form is filled again; what no model got right, and every question already tried once, stays with you.
 /// </summary>
 internal sealed partial class Answerer(ApplicationsDbContext db, IProfileApi profiles, IJobsApi jobs, IIntelligenceApi ai, TimeProvider time)
 {
@@ -40,14 +41,15 @@ internal sealed partial class Answerer(ApplicationsDbContext db, IProfileApi pro
 
     private sealed record ModelAnswers(ModelAnswer[]? Answers);
     internal sealed record ModelAnswer(int Index, string? Answer, string[]? Choices, string[]? Facts);
-    internal sealed record Checked(FormQuestion Question, string? Value, string? Problem, IReadOnlyList<string> Basis);
+    /// <summary>Final: the answer stands even though nothing goes in the form (a "No" about you); no other model is asked.</summary>
+    internal sealed record Checked(FormQuestion Question, string? Value, string? Problem, IReadOnlyList<string> Basis, bool Final = false);
 
     public async Task<AnswerRound> AnswerAsync(JobApplication app, IReadOnlyList<FormQuestion> asked, CancellationToken ct)
     {
         var now = time.GetUtcNow().UtcDateTime;
         var tried = (await db.FormAnswers.Where(f => f.ApplicationId == app.Id).Select(f => f.QuestionKey).ToListAsync(ct)).ToHashSet(StringComparer.Ordinal);
         var fresh = asked.Where(q => !tried.Contains(CustomAnswer.Normalize(q.Label))).DistinctBy(q => CustomAnswer.Normalize(q.Label)).ToList();
-        if (fresh.Count == 0) return new(false, TimeSpan.Zero, "", 0, null);
+        if (fresh.Count == 0 || ai.Off) return new(false, TimeSpan.Zero, "", 0, null);
         var profile = await profiles.CurrentAsync(ct);
         if (profile is null) return new(false, TimeSpan.Zero, "", 0, null);
         var job = await jobs.TextAsync(app.JobId, ct);
@@ -55,46 +57,63 @@ internal sealed partial class Answerer(ApplicationsDbContext db, IProfileApi pro
         var facts = profile.Facts.Where(f => f.Kind is not "headline").Take(90).Select((f, i) => (Id: $"f{i + 1}", Fact: f)).ToList();
         var sources = Sources(facts, profile.Confirmations, job?.Company ?? app.Company);
         var target = new JobText { Title = job?.Title ?? app.Title, Company = job?.Company ?? app.Company, Location = job?.Location ?? app.Location, Contract = job?.Contract, Modality = job?.Modality, Description = job?.Description ?? "" };
-        var prompt = Prompt(target, profile.Confirmations, facts, fresh, null, Country(profile.Identity.Location));
-        var result = await ai.CompleteAsync(LlmRequest.For(LlmTasks.QuestionDraft, System, prompt, Schema, timeoutSeconds: 240), ct);
-        if (!result.Ok || result.Json is null) return await WaitAsync(app, result.Error, ct);
-
-        var checkedAnswers = Check(fresh, Parse(result.Json), facts, sources);
-        // The small local model, standing in for the cloud, picks options well and writes poorly: what it wrote waits for the cloud.
-        if (result.Degraded || result.ProviderId == "ollama")
-        {
-            var written = checkedAnswers.Where(c => Written(c.Question)).ToList();
-            if (written.Count > 0)
+        var livesIn = Country(profile.Identity.Location);
+        // The ladder of models on this machine, cheapest first: each one gets only what the ones before it could not answer.
+        var ladder = await ai.LadderAsync(ct);
+        if (ladder.Count == 0) return await WaitAsync(app, "nenhum modelo disponível agora", ct);
+        string? lastError = null;
+        var outcome = await EscalateAsync([.. ladder.Select(v => v.Id)], fresh,
+            async (model, questions, problems) =>
             {
-                checkedAnswers = [.. checkedAnswers.Except(written)];
-                if (checkedAnswers.Count(c => c.Value is not null) == 0)
-                    return await WaitAsync(app, "só o modelo local respondeu, e respostas escritas esperam um modelo da nuvem", ct);
-            }
-        }
-        // A written answer that named something the facts do not have gets one rewrite, told exactly what to leave out.
-        var rewrite = checkedAnswers.Where(c => c.Value is null && c.Problem is { } p && p.StartsWith("fora dos fatos", StringComparison.Ordinal)).ToList();
-        if (rewrite.Count > 0)
-        {
-            var again = await ai.CompleteAsync(LlmRequest.For(LlmTasks.QuestionDraft, System,
-                Prompt(target, profile.Confirmations, facts, [.. rewrite.Select(r => r.Question)], rewrite.Select(r => r.Problem!).ToList(), Country(profile.Identity.Location)), Schema, timeoutSeconds: 240), ct);
-            if (again.Ok && again.Json is not null)
-            {
-                var fixedOnes = Check([.. rewrite.Select(r => r.Question)], Parse(again.Json), facts, sources).ToDictionary(c => c.Question);
-                checkedAnswers = [.. checkedAnswers.Select(c => fixedOnes.TryGetValue(c.Question, out var f) ? f : c)];
-            }
-        }
+                var r = await ai.CompleteOnAsync(model, LlmRequest.For(LlmTasks.QuestionDraft, System, Prompt(target, profile.Confirmations, facts, questions, problems, livesIn), Schema, timeoutSeconds: 240), ct);
+                if (!r.Ok) lastError = r.Error;
+                return r;
+            },
+            (questions, answers) => Check(questions, answers, facts, sources));
+        if (outcome.Count == 0) return await WaitAsync(app, lastError ?? "nenhum modelo respondeu", ct);
 
-        foreach (var c in checkedAnswers)
+        foreach (var (c, by) in outcome)
             db.FormAnswers.Add(new FormAnswer
             {
                 Id = Guid.CreateVersion7(), ApplicationId = app.Id, QuestionKey = CustomAnswer.Normalize(c.Question.Label), Question = Cut(c.Question.Label, 1000),
                 Kind = c.Question.Kind, Answer = Cut(c.Value ?? "", 4000), Accepted = c.Value is not null, Note = c.Problem is null ? null : Cut(c.Problem, 500),
-                Basis = Cut(string.Join(" | ", c.Basis), 2000), ProviderId = result.ProviderId, Model = Cut(result.Model, 80), CreatedAt = now
+                Basis = Cut(string.Join(" | ", c.Basis), 2000), ProviderId = by.ProviderId, Model = Cut(by.Model, 80), CreatedAt = now
             });
-        var answered = checkedAnswers.Count(c => c.Value is not null);
+        var answered = outcome.Count(o => o.Checked.Value is not null);
+        var models = string.Join(", ", outcome.Where(o => o.Checked.Value is not null).Select(o => o.By.Model.Length > 0 ? o.By.Model : o.By.ProviderId).Distinct());
         return answered == 0
-            ? new(false, TimeSpan.Zero, "", 0, result.ProviderId)
-            : new(true, TimeSpan.Zero, $"A IA respondeu {answered} de {fresh.Count} {(fresh.Count == 1 ? "pergunta" : "perguntas")} pelos fatos do seu perfil; o formulário é preenchido de novo.", answered, result.ProviderId);
+            ? new(false, TimeSpan.Zero, "", 0, null)
+            : new(true, TimeSpan.Zero, $"A IA respondeu {answered} de {fresh.Count} {(fresh.Count == 1 ? "pergunta" : "perguntas")} pelos fatos do seu perfil ({models}); o formulário é preenchido de novo.", answered, models);
+    }
+
+    /// <summary>An answer and the model call that gave it.</summary>
+    internal sealed record Escalated(Checked Checked, LlmResult By);
+
+    /// <summary>
+    /// The escalation: each model of the ladder gets only the questions the models before it left without an accepted answer, with
+    /// the reason the last answer was refused. A final answer (a "No" to a statement about you) is not asked again: another model
+    /// saying "Yes" would not make it true. With a single model, it gets a second try with the reason. Empty when no model answered.
+    /// </summary>
+    internal static async Task<IReadOnlyList<Escalated>> EscalateAsync(IReadOnlyList<string> ladder, IReadOnlyList<FormQuestion> questions,
+        Func<string, IReadOnlyList<FormQuestion>, IReadOnlyList<string>?, Task<LlmResult>> ask, Func<IReadOnlyList<FormQuestion>, ModelAnswer[], IReadOnlyList<Checked>> check)
+    {
+        var done = new Dictionary<FormQuestion, Escalated>();
+        var pending = questions.ToList();
+        IReadOnlyList<string>? problems = null;
+        var answered = false;
+        foreach (var model in ladder.Count == 1 ? [ladder[0], ladder[0]] : ladder)
+        {
+            if (pending.Count == 0) break;
+            var r = await ask(model, pending, problems);
+            if (!r.Ok || r.Json is null) continue;
+            answered = true;
+            var results = check(pending, Parse(r.Json));
+            foreach (var c in results) done[c.Question] = new(c, r);
+            var open = results.Where(c => c.Value is null && !c.Final).ToList();
+            pending = [.. open.Select(c => c.Question)];
+            problems = [.. open.Select(c => c.Problem ?? "sem resposta")];
+        }
+        return answered ? [.. questions.Where(done.ContainsKey).Select(q => done[q])] : [];
     }
 
     /// <summary>What a written answer may state: the facts, what you confirmed once (floors, English, countries, availability) and the company's name.</summary>
@@ -115,9 +134,6 @@ internal sealed partial class Answerer(ApplicationsDbContext db, IProfileApi pro
             .Select(f => new { f.Question, f.Note }).ToListAsync(ct);
         return notes.Count == 0 ? null : "A IA não respondeu pelos fatos: " + string.Join(" | ", notes.Select(n => $"\"{Cut(n.Question, 80)}\" ({n.Note})")) + ".";
     }
-
-    // A number is written too: a salary or a count of years from a small model is the kind of slip a recruiter reads.
-    private static bool Written(FormQuestion q) => q.Kind is "text" or "textarea" or "number";
 
     /// <summary>The country of the place in your profile ("Rio de Janeiro, RJ" is Brazil), never the city: the AI needs no more for "are you in LATAM?".</summary>
     internal static string? Country(string? location)
@@ -171,7 +187,7 @@ internal sealed partial class Answerer(ApplicationsDbContext db, IProfileApi pro
             var a = answers.FirstOrDefault(x => x.Index == i);
             var basis = (a?.Facts ?? []).Where(known.ContainsKey).Select(id => Cut(known[id], 200)).ToList();
             var text = a?.Answer?.Trim() ?? "";
-            Checked Fail(string why) => new(q, null, why, basis);
+            Checked Fail(string why, bool final = false) => new(q, null, why, basis, final);
             Checked Pass(string value) => new(q, value, null, basis);
             if (a is null) { list.Add(Fail("sem resposta")); continue; }
             switch (q.Kind)
@@ -186,7 +202,8 @@ internal sealed partial class Answerer(ApplicationsDbContext db, IProfileApi pro
                     list.Add(picks.Count > 0 ? Pass(string.Join(FormQuestion.ChoiceSeparator, picks)) : Fail("nenhuma opção válida"));
                     break;
                 case "confirm":
-                    list.Add(Option(["Yes", "No"], text) is "Yes" || Confirms().IsMatch(CustomAnswer.Normalize(text)) ? Pass("Yes") : Fail("pelos fatos, a afirmação não vale para você"));
+                    list.Add(Option(["Yes", "No"], text) is "Yes" || Confirms().IsMatch(CustomAnswer.Normalize(text)) ? Pass("Yes")
+                        : Option(["Yes", "No"], text) is "No" ? Fail("pelos fatos, a afirmação não vale para você", final: true) : Fail("sem sim nem não"));
                     break;
                 case "number":
                     var digits = new string([.. text.Where(char.IsDigit)]);
@@ -196,6 +213,7 @@ internal sealed partial class Answerer(ApplicationsDbContext db, IProfileApi pro
                     var max = q.Kind == "textarea" ? 1500 : 400;
                     if (text.Length == 0) { list.Add(Fail("resposta vazia")); break; }
                     if (text.Length > max) { list.Add(Fail($"passou de {max} caracteres")); break; }
+                    if (Unknowing().IsMatch(Claims.Fold(text))) { list.Add(Fail("a resposta diz que não sabe")); break; }
                     var outside = Outside(q.Label, text, sources);
                     if (outside.Count > 0) { list.Add(Fail($"fora dos fatos: {string.Join(", ", outside.Take(6))}")); break; }
                     // An English question answered in Portuguese reads as a mistake to the recruiter.
@@ -234,5 +252,6 @@ internal sealed partial class Answerer(ApplicationsDbContext db, IProfileApi pro
     [GeneratedRegex(@"\b(brasil|brazil)\b|[,/\-]\s*(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)\s*$", RegexOptions.IgnoreCase)] private static partial Regex BrazilPlace();
     [GeneratedRegex(@"^(no|nao|n|false|falso)\b")] private static partial Regex No();
     [GeneratedRegex(@"^(i )?(confirm|agree|accept|certify)\b|^(eu )?(confirmo|concordo|aceito|declaro)\b")] private static partial Regex Confirms();
+    [GeneratedRegex(@"\b(nao sei|nao tenho certeza|i don'?t know|i do not know|not sure|i'?m not sure|i am not sure|no idea)\b")] private static partial Regex Unknowing();
     [GeneratedRegex(@"\b(nao|nunca|never|not|haven'?t|hasn'?t|didn'?t|don'?t|no experience|sem experiencia)\b")] private static partial Regex Denial();
 }
