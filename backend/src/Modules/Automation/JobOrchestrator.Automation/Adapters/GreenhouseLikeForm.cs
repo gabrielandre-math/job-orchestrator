@@ -200,6 +200,7 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
                 if (type == "checkbox")
                 {
                     // Optional boxes (newsletter, future openings) stay blank. A required one is a declaration or a fact about you.
+                    if (!required && Blocking(text, m)) return NeedsDeclaration(text);
                     if (!required && !Agreeable(text, m)) continue;
                     if (Tick(text, m) is not { } tick)
                     {
@@ -289,16 +290,20 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
 
     /// <summary>A privacy, data processing or terms box: only your authorization ticks it, never a guess.</summary>
     protected static AdapterResult<PreparedForm> NeedsDeclaration(string label) => AdapterResult<PreparedForm>.Fail(AdapterResultKind.NeedsHuman, "declaration",
-        $"O formulário pede uma declaração: \"{(label.Length > 120 ? label[..120] + "…" : label)}\". Para o app marcar em seu nome, ligue \"aceito as declarações\" na autorização; sem isso, só você marca.");
+        $"O formulário pede uma declaração: \"{(label.Length > 120 ? label[..120] + "…" : label)}\". Aceite no app, nas perguntas, ou ligue \"aceito as declarações\" na autorização.")
+        with { Questions = [new FormQuestion(label, "declaration", [])] };
 
     /// <summary>
     /// Whether a required box gets ticked, and why: a privacy, data or terms declaration when your authorization accepts them, or a
     /// statement about you that your answers (or the AI's, from your profile) confirm. Null leaves it for the AI or for you.
     /// </summary>
-    protected static (string Value, string Source)? Tick(string label, MaterialBundle m)
+    internal static (string Value, string Source)? Tick(string label, MaterialBundle m)
     {
         if (Marketing().IsMatch(label)) return null;
-        if (Consent().IsMatch(label)) return m.AcceptDeclarations ? ("Aceito", "sua autorização (declarações)") : null;
+        // A declaration is ticked by your authorization or by your own yes to this exact text, in the app's questions.
+        if (Consent().IsMatch(label))
+            return m.AcceptDeclarations ? ("Aceito", "sua autorização (declarações)")
+                : Mine(label, m) is { Source: "sua resposta" } yours && Yes().IsMatch(CustomAnswer.Normalize(yours.Value)) ? ("Aceito", "sua resposta") : null;
         return Mine(label, m) is { } mine && Yes().IsMatch(CustomAnswer.Normalize(mine.Value)) ? ("Marcado", mine.Source) : null;
     }
 
@@ -306,7 +311,13 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
     /// An optional privacy or terms box your authorization accepts: many sites check it only when the form arrives, so it gets ticked
     /// like a required one. Newsletters, job alerts and talent pools are never ticked unless the form requires them.
     /// </summary>
-    protected static bool Agreeable(string label, MaterialBundle m) => m.AcceptDeclarations && Consent().IsMatch(label) && !Marketing().IsMatch(label);
+    protected static bool Agreeable(string label, MaterialBundle m) => Consent().IsMatch(label) && !Marketing().IsMatch(label) && Tick(label, m) is not null;
+
+    /// <summary>
+    /// An optional privacy or terms box the app may not tick: many sites check it only when the form arrives, and the send fails (a
+    /// Workable form in Europe did). The form stops before sending and asks for your consent instead.
+    /// </summary>
+    internal static bool Blocking(string label, MaterialBundle m) => PrivacyTerms().IsMatch(label) && !Marketing().IsMatch(label) && Tick(label, m) is null;
 
     /// <summary>Your answer to this exact question or, without one, the answer the AI wrote from your profile for this form.</summary>
     protected static (string Value, string Source)? Mine(string question, MaterialBundle m) =>
@@ -396,6 +407,8 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
     protected static partial Regex Consent();
     [GeneratedRegex(@"newsletter|marketing|promo|job alerts?|future (openings|jobs|opportunities|positions|roles)|novidades|futuras (vagas|oportunidades)|talent (pool|community|network)|banco de talentos|outras vagas|other (openings|opportunities)", RegexOptions.IgnoreCase)]
     protected static partial Regex Marketing();
+    [GeneratedRegex(@"privacy|privacidade|personal data|dados pessoais|processing of (my )?(personal )?data|tratamento d[eo]s? dados|\bgdpr\b|\blgpd\b|\bterms\b|\btermos\b", RegexOptions.IgnoreCase)]
+    protected static partial Regex PrivacyTerms();
     // "pelo menos 2 anos com C#", "no mínimo 3 anos de experiência com .NET", "at least 5 years of experience with React", "2+ years in Go".
     [GeneratedRegex(@"(?:at least|minimum of|min\.?|pelo menos|no m[ií]nimo|m[ií]nimo de|mais de|more than)?\s*(?<n>\d+)\s*\+?\s*(?:or more\s+)?(?:years?|anos)\b(?:\s+(?:of|de)\s+(?:professional\s+|hands-on\s+|pr[aá]tica\s+)?(?:experience|experi[eê]ncia)(?:\s+pr[aá]tica)?)?\s+(?:with|in|using|com|em|de)\s+(?<tech>[\w#.+]+(?:\s[\w#.+]+)?)", RegexOptions.IgnoreCase)]
     internal static partial Regex MinYears();

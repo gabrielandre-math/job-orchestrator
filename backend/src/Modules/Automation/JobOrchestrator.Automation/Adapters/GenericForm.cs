@@ -25,7 +25,7 @@ internal sealed partial class GenericForm(BrowserPool browsers, IHttpClientFacto
     private static readonly string[] Excluded =
     [
         "linkedin.com", "indeed.com", "glassdoor.com", "glassdoor.com.br", "gupy.io", "catho.com.br", "infojobs.com.br", "vagas.com.br", "computrabajo.com",
-        "pandape.com.br", "solides.com.br", "empregos.com.br", "trabalhabrasil.com.br", "getonbrd.com", "himalayas.app", "whatjobs.com", "wellfound.com", "angel.co",
+        "pandape.com.br", "solides.com.br", "empregos.com.br", "trabalhabrasil.com.br", "getonbrd.com", "himalayas.app", "wellfound.com", "angel.co",
         "arc.dev", "djinni.co", "geekhunter.com", "geekhunter.com.br", "powertofly.com", "remoteok.com", "remoteok.io", "weworkremotely.com", "remotive.com",
         "remotive.io", "jooble.org", "adzuna.com", "adzuna.com.br", "jobicy.com", "workingnomads.com", "themuse.com", "arbeitnow.com", "4dayweek.io",
         "github.com", "ycombinator.com", "upwork.com", "freelancer.com", "workana.com", "99freelas.com.br", "programathor.com.br", "trampos.co",
@@ -79,6 +79,9 @@ internal sealed partial class GenericForm(BrowserPool browsers, IHttpClientFacto
         if (response.Status is 401 or 403 or 429 or >= 500)
             return AdapterResult<PreparedForm>.Fail(AdapterResultKind.NeedsHuman, "blocked", $"O site recusou o navegador automático (HTTP {response.Status}).");
         await SettleAsync(page);
+        // A WhatJobs link that expired sends the page to a search listing ("...-jobs"): the job is gone.
+        if (new Uri(page.Url).Host.EndsWith("whatjobs.com", StringComparison.OrdinalIgnoreCase) && Listing().IsMatch(new Uri(page.Url).AbsolutePath))
+            return AdapterResult<PreparedForm>.Fail(AdapterResultKind.PermanentFailure, "posting-closed", "A vaga não está mais no ar: o link do agregador leva para uma busca.");
         await DeclineCookiesAsync(page);
         if (!await PickFormAsync(page))
         {
@@ -160,6 +163,7 @@ internal sealed partial class GenericForm(BrowserPool browsers, IHttpClientFacto
     }
 
     [GeneratedRegex(@"^/generic/")] private static partial Regex Fake();
+    [GeneratedRegex(@"^/[a-z0-9-]+-jobs/?$", RegexOptions.IgnoreCase)] private static partial Regex Listing();
     [GeneratedRegex(@"^\s*(apply( now| here| for (this )?(job|position|role))?|i'?m interested|(candidatar(-se)?|candidate-se)( (à|a) vaga)?( agora)?|quero me candidatar|inscrever-se|inscreva-se|aplicar( (à|a) vaga)?( agora)?|postular(me|se)?( ahora)?|enviar candidatura)\s*$", RegexOptions.IgnoreCase)]
     private static partial Regex Apply();
     [GeneratedRegex(@"^\s*(submit( (application|my application|your application))?|send( application)?|apply|apply now|enviar( candidatura| inscri[cç][aã]o)?|candidatar(-se)?|finalizar( candidatura| inscri[cç][aã]o)?|concluir( candidatura)?|aplicar|postular(me)?|enviar postulaci[oó]n)\s*$", RegexOptions.IgnoreCase)]

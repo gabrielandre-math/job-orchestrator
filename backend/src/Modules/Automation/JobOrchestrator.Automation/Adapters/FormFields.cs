@@ -159,6 +159,7 @@ internal abstract partial class LabelForm
             }
             if (f.Type == "checkbox" || Declaration().IsMatch(label))
             {
+                if (!f.Required && Blocking(label, m)) return NeedsDeclaration(label);
                 if (!f.Required && !Agreeable(label, m)) continue;
                 if (Tick(label, m) is not { } tick)
                 {
