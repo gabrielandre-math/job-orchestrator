@@ -41,6 +41,17 @@
           <button class="btn primary" type="button" [disabled]="declaring.running()" (click)="arrived()">Chegou</button>
         </div>
       </div>
+    } @else if (d.application.state === 'NeedsHuman' && wall()) {
+      <div class="decision panel">
+        <div>
+          <h2>{{ wall() === 'Captcha' ? 'A página pede CAPTCHA' : 'O site pede login' }}</h2>
+          <p class="muted">O app não passa por {{ wall() === 'Captcha' ? 'CAPTCHA nem verificação anti-robô' : 'login' }}. Abra a vaga no seu navegador: o copiloto abaixo traz o currículo e as respostas prontas. Resolva, envie pelo site e registre o envio. Preparar de novo aqui só adianta se o site tirar a verificação.</p>
+        </div>
+        <div class="actions">
+          <button class="btn" type="button" (click)="doWithdraw()">Retirar</button>
+          <button class="btn" type="button" [disabled]="retry.running() || !d.hasResume" (click)="doRetry()">Tentar o preparo de novo</button>
+        </div>
+      </div>
     } @else if (d.application.state === 'NeedsHuman') {
       <div class="decision panel">
         <div>

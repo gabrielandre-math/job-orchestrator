@@ -32,6 +32,8 @@ export class ApplicationPage {
   protected async arrived2() { await this.data.reload(); }
   protected async arrived() { if ((await this.declaring.run(undefined)) !== null) await this.data.reload(); }
   /** Envio incerto que a reconciliação não achou: só você sabe se chegou (e-mail de confirmação, portal do candidato). */
+  /** Uma parede que o robô não passa (CAPTCHA, login): o caminho é o copiloto no seu navegador, não refazer o preparo. */
+  protected readonly wall = computed(() => (this.data.value()?.tasks ?? []).find((t) => !t.resolvedAt && (t.kind === 'Captcha' || t.kind === 'Login'))?.kind ?? null);
   protected readonly uncertain = computed(() => (this.data.value()?.tasks ?? []).some((t) => !t.resolvedAt && t.kind === 'Reconcile'));
   protected readonly label = stateLabel;
   protected readonly tone = stateTone;
