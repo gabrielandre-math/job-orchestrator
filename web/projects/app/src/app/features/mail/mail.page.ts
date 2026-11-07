@@ -17,7 +17,7 @@ const STATUS: Record<string, { label: string; tone: string }> = {
   Sending: { label: 'enviando', tone: 'accent' }, Uncertain: { label: 'em dúvida', tone: 'warn' }, Sent: { label: 'enviado', tone: 'ok' }, Replied: { label: 'respondido', tone: 'ok' }, Failed: { label: 'não saiu', tone: 'bad' }, Bounced: { label: 'não entregue', tone: 'bad' }, Cancelled: { label: 'cancelado', tone: 'muted' },
 };
 const CLASS: Record<string, string> = {
-  application_received: 'candidatura recebida', rejection: 'recusa', interview_invite: 'convite para entrevista', assessment: 'teste técnico', offer: 'proposta', recruiter_outreach: 'recrutador', bounce: 'não entregue', other: 'outro',
+  application_received: 'candidatura recebida', rejection: 'recusa', job_closed: 'vaga encerrada', job_alert: 'alerta de vaga', interview_invite: 'convite para entrevista', assessment: 'teste técnico', offer: 'proposta', recruiter_outreach: 'recrutador', bounce: 'não entregue', other: 'outro',
 };
 const MARKERS = ['{{empresa}}', '{{vaga}}', '{{experiencia}}', '{{competencias}}', '{{link_vaga}}', '{{nome}}', '{{assinatura}}'];
 
@@ -65,7 +65,7 @@ export class MailPage {
   protected readonly toReview = computed(() => (this.outgoing.value() ?? []).filter((m) => m.status === 'AwaitingApproval' || m.status === 'Draft' || m.status === 'Scheduled' || m.status === 'Uncertain'));
   protected readonly done = computed(() => (this.outgoing.value() ?? []).filter((m) => ['Sent', 'Replied', 'Failed', 'Bounced', 'Cancelled', 'Sending'].includes(m.status)));
   /** Avisos de falha na entrega ficam no e-mail enviado (como não entregue), não entre as respostas. */
-  protected readonly replies = computed(() => (this.inbox.value() ?? []).filter((i) => i.class !== 'bounce'));
+  protected readonly replies = computed(() => (this.inbox.value() ?? []).filter((i) => !['bounce', 'job_alert', 'other'].includes(i.class ?? '')));
   /** Não entregues e os que não saíram: o número que pede atenção no topo e na aba. */
   protected readonly lost = computed(() => (this.outgoing.value() ?? []).filter((m) => m.status === 'Bounced' || m.status === 'Failed').length);
   protected readonly tabs = computed(() => [

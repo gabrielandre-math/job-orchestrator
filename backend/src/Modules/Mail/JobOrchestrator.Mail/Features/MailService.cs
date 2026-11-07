@@ -103,7 +103,7 @@ internal sealed partial class MailService(
         using var smtp = MailTls.Secure(new SmtpClient { Timeout = 20000 });
         try
         {
-            await smtp.ConnectAsync(a.SmtpHost, a.SmtpPort, a.SmtpSsl ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.StartTls, ct);
+            await smtp.ConnectAsync(a.SmtpHost, a.SmtpPort, Socket(a.SmtpHost, a.SmtpSsl ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.StartTls), ct);
             await smtp.AuthenticateAsync(a.Address, password, ct);
             await smtp.DisconnectAsync(true, ct);
         }
@@ -138,7 +138,7 @@ internal sealed partial class MailService(
         using var imap = MailTls.Secure(new ImapClient { Timeout = 20000 });
         try
         {
-            await imap.ConnectAsync(a.ImapHost, a.ImapPort, SecureSocketOptions.SslOnConnect, ct);
+            await imap.ConnectAsync(a.ImapHost, a.ImapPort, Socket(a.ImapHost, SecureSocketOptions.SslOnConnect), ct);
             await imap.AuthenticateAsync(a.Address, password, ct);
             await imap.DisconnectAsync(true, ct);
         }
@@ -373,6 +373,13 @@ internal sealed partial class MailService(
 
     // ---------- Guardião e envio ----------
 
+    /// <summary>
+    /// Test sandboxes only (JO_MAIL_PLAIN_LOOPBACK=1, set by the night rehearsal): a local mail catcher on this machine, without TLS.
+    /// Any other host keeps its TLS, whatever the variable says.
+    /// </summary>
+    internal static SecureSocketOptions Socket(string host, SecureSocketOptions normal) =>
+        Environment.GetEnvironmentVariable("JO_MAIL_PLAIN_LOOPBACK") == "1" && host is "127.0.0.1" or "localhost" ? SecureSocketOptions.None : normal;
+
     internal const string UncertainNote = "O envio foi interrompido depois de começar, e o servidor pode ter aceitado o e-mail. Confira a pasta Enviados da conta antes de mandar de novo.";
 
     /// <summary>
@@ -552,7 +559,7 @@ internal sealed partial class MailService(
     {
         var password = await Secrets.GetAsync($"mail:{a.Id}", ct) ?? throw new MailRuleException("A senha da conta não está mais no chaveiro do sistema. Conecte a conta de novo.");
         using var smtp = MailTls.Secure(new SmtpClient { Timeout = 30000 });
-        await smtp.ConnectAsync(a.SmtpHost, a.SmtpPort, a.SmtpSsl ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.StartTls, ct);
+        await smtp.ConnectAsync(a.SmtpHost, a.SmtpPort, Socket(a.SmtpHost, a.SmtpSsl ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.StartTls), ct);
         await smtp.AuthenticateAsync(a.Address, password, ct);
         transfer();
         await smtp.SendAsync(msg, ct);
@@ -653,6 +660,7 @@ internal sealed partial class MailService(
     /// </summary>
     public async Task<int> PollAsync(CancellationToken ct)
     {
+        await ReclassifyAsync(ct);
         var stored = 0;
         foreach (var a in await db.Accounts.ToListAsync(ct))
         {
@@ -662,7 +670,7 @@ internal sealed partial class MailService(
             try
             {
                 using var imap = MailTls.Secure(new ImapClient { Timeout = 30000 });
-                await imap.ConnectAsync(a.ImapHost, a.ImapPort, SecureSocketOptions.SslOnConnect, ct);
+                await imap.ConnectAsync(a.ImapHost, a.ImapPort, Socket(a.ImapHost, SecureSocketOptions.SslOnConnect), ct);
                 await imap.AuthenticateAsync(a.Address, password, ct);
                 var inbox = imap.Inbox;
                 await inbox.OpenAsync(FolderAccess.ReadOnly, ct);
@@ -711,9 +719,11 @@ internal sealed partial class MailService(
                         stored++;
                         continue;
                     }
-                    (string? cls, bool action) = await ClassifyAsync(from, subject, preview, ct);
+                    // Rules first (newsletters, promotions, work tools, closed jobs); the model decides the rest and its answer is checked.
+                    (string? cls, bool action) = Rule(from, subject, preview) is { } ruled ? (ruled, false) : await ClassifyAsync(from, subject, preview, ct);
+                    cls = Checked(cls, subject, preview);
                     // A recruiter writing first is a new opportunity, kept without a job; only unrelated mail is skipped.
-                    if (link is null && !ambiguous && cls is "other" or null) continue;
+                    if (link is null && !ambiguous && cls is "other" or "job_alert" or null) continue;
                     db.Incoming.Add(new IncomingMail { MessageId = messageId, From = from, Subject = Cut(subject, 300), Date = env.Date?.UtcDateTime ?? Now, Snippet = preview, Class = cls, ActionNeeded = action || ambiguous, OutgoingId = link, Ambiguous = ambiguous, ReceivedAt = Now });
                     if (link is { } id && await db.Outgoing.FindAsync([id], ct) is { } o && o.Status is "Sent")
                     {
@@ -758,6 +768,65 @@ internal sealed partial class MailService(
 
     [GeneratedRegex(@"delivery status notification|undeliver|returned to sender|delivery (has )?failed|mail delivery failed|failure notice|não (foi possível )?entreg|mensagem (não entregue|devolvida)", RegexOptions.IgnoreCase)]
     private static partial Regex BounceSubject();
+
+    /// <summary>
+    /// What a message is, by rules before the model: job-board newsletters, promotions and work tools are not replies to an application,
+    /// and a closed job says so. Null when the rules leave it to the model.
+    /// </summary>
+    internal static string? Rule(string from, string subject, string text)
+    {
+        var all = $"{subject}\n{text}";
+        if (WorkTool().IsMatch(from)) return "other";
+        if (Closed().IsMatch(all)) return "job_closed";
+        if (Newsletter().IsMatch(all)) return "job_alert";
+        if (Promotion().IsMatch(subject)) return "other";
+        return null;
+    }
+
+    /// <summary>The model's class must have its own words in the message: an invite talks about an interview, an offer about a job proposal or pay.</summary>
+    internal static string? Checked(string? category, string subject, string text)
+    {
+        var all = $"{subject}\n{text}";
+        return category switch
+        {
+            "interview_invite" when !InterviewWords().IsMatch(all) => "other",
+            "offer" when !OfferWords().IsMatch(all) => "other",
+            "assessment" when !AssessmentWords().IsMatch(all) => "other",
+            _ => category
+        };
+    }
+
+    [GeneratedRegex(@"@(?:[\w.-]+\.)?(?:atlassian\.net|atlassian\.com|github\.com|gitlab\.com|slack\.com|notion\.so|figma\.com|trello\.com|asana\.com|linear\.app)\b|^jira@", RegexOptions.IgnoreCase)]
+    private static partial Regex WorkTool();
+    [GeneratedRegex(@"vaga (?:foi )?(?:finalizada|encerrada|preenchida|cancelada|congelada)|processo (?:seletivo )?(?:foi )?(?:encerrado|finalizado|cancelado)|position (?:has been|was) (?:filled|closed)|no longer accepting|job (?:has been|was) closed", RegexOptions.IgnoreCase)]
+    private static partial Regex Closed();
+    [GeneratedRegex(@"vagas? que combina|vagas? recomendada|vagas? para voc[eê]|novas vagas|achamos que voc[eê] pode se interessar|jobs? (?:you may|you might|for you|recommended)|new jobs|job alert|alerta de vaga", RegexOptions.IgnoreCase)]
+    private static partial Regex Newsletter();
+    [GeneratedRegex(@"oferta especial|desconto|promo[cç][aã]o|[uú]ltimos? dias?|black friday|cupom|% ?off|aproveite|sale\b|special offer|discount", RegexOptions.IgnoreCase)]
+    private static partial Regex Promotion();
+    [GeneratedRegex(@"entrevista|interview|bate[- ]papo|conversa com|agendar|agendamento|schedule|call com|chamada de v[ií]deo", RegexOptions.IgnoreCase)]
+    private static partial Regex InterviewWords();
+    [GeneratedRegex(@"proposta (?:de trabalho|de emprego|formal|salarial)|carta[- ]oferta|offer letter|job offer|remunera[cç][aã]o|sal[aá]rio|admiss[aã]o|contrata[cç][aã]o|compensation|salary", RegexOptions.IgnoreCase)]
+    private static partial Regex OfferWords();
+    [GeneratedRegex(@"teste t[eé]cnico|desafio|case t[eé]cnico|assessment|challenge|take[- ]home|hackerrank|codility|avalia[cç][aã]o t[eé]cnica|prova", RegexOptions.IgnoreCase)]
+    private static partial Regex AssessmentWords();
+
+    /// <summary>Messages read before these rules existed get them now: an unlinked "invite" that is a newsletter stops pretending to be one.</summary>
+    internal async Task<int> ReclassifyAsync(CancellationToken ct)
+    {
+        var loose = await db.Incoming.Where(i => i.OutgoingId == null && i.Class != "bounce" && i.Class != "job_alert" && i.Class != "other" && i.Class != "job_closed").ToListAsync(ct);
+        var changed = 0;
+        foreach (var i in loose)
+        {
+            var cls = Rule(i.From, i.Subject, i.Snippet) ?? Checked(i.Class, i.Subject, i.Snippet);
+            if (cls == i.Class) continue;
+            i.Class = cls;
+            i.ActionNeeded = i.ActionNeeded && cls is not ("other" or "job_alert" or "job_closed");
+            changed++;
+        }
+        if (changed > 0) await db.SaveChangesAsync(ct);
+        return changed;
+    }
 
     private async Task<(string?, bool)> ClassifyAsync(string from, string subject, string text, CancellationToken ct)
     {
