@@ -97,6 +97,23 @@ internal static class Setup
 /// <summary>Conferência da máquina antes de instalar: cada item diz o que achou e, se faltar algo, o comando ou o link para resolver.</summary>
 internal static class Checks
 {
+    /// <summary>
+    /// The keychain is ready when it stores and gives back a test secret, not when its tool exists: a locked keychain would let the
+    /// installer say "ok" and then lose the e-mail and API passwords.
+    /// </summary>
+    private static async Task<Check> KeyringAsync()
+    {
+        if (!Secrets.Available)
+            return new("keyring", "Chaveiro do sistema", "guardian", "warn", "Sem o secret-tool, e-mail e chaves de API ficam indisponíveis.", Install("libsecret-tools gnome-keyring", "libsecret gnome-keyring", "libsecret gnome-keyring", "libsecret-tools gnome-keyring"), false);
+        var secret = $"teste-{Guid.NewGuid():N}";
+        var works = false;
+        try { works = await Secrets.StoreAsync("selftest", secret, CancellationToken.None) && await Secrets.GetAsync("selftest", CancellationToken.None) == secret; }
+        finally { await Secrets.ClearAsync("selftest", CancellationToken.None); }
+        return works
+            ? new("keyring", "Chaveiro do sistema", "guardian", "ok", $"Senhas de e-mail e chaves de API ficam no {Secrets.StoreName} (testado agora: guardou e devolveu um segredo).", null, false)
+            : new("keyring", "Chaveiro do sistema", "guardian", "warn", $"O {Secrets.StoreName} existe, mas não guardou ou não devolveu um segredo de teste (talvez esteja trancado). E-mail e chaves de API ficam indisponíveis até ele abrir.", null, false);
+    }
+
     public static async Task<IReadOnlyList<Check>> RunAsync()
     {
         var list = new List<Check> { SystemCheck() };
@@ -105,7 +122,7 @@ internal static class Checks
         var browser = Platform.Browser();
         list.Add(browser is not null
             ? new("browser", "Navegador", "reader", "ok", $"{BrowserName(browser)}: janela do app, formulários e páginas com JavaScript.", null, false)
-            : new("browser", "Navegador", "reader", "warn", "Sem Chrome, Edge, Chromium ou Brave: a janela abre no navegador padrão e as páginas com JavaScript não são lidas.",
+            : new("browser", "Navegador", "reader", "warn", "Sem Chrome, Edge, Chromium ou Brave: o currículo em PDF, o preenchimento dos formulários e as páginas com JavaScript ficam parados, e a janela abre no navegador padrão.",
                 OperatingSystem.IsMacOS() ? "https://www.google.com/chrome/" : OperatingSystem.IsWindows() ? "winget install Google.Chrome" : Install("chromium", "chromium", "chromium", "chromium"), false));
         list.Add(await OllamaAsync());
         list.Add(Gpu());
@@ -113,9 +130,7 @@ internal static class Checks
         list.Add(free >= 3
             ? new("disk", "Espaço em disco", "receipt", "ok", $"{free:0} GB livres.", null, true)
             : new("disk", "Espaço em disco", "receipt", free >= 1.5 ? "warn" : "fail", $"Só {free:0.0} GB livres; o banco, o coletor e o Python dele precisam de uns 3 GB.", null, free < 1.5));
-        list.Add(Secrets.Available
-            ? new("keyring", "Chaveiro do sistema", "guardian", "ok", $"Senhas de e-mail e chaves de API ficam no {Secrets.StoreName}.", null, false)
-            : new("keyring", "Chaveiro do sistema", "guardian", "warn", "Sem o secret-tool, e-mail e chaves de API ficam indisponíveis.", Install("libsecret-tools gnome-keyring", "libsecret gnome-keyring", "libsecret gnome-keyring", "libsecret-tools gnome-keyring"), false));
+        list.Add(await KeyringAsync());
         if (await Launcher.HealthyAsync())
             list.Add(new("port", "Porta 7410", "gate", "warn", "Já tem um Job Orchestrator no ar (talvez uma versão anterior ou o modo de desenvolvimento). A instalação assume o lugar dele no fim.", null, false));
         return list;

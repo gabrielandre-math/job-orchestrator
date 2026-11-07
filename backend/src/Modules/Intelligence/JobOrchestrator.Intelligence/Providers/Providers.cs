@@ -274,6 +274,12 @@ internal sealed class OllamaLocal(IHttpClientFactory http, IConfiguration config
     public string Family => "local";
     private string Url => config["Llm:Ollama:Url"] ?? "http://127.0.0.1:11434";
 
+    private static bool Missing(string error) => error.Contains("not found", StringComparison.OrdinalIgnoreCase) && error.Contains("model", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Which capability stops, in words: the strong model missing blocks the long texts, not the whole local AI.</summary>
+    internal static string NotPulled(string model, Rung rung) =>
+        $"O modelo {(rung == Rung.LocalStrong ? "forte" : "rápido")} {model} não está baixado: {(rung == Rung.LocalStrong ? "textos longos e rascunhos com a nuvem fora" : "as tarefas locais")} ficam paradas até instalar em Provedores.";
+
     public string ModelFor(Rung rung) =>
         rung == Rung.LocalStrong && config["Llm:Ollama:Models:LocalStrong"] is { Length: > 0 } strong ? strong : config["Llm:Ollama:Models:Local"] ?? "gemma4:e4b";
 
@@ -324,7 +330,7 @@ internal sealed class OllamaLocal(IHttpClientFactory http, IConfiguration config
             var (content, error) = await ChatAsync(model, r, think: false, limit.Token);
             // Modelos sem modo de raciocínio recusam o campo think: repete sem ele.
             if (error is not null && error.Contains("think", StringComparison.OrdinalIgnoreCase)) (content, error) = await ChatAsync(model, r, think: null, limit.Token);
-            if (error is not null) return new LlmResult(false, null, Id, model, "local", ClaudeCli.Trim(error), clock.Elapsed.TotalSeconds);
+            if (error is not null) return new LlmResult(false, null, Id, model, "local", Missing(error) ? NotPulled(model, r.Rung) : ClaudeCli.Trim(error), clock.Elapsed.TotalSeconds);
             var json = CliRunner.JsonOf(content ?? "");
             return new LlmResult(json is not null, json, Id, model, "local", json is null ? "resposta fora do formato" : null, clock.Elapsed.TotalSeconds);
         }

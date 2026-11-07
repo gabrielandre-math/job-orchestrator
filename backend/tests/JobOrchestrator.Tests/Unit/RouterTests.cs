@@ -184,6 +184,14 @@ public sealed class RouterTests : IAsyncLifetime
     }
 
     [Fact]
+    public void Modelo_forte_ausente_diz_o_que_para()
+    {
+        Assert.Contains("forte qwen3.5:4b", OllamaLocal.NotPulled("qwen3.5:4b", Rung.LocalStrong));
+        Assert.Contains("textos longos", OllamaLocal.NotPulled("qwen3.5:4b", Rung.LocalStrong));
+        Assert.Contains("rápido qwen3:4b", OllamaLocal.NotPulled("qwen3:4b", Rung.Local));
+    }
+
+    [Fact]
     public async Task Teto_diario_corta_a_nuvem()
     {
         await using var db = Db();
