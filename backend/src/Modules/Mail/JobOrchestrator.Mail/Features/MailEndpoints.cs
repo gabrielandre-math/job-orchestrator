@@ -3,6 +3,7 @@ namespace JobOrchestrator.Mail.Features;
 internal sealed record AccountView(Guid Id, string Provider, string Address, string DisplayName, string SmtpHost, int SmtpPort, string ImapHost, DateTime? CheckedAt, string? LastError,
     bool Sends, DateTime? PausedUntil, string? PauseReason, int SentToday);
 internal sealed record SendsInput(bool Sends);
+internal sealed record ResolveInput(bool Sent);
 internal sealed record TargetView(Guid JobId, string Company, string Title, string Location, string ApplyEmail, string ApplyUrl, string? CompanyDomain, int Score, string? MailStatus, Guid? MailId);
 internal sealed record OverviewView(int SentToday, int DailyCap, int Awaiting, int Scheduled, int Sent, int Replied, int Interviews, string Mode, bool Consent, bool Connected);
 
@@ -63,6 +64,7 @@ internal sealed class MailEndpoints : ICarterModule
         g.MapPost("drafts", (DraftInput body, MailService mail, CancellationToken ct) => Run(() => mail.DraftAsync(body.JobId, body.Kind ?? "first", ct)));
         g.MapPut("outgoing/{id:guid}", (Guid id, EditInput body, MailService mail, CancellationToken ct) => Run(() => mail.EditAsync(id, body, ct)));
         g.MapPost("outgoing/{id:guid}/approve", (Guid id, MailService mail, CancellationToken ct) => Run(() => mail.ApproveAsync(id, ct)));
+        g.MapPost("outgoing/{id:guid}/resolve", (Guid id, ResolveInput body, MailService mail, CancellationToken ct) => Run(() => mail.ResolveAsync(id, body.Sent, ct)));
         g.MapPost("outgoing/{id:guid}/cancel", (Guid id, MailService mail, CancellationToken ct) => Run(async () => { await mail.CancelAsync(id, ct); return new { ok = true }; }));
         g.MapGet("inbox", async (MailDbContext db, CancellationToken ct) => Results.Ok(await db.Incoming.AsNoTracking().OrderByDescending(i => i.Date).Take(200).ToListAsync(ct)));
         g.MapPost("inbox/check", (MailService mail, CancellationToken ct) => Run(async () => new { stored = await mail.PollAsync(ct) }));

@@ -72,6 +72,8 @@ internal sealed class OutgoingMail
     public string? MessageId { get; set; }
     public string? AttachmentPath { get; set; }
     public string? AttachmentName { get; set; }
+    /// <summary>SHA-256 of the resume the draft was made with; the e-mail only goes with that exact file.</summary>
+    public string? AttachmentSha256 { get; set; }
     public string? Error { get; set; }
     public string DraftedBy { get; set; } = "";
     public string? CheckNotes { get; set; }
@@ -131,6 +133,7 @@ internal sealed class MailDbContext(DbContextOptions<MailDbContext> options) : D
             e.HasIndex(x => x.MessageId);
             e.HasIndex(x => new { x.AccountId, x.SentAt });
             e.Property(x => x.Status).HasMaxLength(20);
+            e.Property(x => x.AttachmentSha256).HasMaxLength(64);
         });
         b.Entity<IncomingMail>(e => { e.ToTable("incoming"); e.HasKey(x => x.Id); e.HasIndex(x => x.MessageId).IsUnique(); });
         b.Entity<AlertPosting>(e => { e.ToTable("alert_postings"); e.HasKey(x => x.Id); e.HasIndex(x => x.Url).IsUnique(); e.HasIndex(x => x.ReceivedAt); });

@@ -14,7 +14,7 @@ import { MailConnect } from './mail-connect';
 type Tab = 'targets' | 'review' | 'sent' | 'inbox' | 'template';
 const STATUS: Record<string, { label: string; tone: string }> = {
   Draft: { label: 'rascunho', tone: 'muted' }, AwaitingApproval: { label: 'esperando você', tone: 'warn' }, Scheduled: { label: 'agendado', tone: 'accent' },
-  Sending: { label: 'enviando', tone: 'accent' }, Sent: { label: 'enviado', tone: 'ok' }, Replied: { label: 'respondido', tone: 'ok' }, Failed: { label: 'não saiu', tone: 'bad' }, Bounced: { label: 'não entregue', tone: 'bad' }, Cancelled: { label: 'cancelado', tone: 'muted' },
+  Sending: { label: 'enviando', tone: 'accent' }, Uncertain: { label: 'em dúvida', tone: 'warn' }, Sent: { label: 'enviado', tone: 'ok' }, Replied: { label: 'respondido', tone: 'ok' }, Failed: { label: 'não saiu', tone: 'bad' }, Bounced: { label: 'não entregue', tone: 'bad' }, Cancelled: { label: 'cancelado', tone: 'muted' },
 };
 const CLASS: Record<string, string> = {
   application_received: 'candidatura recebida', rejection: 'recusa', interview_invite: 'convite para entrevista', assessment: 'teste técnico', offer: 'proposta', recruiter_outreach: 'recrutador', bounce: 'não entregue', other: 'outro',
@@ -50,6 +50,8 @@ export class MailPage {
   protected readonly classLabel = CLASS;
   protected readonly drafting = command((jobId: string) => send<OutgoingMail>('POST', '/mail/drafts', { jobId }), 'Rascunho pronto em Para aprovar.');
   protected readonly approving = command((id: string) => send<OutgoingMail>('POST', `/mail/outgoing/${id}/approve`), (m) => m.status === 'Sent' ? 'E-mail enviado.' : `Agendado: ${m.error ?? 'sai na próxima janela.'}`);
+  protected readonly resolving = command((x: { id: string; sent: boolean }) => send<OutgoingMail>('POST', `/mail/outgoing/${x.id}/resolve`, { sent: x.sent }),
+    (m) => m.status === 'Sent' ? 'Marcado como enviado.' : 'De volta à fila, com o mesmo Message-ID.');
   protected readonly cancelling = command((id: string) => send('POST', `/mail/outgoing/${id}/cancel`), 'E-mail cancelado.');
   protected readonly editing = command((x: { id: string; subject: string; body: string }) => send('PUT', `/mail/outgoing/${x.id}`, { subject: x.subject, body: x.body }), 'Edição salva.');
   protected readonly checking = command((_: void) => send<{ stored: number }>('POST', '/mail/inbox/check'), (r) => r.stored ? `${r.stored} respostas novas.` : 'Nada novo na caixa.');
@@ -60,7 +62,7 @@ export class MailPage {
   protected readonly connected = computed(() => (this.accounts.value() ?? []).length > 0);
   protected readonly sending = computed(() => (this.accounts.value() ?? []).filter((a) => a.sends).length);
   protected readonly toWrite = computed(() => (this.targets.value() ?? []).filter((t) => !t.mailStatus));
-  protected readonly toReview = computed(() => (this.outgoing.value() ?? []).filter((m) => m.status === 'AwaitingApproval' || m.status === 'Draft' || m.status === 'Scheduled'));
+  protected readonly toReview = computed(() => (this.outgoing.value() ?? []).filter((m) => m.status === 'AwaitingApproval' || m.status === 'Draft' || m.status === 'Scheduled' || m.status === 'Uncertain'));
   protected readonly done = computed(() => (this.outgoing.value() ?? []).filter((m) => ['Sent', 'Replied', 'Failed', 'Bounced', 'Cancelled', 'Sending'].includes(m.status)));
   /** Avisos de falha na entrega ficam no e-mail enviado (como não entregue), não entre as respostas. */
   protected readonly replies = computed(() => (this.inbox.value() ?? []).filter((i) => i.class !== 'bounce'));
@@ -134,6 +136,9 @@ export class MailPage {
     this.confirming.set(null);
     if (this.changed(m)) await this.saveEdit(m);
     if ((await this.approving.run(m.id)) !== null) await Promise.all([this.outgoing.reload(), this.overview.reload(), this.targets.reload()]);
+  }
+  protected async resolve(m: OutgoingMail, sent: boolean) {
+    if ((await this.resolving.run({ id: m.id, sent })) !== null) await Promise.all([this.outgoing.reload(), this.overview.reload(), this.targets.reload()]);
   }
   protected async cancel(m: OutgoingMail) { if ((await this.cancelling.run(m.id)) !== null) await Promise.all([this.outgoing.reload(), this.targets.reload()]); }
   protected async saveEdit(m: OutgoingMail) { const e = this.edit(m); if ((await this.editing.run({ id: m.id, ...e })) !== null) { this.edits.update((x) => { const n = { ...x }; delete n[m.id]; return n; }); await this.outgoing.reload(); } }

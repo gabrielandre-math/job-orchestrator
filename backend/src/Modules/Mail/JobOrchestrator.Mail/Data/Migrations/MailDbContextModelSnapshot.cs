@@ -324,6 +324,11 @@ namespace JobOrchestrator.Mail.Data.Migrations
                         .HasColumnType("text")
                         .HasColumnName("attachment_path");
 
+                    b.Property<string>("AttachmentSha256")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("attachment_sha256");
+
                     b.Property<string>("Body")
                         .IsRequired()
                         .HasColumnType("text")

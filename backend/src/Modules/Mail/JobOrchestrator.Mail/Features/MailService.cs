@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using MailKit;
@@ -94,7 +95,7 @@ internal sealed partial class MailService(
         msg.From.Add(new MailboxAddress(a.DisplayName, a.Address));
         msg.To.Add(new MailboxAddress(a.DisplayName, a.Address));
         msg.Body = new TextPart("plain") { Text = "Se este e-mail chegou, o envio está pronto. Nada foi enviado para empresa nenhuma." };
-        await SendAsync(a, msg, ct);
+        await SendAsync(a, msg, () => { }, ct);
     }
 
     private static async Task TestSmtpAsync(MailAccount a, string password, CancellationToken ct)
@@ -294,6 +295,7 @@ internal sealed partial class MailService(
         {
             JobId = jobId, Company = target.Company, JobTitle = target.Title, To = target.ApplyEmail.Trim(), Subject = Cut(subject, 200), Body = body, Kind = kind,
             FollowsId = kind == "followup" ? first!.Id : null, Status = "AwaitingApproval", CreatedAt = Now, AttachmentPath = pdf, AttachmentName = file, DraftedBy = by,
+            AttachmentSha256 = pdf is null ? null : Convert.ToHexStringLower(SHA256.HashData(await File.ReadAllBytesAsync(pdf, ct))),
             CheckNotes = notes.Count == 0 ? null : string.Join("\n", notes), ThreadId = thread.Id,
         };
         db.Outgoing.Add(mail);
@@ -316,6 +318,7 @@ internal sealed partial class MailService(
     {
         var m = await db.Outgoing.FindAsync([id], ct) ?? throw new MailRuleException("E-mail não encontrado.");
         if (m.Status is not ("Draft" or "AwaitingApproval")) throw new MailRuleException("Este e-mail já foi decidido.");
+        await AttachmentAsync(m, ct);
         m.Status = "Scheduled";
         m.ApprovedAt = Now;
         m.Error = null;
@@ -332,13 +335,49 @@ internal sealed partial class MailService(
         await db.SaveChangesAsync(ct);
     }
 
+    /// <summary>You checked the account's Sent folder: it left (Sent) or it did not (back to the queue, with the same Message-ID).</summary>
+    public async Task<OutgoingMail> ResolveAsync(Guid id, bool sent, CancellationToken ct)
+    {
+        var m = await db.Outgoing.FindAsync([id], ct) ?? throw new MailRuleException("E-mail não encontrado.");
+        if (m.Status != "Uncertain") throw new MailRuleException("Este e-mail não está em dúvida.");
+        if (sent) { m.Status = "Sent"; m.SentAt ??= Now; }
+        else m.Status = "Scheduled";
+        m.Error = null;
+        await db.SaveChangesAsync(ct);
+        return m;
+    }
+
     // ---------- Guardião e envio ----------
 
-    /// <summary>Envia o que está agendado e passa no Guardião. Um processo por vez (trava no Postgres), para API e Worker nunca mandarem em dobro.</summary>
+    internal const string UncertainNote = "O envio foi interrompido depois de começar, e o servidor pode ter aceitado o e-mail. Confira a pasta Enviados da conta antes de mandar de novo.";
+
+    /// <summary>
+    /// Envia o que está agendado e passa no Guardião. Um processo por vez (trava de sessão no Postgres), para API e Worker nunca mandarem em dobro.
+    /// Each e-mail is marked Sending, with its Message-ID, in its own commit before the SMTP call. If the process dies after that, the e-mail
+    /// turns Uncertain on the next run and waits for you instead of going out twice.
+    /// </summary>
     public async Task<int> SendDueAsync(CancellationToken ct)
     {
-        await using var tx = await db.Database.BeginTransactionAsync(ct);
-        if (!await db.Database.SqlQueryRaw<bool>("select pg_try_advisory_xact_lock(4747010) as \"Value\"").SingleAsync(ct)) return 0;
+        await db.Database.OpenConnectionAsync(ct);
+        try
+        {
+            if (!await db.Database.SqlQueryRaw<bool>("select pg_try_advisory_lock(4747010) as \"Value\"").SingleAsync(ct)) return 0;
+            try { return await SendLockedAsync(ct); }
+            finally { await db.Database.ExecuteSqlRawAsync("select pg_advisory_unlock(4747010)", CancellationToken.None); }
+        }
+        finally { await db.Database.CloseConnectionAsync(); }
+    }
+
+    private async Task<int> SendLockedAsync(CancellationToken ct)
+    {
+        // With the lock held nobody else is sending, so Sending here was left by a process that stopped mid-send.
+        foreach (var stuck in await db.Outgoing.Where(o => o.Status == "Sending").ToListAsync(ct))
+        {
+            stuck.Status = "Uncertain";
+            stuck.Error = UncertainNote;
+            log.LogWarning("Mail {Id} was left sending by a stopped process; marked uncertain", stuck.Id);
+        }
+        await db.SaveChangesAsync(ct);
         var settings = await SettingsAsync(ct);
         var accounts = await db.Accounts.OrderBy(a => a.CreatedAt).ToListAsync(ct);
         var sentToday = await SentTodayAsync(ct);
@@ -358,19 +397,27 @@ internal sealed partial class MailService(
                     if (!wait) m.Status = "Failed";
                     break;
                 }
+                MimeMessage msg;
+                try { msg = await BuildAsync(m, account!, ct); }
+                catch (MailRuleException ex)
+                {
+                    m.Status = "Failed";
+                    m.Error = ex.Message;
+                    break;
+                }
                 m.Status = "Sending";
                 m.AccountId = account!.Id;
                 await db.SaveChangesAsync(ct);
+                var transfer = false;
                 try
                 {
-                    var msg = await BuildAsync(m, account, ct);
-                    await SendAsync(account, msg, ct);
-                    m.MessageId = msg.MessageId;
+                    await SendAsync(account, msg, () => transfer = true, ct);
                     m.Status = "Sent";
                     m.SentAt = Now;
                     m.Error = null;
                     sentToday[account.Id] = sentToday.GetValueOrDefault(account.Id) + 1;
                     sent++;
+                    await db.SaveChangesAsync(ct);
                     if (m.ThreadId is { } t) await ai.NoteAsync(new AgentThread(t, "mail", $"E-mail para {m.Company}: {m.JobTitle}"), "Guardião", $"Enviado para {m.To} por {account.Address}", $"Message-ID {m.MessageId}",
                         new { stage = "sent", mailId = m.Id }, "Você", true, ct);
                     break;
@@ -381,9 +428,18 @@ internal sealed partial class MailService(
                     account.PauseReason = "O provedor avisou que esta conta chegou ao limite de envio. Volta amanhã.";
                     m.Status = "Scheduled";
                     m.AccountId = null;
+                    m.MessageId = null;
                     m.Error = $"{account.Address} chegou ao limite do provedor; o e-mail vai pela próxima conta.";
                     log.LogWarning("Mail account {Address} hit the provider limit: {Error}", account.Address, ex.Message);
                     await db.SaveChangesAsync(ct);
+                }
+                catch (Exception ex) when (transfer && ex is IOException or SmtpProtocolException or System.Net.Sockets.SocketException or OperationCanceledException)
+                {
+                    // The connection fell during the transfer: the server may have taken it. Nothing goes again on its own.
+                    m.Status = "Uncertain";
+                    m.Error = UncertainNote;
+                    log.LogWarning("Mail {Id} transfer was cut ({Error}); marked uncertain", m.Id, ex.Message);
+                    break;
                 }
                 catch (Exception ex) when (ex is MailRuleException or IOException or SmtpCommandException or SmtpProtocolException or AuthenticationException or System.Net.Sockets.SocketException)
                 {
@@ -393,10 +449,8 @@ internal sealed partial class MailService(
                     break;
                 }
             }
-            await db.SaveChangesAsync(ct);
+            await db.SaveChangesAsync(CancellationToken.None);
         }
-        await db.SaveChangesAsync(ct);
-        await tx.CommitAsync(ct);
         return sent;
     }
 
@@ -420,7 +474,7 @@ internal sealed partial class MailService(
         if (account is null) return (false, true, unavailable);
         var target = targets.FirstOrDefault(t => t.Id == m.JobId);
         if (target is null || !string.Equals(target.ApplyEmail.Trim(), m.To, StringComparison.OrdinalIgnoreCase)) return (false, false, "O destino não é o e-mail que a vaga publica para candidatura.");
-        if (m.Kind == "first" && await db.Outgoing.AnyAsync(o => o.JobId == m.JobId && o.Kind == "first" && o.Id != m.Id && (o.Status == "Sent" || o.Status == "Replied" || o.Status == "Sending"), ct))
+        if (m.Kind == "first" && await db.Outgoing.AnyAsync(o => o.JobId == m.JobId && o.Kind == "first" && o.Id != m.Id && (o.Status == "Sent" || o.Status == "Replied" || o.Status == "Sending" || o.Status == "Uncertain"), ct))
             return (false, false, "Esta vaga já recebeu um e-mail.");
         if (m.Kind == "followup")
         {
@@ -436,7 +490,8 @@ internal sealed partial class MailService(
 
     private async Task<MimeMessage> BuildAsync(OutgoingMail m, MailAccount a, CancellationToken ct)
     {
-        var msg = new MimeMessage { Subject = m.Subject, MessageId = MimeUtils.GenerateMessageId(a.Address.Split('@')[1]) };
+        m.MessageId ??= MimeUtils.GenerateMessageId(a.Address.Split('@')[1]);
+        var msg = new MimeMessage { Subject = m.Subject, MessageId = m.MessageId };
         msg.From.Add(new MailboxAddress(a.DisplayName, a.Address));
         msg.To.Add(MailboxAddress.Parse(m.To));
         if (m.FollowsId is { } f && await db.Outgoing.AsNoTracking().FirstOrDefaultAsync(o => o.Id == f, ct) is { MessageId: { } original })
@@ -445,19 +500,36 @@ internal sealed partial class MailService(
             msg.References.Add(original);
         }
         var body = new BodyBuilder { TextBody = m.Body };
-        if (m.AttachmentPath is { } path && File.Exists(path)) await body.Attachments.AddAsync(m.AttachmentName ?? Path.GetFileName(path), File.OpenRead(path), new ContentType("application", "pdf"), ct);
+        if (await AttachmentAsync(m, ct) is { } pdf) body.Attachments.Add(m.AttachmentName ?? Path.GetFileName(m.AttachmentPath!), pdf, new ContentType("application", "pdf"));
         msg.Body = body.ToMessageBody();
         return msg;
     }
 
-    private static async Task SendAsync(MailAccount a, MimeMessage msg, CancellationToken ct)
+    /// <summary>
+    /// The resume exactly as the draft was made with it. A missing or changed file stops the e-mail with the reason, instead of
+    /// sending without the resume or with another version.
+    /// </summary>
+    internal static async Task<byte[]?> AttachmentAsync(OutgoingMail m, CancellationToken ct)
+    {
+        if (m.AttachmentPath is not { } path) return null;
+        if (!File.Exists(path)) throw new MailRuleException($"O currículo deste e-mail não existe mais ({Path.GetFileName(path)}). Gere o rascunho de novo.");
+        var bytes = await File.ReadAllBytesAsync(path, ct);
+        if (m.AttachmentSha256 is { } sha && !string.Equals(sha, Convert.ToHexStringLower(SHA256.HashData(bytes)), StringComparison.OrdinalIgnoreCase))
+            throw new MailRuleException("O currículo mudou depois que este rascunho foi feito. Gere o rascunho de novo para mandar a versão atual.");
+        return bytes;
+    }
+
+    private static async Task SendAsync(MailAccount a, MimeMessage msg, Action transfer, CancellationToken ct)
     {
         var password = await Secrets.GetAsync($"mail:{a.Id}", ct) ?? throw new MailRuleException("A senha da conta não está mais no chaveiro do sistema. Conecte a conta de novo.");
         using var smtp = MailTls.Secure(new SmtpClient { Timeout = 30000 });
         await smtp.ConnectAsync(a.SmtpHost, a.SmtpPort, a.SmtpSsl ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.StartTls, ct);
         await smtp.AuthenticateAsync(a.Address, password, ct);
+        transfer();
         await smtp.SendAsync(msg, ct);
-        await smtp.DisconnectAsync(true, ct);
+        // SendAsync returned, so the server took the message: a failure to say goodbye changes nothing.
+        try { await smtp.DisconnectAsync(true, ct); }
+        catch (Exception ex) when (ex is IOException or SmtpProtocolException or System.Net.Sockets.SocketException) { }
     }
 
     // ---------- Modo automático e lembretes (Worker) ----------
@@ -474,7 +546,16 @@ internal sealed partial class MailService(
             await db.SaveChangesAsync(ct);
             m = await DraftAsync(m.JobId, "first", ct, plain: true);
         }
-        if (m.CheckNotes is null) { m.Status = "Scheduled"; m.ApprovedAt = Now; }
+        if (m.CheckNotes is null)
+        {
+            try
+            {
+                await AttachmentAsync(m, ct);
+                m.Status = "Scheduled";
+                m.ApprovedAt = Now;
+            }
+            catch (MailRuleException ex) { m.Error = ex.Message; }
+        }
         await db.SaveChangesAsync(ct);
     }
 

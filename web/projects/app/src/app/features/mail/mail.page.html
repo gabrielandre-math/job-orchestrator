@@ -76,12 +76,12 @@
             <span [class]="'pill ' + status(m.status).tone">{{ status(m.status).label }}</span>
           </header>
           <div class="compose">
-            <label class="field">Assunto<input [value]="edit(m).subject" (input)="setEdit(m, 'subject', $any($event.target).value)" [disabled]="m.status === 'Scheduled'" /></label>
-            <label class="field">Texto<textarea rows="10" [value]="edit(m).body" (input)="setEdit(m, 'body', $any($event.target).value)" [disabled]="m.status === 'Scheduled'"></textarea></label>
+            <label class="field">Assunto<input [value]="edit(m).subject" (input)="setEdit(m, 'subject', $any($event.target).value)" [disabled]="m.status === 'Scheduled' || m.status === 'Uncertain'" /></label>
+            <label class="field">Texto<textarea rows="10" [value]="edit(m).body" (input)="setEdit(m, 'body', $any($event.target).value)" [disabled]="m.status === 'Scheduled' || m.status === 'Uncertain'"></textarea></label>
             <div class="meta">
               @if (m.attachmentName) { <span class="tag"><jo-icon name="paperclip" [size]="12" />{{ m.attachmentName }}</span> }
               <span class="tag">{{ m.draftedBy === 'modelo' ? 'preenchido pelo modelo, sem IA' : 'escrito por ' + m.draftedBy }}</span>
-              @if (m.status === 'Scheduled' && m.error) { <span class="tag manual">{{ m.error }}</span> }
+              @if ((m.status === 'Scheduled' || m.status === 'Uncertain') && m.error) { <span class="tag manual">{{ m.error }}</span> }
             </div>
             @if (notes(m).length > 0) {
               <details class="removed"><summary>O Conferente tirou {{ notes(m).length }} {{ notes(m).length === 1 ? 'frase' : 'frases' }} sem fonte</summary><ul>@for (n of notes(m); track n) { <li>{{ n }}</li> }</ul></details>
@@ -89,7 +89,10 @@
           </div>
           <footer>
             <button type="button" class="btn ghost" (click)="cancel(m)" [disabled]="cancelling.running()">Cancelar</button>
-            @if (m.status !== 'Scheduled') {
+            @if (m.status === 'Uncertain') {
+              <button type="button" class="btn" (click)="resolve(m, false)" [disabled]="resolving.running()">Não saiu: enviar de novo</button>
+              <button type="button" class="btn primary" (click)="resolve(m, true)" [disabled]="resolving.running()">Saiu: marcar como enviado</button>
+            } @else if (m.status !== 'Scheduled') {
               @if (changed(m)) { <button type="button" class="btn" (click)="saveEdit(m)" [disabled]="editing.running()">Salvar edição</button> }
               @if (settings.value()?.mode !== 'Draft' && connected()) {
                 <button type="button" class="btn primary confirm" [class.armed]="confirming() === m.id" (click)="approve(m)" [disabled]="approving.running()">
