@@ -22,8 +22,11 @@ public sealed class FormFillTests
     [InlineData("Pretensão salarial para contratação CLT", "C")]
     [InlineData("What are your salary expectations?", "X")]
     [InlineData("Expectativa salarial", "X")]
-    public void Salary_questions_take_the_amount_of_their_contract(string question, string expected) =>
-        Assert.Equal(expected, LabelForm.Resolve(question, "text", Bundle(("salary_expectation", "X"), ("salary_pj", "P"), ("salary_clt", "C"))).Value);
+    [InlineData("What is your minimum expected gross salary per month in USD (before taxes)?", "U")]
+    [InlineData("What is your current gross salary per month in USD (before taxes)?", null)]
+    [InlineData("Qual o seu salário atual?", null)]
+    public void Salary_questions_take_the_amount_of_their_contract(string question, string? expected) =>
+        Assert.Equal(expected, LabelForm.Resolve(question, "text", Bundle(("salary_expectation", "X"), ("salary_pj", "P"), ("salary_clt", "C"), ("salary_usd", "U"))).Value);
 
     [Theory]
     [InlineData("Do you have at least 3 years of experience with C#?", "Yes")]

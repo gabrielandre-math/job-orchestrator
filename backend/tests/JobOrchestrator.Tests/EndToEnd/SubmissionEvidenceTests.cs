@@ -18,6 +18,25 @@ namespace JobOrchestrator.Tests.EndToEnd;
 public sealed class SubmissionEvidenceTests
 {
     [Theory]
+    [InlineData(false, AdapterResultKind.Completed)]
+    [InlineData(true, AdapterResultKind.Unsupported)]
+    public async Task A_different_preselected_radio_is_not_proof_the_requested_answer_was_filled(bool blockChange, AdapterResultKind expected)
+    {
+        var radios = "<fieldset><legend>Do you need sponsorship?</legend><label><input type=radio name=sponsorship value=no checked required>No</label>"
+            + $"<label {(blockChange ? "onclick=\"event.preventDefault()\"" : "")}><input type=radio name=sponsorship value=yes required>Yes</label></fieldset>";
+        var html = Form("accepted").Replace("<button type=\"submit\">", radios + "<button type=\"submit\">", StringComparison.Ordinal);
+        await using var site = await TestSite.StartAsync(app => app.MapGet("/job", () => Results.Content(html, "text/html")));
+        var options = Options.Create(new AutomationOptions { FakeAtsHosts = [new Uri(site.Url).Authority], Browser = new() { TimeoutSeconds = 2 } });
+        await using var browser = new BrowserPool(options, NullLogger<BrowserPool>.Instance);
+        using var folder = new TestFiles();
+        var adapter = new GenericForm(browser, new HttpFactory(), folder.Key, TimeProvider.System, options);
+        var bundle = folder.Bundle with { Answers = new Dictionary<string, string> { ["needs_sponsorship"] = "Yes" } };
+        var result = await adapter.PrepareAsync(new(Guid.NewGuid(), site.Url + "/job"), bundle, default);
+        Assert.True(expected == result.Kind, $"Expected {expected}, got {result.Kind}: {result.ReasonCode}: {result.Detail}");
+        if (expected == AdapterResultKind.Completed) Assert.Contains(result.Value!.Fields, f => f.Label == "Do you need sponsorship?" && f.Value == "Yes");
+    }
+
+    [Theory]
     [InlineData("Pretensão salarial mensal", "R$ 6.000 por mês (PJ)", AdapterResultKind.Completed)]
     [InlineData("Describe project 2026", "Delivered project 2026", AdapterResultKind.Unsupported)]
     public async Task Numeric_masks_preserve_salary_but_cannot_discard_words_from_other_answers(string question, string answer, AdapterResultKind expected)

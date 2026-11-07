@@ -37,6 +37,7 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
     [
         (new Regex(@"authori[sz]ed to work|autoriza", RegexOptions.IgnoreCase), "work_authorization"),
         (new Regex(@"sponsorship|visto|patroc", RegexOptions.IgnoreCase), "needs_sponsorship"),
+        (new Regex(@"(sal[aá]r|pretens|remunera|compensation|\bpay\b).*(\busd\b|us\$|dollars?|d[oó]lar)|(\busd\b|us\$|dollars?|d[oó]lar).*(sal[aá]r|pretens|remunera|compensation|\bpay\b)", RegexOptions.IgnoreCase), "salary_usd"),
         (new Regex(@"(sal[aá]r|pretens|remunera|compensation).*\bPJ\b|\bPJ\b.*(sal[aá]r|pretens|remunera)", RegexOptions.IgnoreCase), "salary_pj"),
         (new Regex(@"(sal[aá]r|pretens|remunera|compensation).*\bCLT\b|\bCLT\b.*(sal[aá]r|pretens|remunera)", RegexOptions.IgnoreCase), "salary_clt"),
         (new Regex(@"sal[aá]r|pretens|compensation|remunera|expected pay|pay expectation", RegexOptions.IgnoreCase), "salary_expectation"),
@@ -348,6 +349,8 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
         if (MinYears().IsMatch(label)) return (null, "");
         if (YearsWith.Match(label) is { Success: true } years)
             return TechKey(years.Groups[1].Value, m) is { } key ? (m.Answers[key], "anos pelas datas das experiências") : (null, "");
+        // Your current pay is not your floor: the profile does not say it, so it is yours to answer once.
+        if (CurrentPay().IsMatch(label)) return (null, "");
         foreach (var (pattern, answer) in Questions)
             if (pattern.IsMatch(label)) return m.Answers.TryGetValue(answer, out var v) ? (v, "banco de respostas") : (null, "");
         return (null, "");
@@ -389,6 +392,8 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
     internal static partial Regex MinYears();
     [GeneratedRegex(@"^(and|e|or|ou|in|em|on|no|na|for|para|including|incluindo|development|desenvolvimento|programming|programa[cç][aã]o|language|linguagem|experience|experi[eê]ncia)$", RegexOptions.IgnoreCase)]
     private static partial Regex Loose();
+    [GeneratedRegex(@"\b(current|present)\s+(gross\s+|monthly\s+|annual\s+)?(sal[aá]r|compensation|pay)|sal[aá]rio atual|remunera[cç][aã]o atual|quanto (você )?ganha", RegexOptions.IgnoreCase)]
+    private static partial Regex CurrentPay();
     [GeneratedRegex(@"\b(voc[eê]|anos|experi[eê]ncia|tem|possui|qual)\b", RegexOptions.IgnoreCase)] private static partial Regex Portuguese();
     [GeneratedRegex(@"/(\d+)(?:/[a-z]+)?/?$")] private static partial Regex JobId();
 }

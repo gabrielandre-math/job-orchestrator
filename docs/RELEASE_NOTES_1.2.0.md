@@ -3,6 +3,7 @@ Correções no preenchimento e na confirmação de candidaturas, mantendo a exec
 - Perguntas obrigatórias sem resposta chegam ao Respondente, com suas opções e tipos. Antes, o adaptador descartava essa informação.
 - Texto de sucesso que já estava na página ou permanecia oculto não confirma um novo envio. A confirmação deve aparecer visivelmente depois da ação; recibos novos são preservados.
 - O formulário genérico só aciona um botão dentro do formulário selecionado.
+- A conferência de opções exige que a resposta escolhida esteja marcada no DOM atual. Uma outra opção já marcada não conta como sucesso de preenchimento.
 - Campos salariais com máscara aceitam o valor numérico preservado. Essa tolerância não aceita apagar palavras de respostas em outros campos só porque seus dígitos coincidem.
 - Uma página pública do LinkedIn sem cookie de autenticação válido não é anunciada como sessão conectada.
 - `job-orchestrator --diagnose` lê a instalação que está rodando e agrupa os bloqueios da fila, sem incluir currículo, nomes, contatos ou credenciais. O comando não tenta nem anuncia um envio externo.

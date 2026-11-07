@@ -16,14 +16,21 @@ internal abstract partial class LabelForm
     /// <summary>Marca a opção do rádio pelo nome do grupo e pelo texto dela, e diz se ficou marcada.</summary>
     private const string PickRadio = """
         ([name, label]) => {
-          const norm = (t) => (t || '').replace(/\s+/g, ' ').trim().toLowerCase();
-          const r = [...document.querySelectorAll('input[type=radio]')].filter(x => x.name === name)
-            .find(x => norm(x.closest('label')?.textContent) === norm(label) || norm(document.querySelector('label[for="' + CSS.escape(x.id) + '"]')?.textContent) === norm(label));
+          const norm = (t) => (t || '').replace(/SVGs not supported by this browser\./g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+          // The option's text may sit in its own label, in a label pointed at by aria-labelledby, or around the radio.
+          const texts = (x) => {
+            const w = x.closest('[role=radio]');
+            const ids = ((w && w.getAttribute('aria-labelledby')) || x.getAttribute('aria-labelledby') || '').split(/\s+/).filter(Boolean);
+            return [x.closest('label')?.textContent, document.querySelector('label[for="' + CSS.escape(x.id) + '"]')?.textContent, w?.textContent,
+              ...ids.map((i) => document.getElementById(i)?.textContent)];
+          };
+          const r = [...document.querySelectorAll('input[type=radio]')].filter(x => x.name === name).find(x => texts(x).some(t => norm(t) === norm(label)));
           if (!r) return false;
           // Clica no texto da opção, como uma pessoa: o rádio de verdade fica escondido e a página só registra o clique no rótulo.
-          (r.closest('label') || document.querySelector('label[for="' + CSS.escape(r.id) + '"]') || r).click();
-          return new Promise((done) => setTimeout(() => done(r.checked || r.closest('[role=radio]')?.getAttribute('aria-checked') === 'true'
-            || [...document.querySelectorAll('input[type=radio]')].some(x => x.name === name && (x.checked || x.closest('[role=radio]')?.getAttribute('aria-checked') === 'true'))), 150));
+          (r.closest('label') || document.querySelector('label[for="' + CSS.escape(r.id) + '"]') || r.closest('[role=radio]') || r).click();
+          // Read the current DOM after React redraws it. Another checked option is not proof this answer stayed selected.
+          return new Promise((done) => setTimeout(() => done([...document.querySelectorAll('input[type=radio]')].some(x => x.name === name
+            && texts(x).some(t => norm(t) === norm(label)) && (x.checked || x.closest('[role=radio]')?.getAttribute('aria-checked') === 'true'))), 150));
         }
         """;
 
@@ -122,7 +129,7 @@ internal abstract partial class LabelForm
                 // A opção do Workable é um bloco (role=radio) com o rádio de verdade escondido dentro: clica no bloco, como uma
                 // pessoa, e confere a marca nele (aria-checked). Sem bloco, marca pelo nome do grupo e pelo texto da opção.
                 if (!await PickAsync(page, f.Name, Clean(choice.Label)))
-                    return AdapterResult<PreparedForm>.Fail(AdapterResultKind.RetryableFailure, "fill-mismatch", $"A resposta de \"{question}\" não ficou marcada.");
+                    return AdapterResult<PreparedForm>.Fail(AdapterResultKind.Unsupported, "fill-mismatch", $"A resposta de \"{question}\" não ficou marcada.");
                 fields.Add(new FieldValue(question, Clean(choice.Label), answer!.Value.Source));
                 continue;
             }
@@ -146,7 +153,7 @@ internal abstract partial class LabelForm
                 }
                 foreach (var pick in picks)
                     if (!await page.EvaluateAsync<bool>(TickBox, pick.Box.Id))
-                        return AdapterResult<PreparedForm>.Fail(AdapterResultKind.RetryableFailure, "fill-mismatch", $"A opção \"{pick.Text}\" de \"{question}\" não ficou marcada.");
+                        return AdapterResult<PreparedForm>.Fail(AdapterResultKind.Unsupported, "fill-mismatch", $"A opção \"{pick.Text}\" de \"{question}\" não ficou marcada.");
                 fields.Add(new FieldValue(question, string.Join(", ", picks.Select(p => p.Text)), chosen.Source));
                 continue;
             }
@@ -160,7 +167,7 @@ internal abstract partial class LabelForm
                     continue;
                 }
                 if (!await page.EvaluateAsync<bool>(TickBox, f.Id))
-                    return AdapterResult<PreparedForm>.Fail(AdapterResultKind.RetryableFailure, "fill-mismatch", $"A caixa \"{(label.Length > 80 ? label[..80] + "…" : label)}\" não ficou marcada.");
+                    return AdapterResult<PreparedForm>.Fail(AdapterResultKind.Unsupported, "fill-mismatch", $"A caixa \"{(label.Length > 80 ? label[..80] + "…" : label)}\" não ficou marcada.");
                 fields.Add(new FieldValue(label, tick.Value, tick.Source));
                 continue;
             }
@@ -204,7 +211,7 @@ internal abstract partial class LabelForm
                     if (Digits(got) != digits) { await control.FillAsync(digits); got = await control.InputValueAsync(); }
                     if (Digits(got) == digits || Digits(got) == digits + "00") { fields.Add(new FieldValue(label, got, source)); continue; }
                 }
-                return AdapterResult<PreparedForm>.Fail(AdapterResultKind.RetryableFailure, "fill-mismatch", $"O campo \"{label}\" não guardou o valor.");
+                return AdapterResult<PreparedForm>.Fail(AdapterResultKind.Unsupported, "fill-mismatch", $"O campo \"{label}\" não guardou o valor.");
             }
             fields.Add(new FieldValue(label, value, source));
         }

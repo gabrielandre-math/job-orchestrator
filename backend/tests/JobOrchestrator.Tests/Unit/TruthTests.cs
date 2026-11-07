@@ -166,6 +166,7 @@ public sealed class TruthTests
         // A form may ask the PJ or the CLT amount whatever the job's contract: each from its own floor.
         Assert.Equal("R$ 16.000 por mês (PJ)", pj["salary_pj"]);
         Assert.Equal("R$ 12.000 por mês (CLT)", pj["salary_clt"]);
+        Assert.Equal("US$ 5.000 por mês", pj["salary_usd"]);
         Assert.Equal("3", pj["years_experience:C#"]);
         var usd = AnswerBank.Build(p, new AnswerContext("contractor", "USD", "US", [], "en", "hn"), new DateOnly(2026, 11, 5));
         Assert.Equal("USD 5,000 per month", usd["salary_expectation"]);
