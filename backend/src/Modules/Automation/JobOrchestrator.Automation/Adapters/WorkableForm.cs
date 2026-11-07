@@ -7,8 +7,9 @@ namespace JobOrchestrator.Automation.Adapters;
 /// <summary>
 /// Formulário do Workable (jobs.workable.com e apply.workable.com). O formulário abre no botão "Apply now", os rótulos envolvem os
 /// campos (sem for) e as perguntas de sim ou não vêm em grupos com o texto ligado por aria-labelledby. Responde só o que sai do
-/// perfil: anos com a tecnologia pelas datas, nível de inglês, região pelo local, idioma do currículo, o banco de respostas e as
-/// respostas que você já deu. Declaração (li e concordo, certifico) e pergunta sem resposta param em você.
+/// perfil: anos com a tecnologia pelas datas, nível de inglês, região pelo local, idioma do currículo, o banco de respostas, as
+/// respostas que você já deu e as que a IA escreveu pelos fatos do perfil. A declaração de privacidade e termos só é marcada com a
+/// sua autorização; pergunta que ninguém respondeu volta inteira (tipo e opções) para a IA.
 /// </summary>
 internal sealed partial class WorkableForm(BrowserPool browsers, IHttpClientFactory http, GuardKey key, TimeProvider time, IOptions<AutomationOptions> options)
     : LabelForm(browsers, http, key, time, options)
@@ -106,7 +107,7 @@ internal sealed partial class WorkableForm(BrowserPool browsers, IHttpClientFact
 
         var found = JsonSerializer.Deserialize<Found[]>(await page.EvaluateAsync<string>(Discover), JsonSerializerOptions.Web) ?? [];
         var fields = new List<FieldValue>();
-        var missing = new List<string>();
+        var missing = new List<FormQuestion>();
         // O campo do currículo: o primeiro com nome de currículo; sem nenhum, o primeiro que não é o da carta.
         var resumeAt = found.Where(f => f.Type == "file").FirstOrDefault(f => Resume().IsMatch(Clean(f.Label)))?.Nth
             ?? found.Where(f => f.Type == "file" && !Cover().IsMatch(Clean(f.Label))).Select(f => (int?)f.Nth).FirstOrDefault();
@@ -123,7 +124,7 @@ internal sealed partial class WorkableForm(BrowserPool browsers, IHttpClientFact
                 var choice = answer is { } a ? group.FirstOrDefault(o => Picks(Clean(o.Label), a.Value)) : null;
                 if (choice is null)
                 {
-                    if (group.Any(o => o.Required)) missing.Add(question.Length > 0 ? question : label);
+                    if (group.Any(o => o.Required)) missing.Add(new FormQuestion(question.Length > 0 ? question : label, "radio", [.. group.Select(o => Clean(o.Label))]));
                     continue;
                 }
                 // A opção do Workable é um bloco (role=radio) com o rádio de verdade escondido dentro: clica no bloco, como uma
@@ -135,40 +136,68 @@ internal sealed partial class WorkableForm(BrowserPool browsers, IHttpClientFact
             }
             if (f.Type == "checkbox" && (group.Count() > 1 || Clean(f.Group) is { Length: > 0 } asked && !Declaration().IsMatch(asked) && !Declaration().IsMatch(label)))
             {
-                // Lista para marcar (quais tecnologias você usa, por exemplo) é escolha sua, não declaração: o app não marca opção por
-                // você. Obrigatória, a vaga fica com você; opcional, fica em branco.
+                // Lista para marcar (quais tecnologias você usa, por exemplo): marca as opções da sua resposta ou da que a IA escreveu
+                // pelos fatos do perfil. Opcional e sem resposta, fica em branco.
                 var question = Clean(f.Group.Length > 0 ? f.Group : label);
-                if (group.Any(o => o.Required))
-                    return AdapterResult<PreparedForm>.Fail(AdapterResultKind.NeedsHuman, "choice", $"O formulário pede para marcar opções em \"{(question.Length > 120 ? question[..120] + "…" : question)}\". Fica com você.");
+                var options = group.Select(o => (Box: o, Text: Clean(o.Label))).ToList();
+                if (Mine(question, m) is not { } chosen)
+                {
+                    if (group.Any(o => o.Required)) missing.Add(new FormQuestion(question, "checkboxes", [.. options.Select(o => o.Text)]));
+                    continue;
+                }
+                var picks = chosen.Value.Split(FormQuestion.ChoiceSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Select(c => options.FirstOrDefault(o => Picks(o.Text, c))).Where(o => o.Box is not null).Distinct().ToList();
+                if (picks.Count == 0)
+                {
+                    if (group.Any(o => o.Required)) missing.Add(new FormQuestion(question, "checkboxes", [.. options.Select(o => o.Text)]));
+                    continue;
+                }
+                foreach (var pick in picks)
+                    if (!await page.EvaluateAsync<bool>(TickBox, pick.Box.Id))
+                        return AdapterResult<PreparedForm>.Fail(AdapterResultKind.RetryableFailure, "fill-mismatch", $"A opção \"{pick.Text}\" de \"{question}\" não ficou marcada.");
+                fields.Add(new FieldValue(question, string.Join(", ", picks.Select(p => p.Text)), chosen.Source));
                 continue;
             }
             if (f.Type == "checkbox" || Declaration().IsMatch(label))
             {
-                if (f.Required) return AdapterResult<PreparedForm>.Fail(AdapterResultKind.NeedsHuman, "declaration",
-                    $"O formulário pede uma declaração: \"{(label.Length > 120 ? label[..120] + "…" : label)}\". Só você marca.");
+                if (!f.Required) continue;
+                if (Tick(label, m) is not { } tick)
+                {
+                    if (Consent().IsMatch(label)) return NeedsDeclaration(label);
+                    missing.Add(new FormQuestion(label, "confirm", []));
+                    continue;
+                }
+                if (!await page.EvaluateAsync<bool>(TickBox, f.Id))
+                    return AdapterResult<PreparedForm>.Fail(AdapterResultKind.RetryableFailure, "fill-mismatch", $"A caixa \"{(label.Length > 80 ? label[..80] + "…" : label)}\" não ficou marcada.");
+                fields.Add(new FieldValue(label, tick.Value, tick.Source));
                 continue;
             }
             if (f.Type == "file")
             {
-                if (f.Nth != resumeAt) { if (f.Required) missing.Add(label); continue; }
+                if (f.Nth != resumeAt)
+                {
+                    if (f.Required) return AdapterResult<PreparedForm>.Fail(AdapterResultKind.NeedsHuman, "file", $"O formulário pede outro arquivo além do currículo: \"{label}\". Fica com você.");
+                    continue;
+                }
                 await page.Locator("form input[type=file]").Nth(f.Nth).SetInputFilesAsync(m.ResumePdfPath);
                 fields.Add(new FieldValue("Currículo", $"{System.IO.Path.GetFileName(m.ResumePdfPath)} (sha256 {FileHash(m.ResumePdfPath)[..12]})", "currículo"));
                 continue;
             }
             var (value, source) = Resolve(label, f.Type, m);
-            if (value is null)
-            {
-                if (f.Required) missing.Add(label);
-                continue;
-            }
             var control = page.Locator(f.Name.Length > 0 ? $"form [name='{f.Name.Replace("'", "\\'")}']" : Css(f.Id)).First;
             if (f.Tag == "select")
             {
-                var options = await control.Locator("option").AllInnerTextsAsync();
-                var match = options.FirstOrDefault(o => SameAnswer(o, value));
-                if (match is null) { if (f.Required) missing.Add(label); continue; }
-                await control.SelectOptionAsync(new SelectOptionValue { Label = match.Trim() });
-                fields.Add(new FieldValue(label, match.Trim(), source));
+                var options = (await control.Locator("option").AllInnerTextsAsync()).Select(o => o.Trim()).Where(o => o.Length > 0 && !o.StartsWith("Select", StringComparison.OrdinalIgnoreCase)).ToList();
+                var match = value is null ? null : options.FirstOrDefault(o => SameAnswer(o, value));
+                if (match is null) { if (f.Required) missing.Add(new FormQuestion(label, "select", options)); continue; }
+                await control.SelectOptionAsync(new SelectOptionValue { Label = match });
+                fields.Add(new FieldValue(label, match, source));
+                continue;
+            }
+            if (f.Type == "number" && value is not null) value = Digits(value);
+            if (string.IsNullOrEmpty(value))
+            {
+                if (f.Required) missing.Add(new FormQuestion(label, f.Tag == "textarea" ? "textarea" : f.Type == "number" ? "number" : "text", []));
                 continue;
             }
             await control.FillAsync(value);
@@ -214,15 +243,9 @@ internal sealed partial class WorkableForm(BrowserPool browsers, IHttpClientFact
     /// <summary>Sim ou não que sai do perfil ou das suas respostas; sem base, fica nulo e a pergunta para em você.</summary>
     private static (string Value, string Source)? YesNo(string q, MaterialBundle m)
     {
-        if (m.Answers.TryGetValue(CustomAnswer.Key(q), out var mine)) return (mine, "sua resposta");
-        if (Years().Match(q) is { Success: true } y && int.TryParse(y.Groups["n"].Value, out var need))
-        {
-            var tech = y.Groups["tech"].Value.Trim().TrimEnd('?', '.', ' ');
-            var key = m.Answers.Keys.FirstOrDefault(k => k.StartsWith("years_experience:", StringComparison.Ordinal)
-                && (string.Equals(k[17..], tech, StringComparison.OrdinalIgnoreCase) || tech.StartsWith(k[17..] + " ", StringComparison.OrdinalIgnoreCase)
-                    || k[17..].StartsWith(tech + " ", StringComparison.OrdinalIgnoreCase)));
-            return key is not null && int.TryParse(m.Answers[key], out var have) ? (have >= need ? "yes" : "no", $"{have} anos de {key[17..]} pelas datas das experiências") : null;
-        }
+        if (Mine(q, m) is { } mine) return mine;
+        if (AtLeastYears(q, m) is { } years) return years;
+        if (MinYears().IsMatch(q)) return null;
         if (English().IsMatch(q) && Rank(q) is { } wanted && m.Answers.TryGetValue("english_level", out var level) && Rank(level) is { } mineLevel)
             return (mineLevel >= wanted ? "yes" : "no", $"inglês {level} no perfil");
         if (CvInEnglish().IsMatch(q))
@@ -261,19 +284,26 @@ internal sealed partial class WorkableForm(BrowserPool browsers, IHttpClientFact
         return null;
     }
 
+    /// <summary>Ticks one box by its id, clicking its text as a person would (the real box is often hidden), and says if it stayed ticked.</summary>
+    private const string TickBox = """
+        (id) => {
+          const e = document.getElementById(id); if (!e) return false; if (e.checked) return true;
+          (e.closest('label') || document.querySelector('label[for="' + CSS.escape(id) + '"]') || e.closest('[role=checkbox]') || e).click();
+          return new Promise((done) => setTimeout(() => done(e.checked || e.closest('[role=checkbox]')?.getAttribute('aria-checked') === 'true'), 150));
+        }
+        """;
+
     private static string Css(string id) => $"[id='{id.Replace("'", "\\'")}']";
     private static string Last8(string s) { var d = new string([.. s.Where(char.IsDigit)]); return d.Length > 8 ? d[^8..] : d; }
 
     [GeneratedRegex(@"^/__sem-formulario-falso__$")] private static partial Regex Path();
     [GeneratedRegex(@"no longer accepting|not accepting applications|this job is closed|vaga encerrada", RegexOptions.IgnoreCase)] private static partial Regex NoLonger();
     [GeneratedRegex(@"\bI (confirm|agree|accept|declare|certify|acknowledge)\b|\bli e (concordo|aceito)|\bdeclaro\b|\bconcordo com\b|\bcertifico\b", RegexOptions.IgnoreCase)] private static partial Regex Declaration();
-    [GeneratedRegex(@"(?<n>\d+)\s*\+?\s*(?:or more\s+)?(?:years?|anos)\b.*?\b(?:with|in|of|de|com|em)\s+(?<tech>[\w#.+]+(?:\s[\w#.+]+)?)\s*\??$", RegexOptions.IgnoreCase)] private static partial Regex Years();
     [GeneratedRegex(@"english|ingl[eê]s", RegexOptions.IgnoreCase)] private static partial Regex English();
     [GeneratedRegex(@"cover letter|carta", RegexOptions.IgnoreCase)] private static partial Regex Cover();
     [GeneratedRegex(@"\b(cv|resume|curr[ií]culo)\b.*\b(in english|em ingl[eê]s)\b", RegexOptions.IgnoreCase)] private static partial Regex CvInEnglish();
     [GeneratedRegex(@"\b(located|based|living|reside|resident|mora|reside)\b.*?\bin\s+(?<where>[^?(]+)|\b(mora|reside) n[oa]\s+(?<where>[^?(]+)", RegexOptions.IgnoreCase)] private static partial Regex Located();
     [GeneratedRegex(@"latin america|latam|am[eé]rica latina|south america|am[eé]rica do sul", RegexOptions.IgnoreCase)] private static partial Regex LatAm();
     [GeneratedRegex(@"\bbra[sz]il\b", RegexOptions.IgnoreCase)] private static partial Regex Brazil();
-    [GeneratedRegex(@"^(yes|sim|y|s|true|verdadeiro)$")] private static partial Regex Yes();
     [GeneratedRegex(@"^(no|nao|n|false|falso)$")] private static partial Regex No();
 }

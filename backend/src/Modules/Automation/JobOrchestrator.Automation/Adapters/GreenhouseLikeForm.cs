@@ -8,8 +8,8 @@ namespace JobOrchestrator.Automation.Adapters;
 /// <summary>
 /// Base dos formulários de candidatura preenchidos por rótulo (getByLabel), nunca por seletor frágil: o id do campo pode mudar a cada
 /// carga que o rótulo continua o mesmo. Prepara sem clicar em enviar; envia só com token válido e payload igual ao aprovado; reconcilia
-/// só lendo. Campo que aparece depois de uma resposta (pergunta condicional) entra numa segunda passada. CAPTCHA, login, MFA e
-/// declaração obrigatória (termos, certificação) param para a pessoa: o robô nunca marca declaração por ninguém.
+/// só lendo. Campo que aparece depois de uma resposta (pergunta condicional) entra numa segunda passada. CAPTCHA, login e MFA param
+/// para a pessoa. A declaração obrigatória (privacidade, termos) só é marcada quando a sua autorização aceita as declarações.
 /// </summary>
 internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFactory http, GuardKey key, TimeProvider time, IOptions<AutomationOptions> options) : IFormAdapter
 {
@@ -37,7 +37,9 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
     [
         (new Regex(@"authori[sz]ed to work|autoriza", RegexOptions.IgnoreCase), "work_authorization"),
         (new Regex(@"sponsorship|visto|patroc", RegexOptions.IgnoreCase), "needs_sponsorship"),
-        (new Regex(@"salary|pretens|compensation|remunera", RegexOptions.IgnoreCase), "salary_expectation"),
+        (new Regex(@"(sal[aá]r|pretens|remunera|compensation).*\bPJ\b|\bPJ\b.*(sal[aá]r|pretens|remunera)", RegexOptions.IgnoreCase), "salary_pj"),
+        (new Regex(@"(sal[aá]r|pretens|remunera|compensation).*\bCLT\b|\bCLT\b.*(sal[aá]r|pretens|remunera)", RegexOptions.IgnoreCase), "salary_clt"),
+        (new Regex(@"sal[aá]r|pretens|compensation|remunera|expected pay|pay expectation", RegexOptions.IgnoreCase), "salary_expectation"),
         (new Regex(@"notice period|aviso pr|start date|quando (você )?pode(ria)? começar", RegexOptions.IgnoreCase), "start_date"),
         (new Regex(@"english|ingl", RegexOptions.IgnoreCase), "english_level"),
         (new Regex(@"hear about|soube da vaga", RegexOptions.IgnoreCase), "how_heard"),
@@ -141,13 +143,10 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
             return AdapterResult<PreparedForm>.Fail(AdapterResultKind.NeedsHuman, "login", "A página pede login. Fica para a sessão assistida.");
         if (await page.Locator("form").CountAsync() == 0)
             return AdapterResult<PreparedForm>.Fail(AdapterResultKind.Unsupported, "no-form", "Não há formulário reconhecível na página.");
-        if (await page.Locator("form input[type=checkbox][required]").CountAsync() > 0)
-            return AdapterResult<PreparedForm>.Fail(AdapterResultKind.NeedsHuman, "declaration", "O formulário pede uma declaração obrigatória (termos ou certificação). Só você marca.");
-
         var fields = new List<FieldValue>();
         var done = new HashSet<string>();
         // Pergunta obrigatória sem resposta não para na primeira: o ensaio mostra todas de uma vez, para você responder numa ida só.
-        var missing = new List<string>();
+        var missing = new List<FormQuestion>();
         for (var pass = 0; pass < 3; pass++)
         {
             var before = done.Count;
@@ -162,24 +161,47 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
                 var tag = await control.EvaluateAsync<string>("e => e.tagName.toLowerCase()");
                 var type = (await control.GetAttributeAsync("type"))?.ToLowerInvariant() ?? "";
                 var required = await control.EvaluateAsync<bool>("e => e.required");
-                var (value, source) = Resolve(text, type, m);
-                if (value is null)
+                if (type == "checkbox")
                 {
-                    if (required) missing.Add(text);
+                    // Optional boxes (newsletter, future openings) stay blank. A required one is a declaration or a fact about you.
+                    if (!required) continue;
+                    if (Tick(text, m) is not { } tick)
+                    {
+                        if (Consent().IsMatch(text)) return NeedsDeclaration(text);
+                        missing.Add(new FormQuestion(text, "confirm", []));
+                        continue;
+                    }
+                    await control.CheckAsync();
+                    fields.Add(new FieldValue(text, tick.Value, tick.Source));
+                    continue;
+                }
+                var (value, source) = Resolve(text, type, m);
+                if (tag == "select")
+                {
+                    var options = (await control.Locator("option").AllInnerTextsAsync()).Select(o => o.Trim()).Where(o => o.Length > 0 && !Placeholder().IsMatch(o)).ToList();
+                    var match = value is null ? null : options.FirstOrDefault(o => SameAnswer(o, value));
+                    // "At least 2 years with C#?" with Yes and No to pick: the years from the experiences' dates decide.
+                    if (match is null && AtLeastYears(text, m) is { } years && options.FirstOrDefault(o => SameAnswer(o, years.Value)) is { } picked)
+                        (match, source) = (picked, years.Source);
+                    if (match is null)
+                    {
+                        if (required) missing.Add(new FormQuestion(text, "select", options));
+                        continue;
+                    }
+                    await control.SelectOptionAsync(new SelectOptionValue { Label = match });
+                    fields.Add(new FieldValue(text, match, source));
+                    continue;
+                }
+                if (type == "number" && value is not null) value = Digits(value);
+                if (string.IsNullOrEmpty(value))
+                {
+                    if (required) missing.Add(new FormQuestion(text, tag == "textarea" ? "textarea" : type == "number" ? "number" : "text", []));
                     continue;
                 }
                 if (type == "file")
                 {
                     await control.SetInputFilesAsync(value);
                     fields.Add(new FieldValue(text, $"{Path.GetFileName(value)} (sha256 {FileHash(value)[..12]})", source));
-                }
-                else if (tag == "select")
-                {
-                    var options = await control.Locator("option").AllInnerTextsAsync();
-                    var match = options.FirstOrDefault(o => SameAnswer(o, value));
-                    if (match is null) return AdapterResult<PreparedForm>.Fail(AdapterResultKind.Unsupported, "unsupported-option", $"A resposta aprovada não existe nas opções de \"{text}\".");
-                    await control.SelectOptionAsync(new SelectOptionValue { Label = match.Trim() });
-                    fields.Add(new FieldValue(text, match.Trim(), source));
                 }
                 else
                 {
@@ -194,6 +216,9 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
             await page.WaitForTimeoutAsync(150);
         }
         if (missing.Count > 0) return Missing(missing);
+        // A required box with no label of its own was never seen by the loop: the form would refuse to send, so it stops here.
+        if (await page.Locator("form input[type=checkbox][required]:not(:checked)").CountAsync() > 0)
+            return NeedsDeclaration(Clean(await page.Locator("form input[type=checkbox][required]:not(:checked)").First.EvaluateAsync<string>("e => (e.closest('label, p, div') || e).textContent")));
         if (fields.Count == 0) return AdapterResult<PreparedForm>.Fail(AdapterResultKind.Unsupported, "no-fields", "Nenhum campo com rótulo foi reconhecido.");
         var hash = PayloadHash(fields);
         return AdapterResult<PreparedForm>.Ok(new PreparedForm(Id, Version, new Uri(target.ApplyUrl).Authority, hash, fields));
@@ -217,11 +242,58 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
             || Equivalents.Any(g => g.Contains(o, StringComparer.OrdinalIgnoreCase) && g.Contains(a, StringComparer.OrdinalIgnoreCase));
     }
 
-    /// <summary>As perguntas obrigatórias sem resposta, todas no detalhe, entre aspas: a tela do ensaio abre um campo para cada uma.</summary>
-    protected static AdapterResult<PreparedForm> Missing(IReadOnlyList<string> questions) => AdapterResult<PreparedForm>.Fail(AdapterResultKind.Unsupported, "unsupported-field",
-        $"{(questions.Count == 1 ? "Pergunta obrigatória sem resposta aprovada" : "Perguntas obrigatórias sem resposta aprovada")}: {string.Join(" | ", questions.Select(q => $"\"{q}\""))}.");
+    /// <summary>
+    /// As perguntas obrigatórias sem resposta, todas no detalhe, entre aspas: a tela do ensaio abre um campo para cada uma. The questions
+    /// also go back whole (kind and options), for the AI to answer them from your profile before the form is tried again.
+    /// </summary>
+    protected static AdapterResult<PreparedForm> Missing(IReadOnlyList<FormQuestion> questions) => AdapterResult<PreparedForm>.Fail(AdapterResultKind.Unsupported, "unsupported-field",
+        $"{(questions.Count == 1 ? "Pergunta obrigatória sem resposta aprovada" : "Perguntas obrigatórias sem resposta aprovada")}: {string.Join(" | ", questions.Select(q => $"\"{q.Label}\""))}.") with { Questions = questions };
 
-    protected static (string? Value, string Source) Resolve(string label, string type, MaterialBundle m)
+    /// <summary>A privacy, data processing or terms box: only your authorization ticks it, never a guess.</summary>
+    protected static AdapterResult<PreparedForm> NeedsDeclaration(string label) => AdapterResult<PreparedForm>.Fail(AdapterResultKind.NeedsHuman, "declaration",
+        $"O formulário pede uma declaração: \"{(label.Length > 120 ? label[..120] + "…" : label)}\". Para o app marcar em seu nome, ligue \"aceito as declarações\" na autorização; sem isso, só você marca.");
+
+    /// <summary>
+    /// Whether a required box gets ticked, and why: a privacy, data or terms declaration when your authorization accepts them, or a
+    /// statement about you that your answers (or the AI's, from your profile) confirm. Null leaves it for the AI or for you.
+    /// </summary>
+    protected static (string Value, string Source)? Tick(string label, MaterialBundle m)
+    {
+        if (Consent().IsMatch(label)) return m.AcceptDeclarations ? ("Aceito", "sua autorização (declarações)") : null;
+        return Mine(label, m) is { } mine && Yes().IsMatch(CustomAnswer.Normalize(mine.Value)) ? ("Marcado", mine.Source) : null;
+    }
+
+    /// <summary>Your answer to this exact question or, without one, the answer the AI wrote from your profile for this form.</summary>
+    protected static (string Value, string Source)? Mine(string question, MaterialBundle m) =>
+        m.Answers.TryGetValue(CustomAnswer.Key(question), out var mine) ? (mine, "sua resposta")
+        : m.Answers.TryGetValue(CustomAnswer.AiKey(question), out var ai) ? (ai, "IA, pelos fatos do seu perfil") : null;
+
+    /// <summary>
+    /// The years key for the technology a question names: the same name, or the name followed by a word that does not narrow it
+    /// ("C# development", ".NET e"). "React Native" is not React and ".NET WebForms" is not .NET: those go to the AI with the facts.
+    /// </summary>
+    internal static string? TechKey(string tech, MaterialBundle m)
+    {
+        var words = tech.Trim().TrimEnd('?', '.', ',', ';', ':', ' ').Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (words.Length == 0) return null;
+        var name = words.Length > 1 && Loose().IsMatch(words[^1]) ? string.Join(' ', words[..^1]) : string.Join(' ', words);
+        return m.Answers.Keys.FirstOrDefault(k => k.StartsWith("years_experience:", StringComparison.Ordinal) && string.Equals(k[17..], name, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// "Do you have at least 2 years with C#?": yes or no from the years the experiences' dates give for exactly that technology. Null
+    /// when the question asks no minimum or names a technology the profile has no dates for: the AI answers it from the facts.
+    /// </summary>
+    internal static (string Value, string Source)? AtLeastYears(string question, MaterialBundle m)
+    {
+        if (MinYears().Match(question) is not { Success: true } y || !int.TryParse(y.Groups["n"].Value, out var need)) return null;
+        var key = TechKey(y.Groups["tech"].Value, m);
+        return key is not null && int.TryParse(m.Answers[key], out var have) ? (have >= need ? "Yes" : "No", $"{have} anos de {key[17..]} pelas datas das experiências") : null;
+    }
+
+    protected static string Digits(string s) => new([.. s.Where(char.IsDigit)]);
+
+    internal static (string? Value, string Source) Resolve(string label, string type, MaterialBundle m)
     {
         if (type == "file") return Resume().IsMatch(label) ? (m.ResumePdfPath, "currículo") : (null, "");
         if (FullName().IsMatch(label)) return ($"{m.FirstName} {m.LastName}".Trim(), "perfil");
@@ -230,14 +302,12 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
         if (Email().IsMatch(label)) return (m.Email, "perfil");
         if (Phone().IsMatch(label)) return (m.Phone, "perfil");
         if (LinkedIn().IsMatch(label)) return (m.LinkedIn, "perfil");
+        if (Mine(label, m) is { } mine) return mine;
+        // "At least 2 years with C#?" written as a text box is a yes or no; "how many years with C#?" wants the number.
+        if (AtLeastYears(label, m) is { } atLeast) return (Portuguese().IsMatch(label) ? atLeast.Value == "Yes" ? "Sim" : "Não" : atLeast.Value, atLeast.Source);
+        if (MinYears().IsMatch(label)) return (null, "");
         if (YearsWith.Match(label) is { Success: true } years)
-        {
-            var tech = years.Groups[1].Value.TrimEnd('?', '.', ' ');
-            var key = m.Answers.Keys.FirstOrDefault(k => k.StartsWith("years_experience:", StringComparison.Ordinal)
-                && (string.Equals(k[17..], tech, StringComparison.OrdinalIgnoreCase) || tech.StartsWith(k[17..], StringComparison.OrdinalIgnoreCase)));
-            return key is not null ? (m.Answers[key], "anos pelas datas das experiências") : (null, "");
-        }
-        if (m.Answers.TryGetValue(CustomAnswer.Key(label), out var mine)) return (mine, "sua resposta");
+            return TechKey(years.Groups[1].Value, m) is { } key ? (m.Answers[key], "anos pelas datas das experiências") : (null, "");
         foreach (var (pattern, answer) in Questions)
             if (pattern.IsMatch(label)) return m.Answers.TryGetValue(answer, out var v) ? (v, "banco de respostas") : (null, "");
         return (null, "");
@@ -267,6 +337,17 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
     [GeneratedRegex(@"already (applied|submitted)|j[aá] se candidatou", RegexOptions.IgnoreCase)] private static partial Regex AlreadyApplied();
     [GeneratedRegex(@"verification code|c[oó]digo de verifica[cç][aã]o|two-factor|autentica[cç][aã]o em dois", RegexOptions.IgnoreCase)] protected static partial Regex Mfa();
     [GeneratedRegex(@"application id:?\s*([A-Z0-9-]{4,})", RegexOptions.IgnoreCase)] private static partial Regex ReceiptId();
+    [GeneratedRegex(@"^(select|selecione|choose|escolha)\b|^-+$|^\.\.\.$", RegexOptions.IgnoreCase)] private static partial Regex Placeholder();
+    [GeneratedRegex(@"^(yes|sim|y|s|true|verdadeiro|si)$")] protected static partial Regex Yes();
+    // Privacy policy, personal data processing, terms and the truth of what was sent: what your authorization may accept for you.
+    [GeneratedRegex(@"privacy|privacidade|personal data|dados pessoais|data processing|processing of (my )?(personal )?data|tratamento d[eo]s? dados|\bterms\b|\btermos\b|conditions|condi[cç][oõ]es|consent|consinto|consentimento|\blgpd\b|\bgdpr\b|information (i (have )?provided|provided)?\s*(is|are) (true|accurate|correct|complete)|informa[cç][oõ]es (prestadas |fornecidas )?s[aã]o (verdadeiras|ver[ií]dicas)|retain my (data|information)|armazen", RegexOptions.IgnoreCase)]
+    protected static partial Regex Consent();
+    // "pelo menos 2 anos com C#", "no mínimo 3 anos de experiência com .NET", "at least 5 years of experience with React", "2+ years in Go".
+    [GeneratedRegex(@"(?:at least|minimum of|min\.?|pelo menos|no m[ií]nimo|m[ií]nimo de|mais de|more than)?\s*(?<n>\d+)\s*\+?\s*(?:or more\s+)?(?:years?|anos)\b(?:\s+(?:of|de)\s+(?:professional\s+|hands-on\s+|pr[aá]tica\s+)?(?:experience|experi[eê]ncia)(?:\s+pr[aá]tica)?)?\s+(?:with|in|using|com|em|de)\s+(?<tech>[\w#.+]+(?:\s[\w#.+]+)?)", RegexOptions.IgnoreCase)]
+    internal static partial Regex MinYears();
+    [GeneratedRegex(@"^(and|e|or|ou|in|em|on|no|na|for|para|including|incluindo|development|desenvolvimento|programming|programa[cç][aã]o|language|linguagem|experience|experi[eê]ncia)$", RegexOptions.IgnoreCase)]
+    private static partial Regex Loose();
+    [GeneratedRegex(@"\b(voc[eê]|anos|experi[eê]ncia|tem|possui|qual)\b", RegexOptions.IgnoreCase)] private static partial Regex Portuguese();
     [GeneratedRegex(@"/(\d+)(?:/[a-z]+)?/?$")] private static partial Regex JobId();
 }
 

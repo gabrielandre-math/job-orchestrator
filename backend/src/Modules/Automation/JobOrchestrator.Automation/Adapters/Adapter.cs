@@ -41,9 +41,10 @@ internal interface IFormAdapter : IAdapter
     bool CanReconcile(Uri url);
 }
 
-/// <summary>Resultado tipado de uma operação de adapter.</summary>
+/// <summary>Resultado tipado de uma operação de adapter. Questions: the required questions it had no answer for.</summary>
 internal sealed record AdapterResult<T>(AdapterResultKind Kind, T? Value, string? ReasonCode, string Detail)
 {
+    public IReadOnlyList<FormQuestion>? Questions { get; init; }
     public static AdapterResult<T> Ok(T value, string detail = "") => new(AdapterResultKind.Completed, value, null, detail);
     public static AdapterResult<T> Fail(AdapterResultKind kind, string code, string detail) => new(kind, default, code, detail);
 }

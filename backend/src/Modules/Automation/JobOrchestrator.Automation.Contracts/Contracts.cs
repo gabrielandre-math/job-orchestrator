@@ -30,13 +30,30 @@ public sealed record PostingStatus(bool Open, string Detail);
 /// <summary>Onde a candidatura acontece.</summary>
 public sealed record ApplyTarget(Guid ApplicationId, string ApplyUrl);
 
-/// <summary>Tudo que vai no formulário: contato, PDF do currículo e respostas aprovadas. Nunca vai para log.</summary>
-public sealed record MaterialBundle(string FirstName, string LastName, string Email, string Phone, string LinkedIn, string ResumePdfPath, IReadOnlyDictionary<string, string> Answers);
+/// <summary>
+/// Tudo que vai no formulário: contato, PDF do currículo e respostas aprovadas. Nunca vai para log.
+/// AcceptDeclarations: your authorization lets the app tick, in your name, the privacy, data processing and terms boxes a form requires.
+/// </summary>
+public sealed record MaterialBundle(string FirstName, string LastName, string Email, string Phone, string LinkedIn, string ResumePdfPath, IReadOnlyDictionary<string, string> Answers,
+    bool AcceptDeclarations = false);
+
+/// <summary>
+/// A required form question the app had no answer for. Kind: text, textarea, number, select, radio, checkboxes (several options may
+/// be ticked), confirm (one box that states a fact about you) or declaration (privacy, terms). Options: what the form offers to pick.
+/// </summary>
+public sealed record FormQuestion(string Label, string Kind, IReadOnlyList<string> Options)
+{
+    /// <summary>Several ticked options travel as one answer, one option per line.</summary>
+    public const char ChoiceSeparator = '\n';
+}
 
 /// <summary>Resposta sua a uma pergunta de formulário que o perfil não responde: a chave é o texto da pergunta sem acento, caixa ou pontuação.</summary>
 public static class CustomAnswer
 {
     public static string Key(string question) => "custom:" + Normalize(question);
+
+    /// <summary>The answer the AI wrote from your profile for this application's form, kept apart from yours: yours always wins.</summary>
+    public static string AiKey(string question) => "ai:" + Normalize(question);
 
     public static string Normalize(string question)
     {
@@ -60,8 +77,11 @@ public sealed record PreparedForm(string AdapterId, string AdapterVersion, strin
 /// <summary>Um passo do roteamento: qual adapter, com que nota e por quê.</summary>
 public sealed record RoutingStep(string AdapterId, double Score, string Outcome, string Why);
 
-/// <summary>Resultado de uma operação de automação, com o caminho que o roteador fez.</summary>
-public sealed record AutomationOutcome<T>(AdapterResultKind Kind, T? Value, string? ReasonCode, string Detail, IReadOnlyList<RoutingStep> Route)
+/// <summary>
+/// Resultado de uma operação de automação, com o caminho que o roteador fez. Questions: the required questions left without an
+/// answer, when that is why the form stopped.
+/// </summary>
+public sealed record AutomationOutcome<T>(AdapterResultKind Kind, T? Value, string? ReasonCode, string Detail, IReadOnlyList<RoutingStep> Route, IReadOnlyList<FormQuestion>? Questions = null)
 {
     public bool Completed => Kind == AdapterResultKind.Completed;
 }

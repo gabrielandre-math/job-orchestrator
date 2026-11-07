@@ -46,8 +46,9 @@ internal sealed class Router(IEnumerable<IFormAdapter> adapters, AutomationDbCon
             }
             route.Add(new(adapter.Id, Math.Round(score, 3), result.Kind.ToString(), $"{why}; {result.Detail}"));
             await RecordAsync(adapter, url.Authority, capability, result, ct);
-            outcome = new(result.Kind, result.Value, result.ReasonCode, result.Detail, route);
-            var fallback = pinnedAdapter is null && capability == Capability.PrepareForm
+            outcome = new(result.Kind, result.Value, result.ReasonCode, result.Detail, route, result.Questions);
+            // A form that opened and only lacks answers is not the adapter's fault: another adapter would ask the same questions.
+            var fallback = pinnedAdapter is null && capability == Capability.PrepareForm && result.Questions is null
                 && result.Kind is AdapterResultKind.Unsupported or AdapterResultKind.PermanentFailure;
             if (!fallback || result.ReasonCode == "posting-closed") break;
         }
