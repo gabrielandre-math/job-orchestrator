@@ -49,10 +49,17 @@ internal sealed partial class GitHubIssuesSource(IHttpClientFactory http) : Publ
         var labels = issue.TryGetProperty("labels", out var l) ? l.EnumerateArray().Select(x => x.Str("name")).Where(x => x.Length > 0).ToList() : [];
         var tags = Brackets().Matches(title).Select(m => m.Groups[1].Value.Trim()).ToList();
         var clean = Brackets().Replace(title, "").Trim(' ', '-', '|');
+        // "... - Rio de Janeiro - RJ": the place at the end of a title is where the job is, not who hires.
+        var places = new List<string>();
+        for (var tail = Dash().Match(clean); tail.Success && (Place().IsMatch(tail.Groups[1].Value) || State().IsMatch(tail.Groups[1].Value.Trim())); tail = Dash().Match(clean))
+        {
+            places.Insert(0, tail.Groups[1].Value.Trim());
+            clean = clean[..tail.Index].TrimEnd(' ', '-', '–');
+        }
         var fromBody = CompanyLine().Match(body);
         var company = CompanyOf(clean) ?? (fromBody.Success ? fromBody.Groups[1].Value.Trim() : $"Vaga em {repo}");
         var role = CompanyOf(clean) is { } found ? RoleTail().Replace(clean[..clean.LastIndexOf(found, StringComparison.Ordinal)], "").Trim() : clean;
-        var location = string.Join(", ", tags.Concat(labels).Where(t => Place().IsMatch(t)).Distinct(StringComparer.OrdinalIgnoreCase));
+        var location = string.Join(", ", tags.Concat(labels).Where(t => Place().IsMatch(t)).Concat(places).Distinct(StringComparer.OrdinalIgnoreCase));
         var (email, link) = ApplyContact(body);
         return new DiscoveredPosting(source, issue.GetProperty("number").ToString(), company, role.Length > 0 ? role : clean, location,
             link ?? issue.Str("html_url"), $"{title}\n{string.Join(", ", labels)}\n{body}", issue.Date("updated_at"), issue.GetRawText(),
@@ -98,6 +105,7 @@ internal sealed partial class GitHubIssuesSource(IHttpClientFactory http) : Publ
     [GeneratedRegex(@"(?im)^\s*(?:\*\*)?empresa(?:\*\*)?\s*[:\-]\s*(.+)$")] private static partial Regex CompanyLine();
     [GeneratedRegex(@"remot|home office|h[ií]brid|presencial|s[aã]o paulo|rio de janeiro|belo horizonte|curitiba|porto alegre|florian|recife|brasil|brazil", RegexOptions.IgnoreCase)] private static partial Regex Place();
     [GeneratedRegex(@"remot|home office|h[ií]brid|presencial", RegexOptions.IgnoreCase)] private static partial Regex Remote();
+    [GeneratedRegex(@"^(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)$")] private static partial Regex State();
     [GeneratedRegex(@"^(clt|pj|cooperado|contractor|freela)", RegexOptions.IgnoreCase)] private static partial Regex Contract();
     [GeneratedRegex(@"https?://[^\s<>()\]]+", RegexOptions.IgnoreCase)] private static partial Regex Links();
     [GeneratedRegex(@"[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}", RegexOptions.IgnoreCase)] private static partial Regex Emails();
@@ -140,8 +148,10 @@ internal sealed partial class HackerNewsSource(IHttpClientFactory http) : Public
         var html = c.Str("text");
         var first = Json.Plain(html.Split("<p>", 2)[0]);
         var parts = first.Split('|', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-        var company = parts.ElementAtOrDefault(0) ?? "Empresa no HN";
-        var role = parts.Skip(1).FirstOrDefault(p => !Place().IsMatch(p) && !Money().IsMatch(p)) ?? "Vaga no HN";
+        // "Curiosity (https://curiosity.ai)" is Curiosity; a part that is a link or a work arrangement is not the role.
+        var company = parts.ElementAtOrDefault(0) is { } name ? UrlPart().Replace(name, "").Trim(' ', '(', ')', '-') : "Empresa no HN";
+        if (company.Length == 0) company = "Empresa no HN";
+        var role = parts.Skip(1).FirstOrDefault(p => !Place().IsMatch(p) && !Money().IsMatch(p) && !UrlPart().IsMatch(p) && !Arrangement().IsMatch(p)) ?? "Vaga no HN";
         var location = string.Join(", ", parts.Skip(1).Where(p => Place().IsMatch(p)));
         var id = c.TryGetProperty("id", out var i) ? i.ToString() : c.Str("objectID");
         var link = Href().Match(html) is { Success: true } m ? System.Net.WebUtility.HtmlDecode(m.Groups[1].Value) : $"https://news.ycombinator.com/item?id={id}";
@@ -154,4 +164,6 @@ internal sealed partial class HackerNewsSource(IHttpClientFactory http) : Public
     [GeneratedRegex(@"remote|anywhere|hybrid", RegexOptions.IgnoreCase)] private static partial Regex Remote();
     [GeneratedRegex(@"[$€£]\s?\d|\d+\s?k\b|usd|eur", RegexOptions.IgnoreCase)] private static partial Regex Money();
     [GeneratedRegex(@"href=""([^""]+)""", RegexOptions.IgnoreCase)] private static partial Regex Href();
+    [GeneratedRegex(@"\(?\s*(?:https?://|www\.)\S+\s*\)?|^\s*[\w-]+\.(?:com|io|ai|co|dev|app|net|org|tech|so|xyz)(?:/\S*)?\s*$", RegexOptions.IgnoreCase)] private static partial Regex UrlPart();
+    [GeneratedRegex(@"^\s*(full[- ]?time|part[- ]?time|contract(or)?|intern(ship)?|visa|onsite|on-site|remote|hybrid|equity|\d+\s?(h|hrs)/week)\b", RegexOptions.IgnoreCase)] private static partial Regex Arrangement();
 }

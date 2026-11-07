@@ -52,14 +52,37 @@ internal static partial class Normalizer
         return applyEmail is null ? "link" : "email";
     }
 
-    /// <summary>Faixa ou valor único, com moeda. "10.000,00" e "10,000.00" são lidos certo; "k" multiplica por mil.</summary>
+    /// <summary>
+    /// The pay the job states, monthly: a range or a single value, with currency. "10.000,00" and "10,000.00" read right; "k" is a thousand.
+    /// Every amount in the text is weighed by the words around it: a benefit ("PicPay de R$ 800", "auxílio de R$ 2.000 anual") or a
+    /// company figure ("paid out $11M") is not pay, and words like "salário", "faixa" or "per month" make an amount the pay. An hourly
+    /// rate becomes monthly (160 hours) and a yearly one is divided by 12. With no such words, an amount too low to be a monthly salary
+    /// stays unknown: an unknown pay never rejects a job, a wrong one did.
+    /// </summary>
     internal static (string? Text, decimal? Min, decimal? Max, string? Currency) Salary(string s)
     {
-        var m = Range().Match(s);
-        if (m.Success)
-            return (m.Value.Trim(), Amount(m.Groups["a"].Value, m.Groups["ka"].Success), Amount(m.Groups["b"].Value, m.Groups["kb"].Success || m.Groups["ka"].Success), Currency(m.Groups["c"].Value));
-        m = Single().Match(s);
-        return m.Success ? (m.Value.Trim(), Amount(m.Groups["a"].Value, m.Groups["ka"].Success), null, Currency(m.Groups["c"].Value)) : (null, null, null, null);
+        (string Text, decimal? Min, decimal? Max, string Currency, int Score)? best = null;
+        void Weigh(Match m, bool range)
+        {
+            var before = s[Math.Max(0, m.Index - 80)..m.Index];
+            var after = s[(m.Index + m.Length)..Math.Min(s.Length, m.Index + m.Length + 30)];
+            if (NotPay().IsMatch(before) || Magnitude().IsMatch(after)) return;
+            var currency = Currency(m.Groups["c"].Value);
+            var min = Amount(m.Groups["a"].Value, m.Groups["ka"].Success);
+            var max = range ? Amount(m.Groups["b"].Value, m.Groups["kb"].Success || m.Groups["ka"].Success) : null;
+            if (min is null) return;
+            var near = before[Math.Max(0, before.Length - 40)..] + after;
+            var per = Hourly().IsMatch(near) ? 160m : Yearly().IsMatch(after) ? 1m / 12 : 1m;
+            min = Math.Round(min.Value * per); max = max is { } x ? Math.Round(x * per) : null;
+            var score = (PayWord().IsMatch(before) ? 3 : 0) + (Period().IsMatch(after) || Hourly().IsMatch(near) ? 2 : 0) + (range ? 1 : 0);
+            // A bare amount, with no pay word or period around it, counts only when it is a plausible monthly salary.
+            var top = max ?? min.Value;
+            if (score == 0 && (currency == "BRL" && top < 1500 || currency != "BRL" && top < 1000)) return;
+            if (best is null || score > best.Value.Score) best = (m.Value.Trim(), min, max, currency, score);
+        }
+        foreach (Match m in Range().Matches(s)) Weigh(m, true);
+        foreach (Match m in Single().Matches(s)) Weigh(m, false);
+        return best is { } b ? (b.Text, b.Min, b.Max, b.Currency) : (null, null, null, null);
     }
 
     private static decimal? Amount(string raw, bool thousands)
@@ -105,4 +128,11 @@ internal static partial class Normalizer
     [GeneratedRegex(@"/jobs/\d+/apply|^/lever/[^/]+/\d+/apply|^/ashby/[^/]+/\d+/application")] private static partial Regex FakeAts();
     [GeneratedRegex(@"(?<c>R\$|US\$|USD|EUR|BRL|€|£|\$)\s?(?<a>\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{1,2})?|\d+)\s?(?<ka>[kK])?\s*(?:-|–|a|to|até)\s*(?:R\$|US\$|USD|EUR|BRL|€|£|\$)?\s?(?<b>\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{1,2})?|\d+)\s?(?<kb>[kK])?")] private static partial Regex Range();
     [GeneratedRegex(@"(?<c>R\$|US\$|USD|EUR|BRL|€|£|\$)\s?(?<a>\d{1,3}(?:[.,]\d{3})+(?:[.,]\d{1,2})?|\d{2,})\s?(?<ka>[kK])?")] private static partial Regex Single();
+    // Words right before an amount that make it something other than pay: benefits, allowances, budgets and company figures.
+    [GeneratedRegex(@"(vale|aux[ií]lio|benef[ií]cio|b[oô]nus|picpay|caju|flash|alelo|ifood|swile|vr|va|plano|reembolso|ajuda de custo|allowance|stipend|budget|equipamento|equipment|gympass|wellhub|cart[aã]o|pr[eê]mio|plr|ppr|paid out|raised|funding|investimento|invested|revenue|fatur|valuation|series [a-e]|rodada|capta)[^\n.]{0,60}$", RegexOptions.IgnoreCase)] private static partial Regex NotPay();
+    [GeneratedRegex(@"^\s?(mm?|mi|bi|b|bn|million|billion|milh|bilh)\b", RegexOptions.IgnoreCase)] private static partial Regex Magnitude();
+    [GeneratedRegex(@"(sal[aá]ri|remunera|faixa|pretens|compensation|salary|pay range|base pay|\bote\b|pagamento|bolsa|ganhos|rate)[^\n]{0,60}$", RegexOptions.IgnoreCase)] private static partial Regex PayWord();
+    [GeneratedRegex(@"(/\s?h(ou)?r?\b|por hora|/hora|per hour|an hour|hourly|\bhr\b)", RegexOptions.IgnoreCase)] private static partial Regex Hourly();
+    [GeneratedRegex(@"^[^\n]{0,20}(/\s?(ano|year|yr)\b|por ano|anual|per year|a year|annual|yearly|p\.\s?a\.)", RegexOptions.IgnoreCase)] private static partial Regex Yearly();
+    [GeneratedRegex(@"^[^\n]{0,20}(/\s?m[eê]s|por m[eê]s|mensal|per month|/\s?month|a month|monthly|/\s?(ano|year|yr)\b|por ano|anual|per year|a year|annual|yearly)", RegexOptions.IgnoreCase)] private static partial Regex Period();
 }

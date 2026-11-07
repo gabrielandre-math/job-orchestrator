@@ -63,4 +63,12 @@ public sealed class EligibilityPolicyTests
         Assert.Equal(new EligibilityPolicy(true, true), RunRequestedConsumer.Policy(Profile(null, ["BR"], true)));
         Assert.Equal(new EligibilityPolicy(false, false), RunRequestedConsumer.Policy(Profile("Lisboa, Portugal", ["PT"], false)));
     }
+
+    [Fact]
+    public void Hibrido_com_a_cidade_no_titulo_ou_no_anuncio_e_no_Brasil()
+    {
+        Assert.Equal("BR_ELIGIBLE_CONFIRMED", Eligibility.Classify("[Híbrido] Desenvolvedor - Rio de Janeiro - RJ", "Programa AI Stack.", "Híbrido", "Híbrido").Class);
+        Assert.Equal("BR_ELIGIBLE_CONFIRMED", Eligibility.Classify("Back-end developer", "## Local\n\nPresencial em SP, na Faria Lima.", "Presencial", "Presencial").Class);
+        Assert.Equal("RELOCATION_UNVERIFIED", Eligibility.Classify("Backend Engineer", "Onsite in our Berlin office.", "Berlin, Germany", "Presencial").Class);
+    }
 }

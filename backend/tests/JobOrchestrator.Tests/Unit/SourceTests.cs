@@ -120,6 +120,43 @@ public sealed class SourceTests
         Assert.Equal(currency, c);
     }
 
+    // Real ads of 07/11 that were rejected for "paying below your floor": a benefit, an allowance and a company figure read as the salary.
+    [Theory]
+    [InlineData("## Benefícios - Plano de saúde - PicPay flexível de aproximadamente R$ 800 - Equipamento fornecido")]
+    [InlineData("- Auxílio Remoto para investimento em equipamentos (R$2.000 anual) - PJ")]
+    [InlineData("The rate depends on your seniority level. We've already paid out over $11M to our engineers.")]
+    public void Beneficio_e_cifra_da_empresa_nao_sao_salario(string text) => Assert.Null(Normalizer.Salary(text).Min);
+
+    [Theory]
+    [InlineData("Remuneração: R$ 9.000 por mês (PJ). Benefícios: VR de R$ 800.", 9000, "BRL")]
+    [InlineData("Rate: $45/hour, full time", 7200, "USD")]
+    [InlineData("Faixa salarial: R$ 120.000 por ano", 10000, "BRL")]
+    public void Salario_com_contexto_e_periodo_vira_mensal(string text, int monthly, string currency)
+    {
+        var (_, min, _, c) = Normalizer.Salary(text);
+        Assert.Equal(monthly, min);
+        Assert.Equal(currency, c);
+    }
+
+    [Fact]
+    public void Lugar_no_fim_do_titulo_nao_e_empresa()
+    {
+        var p = GitHubIssuesSource.Parse("github:backend-br/vagas", "backend-br/vagas", J("""{"number":1,"title":"[Híbrido] Desenvolvedor / Engenheiro de IA (AI Stack) - Programa AI Stack - Rio de Janeiro - RJ","html_url":"https://github.com/x","body":"","labels":[]}"""));
+        Assert.NotEqual("RJ", p.Company);
+        Assert.Equal("Desenvolvedor / Engenheiro de IA (AI Stack)", p.Title);
+        Assert.Contains("Rio de Janeiro", p.Location);
+    }
+
+    [Fact]
+    public void Link_na_primeira_linha_do_hn_nao_e_cargo_nem_empresa()
+    {
+        var a = HackerNewsSource.Parse("hn:whoishiring", J("""{"id":1,"text":"SerpApi | https://serpapi.com | Based in Austin, TX | Senior Backend Engineer | $150K - 180K<p>x"}"""));
+        Assert.Equal("Senior Backend Engineer", a.Title);
+        var b = HackerNewsSource.Parse("hn:whoishiring", J("""{"id":2,"text":"Curiosity (https://curiosity.ai) | Forward Deployed Engineer | ONSITE<p>x"}"""));
+        Assert.Equal("Curiosity", b.Company);
+        Assert.Equal("Forward Deployed Engineer", b.Title);
+    }
+
     [Fact]
     public void Normalizacao_nao_inventa_o_que_a_vaga_nao_diz()
     {

@@ -39,6 +39,8 @@ internal static partial class Eligibility
         var countries = SourceCatalog.MatchCountries(location);
         var abroad = countries.Count > 0 && !countries.Contains("BR");
         if (!abroad && InBrazil().IsMatch(location)) return new("BR_ELIGIBLE_CONFIRMED", $"local da vaga: {location.Trim()}{(remote ? " (remota)" : "")}", true);
+        // The place is often in the title only ("[Híbrido] Desenvolvedor... - Rio de Janeiro - RJ", as the Brazilian GitHub boards write).
+        if (!abroad && InBrazil().Match(title) is { Success: true } inTitle) return new("BR_ELIGIBLE_CONFIRMED", Snippet(title, inTitle), true);
         var open = remote ? OpenToBrazil().Match(text) is { Success: true } latam ? latam : Worldwide().Match(text) : Match.Empty;
         if (open.Success && restricted.Success) return new("REVIEW", $"{Snippet(text, open)} / {Snippet(restricted == local ? text : $"{title}\n{location}", restricted)}", true);
         if (open.Success) return new("BR_ELIGIBLE_CONFIRMED", Snippet(text, open), true);
@@ -49,6 +51,8 @@ internal static partial class Eligibility
         if (!remote && Relocation().Match(text) is { Success: true } move && !NoSponsor().IsMatch(text)) return new("RELOCATION_WITH_SPONSORSHIP", Snippet(text, move), true);
         if (remote && Contractor().Match(text) is { Success: true } b2b) return new("BR_ELIGIBLE_POSSIBLE", Snippet(text, b2b), true);
         if (remote) return new("BR_ELIGIBLE_POSSIBLE", "remota, sem dizer de onde se pode trabalhar: confirmar no anúncio", false);
+        // "Híbrido" or "Presencial" with no country is not abroad: a Brazilian city or state in the ad says where.
+        if (countries.Count == 0 && BrazilPlace().Match(description) is { Success: true } here) return new("BR_ELIGIBLE_CONFIRMED", Snippet(description, here), true);
         if (location.Trim().Length > 0) return new("RELOCATION_UNVERIFIED", $"presencial ou híbrida fora do Brasil, sem dizer de visto: {location.Trim()}", false);
         return new("UNKNOWN", "o anúncio não diz o local nem se é remota", false);
     }
@@ -67,6 +71,9 @@ internal static partial class Eligibility
 
     [GeneratedRegex(@"\b(brasil|brazil|br)\b|são paulo|sao paulo|rio de janeiro|belo horizonte|curitiba|porto alegre|florian[oó]polis|recife|salvador|bras[ií]lia|campinas|fortaleza|goi[aâ]nia|\b(sp|rj|mg|pr|sc|rs|df)\b\s*(,|$)", RegexOptions.IgnoreCase)]
     private static partial Regex InBrazil();
+    // A Brazilian city, or a state after "em", "-" or "/", in the body of an ad: the strict version of InBrazil for long text.
+    [GeneratedRegex(@"(?i:são paulo|sao paulo|rio de janeiro|belo horizonte|curitiba|porto alegre|florian[oó]polis|recife|bras[ií]lia|campinas|fortaleza|goi[aâ]nia)|(?:\b(?:em|no|na)|[-/])\s+(?:SP|RJ|MG|PR|SC|RS|DF|PE|BA|CE|GO|ES)\b")]
+    private static partial Regex BrazilPlace();
 
     [GeneratedRegex(@"\b(brasil|brazil|latam|latin america|am[eé]rica latina|south america|am[eé]rica do sul|sudam[eé]rica|americas? timezones?|brazilian)\b", RegexOptions.IgnoreCase)]
     private static partial Regex OpenToBrazil();
