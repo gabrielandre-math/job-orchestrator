@@ -13,6 +13,7 @@ export const routes: Routes = [
   { path: 'candidaturas/:id', title: 'Candidatura', loadComponent: () => import('./features/applications/application.page').then((m) => m.ApplicationPage) },
   { path: 'email', title: 'E-mail', loadComponent: () => import('./features/mail/mail.page').then((m) => m.MailPage) },
   { path: 'fontes', title: 'Fontes', loadComponent: () => import('./features/sources/sources.page').then((m) => m.SourcesPage) },
+  { path: 'testes', title: 'Testes em ambiente próprio', loadComponent: () => import('./features/sources/controlled-tests.page').then((m) => m.ControlledTestsPage) },
   { path: 'fontes/varredura', title: 'Varredura da internet', loadComponent: () => import('./features/sweep/sweep.page').then((m) => m.SweepPage) },
   { path: 'fontes/adapters', title: 'Conectores', loadComponent: () => import('./features/adapters/adapters.page').then((m) => m.AdaptersPage) },
   { path: 'fontes/registro', title: 'Registro de fontes', loadComponent: () => import('./features/sources/registry.page').then((m) => m.RegistryPage) },

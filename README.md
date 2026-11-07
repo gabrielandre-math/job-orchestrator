@@ -70,14 +70,14 @@ The interface is in Brazilian Portuguese. Résumés and form answers are written
 
 Job Orchestrator applies to jobs in your name. Read what it prepares before you let it send anything on its own.
 
-## Plays by the rules
+## Access and operating limits
 
-- LinkedIn is never automated, because its terms forbid it. Import your LinkedIn data export to fill in your profile, and save LinkedIn jobs by link to keep track of the ones you apply to yourself.
-- CAPTCHAs on external sites are left to the user. When a site blocks automated access, that source is skipped.
+- An optional, disabled-by-default LinkedIn session connector reads job searches through a separate local browser you log in to. It is experimental, depends on the site's layout and can be interrupted by login, verification or access limits. LinkedIn restricts automated access in its terms. Profile export, alert e-mails and user-triggered page capture remain available. See the [setup and live-test guide](docs/REAL_LINKEDIN_AND_CAPTCHA.md).
+- CAPTCHAs on external job sites remain with the user. For your own server, the controlled test flow supports local image OCR, arithmetic and official Turnstile/reCAPTCHA v2/hCaptcha widgets with server validation and session continuity.
 - The scraper follows robots.txt, waits between requests and opens one connection per site.
 - Sources whose terms do not allow this kind of use stay in the registry as blocked (LinkedIn Jobs, France Travail) or partner-only (the Gupy employer API and Singapore's MyCareersFuture), so you can see why they are off.
 
-Of the 52 registered sources, 24 are stable, 20 are experimental, 4 need a free API key of your own, 2 are partner-only and 2 are blocked. The catalog behind the Scout lists 34,880 company job boards.
+Of the 53 registered sources, 24 are stable, 21 are experimental, 4 need a free API key of your own, 2 are partner-only and 2 are blocked. The catalog behind the Scout lists 34,880 company job boards.
 
 ## A closer look
 
@@ -249,6 +249,8 @@ You need the .NET 10 SDK, Node.js 22 or newer, Python 3.11 or newer and Docker f
 ```sh
 git clone https://github.com/gabrielandre-math/job-orchestrator.git
 cd job-orchestrator
+npm ci --prefix web
+npm run build --prefix web
 scripts/dev.sh                    # PostgreSQL in Docker, the fake ATS, API and worker; data in .dev/
 docker compose -f infra/compose.test.yaml up -d --wait
 dotnet test backend/tests/JobOrchestrator.Tests --filter "Category!=E2E"

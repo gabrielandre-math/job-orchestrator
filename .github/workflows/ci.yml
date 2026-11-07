@@ -3,9 +3,9 @@ name: ci
 on:
   push:
     branches: [main]
-    paths: ['backend/**', 'web/**', '.github/workflows/ci.yml']
+    paths: ['backend/**', 'web/**', 'extension/**', 'tests/extension/**', 'scripts/**', '.github/workflows/ci.yml']
   pull_request:
-    paths: ['backend/**', 'web/**', '.github/workflows/ci.yml']
+    paths: ['backend/**', 'web/**', 'extension/**', 'tests/extension/**', 'scripts/**', '.github/workflows/ci.yml']
   workflow_dispatch:
 
 permissions:
@@ -60,3 +60,5 @@ jobs:
       - name: Build
         working-directory: web
         run: npx ng build
+      - name: Extension extraction tests
+        run: npm ci --prefix tests/extension && npm test --prefix tests/extension

@@ -31,6 +31,16 @@ internal sealed partial class CaptureJobHandler(JobsDbContext db, ICampaignsApi 
         var now = time.GetUtcNow().UtcDateTime;
         var url = new Uri(c.Url);
 
+        if (LinkedInCapture.Canonical(c.Url) is { } linkedInUrl)
+        {
+            var (linkedInCompany, linkedInTitle) = FromTitle(c.Title ?? "");
+            var captured = await new CaptureLinkedInHandler(db, campaigns, time).Handle(new CaptureLinkedInCommand(new LinkedInPage(c.Url, time.GetUtcNow(),
+                [new LinkedInPosting(linkedInUrl, linkedInTitle, linkedInCompany, Description: c.Text)])), ct);
+            if (!captured.IsSuccess) return captured.Error!;
+            var item = captured.Value![0];
+            return new CaptureResult("saved", item.JobId, "manual:linkedin.com", item.Updated ? "Vaga do LinkedIn atualizada, sem duplicar." : "Vaga do LinkedIn salva com a descrição e o contato publicado para candidatura, quando presente.");
+        }
+
         if (AtsSource(url) is { } source)
         {
             db.Publish(SourceDiscoveredV1.EventType, new SourceDiscoveredV1(campaign.Id, source, now), now);

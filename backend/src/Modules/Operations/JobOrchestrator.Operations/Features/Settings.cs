@@ -88,9 +88,10 @@ internal sealed class SettingsEndpoints : ICarterModule
             return Results.Ok(new { authorizations = auth, mail });
         });
 
-        g.MapPost("wipe", async (WipeInput body, [FromKeyedServices("operations")] NpgsqlDataSource data, ILogger<SettingsEndpoints> log) =>
+        g.MapPost("wipe", async (WipeInput body, [FromKeyedServices("operations")] NpgsqlDataSource data, JobOrchestrator.Automation.Contracts.ILocalBrowserSessions browsers, ILogger<SettingsEndpoints> log, CancellationToken ct) =>
         {
             if (body.Confirm?.Trim() != Phrase) return Results.Problem($"Digite {Phrase} para confirmar.", statusCode: 400);
+            await browsers.ClearAsync(ct);
             await using var c = await data.OpenConnectionAsync();
             await WipeAsync(c);
             foreach (var dir in new[] { "profile", "resumes", "materials", "reports" }.Select(d => Path.Combine(AppPaths.Data, d)).Where(Directory.Exists))

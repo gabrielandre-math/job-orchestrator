@@ -131,6 +131,8 @@ public static class SourceRegistry
         new("reliefweb", "ReliefWeb Jobs", "gov", "CREDENTIALS_REQUIRED", "CREDENTIALS_REQUIRED", [Global], "https://apidoc.reliefweb.int/read/resources/jobs/", "https://apidoc.reliefweb.int/",
             null, "24 h", ["reliefweb-jobs-api"], "appname aprovado pela ReliefWeb.", "reliefweb"),
         // Bloqueadas por política ou só com parceria: não são coletadas.
+        new("linkedin-session", "LinkedIn: minha sessão local", "board", "OBSERVED", "EXPERIMENTAL", [Global], "https://www.linkedin.com/jobs/", "https://www.linkedin.com/legal/user-agreement",
+            null, "intervalo configurável, mínimo 15 min", [], "Busca pela sessão local conectada pela pessoa, desativada por padrão. Sem API oficial, depende do layout; login e verificações interrompem a busca."),
         new("linkedin", "LinkedIn Jobs", "board", "PARTNER_ONLY", "BLOCKED", [Global], "https://www.linkedin.com/help/linkedin/answer/a1341387/prohibited-software-and-extensions", "https://www.linkedin.com/legal/user-agreement",
             null, "-", [], "Robôs e extensões de automação proibidos: só export de dados, link salvo e alertas por e-mail."),
         new("francetravail", "France Travail Offres d'emploi", "gov", "PARTNER_ONLY", "BLOCKED", ["FR"], "https://www.data.gouv.fr/dataservices/api-offres-demploi", null,

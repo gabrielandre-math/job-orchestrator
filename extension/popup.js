@@ -1,19 +1,50 @@
 const $ = (id) => document.getElementById(id);
 let data = null;
 let tab = null;
+let captured = null;
 
 (async () => {
   [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   const url = tab?.url ?? '';
-  if (/^https?:\/\/([^/]+\.)?linkedin\.com\//i.test(url)) { $('state').textContent = 'No ar'; $('blocked').hidden = false; return; }
   const status = await chrome.runtime.sendMessage({ type: 'status' });
   if (!status?.up) { $('state').textContent = 'O app não está no ar. Abra o Job Orchestrator.'; return; }
   $('state').textContent = 'No ar';
+  if (/^https:\/\/([^/]+\.)?linkedin\.com\//i.test(url)) { $('blocked').hidden = false; $('fill').hidden = true; document.querySelector('.note').hidden = true; return; }
   data = await chrome.runtime.sendMessage({ type: 'match', url });
   if (data?.found) { $('job').hidden = false; $('title').textContent = data.title; $('company').textContent = data.company; }
   else { $('none').hidden = false; }
   $('fill').disabled = !/^https?:/i.test(url);
 })();
+
+$('capture').addEventListener('click', async () => {
+  try {
+    $('capture').disabled = true;
+    await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['linkedin-capture.js'] });
+    const [result] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: () => globalThis.__joCaptureLinkedIn() });
+    captured = result.result;
+    const list = $('capture-list'); list.replaceChildren();
+    for (const [index, job] of captured.jobs.entries()) {
+      const label = document.createElement('label'); const input = document.createElement('input'); input.type = 'checkbox'; input.checked = true; input.value = String(index);
+      const span = document.createElement('span'); span.textContent = `${job.title} · ${job.company || 'empresa não capturada'}${job.description ? ' · com descrição' : ' · só cartão'}`;
+      label.append(input, span); list.append(label);
+    }
+    $('capture-note').textContent = captured.jobs.length ? 'Confira as vagas selecionadas. Somente contatos publicados na descrição para candidatura serão considerados.' : 'Nenhuma vaga reconhecida. Abra os detalhes de uma vaga e tente novamente.';
+    $('capture-preview').hidden = false; $('capture-save').disabled = !captured.jobs.length;
+  } catch (error) { $('result').hidden = false; $('result').textContent = error.message; }
+  finally { $('capture').disabled = false; }
+});
+$('capture-save').addEventListener('click', async () => {
+  try {
+    $('capture-save').disabled = true;
+    const jobs = [...$('capture-list').querySelectorAll('input:checked')].map(x => captured.jobs[Number(x.value)]);
+    if (!jobs.length) throw new Error('Selecione ao menos uma vaga.');
+    const result = await chrome.runtime.sendMessage({ type: 'capture-linkedin', page: { ...captured, jobs } });
+    if (!result?.ok) throw new Error(result?.error || 'O app não respondeu.');
+    $('result').hidden = false;
+    $('result').textContent = `${result.jobs.length} vaga(s) salva(s); ${result.jobs.filter(j => j.updated).length} atualizada(s); ${result.jobs.filter(j => j.applyEmail).length} com contato publicado para candidatura.`;
+  } catch (error) { $('result').hidden = false; $('result').textContent = error.message; }
+  finally { $('capture-save').disabled = false; }
+});
 
 $('fill').addEventListener('click', async () => {
   $('fill').disabled = true;

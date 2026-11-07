@@ -114,6 +114,7 @@ export class JobsPage {
     return words.filter((w) => fold(w).length > 1 && text.includes(fold(w)));
   });
   protected readonly detail = query<JobDetail>(() => (this.open() ? `/jobs/${this.open()}` : null));
+  protected readonly sourceEvidence = query<{ kind: string; url?: string; pageUrl?: string; capturedAt?: string; externalApplyUrl?: string; contact?: { email: string | null; status: string; evidence: string | null } }>(() => this.open() && (this.detail.value()?.job.source === 'manual:linkedin.com' || this.detail.value()?.job.source.startsWith('linkedin-session:')) ? `/jobs/${this.open()}/source-evidence` : null);
   protected readonly resumes = query<Resume[]>(() => (this.open() ? `/materials/resumes?applicationId=${this.open()}` : null), 0);
   protected readonly fitComparison = signal<FitComparison | null>(null);
   protected readonly comparing = command((id: string) => send<FitComparison>('POST', `/jobs/${id}/compare-fit`));
