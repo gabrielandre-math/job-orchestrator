@@ -103,6 +103,21 @@ internal static class Conferente
         }
     }
 
+    /// <summary>
+    /// Why the reviewer's verdicts do not count as a review: claims left without a verdict, judged twice or unknown. Null when every
+    /// claim got exactly one verdict. An empty list on a draft with claims is no review at all.
+    /// </summary>
+    public static string? Gap(Draft d, IReadOnlyList<Prompts.Verdict> verdicts)
+    {
+        var ids = d.Claims().Select(c => c.Id).ToHashSet();
+        var byClaim = verdicts.GroupBy(v => v.Claim).ToList();
+        var missing = ids.Count(id => byClaim.All(g => g.Key != id));
+        var twice = byClaim.Count(g => g.Count() > 1);
+        var unknown = byClaim.Count(g => !ids.Contains(g.Key));
+        return missing + twice + unknown == 0 ? null
+            : $"o Revisor não avaliou cada afirmação uma vez ({missing} sem veredito, {twice} repetidas, {unknown} que não existem no rascunho)";
+    }
+
     /// <summary>Tira do rascunho as afirmações que o Revisor recusou; título e resumo voltam ao texto original do fato.</summary>
     public static (Draft Draft, List<string> Removed) Apply(Draft d, Selection s, IReadOnlyList<Prompts.Verdict> verdicts)
     {

@@ -86,7 +86,9 @@ internal sealed class ResumeComposer(IProfileApi profiles, IJobsApi jobs, IIntel
         {
             var review = await ai.CompleteAsync(LlmRequest.For(LlmTasks.ResumeFactcheck, Prompts.Reviewer, Prompts.ReviewerPrompt(draft, s), Prompts.ReviewerSchema,
                 avoidFamily: writerFamily, timeoutSeconds: 240, thread: thread, agent: "Revisor"), ct);
-            if (review.Ok && Prompts.ParseVerdicts(review.Json!) is { } verdicts)
+            var verdicts = review.Ok ? Prompts.ParseVerdicts(review.Json!) : null;
+            var gap = verdicts is null ? review.Error : Conferente.Gap(draft, verdicts);
+            if (verdicts is not null && gap is null)
             {
                 var applied = Conferente.Apply(draft, s, verdicts);
                 draft = Tailor.Finish(applied.Draft, s);
@@ -97,8 +99,8 @@ internal sealed class ResumeComposer(IProfileApi profiles, IJobsApi jobs, IIntel
                     applied.Removed.Count == 0 ? null : string.Join("\n", applied.Removed.Select(x => $"- {x}")), "Renderizador", true, ct);
             }
             else
-                await ai.NoteAsync(thread, "Conferente", "Revisão cruzada indisponível agora: vale só a conferência sem IA, e o currículo vai para a sua revisão",
-                    review.Error, "Renderizador", false, ct);
+                await ai.NoteAsync(thread, "Conferente", "Revisão cruzada indisponível ou incompleta: vale só a conferência sem IA, e o currículo vai para a sua revisão",
+                    gap, "Renderizador", false, ct);
         }
 
         // Renderizador: PDF pelo Chromium, conferido pelo texto (pdftotext) e pelas páginas (pdfinfo). Passou do limite, corta a conquista menos relevante.
