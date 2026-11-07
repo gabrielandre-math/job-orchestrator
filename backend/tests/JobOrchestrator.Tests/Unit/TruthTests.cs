@@ -163,9 +163,13 @@ public sealed class TruthTests
         Assert.Null(AnswerBank.Years(p, "Go", new DateOnly(2026, 11, 5)));
         var pj = AnswerBank.Build(p, new AnswerContext("pj", "BRL", "BR", ["C#"], "pt", "greenhouse"), new DateOnly(2026, 11, 5));
         Assert.Equal("R$ 16.000 por mês (PJ)", pj["salary_expectation"]);
+        // A form may ask the PJ or the CLT amount whatever the job's contract: each from its own floor.
+        Assert.Equal("R$ 16.000 por mês (PJ)", pj["salary_pj"]);
+        Assert.Equal("R$ 12.000 por mês (CLT)", pj["salary_clt"]);
         Assert.Equal("3", pj["years_experience:C#"]);
         var usd = AnswerBank.Build(p, new AnswerContext("contractor", "USD", "US", [], "en", "hn"), new DateOnly(2026, 11, 5));
         Assert.Equal("USD 5,000 per month", usd["salary_expectation"]);
+        Assert.Equal("BRL 16,000 per month (PJ contract)", usd["salary_pj"]);
         Assert.Equal("No", usd["work_authorization"]);
         Assert.Equal("Hacker News", usd["how_heard"]);
     }
