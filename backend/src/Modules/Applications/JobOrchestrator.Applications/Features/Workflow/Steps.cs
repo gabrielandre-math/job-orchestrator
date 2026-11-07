@@ -37,6 +37,10 @@ internal sealed class StepKit(ApplicationsDbContext db, IAutomationApi automatio
     /// <summary>Only an authorization in force that accepts the declarations lets the app tick privacy and terms boxes in your name.</summary>
     public static bool AcceptsDeclarations(CampaignSettings campaign) => campaign.Mode == SubmissionMode.AutoSubmit && campaign.Authorization is { AcceptDeclarations: true };
 
+    /// <summary>A stop that no answer of yours solves: the site itself keeps the robot out or shows no form it can fill.</summary>
+    public static bool Technical(string? code) => code is "captcha" or "login" or "mfa" or "blocked" or "no-form" or "no-fields" or "multi-step" or "file"
+        or "no-email-field" or "custom-field" or "fill-mismatch" or "no-adapter";
+
     public static HumanTaskKind TaskFor(string? code) => code switch
     {
         "captcha" => HumanTaskKind.Captcha,
@@ -165,9 +169,13 @@ internal sealed class PrepareStep(StepKit k, Answerer answerer) : IStep
                     k.Enqueue(app.Id, WorkStep.Prepare, round.Delay);
                     break;
                 }
-                if (app.ApplyChannel == "link" && outcome.Questions is null)
+                // A paused adapter (three failures in a row on this site) is back in minutes: the form waits for it instead of asking you.
+                if (outcome.ReasonCode == "no-adapter" && outcome.Route.Any(r => r.Why.StartsWith("circuito aberto", StringComparison.Ordinal)))
+                    throw new RetryLaterException(TimeSpan.FromMinutes(15), "O adapter deste site está pausado por falhas seguidas; o formulário espera ele voltar.");
+                if ((app.ApplyChannel == "link" || StepKit.Technical(outcome.ReasonCode)) && outcome.Questions is null)
                 {
-                    // A site the app only tries: what stops it (login, CAPTCHA, no open form) sends the application the usual way, by you.
+                    // What a robot cannot pass (login, CAPTCHA, anti-robot, no open form) sends the application the usual way, by you:
+                    // "Precisa de você" stays for what only you can answer.
                     var why = outcome.Detail.Length > 300 ? outcome.Detail[..299] + "…" : outcome.Detail;
                     app.Move(ApplicationState.ManualHandoff, $"A candidatura vai pelo site original. {why} O currículo está pronto para você enviar.", "Preparador", now, new { outcome.ReasonCode, outcome.Route });
                     k.Db.AddTask(app.Id, HumanTaskKind.Review, "Candidatar-se pelo site da vaga", $"{app.Title}, {app.Company}", now);

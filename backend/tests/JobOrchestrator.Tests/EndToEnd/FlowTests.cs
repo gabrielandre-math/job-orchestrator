@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Net;
 
 namespace JobOrchestrator.Tests.EndToEnd;
@@ -26,7 +27,8 @@ public sealed class FlowTests
         await SettledAsync(s, 4);
         Assert.Equal("FormValidated", await s.StateAsync("Norte Pagamentos"));
         Assert.Equal("FormValidated", await s.StateAsync("Ponte Logística"));
-        Assert.Equal("NeedsHuman", await s.StateAsync("Atlas Saúde"));
+        // A CAPTCHA is the site's own wall: the application goes by the site, with you; a question is what "needs you".
+        Assert.Equal("ManualHandoff", await s.StateAsync("Atlas Saúde"));
         Assert.Equal("NeedsHuman", await s.StateAsync("Lume Educação"));
         Assert.Equal(0, await s.SubmissionsAsync());
         // The open question reaches the workflow whole (kind and all), for the AI to answer; here the AI is off, so it stops with you.
@@ -54,7 +56,7 @@ public sealed class FlowTests
         Assert.Equal("FormValidated", await s.StateAsync("Aurora Ashby"));   // 2: Ashby com campos extras
         Assert.Equal("FormValidated", await s.StateAsync("Farol Lever"));    // 3: Lever com upload e pergunta condicional
         Assert.Equal("FormValidated", await s.StateAsync("Muda Sempre"));    // 4: seletor que muda a cada carga
-        Assert.Equal("NeedsHuman", await s.StateAsync("Cofre Seguro"));      // 5: MFA
+        Assert.Equal("ManualHandoff", await s.StateAsync("Cofre Seguro"));   // 5: MFA, the site's wall: by the site, with you
         // 9: prompt injection na descrição é só dado: a vaga segue o caminho normal, a campanha não muda de modo e nada sai.
         Assert.Equal("FormValidated", await s.StateAsync("Eco Injeção"));
         Assert.Equal("PrepareOnly", (await s.GetAsync("/campaigns"))[0].GetProperty("mode").GetString());
@@ -162,5 +164,28 @@ public sealed class FlowTests
         // Privacy accepted by the authorization; the newsletter box stays blank.
         Assert.Contains(fields, f => f.StartsWith("Li e aceito a Política de Privacidade", StringComparison.Ordinal) && f.EndsWith("=Aceito", StringComparison.Ordinal));
         Assert.DoesNotContain(fields, f => f.Contains("novidades", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Uma_declaracao_sem_autorizacao_vira_pergunta_e_o_seu_sim_envia()
+    {
+        await using var s = await Stack.StartAsync();
+        await s.SourcesAsync("ReviewRequired", $"greenhouse:{s.Ats}/boards/site");
+        var id = (await s.GetAsync("/campaigns"))[0].GetProperty("id").GetString();
+        Assert.Equal(HttpStatusCode.OK, await s.PostAsync($"/campaigns/{id}/authorizations",
+            new { days = 1, maxPerDay = 5, minScore = 80, adapters = Array.Empty<string>(), accepted = true, acceptDeclarations = false }));
+        await s.RunAsync();
+        // Without the declarations in the authorization, the privacy box stops the form before sending and becomes your question.
+        JsonElement? asked = null;
+        await s.WaitAsync(async () => (asked = (await s.GetAsync("/applications/questions")).EnumerateArray()
+            .Cast<JsonElement?>().FirstOrDefault(q => q!.Value.GetProperty("kind").GetString() == "declaration")) is not null, Settle, "a declaração virar pergunta");
+        Assert.Equal(0, await s.SubmissionsAsync(501));
+        var label = asked!.Value.GetProperty("label").GetString()!;
+        Assert.StartsWith("Li e aceito a Política de Privacidade", label);
+        Assert.Equal(HttpStatusCode.OK, await s.PostAsync("/applications/questions/answers",
+            new { answers = new[] { new { question = label, answer = "Sim", key = asked.Value.GetProperty("key").GetString() } } }));
+        // Your yes ticks that box for this form: the form is filled again and sent within the authorization.
+        await s.WaitAsync(async () => await s.StateAsync("Brisa Sistemas") == "SubmittedConfirmed", Settle, "o envio depois do seu sim");
+        Assert.Equal(1, await s.SubmissionsAsync(501));
     }
 }

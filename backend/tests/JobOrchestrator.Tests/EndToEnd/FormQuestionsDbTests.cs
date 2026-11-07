@@ -34,7 +34,9 @@ public sealed class FormQuestionsDbTests
         await db.SaveChangesAsync();
         var pending = await stack.GetAsync("/applications/questions");
         Assert.Equal(2, Assert.Single(pending.EnumerateArray(), q => q.GetProperty("kind").GetString() == "date").GetProperty("applications").GetArrayLength());
-        Assert.Equal(2, pending.GetArrayLength());
+        // The form questions, and apart from them the send the app could not confirm, asked as "did it arrive?".
+        Assert.Equal(2, pending.EnumerateArray().Count(q => q.GetProperty("kind").GetString() != "arrived"));
+        Assert.Single(pending.EnumerateArray(), q => q.GetProperty("kind").GetString() == "arrived");
         Assert.Equal(HttpStatusCode.BadRequest, await stack.PutAsync("/applications/answers", new { question = "Data de nascimento", answer = "2099-02-29" }));
         using var result = await stack.Http.PostAsJsonAsync(stack.Api + "/applications/questions/answers", new { answers = new[] { new { question = "Data de nascimento", answer = "2000-02-29" } } });
         result.EnsureSuccessStatusCode();
@@ -47,7 +49,7 @@ public sealed class FormQuestionsDbTests
         Assert.Equal(0, await db.WorkItems.CountAsync(i => i.Step == WorkStep.Submit));
         foreach (var a in new[] { one, two }) Assert.Equal(ApplicationState.FormPreparing, (await db.Applications.SingleAsync(x => x.Id == a.Id)).State);
         foreach (var a in new[] { other, login, uncertain }) Assert.Equal(ApplicationState.NeedsHuman, (await db.Applications.SingleAsync(x => x.Id == a.Id)).State);
-        Assert.Single((await stack.GetAsync("/applications/questions")).EnumerateArray());
+        Assert.Single((await stack.GetAsync("/applications/questions")).EnumerateArray(), q => q.GetProperty("kind").GetString() != "arrived");
         var stored = await File.ReadAllTextAsync(Path.Combine(stack.DataDir, "answers.json"));
         Assert.Contains("2000-02-29", stored); Assert.DoesNotContain("2099", stored);
         Assert.Equal(0, await stack.SubmissionsAsync());

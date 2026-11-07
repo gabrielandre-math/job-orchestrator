@@ -21,6 +21,8 @@
               <select required [attr.aria-label]="q.label" [value]="values()[q.key] ?? ''" (change)="set(q.key, $any($event.target).value)"><option value="">Escolha sua resposta</option>@for (o of q.options; track o) { <option [value]="o">{{ o }}</option> }</select>
             } @else if (q.kind === 'checkboxes') {
               @for (o of q.options; track o) { <label class="check"><input type="checkbox" [checked]="(values()[q.key] ?? '').split('\n').includes(o)" (change)="tick(q, o, $any($event.target).checked)" />{{ o }}</label> }
+            } @else if (q.kind === 'declaration') {
+              <label class="check"><input type="checkbox" [checked]="values()[q.key] === 'Sim'" (change)="set(q.key, $any($event.target).checked ? 'Sim' : '')" />Aceito esta declaração em meu nome, só para esta candidatura</label>
             } @else if (q.kind === 'confirm') {
               <label class="check"><input type="checkbox" [checked]="values()[q.key] === 'Sim'" (change)="set(q.key, $any($event.target).checked ? 'Sim' : '')" />Confirmo esta afirmação sobre mim</label>
             } @else {

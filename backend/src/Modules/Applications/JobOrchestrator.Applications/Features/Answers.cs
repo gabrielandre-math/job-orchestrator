@@ -3,7 +3,8 @@ using System.Text.Json;
 namespace JobOrchestrator.Applications.Features;
 
 internal sealed record SavedAnswer(string Question, string Answer, DateTime At);
-internal sealed record AnswerInput(string Question, string? Answer);
+/// <summary>Key: set for the app's own questions that are not form questions ("arrived:{application}" for a send the app could not confirm).</summary>
+internal sealed record AnswerInput(string Question, string? Answer, string? Key = null);
 
 /// <summary>
 /// As suas respostas às perguntas que o perfil não responde ("tem 1 ano como líder?"). Ficam num arquivo da pasta de dados, por

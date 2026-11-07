@@ -200,7 +200,7 @@ public sealed class FormRetryMigrationDbTests
             var gaveUp = "A etapa Prepare falhou 4 vezes: A resposta de \"How many years?\" não ficou marcada.";
             await db.Database.ExecuteSqlInterpolatedAsync($"update applications.applications set state = 'DeadLetter', last_reason = {gaveUp} where id = {dead.Id}");
 
-            await db.Database.MigrateAsync();
+            await db.GetService<IMigrator>().MigrateAsync("20261107200000_RetryAfterFillFixes");
 
             await using var c = new NpgsqlConnection(conn);
             await c.OpenAsync();
@@ -209,6 +209,60 @@ public sealed class FormRetryMigrationDbTests
             Assert.Equal("RetryScheduled", await State(dead.Id));
             Assert.Equal("NeedsHuman", await State(captcha.Id));
             Assert.Equal("DeadLetter", await c.ExecuteScalarAsync<string>("""select "from" from applications.events where application_id = @Id and "to" = 'RetryScheduled'""", new { dead.Id }));
+        }
+        finally
+        {
+            NpgsqlConnection.ClearAllPools();
+            await using var admin = new NpgsqlConnection(Admin);
+            await admin.OpenAsync();
+            await admin.ExecuteAsync($"drop database if exists {name} with (force)");
+        }
+    }
+
+    [Fact]
+    public async Task The_cleanup_sends_back_what_the_app_can_now_do_and_hands_you_the_technical_stops()
+    {
+        var name = $"jo_clr_{Guid.NewGuid():N}"[..20];
+        await using (var admin = new NpgsqlConnection(Admin))
+        {
+            await admin.OpenAsync();
+            await admin.ExecuteAsync($"create database {name}");
+        }
+        var conn = new NpgsqlConnectionStringBuilder(Admin) { Database = name }.ConnectionString;
+        try
+        {
+            var options = new DbContextOptionsBuilder<ApplicationsDbContext>();
+            options.UseModuleDatabase(conn, "applications");
+            await using var db = new ApplicationsDbContext(options.Options);
+            await db.GetService<IMigrator>().MigrateAsync("20261107200000_RetryAfterFillFixes");
+            var now = DateTime.UtcNow;
+            JobApplication Stuck(string key, string url, string channel, ApplicationState state, string reason)
+            {
+                var a = JobApplication.Create(new JobShortlistedV1(Guid.NewGuid(), Guid.NewGuid(), key, key, "Dev .NET", "Remoto", url, 80, channel), now);
+                a.MaterialsReady("/tmp/cv.pdf", new string('a', 64), now);
+                if (state == ApplicationState.ManualHandoff) a.Move(ApplicationState.ManualHandoff, reason, "Supervisor", now);
+                else { a.Move(ApplicationState.FormPreparing, "Preenchendo o formulário.", "Preparador", now); a.Move(state, reason, "Preparador", now); }
+                db.Applications.Add(a);
+                return a;
+            }
+            var refused = Stuck("i", "https://jobs.workable.com/view/i", "ats", ApplicationState.Failed, "O ATS recusou o formulário e mostrou erro de validação.");
+            var expired = Stuck("w", "https://br.whatjobs.com/pub_api__cpl__1__7076", "link", ApplicationState.ManualHandoff, "A candidatura vai pelo site original. O currículo está pronto para você enviar.");
+            var declaration = Stuck("d", "https://jobs.workable.com/view/d", "ats", ApplicationState.NeedsHuman, "O formulário pede uma declaração: \"I confirm...\". Só você marca.");
+            var gupy = Stuck("g", "https://aliare.gupy.io/jobs/1", "manual", ApplicationState.ManualHandoff, "A candidatura vai pelo site original. O currículo está pronto para você enviar.");
+            var captcha = Stuck("c", "https://jobs.smartrecruiters.com/x/1", "ats", ApplicationState.NeedsHuman, "O SmartRecruiters mostra uma verificação anti-robô para navegador automático: o app não passa por ela, a candidatura fica com você.");
+            await db.SaveChangesAsync();
+
+            await db.Database.MigrateAsync();
+
+            await using var c = new NpgsqlConnection(conn);
+            await c.OpenAsync();
+            async Task<string?> State(Guid id) => await c.ExecuteScalarAsync<string>("select state from applications.applications where id = @id", new { id });
+            Assert.Equal("RetryScheduled", await State(refused.Id));
+            Assert.Equal("RetryScheduled", await State(expired.Id));
+            Assert.Equal("RetryScheduled", await State(declaration.Id));
+            Assert.Equal("ManualHandoff", await State(gupy.Id));
+            Assert.Equal("ManualHandoff", await State(captcha.Id));
+            Assert.Equal(1L, await c.ExecuteScalarAsync<long>("select count(*) from applications.human_tasks where application_id = @Id and resolved_at is null and kind = 'Review'", new { captcha.Id }));
         }
         finally
         {

@@ -201,4 +201,22 @@ public sealed class FormFillTests
     [InlineData("You have not yet submitted your application form. Are you sure you want to leave this page?", false)]
     [InlineData("Submit application", false)]
     public void The_page_that_says_the_application_arrived(string text, bool submitted) => Assert.Equal(submitted, LabelForm.SaysSubmitted(text));
+
+    private const string Gdpr = "I have read, understand and accept the content of the Privacy Notice and consent to the processing of my data as part of this application.";
+
+    [Fact]
+    public void A_privacy_box_the_app_may_not_tick_stops_the_form_and_your_yes_ticks_it()
+    {
+        // Not marked required, but the site checks it when the form arrives: without consent, the form stops before sending.
+        Assert.True(LabelForm.Blocking(Gdpr, Bundle()));
+        Assert.Null(LabelForm.Tick(Gdpr, Bundle()));
+        // Your yes to this exact text, given in the app's questions, ticks it for this form; so does the authorization.
+        Assert.Equal(("Aceito", "sua resposta"), LabelForm.Tick(Gdpr, Bundle((CustomAnswer.Key(Gdpr), "Sim"))));
+        Assert.False(LabelForm.Blocking(Gdpr, Bundle((CustomAnswer.Key(Gdpr), "Sim"))));
+        Assert.Equal("Aceito", LabelForm.Tick(Gdpr, Bundle() with { AcceptDeclarations = true })?.Value);
+        // The AI never accepts a declaration for you, and a newsletter box neither blocks nor gets ticked.
+        Assert.Null(LabelForm.Tick(Gdpr, Bundle((CustomAnswer.AiKey(Gdpr), "Sim"))));
+        Assert.False(LabelForm.Blocking("Quero receber novidades e outras vagas por e-mail", Bundle()));
+        Assert.Null(LabelForm.Tick("Send me future openings and our newsletter, privacy policy applies", Bundle() with { AcceptDeclarations = true }));
+    }
 }

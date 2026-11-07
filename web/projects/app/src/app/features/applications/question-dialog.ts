@@ -21,7 +21,7 @@ export class QuestionDialog {
   protected readonly today = new Date().toLocaleDateString('en-CA');
   protected readonly affected = computed(() => new Set(this.questions().flatMap(q => q.applications)).size);
   protected readonly ready = computed(() => this.questions().length > 0 && this.questions().every(q => !!this.values()[q.key]?.trim()));
-  protected readonly saving = command((answers: { question: string; answer: string }[]) => send<{ resumed: number }>('POST', '/applications/questions/answers', { answers }),
+  protected readonly saving = command((answers: { question: string; answer: string; key: string }[]) => send<{ resumed: number }>('POST', '/applications/questions/answers', { answers }),
     r => `Respostas salvas. ${r.resumed} candidatura(s) voltaram ao preparo.`);
 
   constructor() {
@@ -49,7 +49,7 @@ export class QuestionDialog {
   }
   protected async save() {
     if (!this.ready()) return;
-    const r = await this.saving.run(this.questions().map(q => ({ question: q.label, answer: this.values()[q.key].trim() })));
+    const r = await this.saving.run(this.questions().map(q => ({ question: q.label, answer: this.values()[q.key].trim(), key: q.key })));
     if (r === null) return;
     this.questions().forEach(q => this.hub.deferred.add(q.key));
     this.hub.open.set(false);

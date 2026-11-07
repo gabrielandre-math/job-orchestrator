@@ -48,7 +48,18 @@ internal sealed class FormQuestions(ApplicationsDbContext db)
         return waiting;
     }
 
+    /// <summary>The answers to a send the app clicked but could not confirm: only you know if it arrived.</summary>
+    internal static readonly string[] Arrival = ["Chegou", "Não chegou, pode enviar de novo", "Ainda não sei"];
+
     public async Task<IReadOnlyList<PendingFormQuestion>> PendingAsync(CancellationToken ct) =>
+        [.. await FormAsync(ct), .. await UncertainAsync(ct)];
+
+    private async Task<IReadOnlyList<PendingFormQuestion>> UncertainAsync(CancellationToken ct) =>
+        [.. (await db.Applications.AsNoTracking().Where(a => a.State == ApplicationState.NeedsHuman && a.ArchivedAt == null
+                && db.Tasks.Any(t => t.ApplicationId == a.Id && t.ResolvedAt == null && t.Kind == HumanTaskKind.Reconcile)).ToListAsync(ct))
+            .Select(a => new PendingFormQuestion($"arrived:{a.Id}", $"A candidatura para {a.Title} na {a.Company} chegou? O app clicou em enviar, mas não viu a confirmação.", "arrived", Arrival, [a.Id]))];
+
+    private async Task<IReadOnlyList<PendingFormQuestion>> FormAsync(CancellationToken ct) =>
         (await WaitingAsync(ct)).SelectMany(w => w.Questions.Select(q => new { w.Application.Id, Question = q }))
             .GroupBy(x => new { Key = CustomAnswer.Key(x.Question.Label), Kind = PersonalAnswer.IsBirthDate(x.Question.Label) ? "date" : x.Question.Kind, Options = string.Join('\n', x.Question.Options) })
             .Select(g => new PendingFormQuestion(g.Key.Key, g.First().Question.Label, PersonalAnswer.IsBirthDate(g.First().Question.Label) ? "date" : g.Key.Kind,
@@ -77,9 +88,38 @@ internal sealed class SaveFormAnswersHandler(ApplicationsDbContext db, TimeProvi
     public async Task<Result<SavedFormAnswers>> Handle(SaveFormAnswersCommand c, CancellationToken ct)
     {
         var now = time.GetUtcNow().UtcDateTime;
-        AnswerStore.SaveMany(c.Answers, now);
-        var keys = c.Answers.Where(a => !string.IsNullOrWhiteSpace(a.Answer)).Select(a => CustomAnswer.Key(a.Question)).ToHashSet(StringComparer.Ordinal);
-        return new SavedFormAnswers(await new FormQuestions(db).ResumeAsync(keys, now, ct));
+        var arrivals = c.Answers.Where(a => a.Key is { } k && k.StartsWith("arrived:", StringComparison.Ordinal)).ToList();
+        var form = c.Answers.Except(arrivals).ToList();
+        AnswerStore.SaveMany(form, now);
+        var keys = form.Where(a => !string.IsNullOrWhiteSpace(a.Answer)).Select(a => CustomAnswer.Key(a.Question)).ToHashSet(StringComparer.Ordinal);
+        var resumed = keys.Count == 0 ? 0 : await new FormQuestions(db).ResumeAsync(keys, now, ct);
+        foreach (var a in arrivals)
+            if (Guid.TryParse(a.Key!["arrived:".Length..], out var id) && await ArrivedAsync(id, a.Answer, now, ct)) resumed++;
+        return new SavedFormAnswers(resumed);
+    }
+
+    /// <summary>
+    /// "Chegou": the send is yours to vouch for (declared, never confirmed by the site). "Não chegou": the open intent is discarded
+    /// and the form goes back to preparing, under the current mode and limits. "Ainda não sei": nothing changes.
+    /// </summary>
+    private async Task<bool> ArrivedAsync(Guid id, string? answer, DateTime now, CancellationToken ct)
+    {
+        var app = await db.Applications.FirstOrDefaultAsync(a => a.Id == id && a.State == ApplicationState.NeedsHuman, ct);
+        if (app is null) return false;
+        if (answer == FormQuestions.Arrival[0])
+        {
+            await db.ResolveTasksAsync(app.Id, "Você confirmou que chegou", now, ct);
+            app.Move(ApplicationState.SubmittedDeclared, "Você confirmou que o envio feito pelo app chegou.", "Você", now);
+            db.Evidence.Add(new Evidence { Id = Guid.CreateVersion7(), ApplicationId = app.Id, Level = 2, Kind = "declared_by_you", Detail = "O app clicou em enviar; você confirmou que chegou.", At = now });
+            foreach (var i in await db.Intents.Where(i => i.ApplicationId == app.Id && i.State == IntentState.SentUnverified).ToListAsync(ct)) i.Close(IntentState.Confirmed, "Você confirmou que chegou.", now);
+            return true;
+        }
+        if (answer != FormQuestions.Arrival[1] || await db.WorkItems.AnyAsync(w => w.ApplicationId == app.Id && w.Step == WorkStep.Prepare && w.CompletedAt == null, ct)) return false;
+        await db.ResolveTasksAsync(app.Id, "Você disse que não chegou", now, ct);
+        foreach (var i in await db.Intents.Where(i => i.ApplicationId == app.Id && i.State == IntentState.SentUnverified).ToListAsync(ct)) i.Close(IntentState.Discarded, "Você disse que não chegou.", now);
+        app.Move(ApplicationState.FormPreparing, "Você disse que não chegou: o formulário é preenchido de novo, com o modo e os limites atuais.", "Você", now);
+        db.WorkItems.Add(WorkItem.Create(app.Id, WorkStep.Prepare, now, now));
+        return true;
     }
 }
 

@@ -48,7 +48,8 @@ internal sealed partial class Answerer(ApplicationsDbContext db, IProfileApi pro
     {
         var now = time.GetUtcNow().UtcDateTime;
         var tried = (await db.FormAnswers.Where(f => f.ApplicationId == app.Id).Select(f => f.QuestionKey).ToListAsync(ct)).ToHashSet(StringComparer.Ordinal);
-        var fresh = asked.Where(q => !PersonalAnswer.IsBirthDate(q.Label)).Where(q => !tried.Contains(CustomAnswer.Normalize(q.Label))).DistinctBy(q => CustomAnswer.Normalize(q.Label)).ToList();
+        // Your birth date and your declarations are yours alone: no model answers them.
+        var fresh = asked.Where(q => q.Kind != "declaration" && !PersonalAnswer.IsBirthDate(q.Label)).Where(q => !tried.Contains(CustomAnswer.Normalize(q.Label))).DistinctBy(q => CustomAnswer.Normalize(q.Label)).ToList();
         if (fresh.Count == 0 || ai.Off) return new(false, TimeSpan.Zero, "", 0, null);
         var profile = await profiles.CurrentAsync(ct);
         if (profile is null) return new(false, TimeSpan.Zero, "", 0, null);
