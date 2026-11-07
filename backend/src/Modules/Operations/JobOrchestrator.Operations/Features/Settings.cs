@@ -11,6 +11,33 @@ internal sealed class SettingsEndpoints : ICarterModule
 {
     private const string Phrase = "APAGAR TUDO";
 
+    /// <summary>What "Apagar tudo" keeps, as the screen says: AI accounts, the campaign and the settings (mail connections and templates).</summary>
+    private static readonly string[] Kept = ["campaigns.campaigns", "campaigns.authorizations", "intelligence.accounts", "mail.accounts", "mail.settings", "mail.templates", "automation.adapter_stats"];
+    private static readonly string[] Schemas = ["jobs", "campaigns", "applications", "automation", "intelligence", "profile", "materials", "mail"];
+
+    /// <summary>
+    /// Every table of the modules except <see cref="Kept"/>, read from the catalog: a fixed list missed applications.interviews,
+    /// whose foreign key made the whole wipe fail. No cascade, so a kept table that points at wiped data fails instead of being emptied.
+    /// </summary>
+    internal static async Task<List<string>> WipedTablesAsync(NpgsqlConnection c) =>
+        [.. await c.QueryAsync<string>("""
+            select format('%I.%I', schemaname, tablename) from pg_tables
+            where schemaname = any(@Schemas) and left(tablename, 2) <> '__' and schemaname || '.' || tablename <> all(@Kept)
+            order by 1
+            """, new { Schemas, Kept })];
+
+    internal static async Task WipeAsync(NpgsqlConnection c)
+    {
+        var tables = await WipedTablesAsync(c);
+        await using var tx = await c.BeginTransactionAsync();
+        await c.ExecuteAsync($"truncate {string.Join(", ", tables)}", transaction: tx);
+        await c.ExecuteAsync("""
+            update campaigns.authorizations set revoked_at = now() where revoked_at is null;
+            update campaigns.campaigns set mode = 'ReviewRequired' where mode = 'AutoSubmit';
+            """, transaction: tx);
+        await tx.CommitAsync();
+    }
+
     public void AddRoutes(IEndpointRouteBuilder app)
     {
         var g = app.MapGroup("/api/settings").WithTags("Operations");
@@ -62,14 +89,7 @@ internal sealed class SettingsEndpoints : ICarterModule
         {
             if (body.Confirm?.Trim() != Phrase) return Results.Problem($"Digite {Phrase} para confirmar.", statusCode: 400);
             await using var c = await data.OpenConnectionAsync();
-            await c.ExecuteAsync("""
-                truncate jobs.postings, jobs.snapshots, applications.applications, applications.approval_decisions, applications.events, applications.evidence,
-                  applications.human_tasks, applications.submission_intents, applications.work_items, mail.outgoing, mail.incoming,
-                  intelligence.messages, intelligence.calls, intelligence.cache, materials.resume_versions, profile.facts, profile.documents, profile.profiles,
-                  campaigns.runs, automation.routing_records;
-                update campaigns.authorizations set revoked_at = now() where revoked_at is null;
-                update campaigns.campaigns set mode = 'ReviewRequired' where mode = 'AutoSubmit';
-                """);
+            await WipeAsync(c);
             foreach (var dir in new[] { "profile", "resumes", "materials", "reports" }.Select(d => Path.Combine(AppPaths.Data, d)).Where(Directory.Exists))
                 try { Directory.Delete(dir, recursive: true); } catch (IOException ex) { log.LogWarning("Wipe left {Dir}: {Error}", dir, ex.Message); }
             log.LogWarning("Everything wiped by the user");
