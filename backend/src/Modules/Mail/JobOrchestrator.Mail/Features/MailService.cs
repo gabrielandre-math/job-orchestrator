@@ -173,7 +173,8 @@ internal sealed partial class MailService(
             await SuspendAutoAsync(ct);
         }
         s.Mode = input.Mode;
-        s.DailyCap = Math.Clamp(input.DailyCap, 1, 50);
+        // Your number: the provider is the one that stops an account (QuotaHit pauses it until the next day).
+        s.DailyCap = Math.Max(1, input.DailyCap);
         s.FollowUpDays = Math.Clamp(input.FollowUpDays, 3, 21);
         s.WindowStart = Math.Clamp(input.WindowStart, 0, 23);
         s.WindowEnd = Math.Clamp(input.WindowEnd, s.WindowStart + 1, 24);

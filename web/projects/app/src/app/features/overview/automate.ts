@@ -79,7 +79,7 @@ export class Automate {
   protected readonly undecided = computed(() => this.inferred().filter((f) => !(f.id in this.decisions())).length);
   protected readonly ready = computed(() => this.profile()?.status === 'Ready');
   protected readonly nightAll = computed(() => (this.units()?.timers ?? []).length > 0 && (this.units()?.timers ?? []).every((t) => t.enabled));
-  protected readonly maxCap = computed(() => Math.min(15, this.campaign()?.maxSubmissionsPerDay ?? 5));
+  protected readonly maxCap = computed(() => this.campaign()?.maxSubmissionsPerDay ?? 5);
 
   protected readonly checks = computed<Check[]>(() => {
     const o = this.onboarding(), p = this.profile(), c = this.campaign(), e = this.explore(), u = this.units(), m = this.mail(), a = this.active();

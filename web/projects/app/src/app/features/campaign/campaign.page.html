@@ -68,10 +68,10 @@
             <jo-help term="Envios por dia, no máximo" iso="send">
               <p>O limite de candidaturas enviadas por dia nesta campanha, somando as que você aprova e as do automático.</p>
               <p>Quando enche, o que você aprovar depois continua pronto e sai a partir da meia-noite, no fuso da campanha ({{ c.timeZone }}).</p>
-              <p>O teto do automático, escolhido na autorização, fica dentro deste número e nunca passa de 15.</p>
+              <p>O teto do automático, escolhido na autorização, fica dentro deste número. O número é seu: não há máximo fixo.</p>
               <p class="ex"><span>Com o valor de agora</span>Limite {{ form().maxSubmissionsPerDay }}: depois de {{ form().maxSubmissionsPerDay }} envios no dia, o resto espera o dia seguinte.</p>
             </jo-help></div>
-          <input id="c-day" type="number" min="0" max="100" [value]="form().maxSubmissionsPerDay" (input)="set('maxSubmissionsPerDay', $any($event.target).value)" />
+          <input id="c-day" type="number" min="0" [value]="form().maxSubmissionsPerDay" (input)="set('maxSubmissionsPerDay', $any($event.target).value)" />
         </div>
         <label class="field wide">Cargos-alvo, separados por vírgula. A nota compara o título da vaga com eles.<input [value]="form().titles" (input)="set('titles', $any($event.target).value)" placeholder="ex.: Enfermeira de UTI, Analista de RH, Desenvolvedor .NET" /></label>
         <label class="field wide">Palavras-chave e competências, separadas por vírgula: ferramentas, especialidades, registros profissionais. A vaga precisa citar ao menos uma das duas primeiras.<input [value]="form().technologies" (input)="set('technologies', $any($event.target).value)" /></label>

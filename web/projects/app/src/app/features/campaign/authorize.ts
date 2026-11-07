@@ -51,7 +51,7 @@ import { Wizard } from '../../shared/wizard';
                 <div class="lh"><label for="auth-cap">Teto por dia</label>
                   <jo-limit-help kind="cap" [value]="perDay()" [max]="campaign().maxSubmissionsPerDay" [timeZone]="campaign().timeZone" />
                   <span class="num accent">{{ perDay() }}</span></div>
-                <input id="auth-cap" type="range" min="1" [max]="maxCap()" [value]="perDay()" (input)="perDay.set(num($event))" />
+                <input id="auth-cap" type="number" min="1" [max]="maxCap()" [value]="perDay()" (input)="perDay.set(num($event))" />
               </div>
               <div class="field">
                 <div class="lh"><label for="auth-score">Nota mínima</label>
@@ -145,7 +145,7 @@ export class Authorize {
   protected readonly adapters = signal<Adapter[]>([]);
   protected readonly picked = signal<Set<string>>(new Set());
   protected readonly forms = computed(() => this.adapters().filter((a) => a.capabilities.includes('SubmitApplication')));
-  protected readonly maxCap = computed(() => Math.min(15, this.campaign().maxSubmissionsPerDay));
+  protected readonly maxCap = computed(() => this.campaign().maxSubmissionsPerDay);
   protected readonly granting = command((body: object) => send('POST', `/campaigns/${this.campaign().id}/authorizations`, body), 'Envio automático autorizado.');
 
   constructor() {

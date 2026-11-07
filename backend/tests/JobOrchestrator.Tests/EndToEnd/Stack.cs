@@ -116,12 +116,15 @@ internal sealed class Stack : IAsyncDisposable
     }
 
     /// <summary>Troca as fontes da campanha (mantém modo e critérios do teste).</summary>
-    public async Task SourcesAsync(string mode, params string[] sources)
+    public Task SourcesAsync(string mode, params string[] sources) => SourcesAsync(mode, 15, sources);
+
+    /// <summary>The same, with the campaign's daily limit: the number is the person's, with no fixed ceiling.</summary>
+    public async Task SourcesAsync(string mode, int perDay, params string[] sources)
     {
         var campaign = (await GetAsync("/campaigns"))[0];
         Assert.Equal(HttpStatusCode.NoContent, await PutAsync($"/campaigns/{campaign.GetProperty("id").GetString()}", new
         {
-            mode, minFitScore = 80, maxSubmissionsPerDay = 15, technologies = new[] { "C#", ".NET", "ASP.NET Core", "AWS", "PostgreSQL" },
+            mode, minFitScore = 80, maxSubmissionsPerDay = perDay, technologies = new[] { "C#", ".NET", "ASP.NET Core", "AWS", "PostgreSQL" },
             locations = new[] { "Brasil", "Remoto" }, sources
         }));
     }

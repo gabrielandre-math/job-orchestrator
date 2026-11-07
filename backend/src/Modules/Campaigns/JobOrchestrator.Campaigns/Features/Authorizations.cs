@@ -34,7 +34,8 @@ internal sealed class AuthorizationEndpoints : ICarterModule
             if (campaign is null) return Results.NotFound();
             if (!body.Accepted) return Results.Problem("Marque o texto da autorização para continuar.", statusCode: 400);
             if (body.Days is < 1 or > 30) return Results.Problem("A validade vai de 1 a 30 dias.", statusCode: 400);
-            if (body.MaxPerDay < 1 || body.MaxPerDay > Math.Min(15, campaign.MaxSubmissionsPerDay)) return Results.Problem($"O teto por dia vai de 1 a {Math.Min(15, campaign.MaxSubmissionsPerDay)}.", statusCode: 400);
+            // The ceiling is yours: the campaign's daily limit, which you set on the campaign screen.
+            if (body.MaxPerDay < 1 || body.MaxPerDay > campaign.MaxSubmissionsPerDay) return Results.Problem($"O teto por dia vai de 1 até o limite da campanha ({campaign.MaxSubmissionsPerDay}).", statusCode: 400);
             if (body.MinScore < campaign.MinFitScore || body.MinScore > 100) return Results.Problem($"A nota mínima não pode ficar abaixo do corte da campanha ({campaign.MinFitScore}).", statusCode: 400);
             foreach (var old in await db.Authorizations.Where(a => a.CampaignId == id && a.RevokedAt == null).ToListAsync(ct)) old.RevokedAt = now;
             var auth = new SubmitAuthorization

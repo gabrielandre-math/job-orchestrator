@@ -24,7 +24,7 @@ import { Help } from './help';
           <p>O máximo de candidaturas que podem sair num mesmo dia com o automático ligado. A conta do dia inclui as que você aprovou à mão.</p>
           <p>Quando o teto enche, as vagas prontas que sobraram não se perdem: ficam na fila e saem a partir da meia-noite, no fuso da campanha ({{ timeZone() }}), dentro do teto do dia novo.</p>
           <p>No automático, cada empresa recebe no máximo uma candidatura a cada 24 horas.</p>
-          <p>Fica dentro do limite geral da campanha ({{ max() }} por dia) e nunca passa de 15.</p>
+          <p>Fica dentro do limite geral da campanha ({{ max() }} por dia), que você define na tela da campanha.</p>
           <p class="ex"><span>Com o valor escolhido</span>Teto {{ value() }}: se 20 vagas ficarem prontas hoje, {{ value() }} saem hoje e as outras saem nos próximos dias, {{ value() }} por dia.</p>
         </jo-help>
       }

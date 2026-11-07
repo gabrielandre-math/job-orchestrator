@@ -86,10 +86,11 @@
                 <p>O máximo de e-mails de candidatura que cada conta envia num dia. Com mais de uma conta, os envios se revezam entre elas, e o total do dia é o teto vezes o número de contas que enviam.</p>
                 <p>O dia conta a partir da meia-noite, no horário de Brasília. O lembrete sai pela mesma conta do primeiro e-mail e entra no teto dela.</p>
                 <p>Passou do teto, o e-mail pronto não se perde: sai pela próxima conta livre ou no dia seguinte. Se o provedor avisar que uma conta chegou ao limite, ela pausa até amanhã e as outras continuam.</p>
+                <p>O número é seu, sem máximo fixo. O Gmail costuma barrar ou marcar como spam uma conta pessoal que manda centenas de e-mails parecidos no mesmo dia; mais contas no rodízio dividem esse volume.</p>
                 <p class="ex"><span>Com o valor escolhido</span>Teto {{ cap() }} e {{ senders() }} {{ senders() === 1 ? 'conta' : 'contas' }}: até {{ cap() * senders() }} e-mails por dia.</p>
               </jo-help>
               <span class="num accent">{{ cap() }}</span></div>
-            <input id="mail-cap" type="range" min="1" max="50" [value]="cap()" (input)="cap.set(num($event))" />
+            <input id="mail-cap" type="number" min="1" [value]="cap()" (input)="cap.set(num($event))" />
           </div>
           <div class="field">
             <div class="lh"><label for="mail-follow">Lembrete depois de</label>

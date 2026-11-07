@@ -43,7 +43,7 @@ internal sealed class ConfigureCampaignValidator : AbstractValidator<ConfigureCa
     {
         RuleFor(x => x.Mode).Must(m => Enum.TryParse<SubmissionMode>(m, out _)).WithMessage("Modo desconhecido.");
         RuleFor(x => x.MinFitScore).InclusiveBetween(0, 100).WithMessage("A nota mínima vai de 0 a 100.");
-        RuleFor(x => x.MaxSubmissionsPerDay).InclusiveBetween(0, 100).WithMessage("O limite diário vai de 0 a 100.");
+        RuleFor(x => x.MaxSubmissionsPerDay).GreaterThanOrEqualTo(0).WithMessage("O limite diário não pode ser negativo.");
     }
 }
 

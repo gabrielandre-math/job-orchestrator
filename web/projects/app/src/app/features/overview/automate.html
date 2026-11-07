@@ -126,7 +126,7 @@
               </div>
               <div class="field">
                 <div class="lh"><label for="auto-cap">Teto por dia</label><jo-limit-help kind="cap" [value]="perDay()" [max]="campaign()?.maxSubmissionsPerDay ?? 0" [timeZone]="campaign()?.timeZone ?? ''" /><span class="num accent">{{ perDay() }}</span></div>
-                <input id="auto-cap" type="range" min="1" [max]="maxCap()" [value]="perDay()" (input)="perDay.set(num($event))" />
+                <input id="auto-cap" type="number" min="1" [max]="maxCap()" [value]="perDay()" (input)="perDay.set(num($event))" />
               </div>
               <div class="field">
                 <div class="lh"><label for="auto-score">Nota mínima</label><jo-limit-help kind="score" [value]="minScore()" [cut]="campaign()?.minFitScore ?? 0" /><span class="num accent">{{ minScore() }}</span></div>
