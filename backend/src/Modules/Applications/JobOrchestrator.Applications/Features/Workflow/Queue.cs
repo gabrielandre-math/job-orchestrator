@@ -53,14 +53,35 @@ internal sealed class WorkQueue(NpgsqlDataSource source)
             """, new { id, Seconds = delay.TotalSeconds, error }, cancellationToken: ct));
     }
 
-    /// <summary>No boot: leases de processos anteriores desta máquina estão mortos; liberar já, sem esperar o prazo.</summary>
+    /// <summary>
+    /// No boot: leases of processes of this machine that are gone are released at once, without waiting for the deadline. A lease of
+    /// another live instance (the dev server next to the installed app) stays with it, so two workers never take the same item.
+    /// </summary>
     public async Task<int> ReleaseStaleAsync(CancellationToken ct)
     {
         await using var c = await source.OpenConnectionAsync(ct);
-        return await c.ExecuteAsync(new CommandDefinition("""
-            update applications.work_items set lease_expires_at = now() - interval '1 second'
-            where completed_at is null and lease_owner like @Prefix and lease_owner <> @Owner
+        var owners = await c.QueryAsync<string>(new CommandDefinition("""
+            select distinct lease_owner from applications.work_items where completed_at is null and lease_owner like @Prefix and lease_owner <> @Owner
             """, new { Prefix = Environment.MachineName + ":%", Owner }, cancellationToken: ct));
+        var dead = owners.Where(o => !Alive(o)).ToArray();
+        if (dead.Length == 0) return 0;
+        return await c.ExecuteAsync(new CommandDefinition("""
+            update applications.work_items set lease_expires_at = now() - interval '1 second' where completed_at is null and lease_owner = any(@Dead)
+            """, new { Dead = dead }, cancellationToken: ct));
+    }
+
+    /// <summary>"machine:pid" is alive while that process runs and is this app; a pid reused by another program counts as gone.</summary>
+    internal static bool Alive(string owner)
+    {
+        if (!int.TryParse(owner[(owner.LastIndexOf(':') + 1)..], out var pid)) return false;
+        try
+        {
+            using var process = System.Diagnostics.Process.GetProcessById(pid);
+            if (process.HasExited) return false;
+            using var self = System.Diagnostics.Process.GetCurrentProcess();
+            return process.ProcessName == self.ProcessName || process.ProcessName.Contains("orchestrator", StringComparison.OrdinalIgnoreCase) || process.ProcessName == "dotnet";
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { return false; }
     }
 }
 
