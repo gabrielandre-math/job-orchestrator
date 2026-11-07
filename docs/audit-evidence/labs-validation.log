@@ -1,0 +1,16 @@
+test_manual_fallback_preserves_already_collected_jobs (test_labs.HttpTests.test_manual_fallback_preserves_already_collected_jobs) ... ok
+test_math_challenge_is_bound_to_its_route_and_single_use (test_labs.HttpTests.test_math_challenge_is_bound_to_its_route_and_single_use) ... ok
+test_paginated_collection_crosses_both_gates (test_labs.HttpTests.test_paginated_collection_crosses_both_gates) ... ok
+test_solves_image_and_math_end_to_end (test_labs.HttpTests.test_solves_image_and_math_end_to_end) ... ok
+test_empty_and_unrecognized_pages_are_distinct (test_labs.RouterTests.test_empty_and_unrecognized_pages_are_distinct) ... ok
+test_local_files_merge_structured_data_and_card_fields_without_http (test_labs.RouterTests.test_local_files_merge_structured_data_and_card_fields_without_http) ... ok
+test_only_local_http_paths_and_no_redirects (test_labs.RouterTests.test_only_local_http_paths_and_no_redirects) ... ok
+test_only_strict_arithmetic_is_evaluated (test_labs.RouterTests.test_only_strict_arithmetic_is_evaluated) ... ok
+test_pagination_loops_and_external_links_stop (test_labs.RouterTests.test_pagination_loops_and_external_links_stop) ... ok
+test_unknown_and_misdirected_challenges_never_post (test_labs.RouterTests.test_unknown_and_misdirected_challenges_never_post) ... ok
+test_url_deduplication_keys_and_mismatched_ids (test_labs.RouterTests.test_url_deduplication_keys_and_mismatched_ids) ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 0.257s
+
+OK

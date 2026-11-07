@@ -1,0 +1,73 @@
+using System.Text.Json;
+using JobOrchestrator.Automation.Adapters;
+using JobOrchestrator.Jobs.Features;
+using JobOrchestrator.Materials.Compose;
+using JobOrchestrator.Profile.Contracts;
+
+namespace JobOrchestrator.Tests.Unit;
+
+// Characterization probes: passing confirms an observed limitation, NOT correctness.
+public sealed class AuditBehaviorTests
+{
+    [Fact]
+    public void Audit_Lowercase_technology_without_evidence_is_not_flagged()
+    {
+        Assert.Empty(Claims.Unsupported("implementei kubernetes em produção.", ["Atuei no atendimento de suporte."]));
+    }
+
+    [Fact]
+    public void Audit_Number_in_wrong_context_is_not_flagged()
+    {
+        Assert.Empty(Claims.Unsupported("Reduzi custos em 40%.", ["Resolvi 40 chamados."]));
+    }
+
+    [Fact]
+    public void Audit_Fit_accepts_existing_but_irrelevant_fact_as_direct()
+    {
+        var id = Guid.NewGuid();
+        var json = JsonSerializer.Serialize(new { requirements = new[] { new { requirement = "Experiência com Kubernetes", match = "direct", factIds = new[] { id } } } });
+        var fit = CompareFitHandler.Parse(Guid.NewGuid(), 80, "fixture", "Experiência com Kubernetes", [new FitEvidence(id, "Concluí curso de gastronomia.")], json);
+        Assert.Equal(100, fit!.EvidenceScore);
+    }
+
+    [Fact]
+    public void Audit_Github_uses_first_email_and_link_without_application_intent()
+    {
+        using var doc = JsonDocument.Parse("""
+            {"number":123,"title":"Backend .NET na Empresa Exemplo","body":"Privacidade: privacy@empresa.example. Conheça a empresa https://empresa.example/about\nComo se candidatar: jobs@empresa.example em https://empresa.example/apply", "html_url":"https://github.com/example/jobs/issues/123","labels":[],"updated_at":"2026-11-06T00:00:00Z"}
+            """);
+        var job = GitHubIssuesSource.Parse("github:example/jobs", "example/jobs", doc.RootElement);
+        Assert.Equal("privacy@empresa.example", job.ApplyEmail);
+        Assert.Equal("https://empresa.example/about", job.ApplyUrl);
+    }
+
+    [Fact]
+    public void Audit_JsonLd_expired_listing_is_marked_open()
+    {
+        var jobs = PageReader.JobPostings("web:example.test", "https://example.test/job", """
+            {"@type":"JobPosting","title":"Backend Developer","description":"Vaga encerrada.","validThrough":"2020-01-01T00:00:00Z","datePosted":"2019-12-01T00:00:00Z","hiringOrganization":{"name":"Example"},"url":"https://example.test/job"}
+            """).ToArray();
+        Assert.True(Assert.Single(jobs).ListedAsOpen);
+    }
+
+    [Fact]
+    public void Audit_Empty_cross_review_is_accepted_and_removes_nothing()
+    {
+        var verdicts = Prompts.ParseVerdicts("{\"verdicts\":[]}");
+        Assert.NotNull(verdicts);
+        var draft = new Draft(new Claim("Especialista", ["F1"]), null, [], [], [], []);
+        var output = Conferente.Apply(draft, new Selection([], "pt", [], []), verdicts!);
+        Assert.Empty(output.Removed);
+        Assert.Equal("Especialista", output.Draft.Headline!.Text);
+    }
+
+    [Fact]
+    public void Audit_Duplicate_bullets_survive_finalization()
+    {
+        var bullet = new Claim("Desenvolvi APIs para o produto.", ["F1"]);
+        var draft = new Draft(null, null, [new DraftExperience("F1", "Developer", [bullet, bullet])], [], [], []);
+        var output = Tailor.Finish(draft, new Selection([], "pt", [], []));
+        Assert.Equal(2, output.Experiences[0].Bullets.Length);
+        Assert.Equal(output.Experiences[0].Bullets[0].Text, output.Experiences[0].Bullets[1].Text);
+    }
+}

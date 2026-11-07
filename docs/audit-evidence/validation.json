@@ -1,0 +1,36 @@
+{
+  "auditMain": "6e1d04a978b06b747cf4dffcbf4a85543aed62bc",
+  "backendBuild": {
+    "result": "passed",
+    "warnings": 0,
+    "errors": 0
+  },
+  "angularProductionBuild": "passed",
+  "existingDotnetTests": {
+    "passed": 278,
+    "filter": "Category!=E2E"
+  },
+  "additionalCharacterizationTests": {
+    "passed": 7,
+    "meaning": "passing confirms defects, not desired behavior"
+  },
+  "pythonLabs": {
+    "passed": 11,
+    "httpFixture": "local Fake ATS",
+    "realLinkedInOrCaptchaProviders": false
+  },
+  "sources": {
+    "registryEntries": 52,
+    "liveConnectorsProbed": 40,
+    "returnedAtLeastOneListing": 39,
+    "rawRecords": 2667,
+    "uniqueOrEligibleOrSubmitted": false
+  },
+  "httpSmoke": "passed with fake Ollama and synthetic profile, real PostgreSQL",
+  "smtp": "real TLS SMTP transport to local synthetic collector",
+  "browserE2E": "blocked by Chromium socket sandbox restriction; not validated",
+  "crossPlatformInstallers": "not executed",
+  "realExternalApplicationsSent": 0,
+  "realRecruiterEmailsSent": 0,
+  "realModelInference": "not executed in this audit"
+}

@@ -1,0 +1,522 @@
+[
+  {
+    "prefix": "greenhouse",
+    "source": "greenhouse:gitlab",
+    "ok": true,
+    "count": 248,
+    "http": 200,
+    "seconds": 6.4,
+    "error": null,
+    "at": "2026-11-06T23:55:18.7613723Z"
+  },
+  {
+    "prefix": "lever",
+    "source": "lever:spotify",
+    "ok": true,
+    "count": 85,
+    "http": 200,
+    "seconds": 6.9,
+    "error": null,
+    "at": "2026-11-06T23:55:19.2199374Z"
+  },
+  {
+    "prefix": "ashby",
+    "source": "ashby:notion",
+    "ok": true,
+    "count": 154,
+    "http": 200,
+    "seconds": 3.4,
+    "error": null,
+    "at": "2026-11-06T23:55:15.7569465Z"
+  },
+  {
+    "prefix": "smartrecruiters",
+    "source": "smartrecruiters:BoschGroup",
+    "ok": true,
+    "count": 40,
+    "http": 200,
+    "seconds": 39.1,
+    "error": null,
+    "at": "2026-11-06T23:55:51.4818234Z"
+  },
+  {
+    "prefix": "inhire",
+    "source": null,
+    "ok": false,
+    "count": 0,
+    "http": null,
+    "seconds": 0,
+    "error": "sem amostra pública segura",
+    "at": "2026-11-06T23:55:12.3774862Z"
+  },
+  {
+    "prefix": "teamtailor",
+    "source": "teamtailor:polestar",
+    "ok": true,
+    "count": 13,
+    "http": 200,
+    "seconds": 4.5,
+    "error": null,
+    "at": "2026-11-06T23:55:20.2425202Z"
+  },
+  {
+    "prefix": "personio",
+    "source": "personio:personio",
+    "ok": true,
+    "count": 0,
+    "http": 200,
+    "seconds": 6,
+    "error": "A fonte respondeu, mas não tem vaga aberta agora. Pode salvar: ela entra nas próximas rodadas.",
+    "at": "2026-11-06T23:55:24.799241Z"
+  },
+  {
+    "prefix": "breezy",
+    "source": "breezy:breezy",
+    "ok": true,
+    "count": 3,
+    "http": 200,
+    "seconds": 4,
+    "error": null,
+    "at": "2026-11-06T23:55:23.2657012Z"
+  },
+  {
+    "prefix": "recruitee",
+    "source": "recruitee:bunq",
+    "ok": true,
+    "count": 23,
+    "http": 200,
+    "seconds": 4.1,
+    "error": null,
+    "at": "2026-11-06T23:55:24.2989263Z"
+  },
+  {
+    "prefix": "workable",
+    "source": "workable:huggingface",
+    "ok": true,
+    "count": 6,
+    "http": 200,
+    "seconds": 2.9,
+    "error": null,
+    "at": "2026-11-06T23:55:26.1787181Z"
+  },
+  {
+    "prefix": "workable-search",
+    "source": null,
+    "ok": false,
+    "count": 0,
+    "http": null,
+    "seconds": 0,
+    "error": "sem amostra pública segura",
+    "at": "2026-11-06T23:55:12.377781Z"
+  },
+  {
+    "prefix": "workday",
+    "source": null,
+    "ok": false,
+    "count": 0,
+    "http": null,
+    "seconds": 0,
+    "error": "sem amostra pública segura",
+    "at": "2026-11-06T23:55:12.3777816Z"
+  },
+  {
+    "prefix": "pinpoint",
+    "source": "pinpoint:aawdc",
+    "ok": true,
+    "count": 31,
+    "http": 200,
+    "seconds": 6.6,
+    "error": null,
+    "at": "2026-11-06T23:55:30.9132703Z"
+  },
+  {
+    "prefix": "bamboohr",
+    "source": "bamboohr:100percentgroup",
+    "ok": true,
+    "count": 2,
+    "http": 200,
+    "seconds": 5.6,
+    "error": null,
+    "at": "2026-11-06T23:55:30.4198063Z"
+  },
+  {
+    "prefix": "recruiterbox",
+    "source": "recruiterbox:adzerk",
+    "ok": true,
+    "count": 1,
+    "http": 200,
+    "seconds": 3.7,
+    "error": null,
+    "at": "2026-11-06T23:55:29.8538365Z"
+  },
+  {
+    "prefix": "rippling",
+    "source": "rippling:aaca",
+    "ok": true,
+    "count": 3,
+    "http": 200,
+    "seconds": 6.7,
+    "error": null,
+    "at": "2026-11-06T23:55:36.5650097Z"
+  },
+  {
+    "prefix": "oracle",
+    "source": "oracle:eeho.fa.us2.oraclecloud.com/CX_1",
+    "ok": true,
+    "count": 20,
+    "http": 200,
+    "seconds": 27.2,
+    "error": null,
+    "at": "2026-11-06T23:55:57.6497516Z"
+  },
+  {
+    "prefix": "successfactors",
+    "source": null,
+    "ok": false,
+    "count": 0,
+    "http": null,
+    "seconds": 0,
+    "error": "sem amostra pública segura",
+    "at": "2026-11-06T23:55:12.3777863Z"
+  },
+  {
+    "prefix": "gupy",
+    "source": "gupy:ambev",
+    "ok": true,
+    "count": 288,
+    "http": 200,
+    "seconds": 23.4,
+    "error": null,
+    "at": "2026-11-06T23:55:54.323682Z"
+  },
+  {
+    "prefix": "solides",
+    "source": "solides:solides",
+    "ok": true,
+    "count": 18,
+    "http": 200,
+    "seconds": 8,
+    "error": null,
+    "at": "2026-11-06T23:55:44.5823687Z"
+  },
+  {
+    "prefix": "quickin",
+    "source": null,
+    "ok": false,
+    "count": 0,
+    "http": null,
+    "seconds": 0,
+    "error": "sem amostra pública segura",
+    "at": "2026-11-06T23:55:12.3777879Z"
+  },
+  {
+    "prefix": "pandape",
+    "source": "pandape:infojobs",
+    "ok": true,
+    "count": 3,
+    "http": 200,
+    "seconds": 7.5,
+    "error": null,
+    "at": "2026-11-06T23:55:52.1194707Z"
+  },
+  {
+    "prefix": "himalayas",
+    "source": "himalayas:engineer",
+    "ok": true,
+    "count": 20,
+    "http": 200,
+    "seconds": 5.2,
+    "error": null,
+    "at": "2026-11-06T23:55:56.6799955Z"
+  },
+  {
+    "prefix": "remoteok",
+    "source": "remoteok:dev",
+    "ok": true,
+    "count": 99,
+    "http": 200,
+    "seconds": 4.1,
+    "error": null,
+    "at": "2026-11-06T23:55:56.2427943Z"
+  },
+  {
+    "prefix": "wwr",
+    "source": "wwr:remote-programming-jobs",
+    "ok": true,
+    "count": 25,
+    "http": 200,
+    "seconds": 3.1,
+    "error": null,
+    "at": "2026-11-06T23:55:57.4665397Z"
+  },
+  {
+    "prefix": "remotive",
+    "source": "remotive:developer",
+    "ok": true,
+    "count": 12,
+    "http": 200,
+    "seconds": 3.1,
+    "error": null,
+    "at": "2026-11-06T23:55:59.3481273Z"
+  },
+  {
+    "prefix": "jobicy",
+    "source": "jobicy:dev",
+    "ok": true,
+    "count": 50,
+    "http": 200,
+    "seconds": 5.2,
+    "error": null,
+    "at": "2026-11-06T23:56:01.8451302Z"
+  },
+  {
+    "prefix": "getonbrd",
+    "source": "getonbrd:developer",
+    "ok": true,
+    "count": 150,
+    "http": 200,
+    "seconds": 6.1,
+    "error": null,
+    "at": "2026-11-06T23:56:03.533497Z"
+  },
+  {
+    "prefix": "arbeitnow",
+    "source": "arbeitnow:developer",
+    "ok": true,
+    "count": 18,
+    "http": 200,
+    "seconds": 3.3,
+    "error": null,
+    "at": "2026-11-06T23:56:00.9217921Z"
+  },
+  {
+    "prefix": "themuse",
+    "source": "themuse:Software Engineering",
+    "ok": true,
+    "count": 20,
+    "http": 200,
+    "seconds": 25.7,
+    "error": null,
+    "at": "2026-11-06T23:56:25.066936Z"
+  },
+  {
+    "prefix": "jobtech",
+    "source": "jobtech:developer",
+    "ok": true,
+    "count": 200,
+    "http": 200,
+    "seconds": 12,
+    "error": null,
+    "at": "2026-11-06T23:56:12.9055336Z"
+  },
+  {
+    "prefix": "joblinks",
+    "source": "joblinks:developer",
+    "ok": true,
+    "count": 300,
+    "http": 200,
+    "seconds": 8.3,
+    "error": null,
+    "at": "2026-11-06T23:56:10.11755Z"
+  },
+  {
+    "prefix": "nav",
+    "source": "nav:utvikler",
+    "ok": true,
+    "count": 19,
+    "http": 200,
+    "seconds": 19.1,
+    "error": "Também declarou 16 anúncios encerrados, que fecham as vagas que já estiverem aqui.",
+    "at": "2026-11-06T23:56:22.6812527Z"
+  },
+  {
+    "prefix": "mpsv",
+    "source": "mpsv:programator",
+    "ok": true,
+    "count": 144,
+    "http": 200,
+    "seconds": 10.9,
+    "error": null,
+    "at": "2026-11-06T23:56:21.0116902Z"
+  },
+  {
+    "prefix": "nva",
+    "source": "nva:programmetajs",
+    "ok": true,
+    "count": 1,
+    "http": 200,
+    "seconds": 5.7,
+    "error": null,
+    "at": "2026-11-06T23:56:18.6222076Z"
+  },
+  {
+    "prefix": "mcf",
+    "source": null,
+    "ok": false,
+    "count": 0,
+    "http": null,
+    "seconds": 0,
+    "error": "não sondada: PARTNER_ONLY",
+    "at": "2026-11-06T23:55:12.3777966Z"
+  },
+  {
+    "prefix": "seasonaljobs",
+    "source": "seasonaljobs:all",
+    "ok": true,
+    "count": 200,
+    "http": 200,
+    "seconds": 6.6,
+    "error": null,
+    "at": "2026-11-06T23:56:25.1787626Z"
+  },
+  {
+    "prefix": "freehire",
+    "source": "freehire:developer",
+    "ok": true,
+    "count": 266,
+    "http": 200,
+    "seconds": 5.5,
+    "error": null,
+    "at": "2026-11-06T23:56:26.4618673Z"
+  },
+  {
+    "prefix": "4dayweek",
+    "source": "4dayweek:engineering",
+    "ok": true,
+    "count": 49,
+    "http": 200,
+    "seconds": 6.1,
+    "error": null,
+    "at": "2026-11-06T23:56:28.7679631Z"
+  },
+  {
+    "prefix": "workingnomads",
+    "source": "workingnomads:development",
+    "ok": true,
+    "count": 22,
+    "http": 200,
+    "seconds": 6.2,
+    "error": null,
+    "at": "2026-11-06T23:56:31.2666303Z"
+  },
+  {
+    "prefix": "hn",
+    "source": "hn:whoishiring",
+    "ok": true,
+    "count": 3,
+    "http": 200,
+    "seconds": 4.4,
+    "error": null,
+    "at": "2026-11-06T23:56:29.5491014Z"
+  },
+  {
+    "prefix": "github",
+    "source": "github:backend-br/vagas",
+    "ok": true,
+    "count": 44,
+    "http": 200,
+    "seconds": 6.6,
+    "error": null,
+    "at": "2026-11-06T23:56:33.0726476Z"
+  },
+  {
+    "prefix": "rss",
+    "source": null,
+    "ok": false,
+    "count": 0,
+    "http": null,
+    "seconds": 0,
+    "error": "sem amostra pública segura",
+    "at": "2026-11-06T23:55:12.3778007Z"
+  },
+  {
+    "prefix": "web",
+    "source": null,
+    "ok": false,
+    "count": 0,
+    "http": null,
+    "seconds": 0,
+    "error": "sem amostra pública segura",
+    "at": "2026-11-06T23:55:12.3778009Z"
+  },
+  {
+    "prefix": "alertas",
+    "source": null,
+    "ok": false,
+    "count": 0,
+    "http": null,
+    "seconds": 0,
+    "error": "sem amostra pública segura",
+    "at": "2026-11-06T23:55:12.3778013Z"
+  },
+  {
+    "prefix": "adzuna",
+    "source": "adzuna:developer",
+    "ok": false,
+    "count": 0,
+    "http": null,
+    "seconds": 0,
+    "error": "A consulta falhou: Conecte a chave da Adzuna em Fontes › Chaves de API.",
+    "at": "2026-11-06T23:56:28.7700536Z"
+  },
+  {
+    "prefix": "jooble",
+    "source": "jooble:developer",
+    "ok": false,
+    "count": 0,
+    "http": null,
+    "seconds": 0,
+    "error": "A consulta falhou: Conecte a chave do Jooble em Fontes › Chaves de API.",
+    "at": "2026-11-06T23:56:28.7712794Z"
+  },
+  {
+    "prefix": "usajobs",
+    "source": "usajobs:developer",
+    "ok": false,
+    "count": 0,
+    "http": null,
+    "seconds": 0,
+    "error": "A consulta falhou: CREDENTIALS_REQUIRED: conecte a chave do USAJOBS em Fontes › Chaves de API.",
+    "at": "2026-11-06T23:56:28.7724988Z"
+  },
+  {
+    "prefix": "reliefweb",
+    "source": "reliefweb:officer",
+    "ok": false,
+    "count": 0,
+    "http": null,
+    "seconds": 0,
+    "error": "A consulta falhou: CREDENTIALS_REQUIRED: conecte o appname aprovado da ReliefWeb em Fontes › Chaves de API.",
+    "at": "2026-11-06T23:56:28.7731388Z"
+  },
+  {
+    "prefix": "linkedin",
+    "source": null,
+    "ok": false,
+    "count": 0,
+    "http": null,
+    "seconds": 0,
+    "error": "não sondada: BLOCKED",
+    "at": "2026-11-06T23:55:12.3778036Z"
+  },
+  {
+    "prefix": "francetravail",
+    "source": null,
+    "ok": false,
+    "count": 0,
+    "http": null,
+    "seconds": 0,
+    "error": "não sondada: BLOCKED",
+    "at": "2026-11-06T23:55:12.3778038Z"
+  },
+  {
+    "prefix": "gupy-api",
+    "source": null,
+    "ok": false,
+    "count": 0,
+    "http": null,
+    "seconds": 0,
+    "error": "não sondada: PARTNER_ONLY",
+    "at": "2026-11-06T23:55:12.3778039Z"
+  }
+]

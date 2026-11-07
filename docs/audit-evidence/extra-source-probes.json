@@ -1,0 +1,66 @@
+[
+  {
+    "ok": true,
+    "count": 4,
+    "seconds": 11.3,
+    "error": null,
+    "http": 200,
+    "source": "inhire:somosed",
+    "sampleCount": 4,
+    "sampleFieldPresence": {
+      "title": 4,
+      "company": 4,
+      "location": 4,
+      "applyUrl": 4,
+      "applyEmail": 0
+    }
+  },
+  {
+    "ok": true,
+    "count": 60,
+    "seconds": 9.3,
+    "error": null,
+    "http": 200,
+    "source": "workable-search:asp.net core",
+    "sampleCount": 6,
+    "sampleFieldPresence": {
+      "title": 6,
+      "company": 6,
+      "location": 6,
+      "applyUrl": 6,
+      "applyEmail": 0
+    }
+  },
+  {
+    "ok": true,
+    "count": 20,
+    "seconds": 19.9,
+    "error": null,
+    "http": 200,
+    "source": "workday:accenture.wd103.myworkdayjobs.com/AvanadeCareers",
+    "sampleCount": 6,
+    "sampleFieldPresence": {
+      "title": 6,
+      "company": 6,
+      "location": 6,
+      "applyUrl": 6,
+      "applyEmail": 0
+    }
+  },
+  {
+    "ok": true,
+    "count": 3,
+    "seconds": 7.2,
+    "error": null,
+    "http": 200,
+    "source": "quickin:igma",
+    "sampleCount": 3,
+    "sampleFieldPresence": {
+      "title": 3,
+      "company": 3,
+      "location": 3,
+      "applyUrl": 3,
+      "applyEmail": 0
+    }
+  }
+]
