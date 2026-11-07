@@ -176,14 +176,16 @@ public sealed class FlowTests
             new { days = 1, maxPerDay = 5, minScore = 80, adapters = Array.Empty<string>(), accepted = true, acceptDeclarations = false }));
         await s.RunAsync();
         // Without the declarations in the authorization, the privacy box stops the form before sending and becomes your question.
+        // All the declarations waiting are one line: "1 vaga pede o seu aceite", with the form's own text kept underneath.
         JsonElement? asked = null;
         await s.WaitAsync(async () => (asked = (await s.GetAsync("/applications/questions")).EnumerateArray()
-            .Cast<JsonElement?>().FirstOrDefault(q => q!.Value.GetProperty("kind").GetString() == "declaration")) is not null, Settle, "a declaração virar pergunta");
+            .Cast<JsonElement?>().FirstOrDefault(q => q!.Value.GetProperty("kind").GetString() == "consent")) is not null, Settle, "a declaração virar pergunta");
         Assert.Equal(0, await s.SubmissionsAsync(501));
-        var label = asked!.Value.GetProperty("label").GetString()!;
-        Assert.StartsWith("Li e aceito a Política de Privacidade", label);
+        Assert.Equal("consent", asked!.Value.GetProperty("key").GetString());
+        Assert.StartsWith("1 vaga pede o seu aceite", asked.Value.GetProperty("title").GetString());
+        Assert.StartsWith("Li e aceito a Política de Privacidade", asked.Value.GetProperty("items")[0].GetProperty("label").GetString());
         Assert.Equal(HttpStatusCode.OK, await s.PostAsync("/applications/questions/answers",
-            new { answers = new[] { new { question = label, answer = "Sim", key = asked.Value.GetProperty("key").GetString() } } }));
+            new { answers = new[] { new { question = asked.Value.GetProperty("title").GetString(), answer = "Sim", key = "consent" } } }));
         // Your yes ticks that box for this form: the form is filled again and sent within the authorization.
         await s.WaitAsync(async () => await s.StateAsync("Brisa Sistemas") == "SubmittedConfirmed", Settle, "o envio depois do seu sim");
         Assert.Equal(1, await s.SubmissionsAsync(501));

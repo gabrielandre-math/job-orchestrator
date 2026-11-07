@@ -63,6 +63,7 @@ internal static class Server
         await app.Services.MigrateMailAsync();
 
         app.UseExceptionHandler();
+        app.UseTrail();
         app.MapOpenApi("/api/openapi.json");
         app.MapGet("/api/health", () => Results.Ok(new { status = "ok", app = "job-orchestrator", version = Launcher.Version, sourceRevision = Launcher.SourceRevision, platform = Platform.Os })).WithTags("Health");
         var token = Convert.ToHexStringLower(System.Security.Cryptography.RandomNumberGenerator.GetBytes(24));

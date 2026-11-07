@@ -11,6 +11,7 @@ import { Live } from './core/live';
 import { Toasts } from './core/toast';
 import { SearchRun } from './core/search';
 import { QuestionDialog } from './features/applications/question-dialog';
+import { TrailClient } from './core/trail';
 import { FormQuestions } from './core/form-questions';
 import { Welcome } from './features/welcome/welcome';
 import { Quit } from './features/quit/quit';
@@ -35,6 +36,7 @@ export class App {
   protected readonly toasts = inject(Toasts);
   protected readonly search = inject(SearchRun);
   private readonly router = inject(Router);
+  private readonly trailClient = inject(TrailClient);
   private readonly navRef = viewChild<ElementRef<HTMLElement>>('navEl');
   /** O destaque da página atual desliza de um item para o outro em vez de pular. */
   protected readonly glide = signal({ top: 0, height: 0 });
@@ -69,6 +71,7 @@ export class App {
       { path: '/provedores', label: 'Provedores de IA', icon: 'cpu' },
       { path: '/campanha', label: 'Campanha', icon: 'sliders-horizontal' },
       { path: '/configuracoes', label: 'Configurações', icon: 'gear-six' },
+      { path: '/diagnostico', label: 'Diagnóstico', icon: 'pulse' },
     ] },
   ];
   protected readonly advanced = signal(storedFlag('jo.nav.avancado'));
@@ -83,6 +86,7 @@ export class App {
   protected readonly welcome = this.hub.open;
 
   constructor() {
+    this.trailClient.start();
     // Primeira vez: os termos de uso vêm antes de tudo (sem o aceite, nada roda sozinho); as boas-vindas só depois deles.
     if (!this.bare) void get<{ accepted: boolean }>('/terms').then((t) => { if (t.accepted) this.greet(); else this.terms.set(true); }).catch(() => this.greet());
     const destroy = inject(DestroyRef);

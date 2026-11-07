@@ -4,7 +4,7 @@ namespace JobOrchestrator.Applications.Features.Workflow;
 /// Supervisor da fila: toma um item, renova o lease enquanto a etapa roda e trata falha com backoff e jitter.
 /// Etapa que esgota as tentativas vai para DeadLetter. Uma etapa por vez nesta fase (um envio por vez).
 /// </summary>
-internal sealed class WorkRunner(IServiceScopeFactory scopes, WorkQueue queue, ILogger<WorkRunner> log) : BackgroundService
+internal sealed class WorkRunner(IServiceScopeFactory scopes, WorkQueue queue, ILogger<WorkRunner> log, Trail trail) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
@@ -33,16 +33,24 @@ internal sealed class WorkRunner(IServiceScopeFactory scopes, WorkQueue queue, I
     {
         using var renew = new CancellationTokenSource();
         var renewing = RenewAsync(item.Id, renew.Token);
+        // Every event of this step, from the form to the AI calls, carries the application in the trail.
+        Trail.Trace = $"app:{item.ApplicationId}";
+        var data = new Dictionary<string, string?> { ["application"] = item.ApplicationId.ToString(), ["attempt"] = item.Attempts.ToString(System.Globalization.CultureInfo.InvariantCulture) };
+        var start = System.Diagnostics.Stopwatch.GetTimestamp();
+        int Ms() => (int)System.Diagnostics.Stopwatch.GetElapsedTime(start).TotalMilliseconds;
         try
         {
             await using var scope = scopes.CreateAsyncScope();
             var step = scope.ServiceProvider.GetServices<IStep>().First(s => s.Step == item.Kind);
+            trail.Info("step", $"{item.Step} começou", data: data);
             await step.RunAsync(item, ct);
+            trail.Info("step", $"{item.Step} terminou", ms: Ms(), data: data);
         }
-        catch (RetryLaterException ex) { await FailAsync(item, ex.Message, ex.Delay, ct); }
+        catch (RetryLaterException ex) { trail.Warn("step", $"{item.Step} espera", ex.Message, Ms(), "retry-later", data); await FailAsync(item, ex.Message, ex.Delay, ct); }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             log.LogWarning(ex, "Step {Step} failed for {Application}", item.Step, item.ApplicationId);
+            trail.Error("step", $"{item.Step} falhou", $"{ex.GetType().Name}: {ex.Message}", Ms(), "exception", data);
             await FailAsync(item, ex.Message, null, ct);
         }
         finally

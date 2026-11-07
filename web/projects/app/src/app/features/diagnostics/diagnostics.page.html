@@ -1,0 +1,58 @@
+<section class="page">
+  <jo-page-hero title="Diagnóstico" [scene]="['radar', 'chart', 'guardian']"
+    lead="O rastro do app: cada clique e página, cada chamada que falhou ou mudou algo, os passos da fila, os formulários, as chamadas de IA, as mudanças de estado e os erros. Fica só nesta máquina, por 14 dias." />
+
+  <section class="panel">
+    <div class="bar">
+      <div class="seg" role="radiogroup" aria-label="Tipo de evento">
+        @for (k of kinds; track k.id) { <button type="button" role="radio" [attr.aria-checked]="kind() === k.id" (click)="kind.set(k.id)">{{ k.label }}</button> }
+      </div>
+      <div class="seg" role="radiogroup" aria-label="Gravidade">
+        <button type="button" role="radio" [attr.aria-checked]="level() === ''" (click)="level.set('')">Todos</button>
+        <button type="button" role="radio" [attr.aria-checked]="level() === 'warn'" (click)="level.set('warn')">Avisos e erros</button>
+        <button type="button" role="radio" [attr.aria-checked]="level() === 'error'" (click)="level.set('error')">Só erros</button>
+      </div>
+      <input type="search" placeholder="Procurar no rastro" aria-label="Procurar no rastro" [value]="text()" (input)="text.set($any($event.target).value)" />
+      <button type="button" class="btn" (click)="paused.set(!paused())">{{ paused() ? 'Continuar' : 'Pausar' }}</button>
+    </div>
+    @if (trace()) {
+      <p class="following">Só os eventos de <span class="mono">{{ trace() }}</span> <button type="button" class="btn ghost sm" (click)="trace.set('')">Mostrar tudo</button></p>
+    }
+    <p class="faint small summary">{{ counts().total }} eventos na tela · {{ counts().errors }} erros · {{ counts().warnings }} avisos{{ paused() ? ' · pausado' : ' · atualiza a cada 3 s' }}</p>
+
+    <ol class="trail">
+      @for (e of entries.value() ?? []; track e.id) {
+        <li [class]="'lv-' + e.level" [class.open]="open() === e.id">
+          <button type="button" class="line" (click)="toggle(e.id)" [attr.aria-expanded]="open() === e.id">
+            <span class="at mono">{{ e.at | date: 'HH:mm:ss' }}</span>
+            <span class="kind mono">{{ e.kind }}</span>
+            <span class="name">{{ e.name }}</span>
+            <span class="detail">{{ e.detail }}</span>
+            <span class="code mono">{{ e.code }}</span>
+            <span class="ms mono">{{ e.ms != null ? e.ms + ' ms' : '' }}</span>
+          </button>
+          @if (open() === e.id) {
+            <div class="more">
+              @if (e.detail) { <p>{{ e.detail }}</p> }
+              <dl>
+                @for (p of pairs(e.data); track p[0]) { <div><dt>{{ p[0] }}</dt><dd [class.mono]="p[0] === 'stack'">{{ p[1] }}</dd></div> }
+                @if (e.trace) { <div><dt>rastro</dt><dd><button type="button" class="link" (click)="follow(e.trace)">{{ e.trace }}</button></dd></div> }
+              </dl>
+            </div>
+          }
+        </li>
+      } @empty {
+        <li class="empty faint">Nada no rastro com esses filtros.</li>
+      }
+    </ol>
+  </section>
+
+  <section class="panel">
+    <header><h2>Arquivos do rastro</h2><span class="faint small">um por dia, em JSON Lines, para abrir ou mandar junto com um relato de bug</span></header>
+    <ul class="days">
+      @for (d of days.value() ?? []; track d.day) {
+        <li><span class="mono">{{ d.day }}</span><span class="faint">{{ size(d.bytes) }}</span><a class="btn ghost sm" [href]="'/api/diagnostics/days/' + d.day" download><jo-icon name="download-simple" [size]="14" />Baixar</a></li>
+      } @empty { <li class="faint">Ainda sem arquivo.</li> }
+    </ul>
+  </section>
+</section>

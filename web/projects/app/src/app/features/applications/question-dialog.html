@@ -1,38 +1,93 @@
 <dialog #box class="answer-modal" aria-labelledby="questions-title" (cancel)="$event.preventDefault(); later()">
   <div class="answer-layout">
     <aside>
-      <jo-iso name="identity" [size]="128" />
+      <jo-iso name="identity" [size]="112" />
       <span class="eyebrow">SUAS RESPOSTAS</span>
-      <h2 id="questions-title">Você conta uma vez.<br />O app continua.</h2>
-      <p>Encontramos {{ questions().length }} pergunta(s) que precisam da sua resposta para continuar {{ affected() }} candidatura(s).</p>
-      <div class="local"><jo-icon name="lock-simple" [size]="18" /><span>Guardado nesta máquina. Estes dados não são enviados a modelos de IA.</span></div>
+      <h2 id="questions-title">O que só você sabe.</h2>
+      <p>A IA respondeu o resto pelo seu currículo. {{ groups().length === 1 ? '1 item espera' : groups().length + ' itens esperam' }} por você, em {{ affected() === 1 ? '1 candidatura' : affected() + ' candidaturas' }}. Uma resposta vale para todas as vagas da linha, em qualquer língua.</p>
+      <div class="local"><jo-icon name="lock-simple" [size]="18" /><span>Fica nesta máquina e nunca vai para um modelo de IA.</span></div>
     </aside>
     <form (submit)="$event.preventDefault(); save()">
-      <header><h3>Complete o que falta</h3><button type="button" class="btn ghost" (click)="later()" [disabled]="saving.running()" aria-label="Responder depois"><jo-icon name="x" [size]="18" /></button></header>
-      <div class="answer-fields">
-        @for (q of questions(); track q.key + q.options.join('|')) {
-          <fieldset>
-            <legend>{{ q.label }}</legend>
-            <p class="faint small">{{ q.applications.length }} candidatura(s) aguardando</p>
-            @if (q.kind === 'date') {
-              <input type="date" required autocomplete="bday" [attr.aria-label]="q.label" [max]="today" [value]="values()[q.key] ?? ''" (input)="set(q.key, $any($event.target).value)" />
-              <p class="hint">Usada apenas quando o formulário pedir. Não aparece no currículo.</p>
-            } @else if (q.options.length && q.kind !== 'checkboxes') {
-              <select required [attr.aria-label]="q.label" [value]="values()[q.key] ?? ''" (change)="set(q.key, $any($event.target).value)"><option value="">Escolha sua resposta</option>@for (o of q.options; track o) { <option [value]="o">{{ o }}</option> }</select>
-            } @else if (q.kind === 'checkboxes') {
-              @for (o of q.options; track o) { <label class="check"><input type="checkbox" [checked]="(values()[q.key] ?? '').split('\n').includes(o)" (change)="tick(q, o, $any($event.target).checked)" />{{ o }}</label> }
-            } @else if (q.kind === 'declaration') {
-              <label class="check"><input type="checkbox" [checked]="values()[q.key] === 'Sim'" (change)="set(q.key, $any($event.target).checked ? 'Sim' : '')" />Aceito esta declaração em meu nome, só para esta candidatura</label>
-            } @else if (q.kind === 'confirm') {
-              <label class="check"><input type="checkbox" [checked]="values()[q.key] === 'Sim'" (change)="set(q.key, $any($event.target).checked ? 'Sim' : '')" />Confirmo esta afirmação sobre mim</label>
-            } @else {
-              <textarea required rows="3" maxlength="2000" [attr.aria-label]="q.label" [value]="values()[q.key] ?? ''" (input)="set(q.key, $any($event.target).value)"></textarea>
+      <header><h3>Responda o que quiser agora</h3><button type="button" class="btn ghost close" (click)="later()" [disabled]="saving.running()" aria-label="Responder depois"><jo-icon name="x" [size]="18" /></button></header>
+      <div class="answer-fields" data-private>
+        @for (g of groups(); track g.key; let i = $index) {
+          <section class="q" [class.done]="!!values()[g.key]?.trim()">
+            <div class="q-head">
+              <h4 [id]="'q-' + i">{{ g.title }}</h4>
+              @if (g.detail) { <p class="muted">{{ g.detail }}</p> }
+              @if (g.note) { <p class="note">{{ g.note }}</p> }
+            </div>
+            @switch (g.kind) {
+              @case ('consent') {
+                <div class="opts" role="radiogroup" [attr.aria-labelledby]="'q-' + i">
+                  <button type="button" role="radio" class="opt" [attr.aria-checked]="picked(g.key, 'Sim')" (click)="set(g.key, 'Sim')"><jo-icon name="check" [size]="14" />Aceito em meu nome</button>
+                  <button type="button" role="radio" class="opt" [attr.aria-checked]="picked(g.key, 'Não')" (click)="set(g.key, 'Não')">Não aceito</button>
+                </div>
+                <p class="hint">Vale para estas candidaturas. Para o app aceitar sozinho daqui em diante, ligue "aceito as declarações" em Campanha, Mudar limites. Sem o aceite, a candidatura fica com você.</p>
+              }
+              @case ('yesno') {
+                <div class="opts" role="radiogroup" [attr.aria-labelledby]="'q-' + i">
+                  @for (o of g.options; track o) { <button type="button" role="radio" class="opt" [attr.aria-checked]="picked(g.key, o)" (click)="set(g.key, o)">{{ o }}</button> }
+                </div>
+              }
+              @case ('arrived') {
+                <div class="opts stack" role="radiogroup" [attr.aria-labelledby]="'q-' + i">
+                  @for (o of g.options; track o) { <button type="button" role="radio" class="opt" [attr.aria-checked]="picked(g.key, o)" (click)="set(g.key, o)">{{ o }}</button> }
+                </div>
+              }
+              @case ('choice') {
+                @if (g.options.length <= 8) {
+                  <div class="opts wrap" role="radiogroup" [attr.aria-labelledby]="'q-' + i">
+                    @for (o of g.options; track o) { <button type="button" role="radio" class="opt" [attr.aria-checked]="picked(g.key, o)" (click)="set(g.key, o)">{{ o }}</button> }
+                  </div>
+                } @else {
+                  <select [attr.aria-labelledby]="'q-' + i" [value]="values()[g.key] ?? ''" (change)="set(g.key, $any($event.target).value)"><option value="">Escolha</option>@for (o of g.options; track o) { <option [value]="o">{{ o }}</option> }</select>
+                }
+              }
+              @case ('checkboxes') {
+                <div class="opts wrap" role="group" [attr.aria-labelledby]="'q-' + i">
+                  @for (o of g.options; track o) { <button type="button" role="checkbox" class="opt" [attr.aria-checked]="ticked(g.key, o)" (click)="tick(g.key, o)">@if (ticked(g.key, o)) { <jo-icon name="check" [size]="14" /> }{{ o }}</button> }
+                </div>
+              }
+              @case ('date') {
+                <input type="date" autocomplete="bday" [attr.aria-labelledby]="'q-' + i" [max]="today" [value]="values()[g.key] ?? ''" (input)="set(g.key, $any($event.target).value)" />
+              }
+              @case ('number') {
+                <input type="text" inputmode="numeric" [attr.aria-labelledby]="'q-' + i" [value]="values()[g.key] ?? ''" (input)="set(g.key, $any($event.target).value)" />
+              }
+              @case ('text') {
+                <input type="text" maxlength="2000" [attr.aria-labelledby]="'q-' + i" [placeholder]="g.key === 'current_pay' ? 'Ex.: R$ 8.000 por mês, CLT' : ''" [value]="values()[g.key] ?? ''" (input)="set(g.key, $any($event.target).value)" />
+              }
+              @default {
+                <textarea rows="5" maxlength="2000" [attr.aria-labelledby]="'q-' + i" [value]="values()[g.key] ?? ''" (input)="set(g.key, $any($event.target).value)"></textarea>
+                @if (g.draft) { <p class="hint">Rascunho da IA pelos seus fatos. Edite à vontade antes de salvar.</p> }
+              }
             }
-          </fieldset>
+            @if (g.items.length && g.kind !== 'date' && (g.items.length > 1 || g.items[0].label !== g.title)) {
+              <button type="button" class="more" (click)="toggle(g.key)" [attr.aria-expanded]="!!shown()[g.key]">
+                <jo-icon name="caret-down" [size]="12" />{{ shown()[g.key] ? 'Esconder' : 'Ver' }} {{ g.items.length === 1 ? 'o texto do formulário' : 'os ' + g.items.length + ' textos dos formulários' }}
+              </button>
+              @if (shown()[g.key]) { <ul class="originals">@for (it of g.items; track it.key) { <li>{{ it.label }}</li> }</ul> }
+            }
+          </section>
         }
         @if (saving.problem(); as p) { <p class="problem" role="alert">{{ p.detail }}</p> }
       </div>
-      <footer><p>Ao salvar, o app refaz o preparo das vagas afetadas. O envio segue o modo, a autorização e os limites da sua campanha.</p><div class="actions"><button type="button" class="btn" (click)="later()" [disabled]="saving.running()">Responder depois</button><button type="submit" class="btn primary" [disabled]="!ready() || saving.running()">{{ saving.running() ? 'Salvando…' : 'Salvar e continuar' }}<jo-icon name="arrow-right" [size]="15" /></button></div></footer>
+      <footer>
+        <p>{{ answered() }} de {{ groups().length }} {{ groups().length === 1 ? 'respondido' : 'respondidos' }}. O que ficar em branco continua esperando; o resto volta ao preparo dentro do modo, da autorização e dos limites da campanha.</p>
+        <div class="actions"><button type="button" class="btn" (click)="later()" [disabled]="saving.running()">Responder depois</button><button type="submit" class="btn primary" [disabled]="!answered() || saving.running()">{{ saving.running() ? 'Salvando…' : 'Salvar e continuar' }}<jo-icon name="arrow-right" [size]="15" /></button></div>
+      </footer>
     </form>
   </div>
 </dialog>
+
+@if (enabled() && !hub.open() && hub.count() && hub.nudge()) {
+  <div class="nudge" role="status">
+    <button type="button" class="nudge-open" (click)="hub.open.set(true)">
+      <jo-icon name="identification-card" [size]="18" />
+      <span><b>{{ hub.count() === 1 ? '1 resposta sua' : hub.count() + ' respostas suas' }}</b> {{ hub.waiting() === 1 ? 'destravam 1 candidatura' : 'destravam ' + hub.waiting() + ' candidaturas' }}</span>
+      <span class="go">Responder</span>
+    </button>
+    <button type="button" class="nudge-x" (click)="hub.nudge.set(false)" aria-label="Esconder o lembrete"><jo-icon name="x" [size]="14" /></button>
+  </div>
+}

@@ -22,6 +22,18 @@ internal sealed class StepKit(ApplicationsDbContext db, IAutomationApi automatio
     public TimeSpan ReconcileDelay => TimeSpan.FromSeconds(config.GetValue("Workflow:ReconcileDelaySeconds", 20));
     public TimeSpan ReconcileRetry => TimeSpan.FromSeconds(config.GetValue("Workflow:ReconcileRetrySeconds", 30));
 
+    /// <summary>What the form adapters did, in the trail: the adapter that ran, how it ended, the reason code and the questions it brought.</summary>
+    public static void Traced<T>(AutomationOutcome<T> outcome, string what, JobApplication app)
+    {
+        var ran = outcome.Route.LastOrDefault(r => r.Outcome != "skipped");
+        Trail.Shared?.Add("form", outcome.Kind is AdapterResultKind.Completed ? "info" : outcome.Kind is AdapterResultKind.NeedsHuman or AdapterResultKind.Unsupported ? "warn" : "error",
+            $"{what} {ran?.AdapterId ?? "sem adapter"}: {outcome.Kind}", outcome.Detail, code: outcome.ReasonCode, data: new Dictionary<string, string?>
+            {
+                ["application"] = app.Id.ToString(), ["company"] = app.Company, ["url"] = app.ApplyUrl,
+                ["questions"] = outcome.Questions is { Count: > 0 } q ? string.Join(" | ", q.Select(x => $"[{x.Kind}] {(x.Label.Length > 90 ? x.Label[..90] + "…" : x.Label)}")) : null,
+            });
+    }
+
     public async Task<(JobApplication App, WorkItem Item)> LoadAsync(Claimed c, CancellationToken ct) =>
         (await db.Applications.FirstAsync(a => a.Id == c.ApplicationId, ct), await db.WorkItems.FirstAsync(w => w.Id == c.Id, ct));
 
@@ -145,6 +157,7 @@ internal sealed class PrepareStep(StepKit k, Answerer answerer) : IStep
         var campaign = await k.CampaignAsync(app.CampaignId, ct);
         var bundle = await k.Bundles.ForAsync(app, StepKit.AcceptsDeclarations(campaign), ct) ?? throw new InvalidOperationException("Perfil sumiu entre as etapas.");
         var outcome = await k.Automation.PrepareAsync(new ApplyTarget(app.Id, app.ApplyUrl), bundle, ct);
+        StepKit.Traced(outcome, "preparo", app);
         var now = k.Now;
         switch (outcome.Kind)
         {
@@ -182,7 +195,9 @@ internal sealed class PrepareStep(StepKit k, Answerer answerer) : IStep
                     break;
                 }
                 var detail = outcome.Questions is { Count: > 0 } && await answerer.RefusalsAsync(app.Id, ct) is { } refused ? $"{outcome.Detail} {refused}" : outcome.Detail;
-                app.Move(ApplicationState.NeedsHuman, detail.Length > 500 ? detail[..499] + "…" : detail, "Preparador", now, new { outcome.ReasonCode, outcome.Route, outcome.Questions });
+                // Each question that comes to you gets a short title, so the questions window lists what is asked, not the form's text.
+                var titles = outcome.Questions is { Count: > 0 } open ? await answerer.TitlesAsync(open, ct) : null;
+                app.Move(ApplicationState.NeedsHuman, detail.Length > 500 ? detail[..499] + "…" : detail, "Preparador", now, new { outcome.ReasonCode, outcome.Route, outcome.Questions, Titles = titles });
                 k.Db.AddTask(app.Id, StepKit.TaskFor(outcome.ReasonCode), outcome.ReasonCode == "captcha" ? "Resolver CAPTCHA" : outcome.ReasonCode == "login" ? "Entrar no site" : "Responder pergunta nova", detail.Length > 500 ? detail[..499] + "…" : detail, now);
                 break;
             case AdapterResultKind.PermanentFailure:
@@ -279,6 +294,7 @@ internal sealed class SubmitStep(StepKit k, TokenIssuer tokens) : IStep
 
         var bundle = await k.Bundles.ForAsync(app, StepKit.AcceptsDeclarations(campaign), ct) ?? throw new InvalidOperationException("Perfil sumiu entre as etapas.");
         var outcome = await k.Automation.SubmitAsync(new ApplyTarget(app.Id, app.ApplyUrl), bundle, tokens.Issue(intent), app.PreparedBy!, ct);
+        StepKit.Traced(outcome, "envio", app);
         var now = k.Now;
         switch (outcome.Kind)
         {
@@ -329,6 +345,7 @@ internal sealed class ReconcileStep(StepKit k) : IStep
         Chaos.Point("during-reconcile");
         var bundle = await k.Bundles.ForAsync(app, ct) ?? throw new InvalidOperationException("Perfil sumiu entre as etapas.");
         var outcome = await k.Automation.ReconcileAsync(new ApplyTarget(app.Id, app.ApplyUrl), bundle, app.PreparedBy!, ct);
+        StepKit.Traced(outcome, "conferência", app);
         var now = k.Now;
         var intent = await k.Db.Intents.FirstOrDefaultAsync(i => i.ApplicationId == app.Id && i.State == IntentState.SentUnverified, ct);
         if (outcome.Kind == AdapterResultKind.Completed && outcome.Value!.Found)

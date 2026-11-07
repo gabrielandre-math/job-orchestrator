@@ -11,6 +11,10 @@ public sealed class LanguagesTests
     [InlineData("Buscamos un desarrollador .NET con experiencia en AWS para el equipo, con foco en la calidad y en los resultados.", "es")]
     [InlineData("Wir suchen einen .NET Entwickler mit Erfahrung in AWS für unser Team, der die Plattform mit uns weiterentwickelt.", "de")]
     [InlineData("Vi söker en .NET utvecklare med erfarenhet av AWS som vill vara med och bygga vår plattform och det är på riktigt.", "sv")]
+    // A Konsi question that read as Spanish, so the AI answered it in English.
+    [InlineData("4. Conte sobre a última vez que você precisou escrever algo técnico para uma audiência não técnica (um stakeholder de negócio, um cliente interno, alguém de outra área). O que você escreveu, e qual foi a reação ou decisão que aquilo gerou?", "pt")]
+    [InlineData("Descreva uma vez em que você recebeu um problema de negócio, não uma tarefa já decomposta em passos.", "pt")]
+    [InlineData("¿Qué proyecto con .NET te dio más orgullo y por qué lo elegirías otra vez para el equipo?", "es")]
     public void Acha_a_lingua_da_vaga(string text, string expected) => Assert.Equal(expected, Languages.DetectAny(text));
 
     [Fact] public void Curriculo_e_respostas_so_em_portugues_ou_ingles() =>

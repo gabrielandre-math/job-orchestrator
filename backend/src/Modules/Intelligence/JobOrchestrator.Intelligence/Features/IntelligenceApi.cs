@@ -228,6 +228,8 @@ internal sealed class IntelligenceApi(ProviderSet set, IntelligenceDbContext db,
         var task = request.Task;
         log.LogInformation("LLM {Task} via {Provider} {Model}/{Effort}: {Ok} in {Seconds:0.0}s{Flags}", task, r.ProviderId, r.Model, r.Effort, r.Ok, r.Seconds,
             r.Degraded ? " (rascunho local)" : r.Cached ? " (cache)" : "");
+        Trail.Shared?.Add("ai", r.Ok ? "info" : "warn", $"{task} {r.ProviderId} {r.Model}", r.Error, (int)(r.Seconds * 1000), r.Ok ? null : "fail",
+            new Dictionary<string, string?> { ["effort"] = r.Effort, ["flags"] = r.Degraded ? "rascunho local" : r.Cached ? "cache" : null });
         db.Calls.Add(new LlmCall
         {
             At = Now, Task = task, ProviderId = Cut(r.ProviderId, 40), Model = Cut(r.Model, 80), Effort = Cut(r.Effort, 20), Ok = r.Ok,

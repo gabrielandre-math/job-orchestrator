@@ -1,3 +1,5 @@
+import { trail } from './trail';
+
 /** Chamadas à API local. Mesma origem em produção (a API serve o painel); proxy no ng serve. */
 export const API = '/api';
 
@@ -13,15 +15,31 @@ async function toProblem(r: Response): Promise<Problem> {
   }
 }
 
+/** The page the call came from, for the trail on the server. */
+const page = () => ({ 'x-jo-page': location.pathname });
+
+/** A call that failed goes to the trail with its status and code; one the network never answered too. */
+async function failed(method: string, path: string, r: Response): Promise<Problem> {
+  const p = await toProblem(r);
+  trail({ name: `${method} ${path.split('?')[0]}`, level: r.status >= 500 ? 'error' : 'warn', code: `${r.status} ${p.code}`, detail: p.detail });
+  return p;
+}
+
 export async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
-  const r = await fetch(API + path, { signal, headers: { accept: 'application/json' } });
-  if (!r.ok) throw await toProblem(r);
+  const r = await fetch(API + path, { signal, headers: { accept: 'application/json', ...page() } }).catch((e) => {
+    if ((e as Error)?.name !== 'AbortError') trail({ name: `GET ${path.split('?')[0]}`, level: 'error', code: 'offline', detail: String((e as Error)?.message ?? e) });
+    throw e;
+  });
+  if (!r.ok) throw await failed('GET', path, r);
   return r.json() as Promise<T>;
 }
 
 export async function send<T = void>(method: 'POST' | 'PUT' | 'DELETE', path: string, body?: unknown): Promise<T> {
-  const r = await fetch(API + path, { method, headers: { 'content-type': 'application/json', accept: 'application/json' }, body: method === 'DELETE' ? undefined : JSON.stringify(body ?? {}) });
-  if (!r.ok) throw await toProblem(r);
+  const r = await fetch(API + path, { method, headers: { 'content-type': 'application/json', accept: 'application/json', ...page() }, body: method === 'DELETE' ? undefined : JSON.stringify(body ?? {}) }).catch((e) => {
+    trail({ name: `${method} ${path}`, level: 'error', code: 'offline', detail: String((e as Error)?.message ?? e) });
+    throw e;
+  });
+  if (!r.ok) throw await failed(method, path, r);
   return (r.status === 204 ? undefined : await r.json()) as T;
 }
 

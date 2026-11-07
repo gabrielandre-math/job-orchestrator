@@ -35,8 +35,8 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
     // Chaves do banco de respostas (Profile.Contracts.AnswerKeys). Anos com tecnologia: years_experience:{tecnologia}.
     protected static readonly (Regex Label, string Answer)[] Questions =
     [
-        (new Regex(@"authori[sz]ed to work|autoriza", RegexOptions.IgnoreCase), "work_authorization"),
-        (new Regex(@"sponsorship|visto|patroc", RegexOptions.IgnoreCase), "needs_sponsorship"),
+        (new Regex(@"authori[sz]ed to work|autoriza[cç][aã]o (de|para) trabalh|autorizad[oa] a trabalhar|permiss[aã]o (de|para) trabalh", RegexOptions.IgnoreCase), "work_authorization"),
+        (new Regex(@"sponsorship|\bvisto (de|para) trabalh|\bwork visa\b|patroc[ií]nio", RegexOptions.IgnoreCase), "needs_sponsorship"),
         (new Regex(@"(sal[aá]r|pretens|remunera|compensation|\bpay\b).*(\busd\b|us\$|dollars?|d[oó]lar)|(\busd\b|us\$|dollars?|d[oó]lar).*(sal[aá]r|pretens|remunera|compensation|\bpay\b)", RegexOptions.IgnoreCase), "salary_usd"),
         (new Regex(@"(sal[aá]r|pretens|remunera|compensation).*\bPJ\b|\bPJ\b.*(sal[aá]r|pretens|remunera)", RegexOptions.IgnoreCase), "salary_pj"),
         (new Regex(@"(sal[aá]r|pretens|remunera|compensation).*\bCLT\b|\bCLT\b.*(sal[aá]r|pretens|remunera)", RegexOptions.IgnoreCase), "salary_clt"),
@@ -44,7 +44,7 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
         (new Regex(@"notice period|aviso pr|start date|quando (você )?pode(ria)? começar|disponibilidade (de |para )?(in[ií]cio|come[cç]ar)|data de in[ií]cio|availability to start", RegexOptions.IgnoreCase), "start_date"),
         (new Regex(@"english|ingl", RegexOptions.IgnoreCase), "english_level"),
         (new Regex(@"hear about|soube da vaga", RegexOptions.IgnoreCase), "how_heard"),
-        (new Regex(@"relocat|mudan[cç]a", RegexOptions.IgnoreCase), "relocation"),
+        (new Regex(@"relocat|mudan[cç]a (de|para outra) (cidade|estado|pa[ií]s)|disponibilidade (de|para) mudan[cç]a|aceita(ria)? (se )?mudar|mudar de cidade", RegexOptions.IgnoreCase), "relocation"),
         (new Regex(@"(which|what) city|current location|where are you (currently )?based|based in|cidade|onde (você )?mora|localiza|^address$|^endere[cç]o", RegexOptions.IgnoreCase), "location"),
         (new Regex(@"github", RegexOptions.IgnoreCase), "github_url"),
         (new Regex(@"portf[oó]lio|personal (url|website|site)|url pessoal|site pessoal|^website$|^site$", RegexOptions.IgnoreCase), "portfolio_url"),
@@ -349,6 +349,9 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
 
     protected static string Digits(string s) => new([.. s.Where(char.IsDigit)]);
 
+    /// <summary>A question long enough to be an open one (more than 16 words): the answer bank does not apply to it.</summary>
+    internal static bool OpenQuestion(string label) => label.Split([' ', '\n', '\t'], StringSplitOptions.RemoveEmptyEntries).Length > 16;
+
     internal static (string? Value, string Source) Resolve(string label, string type, MaterialBundle m)
     {
         if (type == "file") return Resume().IsMatch(label) ? (m.ResumePdfPath, "currículo") : (null, "");
@@ -369,6 +372,9 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
             return TechKey(years.Groups[1].Value, m) is { } key ? (m.Answers[key], "anos pelas datas das experiências") : (null, "");
         // Your current pay is not your floor: the profile does not say it, so it is yours to answer once.
         if (CurrentPay().IsMatch(label)) return (null, "");
+        // The bank answers short, direct questions. A long open question that happens to say "mudança" or "inglês" is not asking
+        // whether you relocate or how good your English is: it goes to the AI, with your facts.
+        if (OpenQuestion(label)) return (null, "");
         foreach (var (pattern, answer) in Questions)
             if (pattern.IsMatch(label)) return m.Answers.TryGetValue(answer, out var v) ? (v, "banco de respostas") : (null, "");
         return (null, "");

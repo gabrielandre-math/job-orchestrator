@@ -93,6 +93,8 @@ internal sealed class JobApplication : AggregateRoot
         LastReason = reason;
         _history.Add(ApplicationEvent.Create(Id, from, to, reason, actor, detail is null ? null : JsonSerializer.Serialize(detail, JsonSerializerOptions.Web), now));
         Register(new ApplicationMoved(Id, CampaignId, from, to, now));
+        Trail.Shared?.Add("state", to is ApplicationState.Failed or ApplicationState.DeadLetter ? "warn" : "info", $"{from} → {to}", reason,
+            data: new Dictionary<string, string?> { ["application"] = Id.ToString(), ["company"] = Company, ["actor"] = actor });
     }
 
     public void MaterialsReady(string resumePath, string resumeHash, DateTime now, string reason = "Currículo gerado a partir do perfil.", object? data = null, bool vetted = true)

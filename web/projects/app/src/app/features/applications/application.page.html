@@ -27,6 +27,7 @@
         </div>
         <div class="actions">
           <button class="btn" type="button" [disabled]="withdraw.running()" (click)="doWithdraw()">Recusar</button>
+          @if (confirming()) { <span class="faint armed-hint">Clique de novo para enviar</span> }
           <button class="btn primary" type="button" [disabled]="approve.running()" (click)="doApprove(d.payloadHash)">{{ confirming() ? 'Confirmar envio' : 'Aprovar envio' }}</button>
         </div>
       </div>

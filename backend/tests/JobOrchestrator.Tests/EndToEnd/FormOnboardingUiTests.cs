@@ -45,8 +45,14 @@ public sealed class FormOnboardingUiTests
             {
                 "/api/terms" => new { accepted = true },
                 "/api/onboarding" => new { done = true },
-                "/api/applications/questions" => saved ? Array.Empty<object>() : new object[] { new { key = "custom:birth_date", label = "Data de nascimento", kind = "date", options = Array.Empty<string>(), applications = new[] { "test-one", "test-two" } } },
-                "/api/applications/questions/answers" => new { resumed = 2 },
+                "/api/applications/questions" => saved ? Array.Empty<object>() : new object[]
+                {
+                    new { key = "birth_date", kind = "date", title = "Data de nascimento", detail = "Pedida por Empresa Um e Empresa Dois.", options = Array.Empty<string>(), companies = new[] { "Empresa Um", "Empresa Dois" },
+                        applications = new[] { "test-one", "test-two" }, items = new[] { new { key = "custom:birth_date", label = "Data de nascimento", kind = "text", options = Array.Empty<string>(), applications = new[] { "test-one", "test-two" } } }, draft = (string?)null, note = (string?)null },
+                    new { key = "consent", kind = "consent", title = "2 vagas pedem o seu aceite dos termos e da política de privacidade", detail = "Sem o aceite, o formulário não sai.", options = new[] { "Sim", "Não" }, companies = new[] { "Empresa Um", "Empresa Dois" },
+                        applications = new[] { "test-one", "test-two" }, items = new[] { new { key = "custom:li e aceito", label = "Li e aceito a Política de Privacidade", kind = "declaration", options = Array.Empty<string>(), applications = new[] { "test-one", "test-two" } } }, draft = (string?)null, note = (string?)null },
+                },
+                "/api/applications/questions/answers" => new { resumed = 2, handedOff = 0 },
                 "/api/overview" => new { campaign = (object?)null, jobs = new { total = 0 }, applications = new { awaitingApproval = 0 }, pendingTasks = saved ? 0 : 2, activity = Array.Empty<object>(), adapters = Array.Empty<object>() },
                 _ => Array.Empty<object>()
             };
@@ -54,7 +60,12 @@ public sealed class FormOnboardingUiTests
             await route.FulfillAsync(new() { Json = data });
         });
         await page.GotoAsync(site.Url + "/candidaturas");
+        // The questions never open over the page by themselves: a reminder in the corner opens them, and the page stays usable.
         var dialog = page.GetByRole(AriaRole.Dialog);
+        var reminder = page.GetByRole(AriaRole.Button, new() { Name = "2 respostas suas destravam 2 candidaturas Responder" });
+        await Assertions.Expect(reminder).ToBeVisibleAsync();
+        await Assertions.Expect(dialog).Not.ToBeVisibleAsync();
+        await reminder.ClickAsync();
         await Assertions.Expect(dialog).ToBeVisibleAsync();
         await Assertions.Expect(dialog.GetByRole(AriaRole.Button, new() { Name = "Salvar e continuar" })).ToBeDisabledAsync();
         await page.Keyboard.PressAsync("Escape");
@@ -63,13 +74,14 @@ public sealed class FormOnboardingUiTests
         await page.GetByRole(AriaRole.Button, new() { Name = "Completar respostas" }).ClickAsync();
         await Assertions.Expect(dialog).ToBeVisibleAsync();
         await dialog.GetByLabel("Data de nascimento", new() { Exact = true }).FillAsync("2000-02-29");
+        await dialog.GetByRole(AriaRole.Radio, new() { Name = "Aceito em meu nome" }).ClickAsync();
         await Assertions.Expect(dialog.GetByRole(AriaRole.Button, new() { Name = "Salvar e continuar" })).ToBeEnabledAsync();
         Assert.False(await page.EvaluateAsync<bool>("document.documentElement.scrollWidth > innerWidth"));
         var screenshots = Environment.GetEnvironmentVariable("JO_UI_SCREENSHOTS");
         if (screenshots is not null) { Directory.CreateDirectory(screenshots); await page.ScreenshotAsync(new() { Path = Path.Combine(screenshots, $"form-question-{width}.png"), FullPage = true }); }
         await dialog.GetByRole(AriaRole.Button, new() { Name = "Salvar e continuar" }).ClickAsync();
         await Assertions.Expect(dialog).Not.ToBeVisibleAsync();
-        Assert.True(saved); Assert.Contains("2000-02-29", body);
+        Assert.True(saved); Assert.Contains("2000-02-29", body); Assert.Contains("\"key\":\"consent\"", body); Assert.Contains("\"answer\":\"Sim\"", body);
         Assert.Empty(errors);
     }
 }

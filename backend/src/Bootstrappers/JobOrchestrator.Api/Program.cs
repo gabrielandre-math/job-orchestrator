@@ -37,6 +37,7 @@ await app.Services.MigrateMaterialsAsync();
 await app.Services.MigrateMailAsync();
 
 app.UseExceptionHandler();
+app.UseTrail();
 app.MapOpenApi("/api/openapi.json");
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok" })).WithTags("Health");
 app.MapCarter();

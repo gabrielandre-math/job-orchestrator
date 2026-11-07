@@ -19,6 +19,9 @@ public static class BlocksRegistration
         });
         s.AddValidatorsFromAssemblies(modules, includeInternalTypes: true);
         s.TryAddSingleton(TimeProvider.System);
+        // The trail and the logger that feeds it: one per process, writing under the data folder.
+        s.TryAddSingleton(sp => new Trail(sp.GetRequiredService<TimeProvider>()));
+        s.AddSingleton<Microsoft.Extensions.Logging.ILoggerProvider>(sp => new TrailLoggerProvider(sp.GetRequiredService<Trail>()));
         return s;
     }
 

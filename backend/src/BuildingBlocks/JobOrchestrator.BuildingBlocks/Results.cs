@@ -12,10 +12,16 @@ public sealed record Error(string Code, string Message, ErrorType Type, IDiction
     public static Error Forbidden(string code, string message) => new(code, message, ErrorType.Forbidden);
 }
 
-/// <summary>Permite ao pipeline criar uma falha sem conhecer o tipo do resultado.</summary>
-public interface IResultOf<TSelf> where TSelf : IResultOf<TSelf>
+/// <summary>Any result, read without knowing its type: the trail records the error of the ones that failed.</summary>
+public interface IOutcome
 {
     bool IsSuccess { get; }
+    Error? Error { get; }
+}
+
+/// <summary>Permite ao pipeline criar uma falha sem conhecer o tipo do resultado.</summary>
+public interface IResultOf<TSelf> : IOutcome where TSelf : IResultOf<TSelf>
+{
     static abstract TSelf Failure(Error error);
 }
 

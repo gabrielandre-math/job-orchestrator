@@ -134,6 +134,51 @@ public sealed class FormFillTests
         Assert.Null(One(q, "I run Kubernetes clusters at Acme.").Value);
     }
 
+    // The Konsi form, 1.2.3: a small model wrote "text" as the answer, and a question in Portuguese, read as Spanish, got English.
+    private const string Konsi4 = "4. Conte sobre a última vez que você precisou escrever algo técnico para uma audiência não técnica (um stakeholder de negócio, um cliente interno, alguém de outra área). O que você escreveu, e qual foi a reação ou decisão que aquilo gerou?";
+
+    [Fact]
+    public void An_answer_that_does_not_answer_is_refused()
+    {
+        var q = new FormQuestion(Konsi4, "textarea", []);
+        Assert.Equal("a resposta não responde à pergunta", One(q, "text").Problem);
+        Assert.Equal("a resposta não responde à pergunta", One(q, Konsi4).Problem);
+        Assert.Equal("curta demais para uma pergunta aberta", One(q, "Escrevi um documento na Acme.").Problem);
+        Assert.Equal("escrita em outra língua", One(q, "At Acme I wrote the plan for the billing migration to .NET 8 and PostgreSQL for the finance team, who approved it the same week.").Problem);
+        Assert.NotNull(One(q, "Na Acme, escrevi para o time financeiro o plano da migração do faturamento para .NET 8 e PostgreSQL, explicando o que mudava para eles, e o plano foi aprovado.").Value);
+    }
+
+    [Fact]
+    public void Nothing_in_the_profile_about_it_comes_to_you()
+    {
+        var empty = One(new FormQuestion("Você tem certificação AWS?", "radio", ["Sim", "Não"]), "");
+        Assert.Null(empty.Value);
+        Assert.True(empty.Missing);
+        Assert.False(empty.Final);
+        Assert.Equal("o seu perfil não fala disso", empty.Problem);
+    }
+
+    [Fact]
+    public void Years_and_durations_from_the_dates_of_a_fact_are_sustained()
+    {
+        var sources = Answerer.Sources(Facts, Confirmations.Empty, "Invicti", new DateTime(2026, 11, 7));
+        var q = new FormQuestion("Comente a sua experiência com C#/.Net:", "textarea", []);
+        var text = "Trabalho com C# e .NET desde 2021 na Acme, há 5 anos, onde migrei o faturamento para .NET 8 e PostgreSQL, da análise até a entrega em produção.";
+        Assert.NotNull(Answerer.Check([q], [new Answerer.ModelAnswer(0, text, [], ["f1"])], Facts, sources)[0].Value);
+        // A year no date backs is still a claim the profile does not make.
+        Assert.StartsWith("fora dos fatos", Answerer.Check([q], [new Answerer.ModelAnswer(0, text.Replace("2021", "2015"), [], ["f1"])], Facts, sources)[0].Problem);
+    }
+
+    [Fact]
+    public void The_answer_bank_answers_only_short_direct_questions()
+    {
+        const string konsi2 = "2. Conte sobre uma entrega recente em que parte relevante do código foi gerada por uma ferramenta de IA (Copilot, Claude Code, Cursor, um agente, etc.) e você não escreveu a maior parte manualmente. O que te deu confiança para subir aquilo em produção? Que teste, conferência ou alerta específico você construiu para aquela mudança?";
+        var bank = Bundle(("relocation", "Não"), ("english_level", "Avançado"));
+        Assert.Null(LabelForm.Resolve(konsi2, "textarea", bank).Value);
+        Assert.Equal("Não", LabelForm.Resolve("Você tem disponibilidade para mudança de cidade?", "text", bank).Value);
+        Assert.Null(LabelForm.Resolve("Qual foi a maior mudança que você conduziu no último projeto?", "text", bank).Value);
+    }
+
     private static LlmResult Reply(string model, params (int Index, string Answer)[] answers) =>
         new(true, JsonSerializer.Serialize(new { answers = answers.Select(a => new { index = a.Index, answer = a.Answer, choices = Array.Empty<string>(), facts = new[] { "f1" } }) }), model, model, "", null, 1);
 

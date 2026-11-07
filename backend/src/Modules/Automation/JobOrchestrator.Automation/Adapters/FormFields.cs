@@ -261,6 +261,7 @@ internal abstract partial class LabelForm
             if (Brazil().IsMatch(region)) return (brazil ? "yes" : "no", "local do perfil");
             return null;
         }
+        if (OpenQuestion(q)) return null;
         foreach (var (pattern, answer) in Questions)
             if (pattern.IsMatch(q) && m.Answers.TryGetValue(answer, out var v)) return (v, "banco de respostas");
         return null;

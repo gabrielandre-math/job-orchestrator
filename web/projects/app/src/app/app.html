@@ -40,7 +40,7 @@
         <span class="mini-bar" aria-hidden="true"><span [style.width.%]="search.progress() * 100"></span></span>
       </a>
     }
-    @if (formQuestions.data.value()?.length) { <button type="button" class="theme" (click)="formQuestions.open.set(true)"><jo-icon name="identification-card" [size]="18" /><span class="label">Completar respostas</span></button> }
+    @if (formQuestions.count()) { <button type="button" class="theme" (click)="formQuestions.open.set(true)"><jo-icon name="identification-card" [size]="18" /><span class="label">Completar respostas</span><span class="count" [attr.aria-label]="formQuestions.count() + ' pendentes'">{{ formQuestions.count() }}</span></button> }
     <span class="status" [class.on]="online()" [attr.title]="online() ? 'API no ar' : 'API fora do ar'"><span class="label">{{ online() ? 'API no ar' : 'API fora do ar' }}</span></span>
     <button class="theme" type="button" (click)="theme.toggle()" [attr.title]="theme.mode() === 'dark' ? 'Tema claro' : 'Tema escuro'">
       <jo-icon [name]="theme.mode() === 'dark' ? 'sun' : 'moon'" [size]="18" />

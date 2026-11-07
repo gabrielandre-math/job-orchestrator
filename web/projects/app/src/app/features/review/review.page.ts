@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Company } from '@jo/ui/company';
 import { Icon } from '@jo/ui/icon';
@@ -28,11 +28,18 @@ export class ReviewPage {
   protected readonly decide = command(async (a: { id: string; hash: string | null; approve: boolean }) =>
     a.approve ? send('POST', `/applications/${a.id}/approve`, { payloadHash: a.hash }) : send('POST', `/applications/${a.id}/withdraw`),
   (r) => 'Decisão registrada.');
-  protected readonly rows = computed(() => {
-    const rows = this.list.value() ?? [];
-    for (const r of rows) if (!this.details()[r.id]) void this.load(r.id);
-    return rows;
-  });
+  protected readonly rows = computed(() => this.list.value() ?? []);
+  /** Why the last decision on a card did not go through, shown on the card itself. */
+  protected readonly cardProblem = signal<Record<string, string>>({});
+  private readonly loading = new Set<string>();
+
+  constructor() {
+    // The package is loaded again whenever the application changed (the form was filled again): approving an old hash never goes through.
+    effect(() => {
+      const details = this.details();
+      for (const r of this.rows()) if (details[r.id]?.application.updatedAt !== r.updatedAt) void this.load(r.id);
+    });
+  }
 
   protected readonly stats = computed<HeroStat[]>(() => {
     const rows = this.rows();
@@ -47,14 +54,23 @@ export class ReviewPage {
   });
 
   private async load(id: string) {
-    const d = await get<ApplicationDetail>(`/applications/${id}`);
-    this.details.update((all) => ({ ...all, [id]: d }));
+    if (this.loading.has(id)) return;
+    this.loading.add(id);
+    try {
+      const d = await get<ApplicationDetail>(`/applications/${id}`);
+      this.details.update((all) => ({ ...all, [id]: d }));
+    } catch { /* the next poll tries again */ } finally { this.loading.delete(id); }
   }
 
   protected async approve(id: string) {
     if (this.confirming() !== id) { this.confirming.set(id); setTimeout(() => this.confirming.update((c) => (c === id ? null : c)), 5000); return; }
     this.confirming.set(null);
-    if ((await this.decide.run({ id, hash: this.details()[id]?.payloadHash ?? null, approve: true })) !== null) await this.leave(id, 'sent');
+    this.cardProblem.update((all) => { const n = { ...all }; delete n[id]; return n; });
+    if ((await this.decide.run({ id, hash: this.details()[id]?.payloadHash ?? null, approve: true })) !== null) { await this.leave(id, 'sent'); return; }
+    const p = this.decide.problem();
+    this.cardProblem.update((all) => ({ ...all, [id]: p?.code === 'payload-changed' ? 'O formulário foi preenchido de novo desde que você abriu. Confira os valores abaixo e aprove outra vez.'
+      : p?.code === 'not-awaiting' ? 'Esta candidatura saiu da revisão (o app está preenchendo de novo ou ela já foi decidida).' : p?.detail ?? 'Não deu certo. Tente de novo.' }));
+    await Promise.all([this.load(id), this.list.reload()]);
   }
 
   protected async reject(id: string) {

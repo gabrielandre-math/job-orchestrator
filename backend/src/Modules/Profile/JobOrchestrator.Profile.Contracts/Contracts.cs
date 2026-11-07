@@ -39,7 +39,10 @@ public sealed record AnswerContext(string? Contract, string? Currency, string? C
 public static class Languages
 {
     private static readonly string[] En = ["the", "and", "with", "you", "we", "our", "experience", "team", "will", "of", "to", "in", "for", "are"];
-    private static readonly string[] Pt = ["de", "e", "com", "você", "voce", "nós", "nosso", "experiência", "experiencia", "time", "para", "em", "da", "do", "os", "as"];
+    // "que", "uma" and "não" are what tells Portuguese from Spanish: without them a question in Portuguese read as Spanish, and the
+    // answer came out in English.
+    private static readonly string[] Pt = ["de", "e", "com", "você", "voce", "nós", "nosso", "experiência", "experiencia", "time", "para", "em", "da", "do", "os", "as",
+        "que", "não", "nao", "uma", "um", "é", "foi", "ou", "ao", "à", "pelo", "pela", "também", "já", "isso", "seu", "sua", "são", "está", "dos", "das", "nas", "qual", "quais", "quando"];
 
     public static string Detect(string text)
     {
@@ -69,7 +72,9 @@ public static class Languages
         var words = System.Text.RegularExpressions.Regex.Matches(text.ToLowerInvariant(), @"\p{L}+").Select(m => m.Value).Take(600).ToList();
         var scores = Common.ToDictionary(kv => kv.Key, kv => words.Count(kv.Value.Contains));
         scores["en"] = words.Count(En.Contains);
-        scores["pt"] = words.Count(Pt.Contains);
+        // ã, õ and ç exist only in Portuguese; ñ, ¿ and ¡ only in Spanish.
+        scores["pt"] = words.Count(Pt.Contains) + text.Count(c => c is 'ã' or 'õ' or 'ç' or 'Ã' or 'Õ' or 'Ç');
+        scores["es"] += text.Count(c => c is 'ñ' or '¿' or '¡' or 'Ñ');
         var best = scores.OrderByDescending(kv => kv.Value).First();
         return best.Value == 0 ? "pt" : best.Key;
     }
