@@ -28,6 +28,12 @@ public sealed record Confirmations(
 }
 
 /// <summary>O perfil inteiro para quem compõe materiais e preenche formulários. Hash muda a cada versão.</summary>
+/// <summary>The profile is ready to apply with: confirmed, nothing inferred left to decide. What waited for it starts again.</summary>
+public sealed record ProfileConfirmedV1(Guid ProfileId)
+{
+    public const string EventType = "profile.confirmed.v1";
+}
+
 public sealed record ProfileSnapshot(
     Guid ProfileId, int Version, string Hash, bool Synthetic, bool Confirmed, Identity Identity,
     IReadOnlyList<ProfileFact> Facts, Confirmations Confirmations);

@@ -24,13 +24,13 @@
       <div class="list">
         @for (t of rows(); track t.id) {
           <a class="task" [routerLink]="['/candidaturas', t.applicationId]">
-            <jo-iso [name]="meta(t.kind).iso" [size]="54" />
+            <jo-iso [name]="meta(kindOf(t)).iso" [size]="54" />
             <span class="what">
-              <span class="kind">{{ meta(t.kind).label }}<span class="faint"> · {{ ago(t.createdAt) }}</span></span>
+              <span class="kind">{{ meta(kindOf(t)).label }}<span class="faint"> · {{ ago(t.createdAt) }}</span></span>
               <strong>{{ t.title }}</strong>
-              <span class="muted detail">{{ t.detail || meta(t.kind).hint }}</span>
+              <span class="muted detail">{{ t.detail || meta(kindOf(t)).hint }}</span>
             </span>
-            <span class="go">{{ meta(t.kind).action }}<jo-icon name="arrow-right" [size]="14" /></span>
+            <span class="go">{{ meta(kindOf(t)).action }}<jo-icon name="arrow-right" [size]="14" /></span>
           </a>
         }
       </div>

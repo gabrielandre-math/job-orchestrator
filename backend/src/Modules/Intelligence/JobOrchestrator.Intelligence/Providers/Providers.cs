@@ -340,6 +340,8 @@ internal sealed class OllamaLocal(IHttpClientFactory http, IConfiguration config
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or KeyNotFoundException)
         {
+            // Whoever asked gave up: not a timeout of the local model.
+            ct.ThrowIfCancellationRequested();
             return new LlmResult(false, null, Id, model, "local", limit.IsCancellationRequested ? "tempo esgotado" : "Ollama indisponível", clock.Elapsed.TotalSeconds);
         }
     }

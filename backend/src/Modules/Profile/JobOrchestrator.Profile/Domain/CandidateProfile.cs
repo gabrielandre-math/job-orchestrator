@@ -265,10 +265,18 @@ internal sealed class CandidateProfile : AggregateRoot
         Touch(now);
     }
 
-    /// <summary>User-confirmed form preferences are independent of decisions about inferred CV facts.</summary>
+    /// <summary>
+    /// The data you confirm in the welcome steps or on the profile's form. With no inferred fact left to decide, that is the profile
+    /// confirmed too: before 1.2.4 it stayed "not confirmed" and every application stopped asking for a confirmation already given.
+    /// </summary>
     public void SetFormPreferences(Confirmations c, DateTime now)
     {
         ConfirmationsJson = JsonSerializer.Serialize(c with { ConfirmedAt = now }, JsonSerializerOptions.Web);
+        if (!_facts.Any(f => f.Status == FactStatus.Inferred) && FullName.Length > 0)
+        {
+            ConfirmedAt ??= now;
+            Status = ProfileStatus.Ready;
+        }
         Touch(now);
     }
 

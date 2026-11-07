@@ -27,7 +27,7 @@ internal static class Transitions
         [ApplicationState.Submitting] = [ApplicationState.SubmittedConfirmed, ApplicationState.SubmissionUnknown, ApplicationState.Failed, ApplicationState.NeedsHuman, ApplicationState.BlockedByPolicy, ApplicationState.ReadyToSubmit],
         [ApplicationState.SubmissionUnknown] = [ApplicationState.SubmittedConfirmed, ApplicationState.NeedsHuman, ApplicationState.Failed],
         [ApplicationState.ManualHandoff] = [ApplicationState.SubmittedConfirmed, ApplicationState.SubmittedDeclared, ApplicationState.FormPreparing, ApplicationState.Withdrawn],
-        [ApplicationState.NeedsHuman] = [ApplicationState.FormPreparing, ApplicationState.MaterialsReady, ApplicationState.SubmittedDeclared, ApplicationState.Failed, ApplicationState.Withdrawn, ApplicationState.ManualHandoff],
+        [ApplicationState.NeedsHuman] = [ApplicationState.FormPreparing, ApplicationState.MaterialsReady, ApplicationState.SubmittedDeclared, ApplicationState.Failed, ApplicationState.Withdrawn, ApplicationState.ManualHandoff, ApplicationState.RetryScheduled],
         [ApplicationState.PausedProvider] = [ApplicationState.Shortlisted, ApplicationState.MaterialsReady],
         [ApplicationState.RetryScheduled] = [ApplicationState.Shortlisted, ApplicationState.MaterialsReady, ApplicationState.FormPreparing, ApplicationState.DeadLetter],
         [ApplicationState.BlockedByPolicy] = [ApplicationState.FormValidated, ApplicationState.Withdrawn],

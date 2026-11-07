@@ -181,7 +181,9 @@ internal sealed class ConfirmProfileHandler(ProfileDbContext db, TimeProvider ti
         var open = profile.Facts.Where(f => f.Status == FactStatus.Inferred).Select(f => f.Id).Where(id => !decisions.ContainsKey(id)).ToList();
         if (open.Count > 0) return Error.Validation("facts-pending", $"Falta decidir {open.Count} {(open.Count == 1 ? "fato" : "fatos")} antes de confirmar.");
         if (profile.FullName.Length == 0) return Error.Validation("name-missing", "Informe o seu nome nos dados pessoais antes de confirmar.");
-        profile.Confirm(c.Confirmations with { Cities = [.. c.Confirmations.Cities.Select(x => x.Trim()).Where(x => x.Length > 0)] }, decisions, time.GetUtcNow().UtcDateTime);
+        var now = time.GetUtcNow().UtcDateTime;
+        profile.Confirm(c.Confirmations with { Cities = [.. c.Confirmations.Cities.Select(x => x.Trim()).Where(x => x.Length > 0)] }, decisions, now);
+        db.Publish(ProfileConfirmedV1.EventType, new ProfileConfirmedV1(profile.Id), now);
         return new Done();
     }
 }
@@ -197,7 +199,9 @@ internal sealed class SetFormPreferencesHandler(ProfileDbContext db, TimeProvide
     {
         var profile = await db.CurrentAsync(ct);
         if (profile is null) return Error.NotFound("profile-not-found", "Envie o currículo ou salve os dados pessoais primeiro.");
-        profile.SetFormPreferences(c.Confirmations with { Cities = [.. c.Confirmations.Cities.Select(x => x.Trim()).Where(x => x.Length > 0)] }, time.GetUtcNow().UtcDateTime);
+        var now = time.GetUtcNow().UtcDateTime;
+        profile.SetFormPreferences(c.Confirmations with { Cities = [.. c.Confirmations.Cities.Select(x => x.Trim()).Where(x => x.Length > 0)] }, now);
+        if (!profile.Pending) db.Publish(ProfileConfirmedV1.EventType, new ProfileConfirmedV1(profile.Id), now);
         return new Done();
     }
 }

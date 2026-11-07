@@ -15,6 +15,8 @@ const KINDS: Record<string, { label: string; iso: string; action: string; hint: 
   Login: { label: 'Login', iso: 'identity', action: 'Entrar no site', hint: 'O site pediu login. A sessão é sua e não é guardada.' },
   Question: { label: 'Pergunta nova', iso: 'form', action: 'Responder', hint: 'O formulário perguntou algo que você ainda não respondeu.' },
   Reconcile: { label: 'Envio incerto', iso: 'receipt', action: 'Conferir', hint: 'Não deu para confirmar se o envio chegou. Confira antes de tentar de novo.' },
+  // A Review task that hands the job to you (login, CAPTCHA, a site with no open form) is not an approval: it is yours to send.
+  Site: { label: 'Pelo site', iso: 'send', action: 'Abrir com o copiloto', hint: 'O app não envia por este site. O currículo está pronto: envie pelo site da vaga e marque "Já enviei".' },
 };
 
 /** Atenção: tudo que só você resolve, mais antigo primeiro, agrupado por tipo e com o próximo passo de cada um. */
@@ -33,23 +35,25 @@ export class AttentionPage {
   protected readonly open = computed(() => (this.tasks.value() ?? []).filter((t) => !t.resolvedAt).sort((a, b) => a.createdAt.localeCompare(b.createdAt)));
   protected readonly kinds = computed(() => {
     const by = new Map<string, number>();
-    for (const t of this.open()) by.set(t.kind, (by.get(t.kind) ?? 0) + 1);
+    for (const t of this.open()) by.set(this.kindOf(t), (by.get(this.kindOf(t)) ?? 0) + 1);
     return [...by].map(([key, n]) => ({ key, n, ...this.meta(key) })).sort((a, b) => b.n - a.n);
   });
-  protected readonly rows = computed(() => this.open().filter((t) => !this.filter() || t.kind === this.filter()));
+  protected readonly rows = computed(() => this.open().filter((t) => !this.filter() || this.kindOf(t) === this.filter()));
 
   protected readonly stats = computed<HeroStat[]>(() => {
     const list = this.open();
-    const count = (k: string[]) => list.filter((t) => k.includes(t.kind)).length;
+    const count = (k: string[]) => list.filter((t) => k.includes(this.kindOf(t))).length;
     const oldest = list[0];
     return [
       { label: 'Esperando você', value: list.length, tone: list.length > 0 ? 'warn' : 'ok' },
       { label: 'Aprovações', value: count(['Approval', 'Review']) },
+      { label: 'Pelo site', value: count(['Site']) },
       { label: 'CAPTCHA e login', value: count(['Captcha', 'Login']) },
       { label: 'Perguntas novas', value: count(['Question']), note: oldest ? `a mais antiga, ${ago(oldest.createdAt)}` : undefined },
     ];
   });
 
   protected meta(kind: string) { return KINDS[kind] ?? { label: kind, iso: 'you', action: 'Abrir', hint: '' }; }
+  protected kindOf(t: TaskRow) { return t.kind === 'Review' && t.title.startsWith('Candidatar-se pelo site') ? 'Site' : t.kind; }
   protected pick(kind: string | null) { this.filter.set(this.filter() === kind ? null : kind); }
 }

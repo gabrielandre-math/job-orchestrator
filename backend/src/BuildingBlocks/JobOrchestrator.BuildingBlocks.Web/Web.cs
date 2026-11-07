@@ -83,7 +83,7 @@ public static class TrailWeb
                 // live map, the search) stays open by design: its length is not slowness.
                 var stream = ctx.Response.ContentType?.StartsWith("text/event-stream", StringComparison.Ordinal) == true;
                 // Only a read is slow at 1.5 s: an action that tests a source or asks the AI takes what it takes.
-                var slow = method == "GET" && ms > 1500 && !stream;
+                var slow = method == "GET" && ms > 1500 && !stream && !path.Value!.EndsWith("/logo", StringComparison.Ordinal);
                 if (method != "GET" || status >= 400 || slow)
                     trail.Add("http", status == 499 ? "info" : status >= 500 ? "error" : status >= 400 || slow ? "warn" : "info", $"{method} {path}",
                         status == 499 ? "cancelada pela página" : slow && status < 400 ? "lenta" : null, ms,

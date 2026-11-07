@@ -118,6 +118,8 @@ internal sealed class AnthropicApi(Account account, IHttpClientFactory http) : I
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or KeyNotFoundException or InvalidOperationException)
         {
+            // Whoever asked gave up: not a timeout of this provider.
+            ct.ThrowIfCancellationRequested();
             return new LlmResult(false, null, Id, model, "api", limit.IsCancellationRequested ? "tempo esgotado" : "API indisponível", clock.Elapsed.TotalSeconds, ProviderFamily: Family);
         }
     }
@@ -156,6 +158,8 @@ internal sealed class OpenAiCompatible(Account account, IHttpClientFactory http)
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or KeyNotFoundException or InvalidOperationException)
         {
+            // Whoever asked gave up: not a timeout of this provider.
+            ct.ThrowIfCancellationRequested();
             return new LlmResult(false, null, Id, model, "api", limit.IsCancellationRequested ? "tempo esgotado" : "API indisponível", clock.Elapsed.TotalSeconds, ProviderFamily: Family);
         }
     }

@@ -39,6 +39,9 @@ internal static class CliRunner
         catch (OperationCanceledException)
         {
             try { p.Kill(entireProcessTree: true); } catch (InvalidOperationException) { }
+            // Whoever asked gave up (the page closed, the app is stopping): that is not the model running out of time, and the
+            // provider must not be marked as failing for it.
+            ct.ThrowIfCancellationRequested();
             return new CliOutput(-1, "", "tempo esgotado", true);
         }
         return new CliOutput(p.ExitCode, await stdout, await stderr, false);
