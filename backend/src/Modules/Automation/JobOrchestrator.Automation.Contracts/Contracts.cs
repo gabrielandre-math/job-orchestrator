@@ -50,7 +50,7 @@ public sealed record FormQuestion(string Label, string Kind, IReadOnlyList<strin
 /// <summary>Resposta sua a uma pergunta de formulário que o perfil não responde: a chave é o texto da pergunta sem acento, caixa ou pontuação.</summary>
 public static class CustomAnswer
 {
-    public static string Key(string question) => "custom:" + Normalize(question);
+    public static string Key(string question) => "custom:" + (PersonalAnswer.IsBirthDate(question) ? "birth_date" : Normalize(question));
 
     /// <summary>The answer the AI wrote from your profile for this application's form, kept apart from yours: yours always wins.</summary>
     public static string AiKey(string question) => "ai:" + Normalize(question);
@@ -168,4 +168,28 @@ public sealed record AlertJob(string Sender, string Title, string Company, strin
 public interface IJobAlertFeed
 {
     Task<IReadOnlyList<AlertJob>> RecentAsync(DateTime since, CancellationToken ct);
+}
+
+/// <summary>Personal answers come only from the local, user-approved bank. Never ask a model to invent them.</summary>
+public static class PersonalAnswer
+{
+    public static bool IsBirthDate(string? label) => !string.IsNullOrWhiteSpace(label) && System.Text.RegularExpressions.Regex.IsMatch(CustomAnswer.Normalize(label),
+        @"\b(data (de )?nascimento|date of birth|birth ?date|birthday|dob|fecha de nacimiento)\b");
+
+    public static bool TryBirthDate(string value, DateOnly today, out DateOnly date) =>
+        DateOnly.TryParseExact(value, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out date)
+        && date <= today && date >= today.AddYears(-120);
+
+    public static string FormatBirthDate(string iso, string label, string type, string? placeholder)
+    {
+        if (!DateOnly.TryParseExact(iso, "yyyy-MM-dd", out var date)) return "";
+        if (type == "date") return iso;
+        var hint = (placeholder ?? "").ToLowerInvariant();
+        var separator = hint.Contains('-') ? "-" : "/";
+        var format = hint.StartsWith("yyyy", StringComparison.Ordinal) || hint.StartsWith("aaaa", StringComparison.Ordinal) ? $"yyyy{separator}MM{separator}dd"
+            : hint.StartsWith("mm", StringComparison.Ordinal) ? $"MM{separator}dd{separator}yyyy"
+            : hint.StartsWith("dd", StringComparison.Ordinal) || CustomAnswer.Normalize(label).Contains("nascimento", StringComparison.Ordinal)
+                || CustomAnswer.Normalize(label).Contains("nacimiento", StringComparison.Ordinal) ? $"dd{separator}MM{separator}yyyy" : $"MM{separator}dd{separator}yyyy";
+        return date.ToString(format, System.Globalization.CultureInfo.InvariantCulture);
+    }
 }

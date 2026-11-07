@@ -6,6 +6,7 @@
       @if (p.version > 0) { <span class="faint mono">versão {{ p.version }}</span> }
     }
     <button type="button" class="btn" (click)="linkedin.set(true)"><img class="li-logo" src="/logos/brands/linkedin-in.svg" alt="" width="16" height="16" />{{ link.value()?.connected ? 'Atualizar o LinkedIn' : 'Conectar LinkedIn' }}</button>
+    <button type="button" class="btn primary" (click)="formSetup.set(true)">Configurar dados para formulários</button>
   </jo-page-hero>
   @if (profile.problem(); as e) { <p class="problem">{{ e.detail }}</p> }
   @if (sending.problem(); as e) { <p class="problem">{{ e.detail }}</p> }
@@ -298,3 +299,9 @@
 </section>
 
 @if (linkedin()) { <app-linkedin-import (close)="linkedin.set(false)" (changed)="profile.reload(); link.reload()" /> }
+
+@if (formSetup()) {
+  <jo-wizard [steps]="['Seus dados']" [step]="1" label="Dados para formulários" (close)="formSetup.set(false)">
+    <app-form-profile (saved)="formSetup.set(false); profile.reload(); answers.reload()" />
+  </jo-wizard>
+}

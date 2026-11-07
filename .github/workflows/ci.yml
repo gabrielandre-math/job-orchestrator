@@ -17,6 +17,7 @@ concurrency:
 
 jobs:
   backend:
+    needs: web
     runs-on: ubuntu-latest
     timeout-minutes: 30
     services:
@@ -40,9 +41,23 @@ jobs:
       - name: Unit tests
         working-directory: backend
         run: dotnet test tests/JobOrchestrator.Tests --no-build --filter "Category!=E2E"
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-build
+          path: web-ui
       - name: Database and flow tests
+        env:
+          JO_WEB_TEST_ROOT: ${{ github.workspace }}/web-ui
+          JO_UI_SCREENSHOTS: ${{ github.workspace }}/ui-screenshots
         working-directory: backend
         run: dotnet test tests/JobOrchestrator.Tests --no-build --filter "Category=E2E"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ui-screenshots
+          path: ui-screenshots
+          if-no-files-found: ignore
 
   web:
     runs-on: ubuntu-latest
@@ -60,5 +75,10 @@ jobs:
       - name: Build
         working-directory: web
         run: npx ng build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: web/dist/app/browser
+          if-no-files-found: error
       - name: Extension extraction tests
         run: npm ci --prefix tests/extension && npm test --prefix tests/extension

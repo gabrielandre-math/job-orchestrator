@@ -11,6 +11,7 @@ import { SearchRun } from '../../core/search';
 import { describeSource } from '../../core/sources';
 import { Wizard } from '../../shared/wizard';
 import { Connect } from '../providers/connect';
+import { FormProfile } from '../profile/form-profile';
 import { LinkedInImport } from '../profile/linkedin-import';
 
 interface Pick { source: string; why: string; on: boolean; test: SourceTestResult | null; testing: boolean }
@@ -21,7 +22,7 @@ interface Pick { source: string; why: string; on: boolean; test: SourceTestResul
  */
 @Component({
   selector: 'app-welcome',
-  imports: [Company, Connect, Icon, Iso, LinkedInImport, Mark, Wizard],
+  imports: [Company, Connect, Icon, Iso, LinkedInImport, Mark, Wizard, FormProfile],
   templateUrl: './welcome.html',
   styleUrl: './welcome.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -113,7 +114,7 @@ export class Welcome {
   }
 
   protected async propose() {
-    this.step.set(4);
+    this.step.set(5);
     if (this.proposal()) return;
     const p = await this.proposing.run();
     if (!p) return;
@@ -136,7 +137,7 @@ export class Welcome {
 
   protected async finish() {
     if ((await this.applying.run()) === null) return;
-    this.step.set(5);
+    this.step.set(6);
     await this.search.start();
   }
   /** O passo seguinte do primeiro uso: fecha este e abre o Automatizar tudo no Início. */

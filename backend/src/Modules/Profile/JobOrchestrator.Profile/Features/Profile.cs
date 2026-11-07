@@ -186,6 +186,22 @@ internal sealed class ConfirmProfileHandler(ProfileDbContext db, TimeProvider ti
     }
 }
 
+internal sealed record SetFormPreferencesCommand(Confirmations Confirmations) : ICommand<Done>, IProfileCommand;
+internal sealed class SetFormPreferencesValidator : AbstractValidator<SetFormPreferencesCommand>
+{
+    public SetFormPreferencesValidator() => RuleFor(c => new ConfirmProfileCommand(c.Confirmations, null)).SetValidator(new ConfirmProfileValidator());
+}
+internal sealed class SetFormPreferencesHandler(ProfileDbContext db, TimeProvider time) : ICommandHandler<SetFormPreferencesCommand, Done>
+{
+    public async Task<Result<Done>> Handle(SetFormPreferencesCommand c, CancellationToken ct)
+    {
+        var profile = await db.CurrentAsync(ct);
+        if (profile is null) return Error.NotFound("profile-not-found", "Envie o currículo ou salve os dados pessoais primeiro.");
+        profile.SetFormPreferences(c.Confirmations with { Cities = [.. c.Confirmations.Cities.Select(x => x.Trim()).Where(x => x.Length > 0)] }, time.GetUtcNow().UtcDateTime);
+        return new Done();
+    }
+}
+
 /// <summary>Rotas HTTP (Carter) do perfil.</summary>
 internal sealed class ProfileEndpoints : ICarterModule
 {
@@ -204,6 +220,8 @@ internal sealed class ProfileEndpoints : ICarterModule
         group.MapDelete("", async (ISender sender, CancellationToken ct) => (await sender.Send(new ResetProfileCommand(), ct)).ToHttp(_ => Results.NoContent()));
         group.MapDelete("documents/{id:guid}", async (Guid id, ISender sender, CancellationToken ct) => (await sender.Send(new RemoveDocumentCommand(id), ct)).ToHttp(Results.Ok));
         group.MapPut("identity", async (SetIdentityCommand body, ISender sender, CancellationToken ct) =>
+            (await sender.Send(body, ct)).ToHttp(_ => Results.NoContent()));
+        group.MapPut("form-preferences", async (SetFormPreferencesCommand body, ISender sender, CancellationToken ct) =>
             (await sender.Send(body, ct)).ToHttp(_ => Results.NoContent()));
         group.MapPut("confirmations", async (ConfirmProfileCommand body, ISender sender, CancellationToken ct) =>
             (await sender.Send(body, ct)).ToHttp(_ => Results.NoContent()));
