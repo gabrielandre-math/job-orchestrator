@@ -264,7 +264,7 @@
             @if (j.seniority) { <span class="tag">{{ j.seniority }}</span> }
             @if (j.contract) { <span class="tag">{{ j.contract }}</span> }
             @if (j.salaryText) { <span class="tag money">{{ j.salaryText }}</span> }
-            @if (j.applyChannel !== 'ats') { <span class="tag manual">{{ channel(j.applyChannel) }}</span> }
+            @if (j.sentBy) { <span class="tag">envio pelo app: {{ j.sentBy }}</span> } @else { <span class="tag manual">{{ channel(j.applyChannel === 'ats' ? 'manual' : j.applyChannel) }}</span> }
           </span>
           @if (j.stack.length > 0) {
             <span class="techs">

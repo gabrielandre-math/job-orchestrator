@@ -26,6 +26,8 @@ internal record JobRow
     public string? Eligibility { get; init; }
     public string? EligibilityEvidence { get; init; }
     public string ApplyChannel { get; init; } = "";
+    /// <summary>The platform the app fills and sends by itself for this job, or null when the sending is yours (copilot, e-mail, link).</summary>
+    public string? SentBy { get; init; }
     public string? ApplyEmail { get; init; }
     public string[] Stack { get; init; } = [];
     public string? CompanyDomain { get; init; }
@@ -34,7 +36,7 @@ internal record JobRow
 /// <summary>Consulta (CQRS): as vagas, com filtro por situação e busca por texto.</summary>
 internal sealed record ListJobsQuery(string? Status, string? Search) : IQuery<IReadOnlyList<JobRow>>;
 
-internal sealed class ListJobsHandler(IReadDb<JobsDbContext> db) : IQueryHandler<ListJobsQuery, IReadOnlyList<JobRow>>
+internal sealed class ListJobsHandler(IReadDb<JobsDbContext> db, IAutomationApi automation) : IQueryHandler<ListJobsQuery, IReadOnlyList<JobRow>>
 {
     private const string Sql = """
         select id, company, title, location, status, score, confidence, reason, apply_url, source, first_seen_at, last_verified_at, open, duplicate_of,
@@ -46,8 +48,15 @@ internal sealed class ListJobsHandler(IReadDb<JobsDbContext> db) : IQueryHandler
         limit 500
         """;
 
-    public async Task<Result<IReadOnlyList<JobRow>>> Handle(ListJobsQuery q, CancellationToken ct) =>
-        Result<IReadOnlyList<JobRow>>.Ok(await db.ListAsync<JobRow>(Sql, new { q.Status, Search = string.IsNullOrWhiteSpace(q.Search) ? null : q.Search.Trim() }, ct));
+    public async Task<Result<IReadOnlyList<JobRow>>> Handle(ListJobsQuery q, CancellationToken ct)
+    {
+        var rows = await db.ListAsync<JobRow>(Sql, new { q.Status, Search = string.IsNullOrWhiteSpace(q.Search) ? null : q.Search.Trim() }, ct);
+        // Collecting a job is not sending it: each row says if an adapter of the app sends it, before you trust the night with it.
+        return Result<IReadOnlyList<JobRow>>.Ok([.. rows.Select(r => r with
+        {
+            SentBy = automation.CapabilityOf(r.ApplyUrl, r.ApplyChannel) is { Channel: "ats", Platform: { } p } ? p.Replace("Formulário ", "") : null
+        })]);
+    }
 }
 
 /// <summary>A vaga aberta: dados, fatores da nota e trecho da descrição.</summary>
