@@ -10,6 +10,8 @@ set -euo pipefail
 R="$(cd "$(dirname "$0")/.." && pwd)"
 V="$(grep -oP '(?<=<Version>)[^<]+' "$R/backend/src/Bootstrappers/JobOrchestrator.App/JobOrchestrator.App.csproj")"
 D="$R/dist"
+SOURCE_SHA="${JO_SOURCE_SHA:-$(git -C "$R" rev-parse HEAD)}"
+[[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo 'SHA de origem inválido' >&2; exit 1; }
 export DOTNET_SYSTEM_NET_DISABLEIPV6=1
 if [ $# -eq 0 ]; then set -- linux-x64; fi
 if [ "$1" = all ]; then set -- linux-x64 linux-arm64 osx-arm64 osx-x64 win-x64 win-arm64; fi
@@ -33,6 +35,10 @@ python3 "$R/scripts/icons.py" "$D/icons" >/dev/null
 # Os arquivos do app que não são o binário: painel, coletor, compose, abertura, ícone e extensão.
 resources() {
   local to="$1" rid="$2"
+  python3 - "$to/build-info.json" "$V" "$SOURCE_SHA" "$rid" <<'PY'
+import json, pathlib, sys
+pathlib.Path(sys.argv[1]).write_text(json.dumps(dict(version=sys.argv[2], source_sha=sys.argv[3], runtime=sys.argv[4]), indent=2) + '\n')
+PY
   cp -r "$R/web/dist/app/browser" "$to/wwwroot"
   mkdir -p "$to/scraper" && (cd "$R/scraper" && tar --exclude='__pycache__' --exclude='*.egg-info' -cf - .) | tar -xf - -C "$to/scraper"
   cp "$R/infra/compose.yaml" "$to/compose.yaml"
@@ -51,7 +57,7 @@ publish() {
   rm -rf "$out" && mkdir -p "$out"
   dotnet publish "$R/backend/src/Bootstrappers/JobOrchestrator.App" -c Release -r "$rid" --self-contained \
     -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=false -p:EnableCompressionInSingleFile=true -p:DebugType=none \
-    -p:GenerateDocumentationFile=false -p:UseSharedCompilation=false "${extra[@]}" -o "$out" -v q -nologo -m:2 -nodeReuse:false
+    -p:GenerateDocumentationFile=false -p:UseSharedCompilation=false -p:SourceRevisionId="$SOURCE_SHA" "${extra[@]}" -o "$out" -v q -nologo -m:2 -nodeReuse:false
   rm -f "$out/playwright.ps1" "$out"/*.staticwebassets.endpoints.json
   # O driver do Playwright (Node) só da plataforma do pacote: o publish traz também o da máquina que compila (uns 120 MB a mais).
   local plat

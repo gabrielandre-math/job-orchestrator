@@ -26,7 +26,7 @@ public sealed class SubmissionEvidenceTests
         using var folder = new TestFiles();
         var adapter = new GreenhouseLikeForm(browser, new HttpFactory(), folder.Key, TimeProvider.System, options);
         var result = await adapter.PrepareAsync(new(Guid.NewGuid(), site.Url + "/job"), folder.Bundle, default);
-        Assert.Equal(AdapterResultKind.NeedsHuman, result.Kind);
+        Assert.Equal(AdapterResultKind.Unsupported, result.Kind);
         var question = Assert.Single(result.Questions!);
         Assert.Equal("Describe a feature you owned", question.Label);
         Assert.Equal("textarea", question.Kind);

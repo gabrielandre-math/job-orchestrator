@@ -46,6 +46,7 @@ internal sealed class AuthorizationEndpoints : ICarterModule
             };
             db.Authorizations.Add(auth);
             campaign.EnableAuto(auth, now);
+            db.Publish(AutoSubmitGrantedV1.EventType, new AutoSubmitGrantedV1(id, auth.AcceptDeclarations, now), now);
             await db.SaveChangesAsync(ct);
             return Results.Ok(new { auth.Id, auth.ExpiresAt });
         });

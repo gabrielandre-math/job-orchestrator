@@ -1,0 +1,164 @@
+name: release
+
+on:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-main
+  cancel-in-progress: false
+
+jobs:
+  revision:
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.version.outputs.sha }}
+      version: ${{ steps.version.outputs.version }}
+      publish: ${{ steps.version.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+      - id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          version="$(python3 -c 'import xml.etree.ElementTree as E; print(E.parse("backend/src/Bootstrappers/JobOrchestrator.App/JobOrchestrator.App.csproj").findtext("PropertyGroup/Version"))')"
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          tags="$(gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --json tagName --jq '.[].tagName')"
+          echo "sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if echo "$tags" | grep -Fxq "v$version"; then echo 'publish=false' >> "$GITHUB_OUTPUT"; else echo 'publish=true' >> "$GITHUB_OUTPUT"; fi
+
+  packages:
+    needs: revision
+    if: needs.revision.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: jo_release
+          POSTGRES_USER: jo
+          POSTGRES_PASSWORD: jo-test
+        ports: ['5462:5432']
+        options: >-
+          --health-cmd "pg_isready -U jo -d jo_release" --health-interval 2s --health-retries 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.revision.outputs.sha }}
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: backend/global.json
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: sudo apt-get update && sudo apt-get install -y librsvg2-bin zip
+      - run: npm ci --prefix web
+      - name: Build the six existing distribution targets
+        env:
+          JO_SOURCE_SHA: ${{ needs.revision.outputs.sha }}
+        run: scripts/package.sh all
+      - name: Check and stage packages
+        env:
+          VERSION: ${{ needs.revision.outputs.version }}
+          SOURCE_SHA: ${{ needs.revision.outputs.sha }}
+        run: |
+          set -euo pipefail
+          dist/job-orchestrator-$VERSION-linux-x64/job-orchestrator --version | grep -F "Job Orchestrator $VERSION"
+          python3 -c 'import json,os; d=json.load(open("dist/job-orchestrator-"+os.environ["VERSION"]+"-linux-x64/build-info.json")); assert d["source_sha"] == os.environ["SOURCE_SHA"]'
+          python3 scripts/check-package.py "dist/job-orchestrator-$VERSION-linux-x64" --version "$VERSION" --sha "$SOURCE_SHA"
+          mkdir -p release-assets mac-inputs
+          for arch in x64 arm64; do
+            cp "dist/job-orchestrator-$VERSION-linux-$arch.tar.gz" "release-assets/job-orchestrator-linux-$arch.tar.gz"
+            cp "dist/job-orchestrator-$VERSION-win-$arch.zip" "release-assets/job-orchestrator-windows-$arch.zip"
+            cp "dist/JobOrchestrator-Setup-$VERSION-$arch.exe" "release-assets/job-orchestrator-windows-$arch-setup.exe"
+            cp "dist/job-orchestrator-$VERSION-osx-$arch.zip" "mac-inputs/app-$arch.zip"
+          done
+          cp dist/job-orchestrator-instalador.run release-assets/job-orchestrator-linux-x64.run
+          cp dist/job-orchestrator-instalador-arm64.run release-assets/job-orchestrator-linux-arm64.run
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-assets
+          path: release-assets/*
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac-inputs
+          path: mac-inputs/*
+          if-no-files-found: error
+
+  mac-images:
+    needs: [revision, packages]
+    runs-on: macos-15
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [arm64, x64]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.revision.outputs.sha }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: mac-inputs
+          path: mac-inputs
+      - name: Sign and build disk image with the existing packaging script
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: |
+          set -euo pipefail
+          cp "mac-inputs/app-$ARCH.zip" packaging/macos/app.zip
+          bash packaging/macos/sign.sh "job-orchestrator-macos-$ARCH"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac-image-${{ matrix.arch }}
+          path: packaging/macos/job-orchestrator-macos-${{ matrix.arch }}.dmg
+          if-no-files-found: error
+
+  publish:
+    needs: [revision, packages, mac-images]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.revision.outputs.sha }}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-assets
+          path: published
+          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: mac-image-*
+          path: published
+          merge-multiple: true
+      - name: Publish the existing release distribution and refresh Pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.revision.outputs.version }}
+          SOURCE_SHA: ${{ needs.revision.outputs.sha }}
+          CI_RUN_URL: ${{ github.event.workflow_run.html_url }}
+        run: |
+          set -euo pipefail
+          python3 -c 'import json,os,pathlib; pathlib.Path("published/release-manifest.json").write_text(json.dumps(dict(version=os.environ["VERSION"], source_sha=os.environ["SOURCE_SHA"], ci_run=os.environ["CI_RUN_URL"]), indent=2)+"\n")'
+          (cd published && sha256sum *.run *.tar.gz *.zip *.exe *.dmg release-manifest.json > SHA256SUMS.txt)
+          gh release create "v$VERSION" published/* --repo "$GITHUB_REPOSITORY" --target "$SOURCE_SHA" --title "v$VERSION" --notes-file "docs/RELEASE_NOTES_$VERSION.md" --draft
+          gh release edit "v$VERSION" --repo "$GITHUB_REPOSITORY" --draft=false --latest
+          gh workflow run pages.yml --repo "$GITHUB_REPOSITORY" --ref main

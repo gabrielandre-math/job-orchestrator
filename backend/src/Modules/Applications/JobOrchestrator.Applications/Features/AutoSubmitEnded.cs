@@ -17,6 +17,9 @@ internal sealed class AutoSubmitEndedConsumer(ApplicationsDbContext db, TimeProv
         var ready = await db.Applications.Where(a => a.CampaignId == ended.CampaignId && a.State == ApplicationState.ReadyToSubmit
             && db.Approvals.Where(p => p.ApplicationId == a.Id).OrderByDescending(p => p.At).Select(p => p.ByAuthorization).FirstOrDefault()).ToListAsync(ct);
         foreach (var app in ready) app.Move(ApplicationState.AwaitingApproval, "O envio automático foi desligado: esta vaga espera a sua aprovação.", "Guardião", now);
+        // The send that was waiting for tomorrow under the authorization is dropped: approving or a new authorization schedules its own.
+        var ids = ready.Select(a => a.Id).ToList();
+        foreach (var w in await db.WorkItems.Where(w => ids.Contains(w.ApplicationId) && w.Step == WorkStep.Submit && w.CompletedAt == null).ToListAsync(ct)) w.Complete(now);
         await db.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
     }

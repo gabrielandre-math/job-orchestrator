@@ -174,7 +174,7 @@ internal sealed class PrepareStep(StepKit k, Answerer answerer) : IStep
                     break;
                 }
                 var detail = outcome.Questions is { Count: > 0 } && await answerer.RefusalsAsync(app.Id, ct) is { } refused ? $"{outcome.Detail} {refused}" : outcome.Detail;
-                app.Move(ApplicationState.NeedsHuman, detail.Length > 500 ? detail[..499] + "…" : detail, "Preparador", now, new { outcome.ReasonCode, outcome.Route });
+                app.Move(ApplicationState.NeedsHuman, detail.Length > 500 ? detail[..499] + "…" : detail, "Preparador", now, new { outcome.ReasonCode, outcome.Route, outcome.Questions });
                 k.Db.AddTask(app.Id, StepKit.TaskFor(outcome.ReasonCode), outcome.ReasonCode == "captcha" ? "Resolver CAPTCHA" : outcome.ReasonCode == "login" ? "Entrar no site" : "Responder pergunta nova", detail.Length > 500 ? detail[..499] + "…" : detail, now);
                 break;
             case AdapterResultKind.PermanentFailure:

@@ -16,6 +16,7 @@ return args.FirstOrDefault() switch
     "--setup" => await Setup.RunAsync(),
     "--stop" => await Launcher.StopAsync(),
     "--status" => await Launcher.StatusAsync(),
+    "--diagnose" => await Launcher.DiagnoseAsync(),
     "--uninstall" => await Maintenance.UninstallAsync(args.Contains("--purge")),
     "--restore" when args.Length > 1 => await Maintenance.RestoreAsync(args[1]),
     "--backup" => await Maintenance.BackupAsync(),
@@ -26,6 +27,7 @@ return args.FirstOrDefault() switch
         job-orchestrator --serve         roda os serviços neste terminal
         job-orchestrator --setup         abre o instalador
         job-orchestrator --status        mostra se está no ar
+        job-orchestrator --diagnose      conta os bloqueios da fila local, sem currículo ou credenciais
         job-orchestrator --mcp           conector MCP (Claude Code, Claude Desktop): claude mcp add job-orchestrator -- job-orchestrator --mcp
         job-orchestrator --stop          para os serviços
         job-orchestrator --backup        copia o banco agora (com o app no ar)

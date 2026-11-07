@@ -18,6 +18,7 @@ internal static class Launcher
     public static string Home => AppPaths.Resources;
     public static string Exe => Environment.ProcessPath ?? Desktop.Exe(Desktop.Source);
     public static string Version => typeof(Launcher).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0] ?? "1.0.0";
+    public static string SourceRevision => typeof(Launcher).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+').ElementAtOrDefault(1) ?? "unknown";
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(2) };
 
     /// <summary>Marca da instalação (versão, pasta e quando), gravada no fim do instalador.</summary>
@@ -28,6 +29,58 @@ internal static class Launcher
     public static bool FromTarget => string.Equals(Path.GetFullPath(Desktop.Source), Path.GetFullPath(Desktop.Target).TrimEnd(Path.DirectorySeparatorChar), OperatingSystem.IsLinux() ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase);
 
     public static int Print(string text) { Console.WriteLine(text); return 0; }
+
+    /// <summary>Read-only diagnosis of the running local instance; never includes profile facts, names, contacts or credentials.</summary>
+    public static async Task<int> DiagnoseAsync()
+    {
+        try
+        {
+            using var diagnosticHttp = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
+            using var health = System.Text.Json.JsonDocument.Parse(await diagnosticHttp.GetStringAsync($"{Url}/api/health"));
+            using var overview = System.Text.Json.JsonDocument.Parse(await diagnosticHttp.GetStringAsync($"{Url}/api/overview"));
+            using var applications = System.Text.Json.JsonDocument.Parse(await diagnosticHttp.GetStringAsync($"{Url}/api/applications"));
+            var items = applications.RootElement.EnumerateArray().ToArray();
+            var blocked = items.Where(a => a.GetProperty("state").GetString() is "NeedsHuman" or "AwaitingApproval" or "ManualHandoff" or "PausedProvider" or "Failed" or "DeadLetter");
+            var reasons = blocked.GroupBy(a => new { State = a.GetProperty("state").GetString(), Reason = BlockReason(a.GetProperty("lastReason").GetString() ?? "") })
+                .Select(g => new { g.Key.State, g.Key.Reason, Count = g.Count() }).OrderByDescending(g => g.Count).ToArray();
+            var campaign = overview.RootElement.GetProperty("campaign");
+            Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(new
+            {
+                Health = health.RootElement,
+                Campaign = campaign.ValueKind == System.Text.Json.JsonValueKind.Object ? new
+                {
+                    Mode = campaign.GetProperty("mode"), MinFitScore = campaign.GetProperty("minFitScore"),
+                    MaxSubmissionsPerDay = campaign.GetProperty("maxSubmissionsPerDay"), Sources = campaign.GetProperty("sources")
+                } : null,
+                Counts = overview.RootElement.GetProperty("applications"),
+                ConfirmedToday = overview.RootElement.GetProperty("confirmedToday"),
+                Blockers = reasons, SampledApplications = items.Length, SampleLimit = 500,
+                Scope = "Leitura da instalação local. Não testa login, CAPTCHA ou envio externo e não envia dados."
+            }, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web) { WriteIndented = true }));
+            return 0;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException or KeyNotFoundException or InvalidOperationException)
+        {
+            Console.Error.WriteLine("Não foi possível ler o diagnóstico. Abra o app e confira se a API local está disponível em 127.0.0.1:7410.");
+            return 1;
+        }
+    }
+
+    private static string BlockReason(string reason)
+    {
+        var text = reason.ToLowerInvariant();
+        if (text.Contains("captcha") || text.Contains("anti-robô")) return "captcha";
+        if (text.Contains("login") || text.Contains("código de verificação")) return "login";
+        if (text.Contains("declaraç") || text.Contains("privacidade")) return "declaration";
+        if (text.Contains("pergunta") || text.Contains("resposta aprovada") || text.Contains("marcar opções")) return "question";
+        if (text.Contains("revisão cruzada") || text.Contains("revisado") || text.Contains("revisão do currículo")) return "resume-review";
+        if (text.Contains("perfil") || text.Contains("sintético")) return "profile";
+        if (text.Contains("provedor") || text.Contains("modelo")) return "provider";
+        if (text.Contains("currículo")) return "resume";
+        if (text.Contains("autorização") || text.Contains("aprovação")) return "authorization";
+        if (text.Contains("limite") || text.Contains("teto")) return "limit";
+        return "other";
+    }
 
     public static async Task<int> OpenAsync()
     {

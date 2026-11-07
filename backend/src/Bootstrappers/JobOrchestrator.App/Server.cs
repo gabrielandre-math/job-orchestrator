@@ -64,7 +64,7 @@ internal static class Server
 
         app.UseExceptionHandler();
         app.MapOpenApi("/api/openapi.json");
-        app.MapGet("/api/health", () => Results.Ok(new { status = "ok", app = "job-orchestrator", version = Launcher.Version, platform = Platform.Os })).WithTags("Health");
+        app.MapGet("/api/health", () => Results.Ok(new { status = "ok", app = "job-orchestrator", version = Launcher.Version, sourceRevision = Launcher.SourceRevision, platform = Platform.Os })).WithTags("Health");
         var token = Convert.ToHexStringLower(System.Security.Cryptography.RandomNumberGenerator.GetBytes(24));
         var tokenFile = Path.Combine(AppPaths.In(AppPaths.Data, "run"), "control.token");
         File.WriteAllText(tokenFile, token);
