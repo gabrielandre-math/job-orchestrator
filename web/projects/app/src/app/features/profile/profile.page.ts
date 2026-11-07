@@ -1,3 +1,5 @@
+import { FormProfile } from './form-profile';
+import { Wizard } from '../../shared/wizard';
 import { ChangeDetectionStrategy, Component, computed, effect, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Badge } from '@jo/ui/badge';
@@ -20,12 +22,13 @@ const COUNTRIES: [string, string][] = [['BR', 'Brasil'], ['US', 'Estados Unidos'
  */
 @Component({
   selector: 'app-profile',
-  imports: [RouterLink, Badge, Icon, Iso, LinkedInImport, PageHero],
+  imports: [RouterLink, Badge, Icon, Iso, LinkedInImport, PageHero, FormProfile, Wizard],
   templateUrl: './profile.page.html',
   styleUrl: './profile.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ProfilePage {
+  protected readonly formSetup = signal(false);
   protected readonly profile = query<Profile>(() => '/profile', 3000);
   protected readonly answers = query<Record<string, string>>(() => '/profile/answers?lang=pt', 0);
   protected readonly dragging = signal(false);

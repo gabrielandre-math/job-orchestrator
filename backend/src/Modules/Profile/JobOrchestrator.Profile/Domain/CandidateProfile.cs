@@ -265,6 +265,13 @@ internal sealed class CandidateProfile : AggregateRoot
         Touch(now);
     }
 
+    /// <summary>User-confirmed form preferences are independent of decisions about inferred CV facts.</summary>
+    public void SetFormPreferences(Confirmations c, DateTime now)
+    {
+        ConfirmationsJson = JsonSerializer.Serialize(c with { ConfirmedAt = now }, JsonSerializerOptions.Web);
+        Touch(now);
+    }
+
     /// <summary>A tela única: decisões sobre o que o modelo inferiu e as respostas que só você pode dar.</summary>
     public void Confirm(Confirmations c, IReadOnlyDictionary<Guid, bool> decisions, DateTime now)
     {

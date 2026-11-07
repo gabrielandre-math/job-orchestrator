@@ -193,10 +193,12 @@ internal abstract partial class LabelForm
                 fields.Add(new FieldValue(label, match, source));
                 continue;
             }
+            if (value is not null && PersonalAnswer.IsBirthDate(label))
+                value = PersonalAnswer.FormatBirthDate(value, label, f.Type, await control.GetAttributeAsync("placeholder"));
             if (f.Type == "number" && value is not null) value = Digits(value);
             if (string.IsNullOrEmpty(value))
             {
-                if (f.Required) missing.Add(new FormQuestion(label, f.Tag == "textarea" ? "textarea" : f.Type == "number" ? "number" : "text", []));
+                if (f.Required) missing.Add(new FormQuestion(label, PersonalAnswer.IsBirthDate(label) ? "date" : f.Tag == "textarea" ? "textarea" : f.Type == "number" ? "number" : "text", []));
                 continue;
             }
             await control.FillAsync(value);

@@ -1,0 +1,33 @@
+<div class="setup-intro"><jo-iso [name]="step() === 1 ? 'identity' : 'gate'" [size]="88" /><div><span class="eyebrow">DADOS PARA CANDIDATURAS · {{ step() }} DE 2</span><h2>{{ step() === 1 ? 'Conte uma vez. Evite paradas depois.' : 'Suas preferências viram respostas.' }}</h2><p class="muted">{{ step() === 1 ? 'Confira o que veio do currículo e complete os campos. O app usa suas respostas nos formulários que pedirem.' : 'O app responde com o que você confirmar aqui. Uma pergunta nova abre um pedido de resposta dentro do programa.' }}</p></div></div>
+@if (loadError()) { <p class="problem" role="alert">{{ loadError() }}</p><button type="button" class="btn" (click)="load()">Tentar de novo</button> }
+@if (loaded()) {
+  <form (submit)="$event.preventDefault(); step() === 1 ? next() : save()">
+    @if (step() === 1) {
+      <div class="fields">
+        <label class="field">Nome completo<input required autocomplete="name" maxlength="160" [value]="identity().fullName" (input)="id('fullName', $any($event.target).value)" /></label>
+        <label class="field">E-mail para candidaturas<input required type="email" autocomplete="email" [value]="identity().email ?? ''" (input)="id('email', $any($event.target).value)" /></label>
+        <label class="field">Telefone<input required type="tel" autocomplete="tel" [value]="identity().phone ?? ''" (input)="id('phone', $any($event.target).value)" /></label>
+        <label class="field">Cidade e estado<input required autocomplete="address-level2" [value]="identity().location ?? ''" (input)="id('location', $any($event.target).value)" placeholder="Cidade, UF" /></label>
+        <label class="field">Data de nascimento <span class="faint small">opcional</span><input type="date" autocomplete="bday" [max]="today" [value]="birthDate()" (input)="birthDate.set($any($event.target).value)" /><span class="faint small">Só para formulários que pedirem. Fica fora do currículo e dos prompts de IA.</span></label>
+        <label class="field">LinkedIn <span class="faint small">opcional</span><input type="url" [value]="identity().linkedIn ?? ''" (input)="id('linkedIn', $any($event.target).value)" placeholder="https://linkedin.com/in/…" /></label>
+        <label class="field">GitHub <span class="faint small">opcional</span><input type="url" [value]="identity().gitHub ?? ''" (input)="id('gitHub', $any($event.target).value)" /></label>
+        <label class="field">Portfólio <span class="faint small">opcional</span><input type="url" [value]="identity().website ?? ''" (input)="id('website', $any($event.target).value)" /></label>
+      </div>
+    } @else if (preferences(); as p) {
+      <div class="fields">
+        <label class="field">Países onde tem autorização para trabalhar<input required [value]="p.authorizedCountries.join(', ')" (input)="countries($any($event.target).value)" placeholder="BR, US" /><span class="faint small">Use as siglas; morar no país não garante autorização.</span></label>
+        <label class="check"><input type="checkbox" [checked]="p.needsSponsorship" (change)="pref('needsSponsorship', $any($event.target).checked)" />Preciso de patrocínio de visto</label>
+        <label class="field">Pretensão CLT · R$/mês<input type="number" min="1000" max="200000" [value]="p.floorCltBrl ?? ''" (input)="amount('floorCltBrl', $any($event.target).value)" /></label>
+        <label class="field">Pretensão PJ · R$/mês<input type="number" min="1000" max="300000" [value]="p.floorPjBrl ?? ''" (input)="amount('floorPjBrl', $any($event.target).value)" /></label>
+        <label class="field">Pretensão internacional · US$/mês<input type="number" min="500" max="60000" [value]="p.floorUsdMonth ?? ''" (input)="amount('floorUsdMonth', $any($event.target).value)" /></label>
+        <label class="field">Quando pode começar<input [value]="p.startAvailability ?? ''" (input)="pref('startAvailability', $any($event.target).value || null)" placeholder="Ex.: em 30 dias" /></label>
+        <label class="field">Nível de inglês<select [value]="p.englishLevel ?? ''" (change)="pref('englishLevel', $any($event.target).value || null)"><option value="">Não informado</option><option value="basic">Básico</option><option value="intermediate">Intermediário</option><option value="advanced">Avançado</option><option value="fluent">Fluente</option><option value="native">Nativo</option></select></label>
+        <fieldset><legend>Modalidades aceitas</legend><label class="check"><input type="checkbox" [checked]="p.modalities.includes('remote')" (change)="modality('remote', $any($event.target).checked)" />Remoto</label><label class="check"><input type="checkbox" [checked]="p.modalities.includes('hybrid')" (change)="modality('hybrid', $any($event.target).checked)" />Híbrido</label><label class="check"><input type="checkbox" [checked]="p.modalities.includes('onsite')" (change)="modality('onsite', $any($event.target).checked)" />Presencial</label></fieldset>
+        <label class="check"><input type="checkbox" [checked]="p.relocate" (change)="pref('relocate', $any($event.target).checked)" />Aceito mudar de cidade</label>
+      </div>
+    }
+    <p class="local"><jo-icon name="lock-simple" [size]="16" />Dados salvos localmente. Você pode editar no Perfil. Perguntas sem resposta continuam com você; nenhuma informação é inventada.</p>
+    @if (saving.problem(); as p) { <p class="problem" role="alert">{{ p.detail }}</p> }
+    <footer>@if (step() === 2) { <button type="button" class="btn" (click)="step.set(1)" [disabled]="saving.running()">Voltar aos dados</button> }<button type="submit" class="btn primary" [disabled]="!contactReady() || saving.running()">{{ saving.running() ? 'Salvando…' : step() === 1 ? 'Continuar' : 'Salvar dados e continuar' }}<jo-icon name="arrow-right" [size]="14" /></button></footer>
+  </form>
+}

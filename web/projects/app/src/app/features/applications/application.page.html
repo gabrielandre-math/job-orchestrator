@@ -8,7 +8,7 @@
       </div>
       <div class="actions">
         <jo-badge [label]="label(d.application.state)" [tone]="tone(d.application.state)" />
-        @if (d.hasResume) { <a class="btn" [href]="'/api/applications/' + d.application.id + '/resume'" target="_blank" rel="noopener">Currículo enviado (PDF)</a> }
+        @if (d.hasResume) { <a class="btn" [href]="'/api/applications/' + d.application.id + '/resume'" target="_blank" rel="noopener">Currículo preparado (PDF)</a> }
         <a class="btn" [href]="d.applyUrl" target="_blank" rel="noopener noreferrer">Vaga original</a>
         @if (closed(d.application.state)) {
           <button class="btn ghost" type="button" [disabled]="archiving.running()" (click)="archive()" title="Some das telas e das contagens; o histórico fica">Arquivar</button>
@@ -57,11 +57,12 @@
       <div class="decision panel">
         <div>
           <h2>Parada com você</h2>
-          <p class="muted">{{ d.application.lastReason }} Depois de resolver, refaça o preparo. Nada é reenviado sem nova aprovação.</p>
+          <p class="muted">{{ d.application.lastReason }} O envio segue a autorização e os limites atuais da campanha.</p>
         </div>
         <div class="actions">
           <button class="btn" type="button" (click)="doWithdraw()">Retirar</button>
-          <button class="btn primary" type="button" [disabled]="retry.running() || !d.hasResume" (click)="doRetry()">Refazer preparo</button>
+          @if (hasQuestions()) { <button class="btn primary" type="button" (click)="questions.open.set(true)">Completar respostas e continuar</button> }
+          @else { <button class="btn primary" type="button" [disabled]="retry.running() || !d.hasResume" (click)="doRetry()">Refazer preparo</button> }
         </div>
       </div>
     }

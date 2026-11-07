@@ -19,20 +19,29 @@ internal static class AnswerStore
     {
         lock (Gate)
         {
-            try { return File.Exists(FilePath) ? JsonSerializer.Deserialize<Dictionary<string, SavedAnswer>>(File.ReadAllText(FilePath), Json) ?? [] : []; }
+            try { return File.Exists(FilePath) ? (JsonSerializer.Deserialize<Dictionary<string, SavedAnswer>>(File.ReadAllText(FilePath), Json) ?? []).Values.OrderByDescending(a => a.At).DistinctBy(a => CustomAnswer.Key(a.Question)).ToDictionary(a => CustomAnswer.Key(a.Question)) : []; }
             catch (Exception ex) when (ex is JsonException or IOException) { return []; }
         }
     }
 
     public static void Save(string question, string? answer, DateTime now)
     {
+        SaveMany([new(question, answer)], now);
+    }
+
+    public static void SaveMany(IReadOnlyList<AnswerInput> answers, DateTime now)
+    {
         lock (Gate)
         {
             var all = Load();
-            var key = CustomAnswer.Key(question);
-            if (string.IsNullOrWhiteSpace(answer)) all.Remove(key); else all[key] = new SavedAnswer(question.Trim(), answer.Trim(), now);
+            foreach (var a in answers)
+            {
+                var key = CustomAnswer.Key(a.Question);
+                if (string.IsNullOrWhiteSpace(a.Answer)) all.Remove(key); else all[key] = new SavedAnswer(a.Question.Trim(), a.Answer.Trim(), now);
+            }
             var tmp = FilePath + ".tmp";
             File.WriteAllText(tmp, JsonSerializer.Serialize(all, Json));
+            if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(tmp, UnixFileMode.UserRead | UnixFileMode.UserWrite);
             File.Move(tmp, FilePath, overwrite: true);
         }
     }
@@ -43,13 +52,8 @@ internal sealed class AnswerEndpoints : ICarterModule
     public void AddRoutes(IEndpointRouteBuilder app)
     {
         var g = app.MapGroup("/api/applications/answers").WithTags("Applications");
-        g.MapGet("", () => Results.Ok(AnswerStore.Load().Values.OrderByDescending(a => a.At)));
-        g.MapPut("", (AnswerInput body, TimeProvider time) =>
-        {
-            if (string.IsNullOrWhiteSpace(body.Question) || body.Question.Length > 600) return Results.Problem("Pergunta vazia ou longa demais.", statusCode: 400);
-            if (body.Answer is { Length: > 2000 }) return Results.Problem("Resposta longa demais.", statusCode: 400);
-            AnswerStore.Save(body.Question, body.Answer, time.GetUtcNow().UtcDateTime);
-            return Results.NoContent();
-        });
+        g.MapGet("", () => Results.Ok(AnswerStore.Load().Values.OrderByDescending(a => a.At).Select(a => new { a.Question, a.Answer, a.At, Key = CustomAnswer.Key(a.Question) })));
+        g.MapPut("", async (AnswerInput body, ISender sender, CancellationToken ct) =>
+            (await sender.Send(new SaveFormAnswersCommand([body]), ct)).ToHttp(r => Results.Ok(r)));
     }
 }

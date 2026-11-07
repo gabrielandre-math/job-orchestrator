@@ -108,6 +108,26 @@ public sealed class SubmissionEvidenceTests
         }
     }
 
+    [Theory]
+    [InlineData("date", "", "2000-02-29")]
+    [InlineData("text", "DD/MM/AAAA", "29/02/2000")]
+    [InlineData("text", "MM/DD/YYYY", "02/29/2000")]
+    public async Task User_birth_date_fills_browser_controls_without_submitting(string type, string placeholder, string expected)
+    {
+        var html = Form("accepted").Replace("<button type=\"submit\">", $"<label for=bday>Data de nascimento</label><input id=bday type={type} placeholder='{placeholder}' required><button type=\"submit\">", StringComparison.Ordinal);
+        await using var site = await TestSite.StartAsync(app => app.MapGet("/job", () => Results.Content(html, "text/html")));
+        var options = Options.Create(new AutomationOptions { FakeAtsHosts = [new Uri(site.Url).Authority], Browser = new() { TimeoutSeconds = 2 } });
+        await using var browser = new BrowserPool(options, NullLogger<BrowserPool>.Instance);
+        using var folder = new TestFiles();
+        var bundle = folder.Bundle with { Answers = new Dictionary<string, string> { [CustomAnswer.Key("Date of birth")] = "2000-02-29" } };
+        foreach (IFormAdapter adapter in new IFormAdapter[] { new GenericForm(browser, new HttpFactory(), folder.Key, TimeProvider.System, options), new GreenhouseLikeForm(browser, new HttpFactory(), folder.Key, TimeProvider.System, options) })
+        {
+            var result = await adapter.PrepareAsync(new(Guid.NewGuid(), site.Url + "/job"), bundle, default);
+            Assert.True(result.Kind == AdapterResultKind.Completed, $"{adapter.Id}: {result.ReasonCode}: {result.Detail}");
+            Assert.Contains(result.Value!.Fields, f => f.Label == "Data de nascimento" && f.Value == expected);
+        }
+    }
+
     private static string Form(string mode) => $$"""
         <!doctype html><html><head><meta charset="utf-8"></head><body>
         {{(mode == "stale" ? "<p>Thank you for applying. Application received.</p>" : "")}}

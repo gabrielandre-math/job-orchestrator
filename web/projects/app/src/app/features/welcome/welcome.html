@@ -1,4 +1,4 @@
-<jo-wizard [steps]="['Boas-vindas', 'Sua IA', 'Seu currículo', 'Sua busca', 'Pronto']" [step]="step()" label="Primeiro contato" [wide]="step() === 4" (close)="later()">
+<jo-wizard [steps]="['Boas-vindas', 'Sua IA', 'Seu currículo', 'Seus dados', 'Sua busca', 'Pronto']" [step]="step()" label="Primeiro contato" [wide]="step() === 5" (close)="later()">
   @switch (step()) {
     @case (1) {
       <div class="wz-step">
@@ -6,7 +6,7 @@
           <jo-mark [size]="64" [animated]="true" [active]="true" />
           <div>
             <h2>Vamos montar a sua busca de emprego</h2>
-            <p class="muted">Em quatro passos: você conecta a sua IA, envia o currículo e o assistente propõe a busca inteira a partir dele, para qualquer área. Nada é enviado a empresa nenhuma sem o seu ok.</p>
+            <p class="muted">Você conecta a sua IA, envia o currículo, completa os dados para os formulários e o assistente propõe a busca inteira a partir dele, para qualquer área. Nada é enviado a empresa nenhuma sem o seu ok.</p>
           </div>
         </div>
         <ol class="promise">
@@ -93,7 +93,8 @@
         }
       </div>
     }
-    @case (4) {
+    @case (4) { <app-form-profile (saved)="propose()" /> }
+    @case (5) {
       <div class="wz-step">
         <div class="intro">
           <jo-iso name="selector" [size]="96" />
@@ -149,7 +150,7 @@
         }
       </div>
     }
-    @case (5) {
+    @case (6) {
       <div class="wz-step">
         <div class="intro">
           <jo-iso name="send" [size]="96" />
@@ -167,7 +168,7 @@
       </div>
     }
   }
-  @if (step() < 5) {
+  @if (step() < 6) {
     <footer class="wz-foot" wz-foot>
       @if (step() > 1) { <button type="button" class="btn ghost" (click)="step.set(step() - 1)"><jo-icon name="arrow-left" [size]="14" />Voltar</button> }
       @else { <button type="button" class="btn ghost" (click)="later()">Agora não</button> }
@@ -175,8 +176,8 @@
         @switch (step()) {
           @case (1) { <button type="button" class="btn primary" (click)="step.set(2)">Começar<jo-icon name="arrow-right" [size]="14" /></button> }
           @case (2) { <button type="button" class="btn primary" (click)="step.set(3)">{{ readyAccounts().length ? 'Continuar' : 'Continuar sem IA' }}<jo-icon name="arrow-right" [size]="14" /></button> }
-          @case (3) { <button type="button" class="btn primary" (click)="propose()" [disabled]="!realProfile() || reading()">Montar a minha busca<jo-icon name="arrow-right" [size]="14" /></button> }
-          @case (4) {
+          @case (3) { <button type="button" class="btn primary" (click)="step.set(4)" [disabled]="!realProfile() || reading()">Completar meus dados<jo-icon name="arrow-right" [size]="14" /></button> }
+          @case (5) {
             <button type="button" class="btn" (click)="redo()" [disabled]="proposing.running()"><jo-icon name="arrows-clockwise" [size]="14" />Refazer a proposta</button>
             <button type="button" class="btn primary" (click)="finish()" [disabled]="!proposal() || applying.running() || keywords().length === 0">Salvar e buscar agora</button>
           }

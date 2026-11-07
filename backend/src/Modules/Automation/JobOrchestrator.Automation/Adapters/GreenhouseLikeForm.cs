@@ -210,6 +210,8 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
                     continue;
                 }
                 var (value, source) = Resolve(text, type, m);
+                if (value is not null && PersonalAnswer.IsBirthDate(text))
+                    value = PersonalAnswer.FormatBirthDate(value, text, type, await control.GetAttributeAsync("placeholder"));
                 if (tag == "select")
                 {
                     var options = (await control.Locator("option").AllInnerTextsAsync()).Select(o => o.Trim()).Where(o => o.Length > 0 && !Placeholder().IsMatch(o)).ToList();
@@ -229,7 +231,7 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
                 if (type == "number" && value is not null) value = Digits(value);
                 if (string.IsNullOrEmpty(value))
                 {
-                    if (required) missing.Add(new FormQuestion(text, tag == "textarea" ? "textarea" : type == "number" ? "number" : "text", []));
+                    if (required) missing.Add(new FormQuestion(text, PersonalAnswer.IsBirthDate(text) ? "date" : tag == "textarea" ? "textarea" : type == "number" ? "number" : "text", []));
                     continue;
                 }
                 if (type == "file")
@@ -337,6 +339,9 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
     internal static (string? Value, string Source) Resolve(string label, string type, MaterialBundle m)
     {
         if (type == "file") return Resume().IsMatch(label) ? (m.ResumePdfPath, "currículo") : (null, "");
+        if (PersonalAnswer.IsBirthDate(label))
+            return m.Answers.TryGetValue(CustomAnswer.Key(label), out var birth) && PersonalAnswer.TryBirthDate(birth, DateOnly.FromDateTime(DateTime.UtcNow), out _)
+                ? (birth, "sua resposta pessoal") : (null, "");
         if (FullName().IsMatch(label)) return ($"{m.FirstName} {m.LastName}".Trim(), "perfil");
         if (FirstName().IsMatch(label)) return (m.FirstName, "perfil");
         if (LastName().IsMatch(label)) return (m.LastName, "perfil");

@@ -1,5 +1,6 @@
 import { inject, ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
+import { FormQuestions } from '../../core/form-questions';
 import { Copilot } from './copilot';
 import { InterviewPanel } from './interview-panel';
 import { Badge } from '@jo/ui/badge';
@@ -18,6 +19,8 @@ import { clock, evidenceLabel, stateLabel, stateTone } from '../../core/format';
 })
 export class ApplicationPage {
   readonly id = input.required<string>();
+  protected readonly questions = inject(FormQuestions);
+  protected readonly hasQuestions = computed(() => (this.questions.data.value() ?? []).some(q => q.applications.includes(this.id())));
   protected readonly data = query<ApplicationDetail>(() => `/applications/${this.id()}`, 3000);
   protected readonly approve = command((hash: string) => send('POST', `/applications/${this.id()}/approve`, { payloadHash: hash }));
   protected readonly withdraw = command(() => send('POST', `/applications/${this.id()}/withdraw`));

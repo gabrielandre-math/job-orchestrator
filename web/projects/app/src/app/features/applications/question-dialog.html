@@ -1,0 +1,36 @@
+<dialog #box class="answer-modal" aria-labelledby="questions-title" (cancel)="$event.preventDefault(); later()">
+  <div class="answer-layout">
+    <aside>
+      <jo-iso name="identity" [size]="128" />
+      <span class="eyebrow">SUAS RESPOSTAS</span>
+      <h2 id="questions-title">Você conta uma vez.<br />O app continua.</h2>
+      <p>Encontramos {{ questions().length }} pergunta(s) que precisam da sua resposta para continuar {{ affected() }} candidatura(s).</p>
+      <div class="local"><jo-icon name="lock-simple" [size]="18" /><span>Guardado nesta máquina. Estes dados não são enviados a modelos de IA.</span></div>
+    </aside>
+    <form (submit)="$event.preventDefault(); save()">
+      <header><h3>Complete o que falta</h3><button type="button" class="btn ghost" (click)="later()" [disabled]="saving.running()" aria-label="Responder depois"><jo-icon name="x" [size]="18" /></button></header>
+      <div class="answer-fields">
+        @for (q of questions(); track q.key + q.options.join('|')) {
+          <fieldset>
+            <legend>{{ q.label }}</legend>
+            <p class="faint small">{{ q.applications.length }} candidatura(s) aguardando</p>
+            @if (q.kind === 'date') {
+              <input type="date" required autocomplete="bday" [attr.aria-label]="q.label" [max]="today" [value]="values()[q.key] ?? ''" (input)="set(q.key, $any($event.target).value)" />
+              <p class="hint">Usada apenas quando o formulário pedir. Não aparece no currículo.</p>
+            } @else if (q.options.length && q.kind !== 'checkboxes') {
+              <select required [attr.aria-label]="q.label" [value]="values()[q.key] ?? ''" (change)="set(q.key, $any($event.target).value)"><option value="">Escolha sua resposta</option>@for (o of q.options; track o) { <option [value]="o">{{ o }}</option> }</select>
+            } @else if (q.kind === 'checkboxes') {
+              @for (o of q.options; track o) { <label class="check"><input type="checkbox" [checked]="(values()[q.key] ?? '').split('\n').includes(o)" (change)="tick(q, o, $any($event.target).checked)" />{{ o }}</label> }
+            } @else if (q.kind === 'confirm') {
+              <label class="check"><input type="checkbox" [checked]="values()[q.key] === 'Sim'" (change)="set(q.key, $any($event.target).checked ? 'Sim' : '')" />Confirmo esta afirmação sobre mim</label>
+            } @else {
+              <textarea required rows="3" maxlength="2000" [attr.aria-label]="q.label" [value]="values()[q.key] ?? ''" (input)="set(q.key, $any($event.target).value)"></textarea>
+            }
+          </fieldset>
+        }
+        @if (saving.problem(); as p) { <p class="problem" role="alert">{{ p.detail }}</p> }
+      </div>
+      <footer><p>Ao salvar, o app refaz o preparo das vagas afetadas. O envio segue o modo, a autorização e os limites da sua campanha.</p><div class="actions"><button type="button" class="btn" (click)="later()" [disabled]="saving.running()">Responder depois</button><button type="submit" class="btn primary" [disabled]="!ready() || saving.running()">{{ saving.running() ? 'Salvando…' : 'Salvar e continuar' }}<jo-icon name="arrow-right" [size]="15" /></button></div></footer>
+    </form>
+  </div>
+</dialog>

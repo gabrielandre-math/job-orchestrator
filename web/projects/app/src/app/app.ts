@@ -10,6 +10,8 @@ import { Theme } from './core/theme';
 import { Live } from './core/live';
 import { Toasts } from './core/toast';
 import { SearchRun } from './core/search';
+import { QuestionDialog } from './features/applications/question-dialog';
+import { FormQuestions } from './core/form-questions';
 import { Welcome } from './features/welcome/welcome';
 import { Quit } from './features/quit/quit';
 import { TermsDialog } from './features/terms/terms';
@@ -20,13 +22,14 @@ interface NavItem { path: string; label: string; icon: string; exact?: boolean; 
 /** Shell: barra lateral recolhível (lembrada neste navegador), contadores reais e o estado da API. */
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icon, Mark, Welcome, Quit, TermsDialog],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icon, Mark, Welcome, Quit, TermsDialog, QuestionDialog],
   templateUrl: './app.html',
   styleUrl: './app.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '[class.collapsed]': 'collapsed()', '[class.drawer-open]': 'drawer()' },
 })
 export class App {
+  protected readonly formQuestions = inject(FormQuestions);
   protected readonly theme = inject(Theme);
   protected readonly live = inject(Live);
   protected readonly toasts = inject(Toasts);
