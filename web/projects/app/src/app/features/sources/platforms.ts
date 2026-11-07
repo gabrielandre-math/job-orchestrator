@@ -18,7 +18,7 @@ interface Platform { id: string; name: string; domains: string[]; prepare: boole
           <thead><tr><th>Plataforma</th><th>Sites</th><th>Preenche</th><th>Envia</th><th>Confirma</th><th>Recupera envio interrompido</th></tr></thead>
           <tbody>
             @for (p of rows(); track p.id) {
-              <tr><td>{{ p.name.replace('Formulário ', '') }}</td><td class="mono small">{{ p.domains.join(', ') }}</td><td>{{ p.prepare ? 'sim' : 'não' }}</td><td>{{ p.submit ? 'sim' : 'não' }}</td>
+              <tr><td>{{ p.name.replace('Formulário ', '') }}</td><td class="mono small">{{ p.domains.length ? p.domains.join(', ') : 'sites sem login e sem CAPTCHA, fora dos agregadores' }}</td><td>{{ p.prepare ? 'sim' : 'não' }}</td><td>{{ p.submit ? 'sim' : 'não' }}</td>
                 <td>{{ p.confirm ? 'recibo na página' : 'não' }}</td><td>{{ p.recover ? 'pergunta ao site' : 'você confere o e-mail de confirmação' }}</td></tr>
             }
             <tr><td>E-mail publicado na vaga</td><td class="faint small">sua conta</td><td>sim</td><td>sim</td><td>servidor aceitou</td><td>fica em dúvida e espera você</td></tr>

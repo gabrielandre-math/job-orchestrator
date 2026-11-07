@@ -44,7 +44,13 @@ Job[] extras =
     new(201, "Software Engineer, Backend (C#)", "Aurora Ashby", "Remote, Brazil", "ashby", "Backend in C#, .NET and ASP.NET Core on AWS with PostgreSQL. Remote in Brazil."),
     new(301, "Backend Developer (.NET)", "Farol Lever", "Remote, Brazil", "lever", "Backend in C#, .NET and ASP.NET Core with PostgreSQL and AWS. Remote in Brazil."),
 ];
-var byId = jobs.Concat(extras).ToDictionary(j => j.Id);
+// Site sem adapter próprio: a vaga é um link, o formulário só aparece depois do "Candidatar-se", sem tag form e com os rótulos ao lado.
+Job[] sites =
+[
+    new(501, "Desenvolvedor .NET Pleno", "Brisa Sistemas", "Remote, Brazil", "site",
+        "APIs in C#, .NET and ASP.NET Core with PostgreSQL and AWS. Fully remote for people based in Brazil."),
+];
+var byId = jobs.Concat(extras).Concat(sites).ToDictionary(j => j.Id);
 // Quadro da noite (ensaio de horas): vagas novas sob demanda, em várias formas, para a fila nunca secar.
 var night = new ConcurrentDictionary<int, Job>();
 var nextNight = 1000;
@@ -56,6 +62,7 @@ string ApplyUrl(Job j) => j.Scenario switch
     "email" => $"{baseUrl}/vagas/{j.Id}",
     "ashby" => $"{baseUrl}/ashby/aurora/{j.Id}/application",
     "lever" => $"{baseUrl}/lever/farol/{j.Id}/apply",
+    "site" => $"{baseUrl}/generic/{j.Id}",
     _ => $"{baseUrl}/jobs/{j.Id}/apply",
 };
 
@@ -75,6 +82,21 @@ app.MapGet("/boards/agregador", () => Results.Ok(new { name = "Agregador" }));
 app.MapGet("/boards/agregador/jobs", () => Results.Ok(Board(jobs.Where(j => j.Id == 101))));
 app.MapGet("/boards/cenarios", () => Results.Ok(new { name = "Cenários" }));
 app.MapGet("/boards/cenarios/jobs", () => Results.Ok(Board(extras)));
+app.MapGet("/boards/site", () => Results.Ok(new { name = "Site" }));
+app.MapGet("/boards/site/jobs", () => Results.Ok(Board(sites)));
+app.MapGet("/generic/{id:int}", (int id) => TryJob(id, out var job) && job.Scenario == "site"
+    ? Results.Content(Html.Site(job), "text/html; charset=utf-8") : Results.NotFound());
+// The site's own check: what a real one refuses (no name, no e-mail, no resume, privacy not accepted) comes back as an error.
+app.MapPost("/generic/{id:int}", async (int id, HttpRequest request) =>
+{
+    if (!TryJob(id, out var job) || job.Scenario != "site") return Results.NotFound();
+    var form = await request.ReadFormAsync();
+    var email = form["email"].ToString().Trim().ToLowerInvariant();
+    if (string.IsNullOrWhiteSpace(form["name"]) || email.Length == 0 || form.Files["resume"] is not { Length: > 0 } || form["privacy"] != "on")
+        return Results.BadRequest(new { error = "Preencha nome, e-mail, currículo e aceite a política de privacidade." });
+    if (store.Find(id, email) is not null) return Results.Conflict(new { error = "Você já se candidatou a esta vaga." });
+    return Results.Ok(new { receipt = store.Add(id, email, "SITE") });
+});
 
 app.MapPost("/lab/noite", (int? count) =>
 {
@@ -204,6 +226,36 @@ internal static class Html
           <p><input id="f_news" name="news" type="checkbox"> Send me future openings</p>
           <button type="submit">Submit Application</button>
         </form>
+        """);
+
+    public static string Site(Job job) => Page($$"""
+        <h1>{{WebUtility.HtmlEncode(job.Title)}}</h1><p>{{WebUtility.HtmlEncode(job.Company)}}, {{WebUtility.HtmlEncode(job.Location)}}</p><p>{{WebUtility.HtmlEncode(job.Description)}}</p>
+        <button type="button" id="open">Candidatar-se</button>
+        <div id="apply" style="display:none">
+          <div class="field"><div>Nome completo *</div><div><input type="text" id="nome"></div></div>
+          <div class="field"><div>E-mail *</div><div><input type="email" id="mail"></div></div>
+          <div class="field"><div>Telefone</div><div><input type="tel" id="fone"></div></div>
+          <div class="field"><div>LinkedIn</div><div><input type="text" id="lnk"></div></div>
+          <div class="field"><div>Currículo (PDF) *</div><div><input type="file" id="cv" accept=".pdf"></div></div>
+          <p><input type="checkbox" id="lgpd"> Li e aceito a Política de Privacidade e o tratamento dos meus dados pessoais *</p>
+          <p><input type="checkbox" id="news"> Quero receber novidades e outras vagas por e-mail</p>
+          <button type="button" id="send">Enviar candidatura</button>
+          <div id="msg" role="alert" style="display:none"></div>
+        </div>
+        <script>
+          document.getElementById('open').addEventListener('click', (e) => { document.getElementById('apply').style.display = 'block'; e.target.style.display = 'none'; });
+          document.getElementById('send').addEventListener('click', async () => {
+            const v = (id) => document.getElementById(id);
+            const fd = new FormData();
+            fd.append('name', v('nome').value); fd.append('email', v('mail').value); fd.append('phone', v('fone').value); fd.append('linkedin', v('lnk').value);
+            if (v('cv').files[0]) fd.append('resume', v('cv').files[0]);
+            fd.append('privacy', v('lgpd').checked ? 'on' : ''); fd.append('news', v('news').checked ? 'on' : '');
+            const r = await fetch('/generic/{{job.Id}}', { method: 'POST', body: fd });
+            const j = await r.json();
+            if (r.ok) document.body.innerHTML = '<h1>Obrigado! Recebemos sua candidatura.</h1><p>Em breve a equipe entra em contato.</p>';
+            else { v('msg').style.display = 'block'; v('msg').textContent = j.error; }
+          });
+        </script>
         """);
 
     public static string Lever(Job job) => Page($$"""

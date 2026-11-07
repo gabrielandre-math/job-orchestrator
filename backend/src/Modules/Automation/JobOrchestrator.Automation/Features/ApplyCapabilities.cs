@@ -5,12 +5,14 @@ namespace JobOrchestrator.Automation.Features;
 /// <summary>What the app does with an application, from the form adapters it really has: no adapter means the copilot and you.</summary>
 internal static class ApplyCapabilities
 {
+    /// <summary>A link to a site without an adapter of its own is "site": the app tries the site's open form, and a login or a CAPTCHA hands it to you.</summary>
     public static ApplyCapability Of(IEnumerable<IFormAdapter> forms, string applyUrl, string channel)
     {
         if (channel == "email") return new("email", null, true, true, "smtp", "uncertain");
-        if (channel != "ats" || !Uri.TryCreate(applyUrl, UriKind.Absolute, out var url)) return new("manual", null, false, false, "declared", "you");
+        if (channel is not ("ats" or "link") || !Uri.TryCreate(applyUrl, UriKind.Absolute, out var url)) return new("manual", null, false, false, "declared", "you");
         var form = forms.Where(f => f.Fit(url) > 0).OrderByDescending(f => f.Fit(url)).FirstOrDefault();
-        return form is null ? new("manual", null, false, false, "declared", "you")
+        if (form is null) return new("manual", null, false, false, "declared", "you");
+        return form is GenericForm && !form.CanReconcile(url) ? new("site", form.Name, true, true, "receipt", "email")
             : new("ats", form.Name, true, true, "receipt", form.CanReconcile(url) ? "portal" : "email");
     }
 

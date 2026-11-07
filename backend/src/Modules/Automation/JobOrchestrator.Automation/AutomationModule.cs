@@ -104,6 +104,7 @@ public static class AutomationModule
         s.AddScoped<IFormAdapter, AshbyForm>();
         s.AddScoped<IFormAdapter, WorkableForm>();
         s.AddScoped<IFormAdapter, SmartRecruitersForm>();
+        s.AddScoped<IFormAdapter, GenericForm>();
         s.AddScoped<Router>();
         s.AddScoped<IAutomationApi, Features.AutomationApi>();
         return s;

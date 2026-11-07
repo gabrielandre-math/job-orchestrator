@@ -27,7 +27,12 @@ internal sealed class BrowserPool(IOptions<AutomationOptions> options, ILogger<B
 
     public int TimeoutMs => _o.TimeoutSeconds * 1000;
 
-    public async Task<BrowserLease> LeaseAsync(IReadOnlyCollection<string> allowedHosts, CancellationToken ct, bool challengeResources = false, string? navigationOrigin = null, bool? headless = null)
+    /// <summary>
+    /// navigationDomain: the page may only open pages of this site and its subdomains (the generic form, whose site has no adapter).
+    /// allowedHosts "*": any public host a page needs (its API, its CDN), never the private network, this machine or an anti-robot check.
+    /// </summary>
+    public async Task<BrowserLease> LeaseAsync(IReadOnlyCollection<string> allowedHosts, CancellationToken ct, bool challengeResources = false, string? navigationOrigin = null, bool? headless = null,
+        string? navigationDomain = null)
     {
         await _slots.WaitAsync(ct);
         Interlocked.Increment(ref _active);
@@ -45,6 +50,9 @@ internal sealed class BrowserPool(IOptions<AutomationOptions> options, ILogger<B
             {
                 if (navigationOrigin is not null && route.Request.IsNavigationRequest && route.Request.Frame.ParentFrame is null
                     && (!Uri.TryCreate(route.Request.Url, UriKind.Absolute, out var navigation) || navigation.GetLeftPart(UriPartial.Authority) != navigationOrigin)) await route.AbortAsync("blockedbyclient");
+                else if (navigationDomain is not null && route.Request.IsNavigationRequest && route.Request.Frame.ParentFrame is null
+                    && (!Uri.TryCreate(route.Request.Url, UriKind.Absolute, out var site) || !(site.Host.Equals(navigationDomain, StringComparison.OrdinalIgnoreCase)
+                        || site.Host.EndsWith("." + navigationDomain, StringComparison.OrdinalIgnoreCase)))) await route.AbortAsync("blockedbyclient");
                 else if (Heavy.Contains(route.Request.ResourceType) && !(challengeResources && route.Request.ResourceType == "image")) await route.AbortAsync("blockedbyclient");
                 else if (Allowed(route.Request.Url, allowedHosts)) await route.ContinueAsync();
                 else await route.AbortAsync("blockedbyclient");
@@ -98,8 +106,15 @@ internal sealed class BrowserPool(IOptions<AutomationOptions> options, ILogger<B
         var authority = uri.IsDefaultPort ? uri.Host : $"{uri.Host}:{uri.Port}";
         if (allowedHosts.Contains(authority, StringComparer.OrdinalIgnoreCase)) return true;
         if (IPAddress.TryParse(uri.Host, out var ip) && (IPAddress.IsLoopback(ip) || IsPrivate(ip))) return false;
+        if (allowedHosts.Contains("*"))
+            return !uri.IsLoopback && !uri.Host.EndsWith(".local", StringComparison.OrdinalIgnoreCase) && !uri.Host.EndsWith(".localhost", StringComparison.OrdinalIgnoreCase)
+                && !AntiRobot.Any(h => uri.Host.Equals(h, StringComparison.OrdinalIgnoreCase) || uri.Host.EndsWith("." + h, StringComparison.OrdinalIgnoreCase))
+                && !uri.AbsolutePath.Contains("/recaptcha/", StringComparison.OrdinalIgnoreCase);
         return allowedHosts.Any(h => uri.Host.Equals(h, StringComparison.OrdinalIgnoreCase) || uri.Host.EndsWith("." + h, StringComparison.OrdinalIgnoreCase));
     }
+
+    /// <summary>Anti-robot checks are never loaded: a page that needs one stays with you.</summary>
+    private static readonly string[] AntiRobot = ["recaptcha.net", "hcaptcha.com", "challenges.cloudflare.com", "arkoselabs.com", "funcaptcha.com", "geetest.com"];
 
     private static bool IsPrivate(IPAddress ip)
     {

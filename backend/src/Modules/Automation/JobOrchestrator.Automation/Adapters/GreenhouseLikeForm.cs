@@ -27,7 +27,7 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
     public bool CanReconcile(Uri url) => options.Value.FakeAtsHosts.Contains(url.Authority, StringComparer.OrdinalIgnoreCase);
     protected AutomationOptions Options => options.Value;
 
-    public double Fit(Uri url) =>
+    public virtual double Fit(Uri url) =>
         RealDomains.Any(d => d.Equals(url.Host, StringComparison.OrdinalIgnoreCase)) ? 1
         : options.Value.FakeAtsHosts.Contains(url.Authority, StringComparer.OrdinalIgnoreCase) && FakePath.IsMatch(url.AbsolutePath) ? 1 : 0;
 
@@ -40,11 +40,13 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
         (new Regex(@"(sal[aá]r|pretens|remunera|compensation).*\bPJ\b|\bPJ\b.*(sal[aá]r|pretens|remunera)", RegexOptions.IgnoreCase), "salary_pj"),
         (new Regex(@"(sal[aá]r|pretens|remunera|compensation).*\bCLT\b|\bCLT\b.*(sal[aá]r|pretens|remunera)", RegexOptions.IgnoreCase), "salary_clt"),
         (new Regex(@"sal[aá]r|pretens|compensation|remunera|expected pay|pay expectation", RegexOptions.IgnoreCase), "salary_expectation"),
-        (new Regex(@"notice period|aviso pr|start date|quando (você )?pode(ria)? começar", RegexOptions.IgnoreCase), "start_date"),
+        (new Regex(@"notice period|aviso pr|start date|quando (você )?pode(ria)? começar|disponibilidade (de |para )?(in[ií]cio|come[cç]ar)|data de in[ií]cio|availability to start", RegexOptions.IgnoreCase), "start_date"),
         (new Regex(@"english|ingl", RegexOptions.IgnoreCase), "english_level"),
         (new Regex(@"hear about|soube da vaga", RegexOptions.IgnoreCase), "how_heard"),
         (new Regex(@"relocat|mudan[cç]a", RegexOptions.IgnoreCase), "relocation"),
         (new Regex(@"(which|what) city|current location|where are you (currently )?based|based in|cidade|onde (você )?mora|localiza|^address$|^endere[cç]o", RegexOptions.IgnoreCase), "location"),
+        (new Regex(@"github", RegexOptions.IgnoreCase), "github_url"),
+        (new Regex(@"portf[oó]lio|personal (url|website|site)|url pessoal|site pessoal|^website$|^site$", RegexOptions.IgnoreCase), "portfolio_url"),
         (new Regex(@"^headline$|^t[ií]tulo profissional", RegexOptions.IgnoreCase), "headline"),
         (new Regex(@"^summary$|^resumo( profissional)?$|^about you$|^sobre voc[eê]", RegexOptions.IgnoreCase), "summary"),
     ];
@@ -53,7 +55,7 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
 
     public async Task<AdapterResult<PreparedForm>> PrepareAsync(ApplyTarget target, MaterialBundle materials, CancellationToken ct)
     {
-        await using var lease = await browsers.LeaseAsync(Hosts(target), ct);
+        await using var lease = await LeaseAsync(target, ct);
         var page = await lease.Context.NewPageAsync();
         var filled = await FillAsync(page, target, materials);
         return filled.Kind == AdapterResultKind.Completed
@@ -65,7 +67,7 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
     {
         if (token.ApplicationId != target.ApplicationId || !token.IsValid(key.Bytes, time.GetUtcNow().UtcDateTime))
             return AdapterResult<SubmissionReceipt>.Fail(AdapterResultKind.BlockedByPolicy, "invalid-token", "Autorização de envio inválida ou vencida.");
-        await using var lease = await browsers.LeaseAsync(Hosts(target), ct);
+        await using var lease = await LeaseAsync(target, ct);
         var page = await lease.Context.NewPageAsync();
         var filled = await FillAsync(page, target, materials);
         if (filled.Kind != AdapterResultKind.Completed)
@@ -76,7 +78,7 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
         Chaos.Point("before-click");
         try
         {
-            await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { NameRegex = SubmitButton() }).First.ClickAsync();
+            await SubmitControl(page).ClickAsync();
         }
         catch (Exception ex) when (ex is PlaywrightException or TimeoutException)
         {
@@ -87,7 +89,7 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
 
         try
         {
-            await page.GetByText(Confirmation()).Or(page.GetByText(AlreadyApplied())).Or(page.Locator("[role=alert]")).First
+            await page.GetByText(Confirmed).Or(page.GetByText(AlreadyApplied())).Or(page.Locator("[role=alert]")).First
                 .WaitForAsync(new LocatorWaitForOptions { Timeout = browsers.TimeoutMs });
         }
         catch (TimeoutException)
@@ -98,7 +100,7 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
         var body = await page.Locator("body").InnerTextAsync();
         if (AlreadyApplied().IsMatch(body))
             return AdapterResult<SubmissionReceipt>.Fail(AdapterResultKind.PermanentFailure, "already-applied", "O ATS recusou: já existe candidatura com este e-mail.");
-        if (!Confirmation().IsMatch(body))
+        if (!Confirmed.IsMatch(body))
             return AdapterResult<SubmissionReceipt>.Fail(AdapterResultKind.PermanentFailure, "ats-validation", "O ATS recusou o formulário e mostrou erro de validação.");
         var receipt = ReceiptId().Match(body);
         return receipt.Success
@@ -126,6 +128,17 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
     /// <summary>Hosts de arquivos do próprio ATS (CDN, depósito de arquivos) que a página precisa para abrir o formulário; nunca o de verificação anti-robô.</summary>
     protected virtual string[] AssetHosts => [];
     private IReadOnlyCollection<string> Hosts(ApplyTarget target) => [new Uri(target.ApplyUrl).Authority, .. Domains, .. AssetHosts];
+
+    /// <summary>A clean browser context that only reaches the hosts this form needs.</summary>
+    protected virtual Task<BrowserLease> LeaseAsync(ApplyTarget target, CancellationToken ct) => browsers.LeaseAsync(Hosts(target), ct);
+
+    /// <summary>The button that sends the filled form.</summary>
+    protected virtual ILocator SubmitControl(IPage page) => page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { NameRegex = SubmitButton() }).First;
+
+    /// <summary>The words of the page that says the application arrived.</summary>
+    protected virtual Regex Confirmed => Confirmation();
+
+    protected BrowserPool Browsers => browsers;
     /// <summary>CAPTCHA e verificação anti-robô (reCAPTCHA, hCaptcha, Cloudflare Turnstile): o robô para e a vaga fica com você.</summary>
     protected const string BotCheck = "[data-sitekey], .g-recaptcha, .h-captcha, .cf-turnstile, iframe[src*='captcha'], iframe[src*='challenges.cloudflare.com'], [data-captcha]";
 
@@ -164,7 +177,7 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
                 if (type == "checkbox")
                 {
                     // Optional boxes (newsletter, future openings) stay blank. A required one is a declaration or a fact about you.
-                    if (!required) continue;
+                    if (!required && !Agreeable(text, m)) continue;
                     if (Tick(text, m) is not { } tick)
                     {
                         if (Consent().IsMatch(text)) return NeedsDeclaration(text);
@@ -259,9 +272,16 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
     /// </summary>
     protected static (string Value, string Source)? Tick(string label, MaterialBundle m)
     {
+        if (Marketing().IsMatch(label)) return null;
         if (Consent().IsMatch(label)) return m.AcceptDeclarations ? ("Aceito", "sua autorização (declarações)") : null;
         return Mine(label, m) is { } mine && Yes().IsMatch(CustomAnswer.Normalize(mine.Value)) ? ("Marcado", mine.Source) : null;
     }
+
+    /// <summary>
+    /// An optional privacy or terms box your authorization accepts: many sites check it only when the form arrives, so it gets ticked
+    /// like a required one. Newsletters, job alerts and talent pools are never ticked unless the form requires them.
+    /// </summary>
+    protected static bool Agreeable(string label, MaterialBundle m) => m.AcceptDeclarations && Consent().IsMatch(label) && !Marketing().IsMatch(label);
 
     /// <summary>Your answer to this exact question or, without one, the answer the AI wrote from your profile for this form.</summary>
     protected static (string Value, string Source)? Mine(string question, MaterialBundle m) =>
@@ -299,8 +319,8 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
         if (FullName().IsMatch(label)) return ($"{m.FirstName} {m.LastName}".Trim(), "perfil");
         if (FirstName().IsMatch(label)) return (m.FirstName, "perfil");
         if (LastName().IsMatch(label)) return (m.LastName, "perfil");
-        if (Email().IsMatch(label)) return (m.Email, "perfil");
-        if (Phone().IsMatch(label)) return (m.Phone, "perfil");
+        if (Email().IsMatch(label) || type == "email") return (m.Email, "perfil");
+        if (Phone().IsMatch(label) || type == "tel") return (m.Phone, "perfil");
         if (LinkedIn().IsMatch(label)) return (m.LinkedIn, "perfil");
         if (Mine(label, m) is { } mine) return mine;
         // "At least 2 years with C#?" written as a text box is a yes or no; "how many years with C#?" wants the number.
@@ -342,6 +362,8 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
     // Privacy policy, personal data processing, terms and the truth of what was sent: what your authorization may accept for you.
     [GeneratedRegex(@"privacy|privacidade|personal data|dados pessoais|data processing|processing of (my )?(personal )?data|tratamento d[eo]s? dados|\bterms\b|\btermos\b|conditions|condi[cç][oõ]es|consent|consinto|consentimento|\blgpd\b|\bgdpr\b|information (i (have )?provided|provided)?\s*(is|are) (true|accurate|correct|complete)|informa[cç][oõ]es (prestadas |fornecidas )?s[aã]o (verdadeiras|ver[ií]dicas)|retain my (data|information)|armazen", RegexOptions.IgnoreCase)]
     protected static partial Regex Consent();
+    [GeneratedRegex(@"newsletter|marketing|promo|job alerts?|future (openings|jobs|opportunities|positions|roles)|novidades|futuras (vagas|oportunidades)|talent (pool|community|network)|banco de talentos|outras vagas|other (openings|opportunities)", RegexOptions.IgnoreCase)]
+    protected static partial Regex Marketing();
     // "pelo menos 2 anos com C#", "no mínimo 3 anos de experiência com .NET", "at least 5 years of experience with React", "2+ years in Go".
     [GeneratedRegex(@"(?:at least|minimum of|min\.?|pelo menos|no m[ií]nimo|m[ií]nimo de|mais de|more than)?\s*(?<n>\d+)\s*\+?\s*(?:or more\s+)?(?:years?|anos)\b(?:\s+(?:of|de)\s+(?:professional\s+|hands-on\s+|pr[aá]tica\s+)?(?:experience|experi[eê]ncia)(?:\s+pr[aá]tica)?)?\s+(?:with|in|using|com|em|de)\s+(?<tech>[\w#.+]+(?:\s[\w#.+]+)?)", RegexOptions.IgnoreCase)]
     internal static partial Regex MinYears();
