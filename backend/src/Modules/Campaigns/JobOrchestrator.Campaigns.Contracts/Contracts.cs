@@ -33,6 +33,15 @@ public sealed record AutoSubmitEndedV1(Guid CampaignId, DateTime At)
     public const string EventType = "campaigns.auto-submit-ended.v1";
 }
 
+/// <summary>
+/// Integration event: a new authorization was granted. What waited for you under the old limits is checked again under the new
+/// ones, and, when it accepts the declarations, what stopped on a privacy or terms box goes back to the form.
+/// </summary>
+public sealed record AutoSubmitGrantedV1(Guid CampaignId, bool AcceptDeclarations, DateTime At)
+{
+    public const string EventType = "campaigns.auto-submit-granted.v1";
+}
+
 /// <summary>Contrato público do módulo Campaigns.</summary>
 /// <summary>Pede rodadas sem o botão: o timer da noite pede uma para cada campanha ligada e com fontes.</summary>
 public interface ICampaignRuns

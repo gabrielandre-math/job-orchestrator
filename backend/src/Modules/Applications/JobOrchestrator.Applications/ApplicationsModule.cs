@@ -26,6 +26,7 @@ public static class ApplicationsModule
     {
         s.AddEventConsumer<JobShortlistedConsumer>();
         s.AddEventConsumer<AutoSubmitEndedConsumer>();
+        s.AddEventConsumer<AutoSubmitGrantedConsumer>();
         s.AddEventConsumer<JobEmailSentConsumer>();
         s.AddEventConsumer<JobEmailRepliedConsumer>();
         s.AddHostedService<OutboxPublisher<ApplicationsDbContext>>();
