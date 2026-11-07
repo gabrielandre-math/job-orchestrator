@@ -51,6 +51,8 @@ internal static class Template
         sb.Append($$$"""
             <!doctype html><html lang="{{{(en ? "en" : "pt-BR")}}}"><head><meta charset="utf-8"><title>{{NOME}} - {{{(en ? "Resume" : "Currículo")}}}</title>
             <style>
+              /* No ligatures: "fi" stays two letters in the PDF text, so every ATS (and the inspector on macOS and Windows) reads "certificação". */
+              * { font-variant-ligatures: none; font-feature-settings: "liga" 0, "clig" 0; }
               @page { size: A4; margin: 14mm; }
               body { font-family: "Inter", "Liberation Sans", "DejaVu Sans", sans-serif; color: #16181d; font-size: 10.3pt; line-height: 1.42; margin: 0; }
               h1 { font-size: 20pt; margin: 0 0 2pt; letter-spacing: -0.01em; }

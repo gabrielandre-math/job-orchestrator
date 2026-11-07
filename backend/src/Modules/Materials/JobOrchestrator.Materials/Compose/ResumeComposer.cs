@@ -275,6 +275,9 @@ internal sealed record PdfCheck(int Pages, int Expected, int Found, List<string>
             text = string.Join("\n", doc.GetPages().Select(p => UglyToad.PdfPig.DocumentLayoutAnalysis.TextExtractor.ContentOrderTextExtractor.GetText(p)));
             layout = text;
         }
+        // PdfPig hands ligatures over as one character ("proﬁssionais"); poppler splits them. Same text on every system.
+        text = Readable(text);
+        layout = Readable(layout);
         var flat = Flat(text);
         var claims = d.Claims().Select(c => c.Claim.Text).ToList();
         var found = claims.Count(c => flat.Contains(Flat(c), StringComparison.Ordinal));
@@ -321,6 +324,9 @@ internal sealed record PdfCheck(int Pages, int Expected, int Found, List<string>
     }
 
     /// <summary>Só letras e números, sem acento: quebra de linha e hifenização do PDF não atrapalham.</summary>
+    /// <summary>Compatibility forms unfolded: ligatures ("ﬁ", "ﬂ") and full-width characters become the letters they stand for.</summary>
+    internal static string Readable(string s) => s.Normalize(NormalizationForm.FormKC);
+
     private static string Flat(string s)
     {
         var sb = new StringBuilder(s.Length);
