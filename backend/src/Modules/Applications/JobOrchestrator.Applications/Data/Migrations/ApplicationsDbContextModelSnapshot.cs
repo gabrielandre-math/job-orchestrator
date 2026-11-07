@@ -354,6 +354,10 @@ namespace JobOrchestrator.Applications.Data.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("resume_path");
 
+                    b.Property<bool>("ResumeVetted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("resume_vetted");
+
                     b.Property<int>("Score")
                         .HasColumnType("integer")
                         .HasColumnName("score");

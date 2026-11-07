@@ -28,6 +28,8 @@ internal sealed class JobApplication : AggregateRoot
     public DateTime UpdatedAt { get; private set; }
     public string? ResumePath { get; private set; }
     public string? ResumeHash { get; private set; }
+    /// <summary>False when the resume was written by a model and the cross review did not cover every claim: it never goes on its own.</summary>
+    public bool ResumeVetted { get; private set; } = true;
     public string? PreparedBy { get; private set; }
     public string? PayloadHash { get; private set; }
     public string PreparedFields { get; private set; } = "[]";
@@ -93,10 +95,11 @@ internal sealed class JobApplication : AggregateRoot
         Register(new ApplicationMoved(Id, CampaignId, from, to, now));
     }
 
-    public void MaterialsReady(string resumePath, string resumeHash, DateTime now, string reason = "Currículo gerado a partir do perfil.", object? data = null)
+    public void MaterialsReady(string resumePath, string resumeHash, DateTime now, string reason = "Currículo gerado a partir do perfil.", object? data = null, bool vetted = true)
     {
         ResumePath = resumePath;
         ResumeHash = resumeHash;
+        ResumeVetted = vetted;
         Move(ApplicationState.MaterialsReady, reason, "Redator", now, data ?? new { resumeHash });
     }
 

@@ -24,6 +24,12 @@ public sealed class GuardTests
     [Fact] public void Nota_abaixo_da_autorizacao_nao_envia() => Assert.Equal("score-below-authorization", SubmissionGuard.CanSubmit(Auto(Auth(min: 92), score: 90)).Code);
     [Fact] public void Adapter_fora_da_autorizacao_nao_envia() => Assert.Equal("adapter-not-authorized", SubmissionGuard.CanSubmit(Auto(Auth(adapters: "lever-form"), adapter: "greenhouse-form")).Code);
     [Fact] public void Teto_da_autorizacao_bloqueia() => Assert.Equal("authorization-daily-limit", SubmissionGuard.CanSubmit(Auto(Auth(max: 2), today: 2)).Code);
+    [Fact] public void Curriculo_sem_revisao_cruzada_nao_sai_no_automatico() =>
+        Assert.Equal("resume-unvetted", SubmissionGuard.CanSubmit(Auto(Auth()) with { ResumeVetted = false }).Code);
+    [Fact] public void Curriculo_sem_revisao_cruzada_espera_aprovacao_depois_do_preparo() =>
+        Assert.Equal(ApplicationState.AwaitingApproval, SubmissionGuard.AfterPrepare(SubmissionMode.AutoSubmit, Auth(), Now, 90, "greenhouse-form", "BR_ELIGIBLE_CONFIRMED", vetted: false).Next);
+    [Fact] public void Aprovacao_sua_libera_curriculo_sem_revisao_cruzada() =>
+        Assert.True(SubmissionGuard.CanSubmit(Input() with { ResumeVetted = false }).Allowed);
     [Fact] public void Mesma_empresa_no_dia_bloqueia_o_automatico() => Assert.Equal("company-spacing", SubmissionGuard.CanSubmit(Auto(Auth(), sameCompany: 1)).Code);
     [Fact] public void Teto_cheio_e_mesma_empresa_esperam_o_dia_seguinte_e_o_resto_barra() =>
         Assert.Equal(new[] { true, true, true, false, false }, new[] { "daily-limit", "authorization-daily-limit", "company-spacing", "consent-required", "score-below-authorization" }.Select(SubmissionGuard.WaitsForTomorrow));

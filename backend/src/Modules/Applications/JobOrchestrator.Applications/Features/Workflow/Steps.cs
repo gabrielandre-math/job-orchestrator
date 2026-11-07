@@ -87,7 +87,7 @@ internal sealed class MaterialsStep(StepKit k) : IStep
                     _ => "só com os fatos do perfil, sem IA"
                 };
                 app.MaterialsReady(result.PdfPath!, result.Hash!, k.Now, $"Currículo pronto: {how}.",
-                    new { resumeHash = result.Hash, result.Mode, result.Reviewed, result.Language, result.VersionId, result.ThreadId });
+                    new { resumeHash = result.Hash, result.Mode, result.Reviewed, result.Language, result.VersionId, result.ThreadId }, vetted: result.Mode == "plain" || result.Reviewed);
                 if (app.ApplyChannel == "ats") k.Enqueue(app.Id, WorkStep.Prepare, TimeSpan.Zero);
                 else
                 {
@@ -141,7 +141,7 @@ internal sealed class PrepareStep(StepKit k) : IStep
         {
             case AdapterResultKind.Completed:
                 app.Prepared(outcome.Value!, outcome.Route, now);
-                var (next, reason) = SubmissionGuard.AfterPrepare(campaign.Mode, campaign.Authorization, now, app.Score, outcome.Value!.AdapterId, await k.Jobs.EligibilityAsync(app.JobId, ct));
+                var (next, reason) = SubmissionGuard.AfterPrepare(campaign.Mode, campaign.Authorization, now, app.Score, outcome.Value!.AdapterId, await k.Jobs.EligibilityAsync(app.JobId, ct), app.ResumeVetted);
                 if (next == ApplicationState.ReadyToSubmit)
                 {
                     // Automático autorizado: a aprovação fica registrada como da autorização, para o payload exato preparado agora.
@@ -215,9 +215,9 @@ internal sealed class SubmitStep(StepKit k, TokenIssuer tokens) : IStep
             await db.Tasks.CountAsync(t => t.ApplicationId == app.Id && t.ResolvedAt == null, ct),
             campaign.Authorization, k.Now, app.Score, app.PreparedBy,
             await db.Applications.CountAsync(a => a.Id != app.Id && a.Company == app.Company && db.Events.Any(e => e.ApplicationId == a.Id && e.To == confirmed && e.At >= dayAgo), ct),
-            await k.Jobs.EligibilityAsync(app.JobId, ct));
+            await k.Jobs.EligibilityAsync(app.JobId, ct), app.ResumeVetted);
         var decision = SubmissionGuard.CanSubmit(input);
-        if (!decision.Allowed && decision.Code is "consent-required" or "eligibility-unconfirmed")
+        if (!decision.Allowed && decision.Code is "consent-required" or "eligibility-unconfirmed" or "resume-unvetted")
         {
             // Sem autorização valendo, nada sai sozinho: a vaga volta para a sua aprovação em vez de travar.
             app.Move(ApplicationState.AwaitingApproval, decision.Reason, "Guardião", k.Now);
