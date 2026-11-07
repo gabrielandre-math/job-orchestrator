@@ -5,6 +5,15 @@ namespace JobOrchestrator.Jobs.Domain;
 /// <summary>Um fator da nota: peso, valor de 0 a 1, pontos e a explicação em português.</summary>
 internal sealed record Factor(string Name, int Weight, double Value, int Points, string Note, bool Unknown);
 
+/// <summary>What you confirmed on the profile that a job can break: the ways of working you accept and your salary floors (per month).</summary>
+internal sealed record Preferences(IReadOnlyList<string> Modalities, int? FloorCltBrl, int? FloorPjBrl, int? FloorUsdMonth)
+{
+    public static readonly Preferences None = new([], null, null, null);
+}
+
+/// <summary>The pay a job states, as the normalizer read it.</summary>
+internal sealed record JobPay(decimal? Min, decimal? Max, string? Currency, string? Contract);
+
 /// <summary>Resultado da avaliação: nota, confiança, fatores e o motivo do corte, quando houver.</summary>
 internal sealed record Evaluation(int Score, double Confidence, IReadOnlyList<Factor> Factors, string? Rejection);
 
@@ -23,7 +32,7 @@ internal static partial class Scoring
         ["PostgreSQL"] = ["postgresql", "postgres"]
     };
 
-    public static Evaluation Evaluate(CampaignSettings c, string title, string description, string location, string? modality = null)
+    public static Evaluation Evaluate(CampaignSettings c, string title, string description, string location, string? modality = null, Preferences? prefs = null, JobPay? pay = null)
     {
         var text = $" {Fingerprint.Normalize(title)} {Fingerprint.Normalize(description)} ";
         var factors = new List<Factor>();
@@ -39,6 +48,8 @@ internal static partial class Scoring
             || c.Locations.Any(l => Places(l).Any(p => where.Contains(p, StringComparison.Ordinal)));
         var locationUnknown = where.Length == 0;
         if (!allowed && !locationUnknown) return Reject(factors, $"Local \"{location}\" fora da campanha.");
+        // Your own limits from the profile are eliminatory too; what the job does not state stays unknown and cuts nothing.
+        if (Breaks(prefs ?? Preferences.None, modality, pay) is { } broken) return Reject(factors, broken);
 
         var essential = c.Technologies.Take(2).ToList();
         var others = c.Technologies.Skip(2).ToList();
@@ -104,6 +115,26 @@ internal static partial class Scoring
         new(name, weight, Math.Round(value, 2), (int)Math.Round(weight * value), note, unknown);
 
     private static Evaluation Reject(List<Factor> factors, string reason) => new(0, 1, factors, reason);
+
+    /// <summary>The way of working (only the job's structured modality, never loose words of the text) and the pay against your floors.</summary>
+    internal static string? Breaks(Preferences prefs, string? modality, JobPay? pay)
+    {
+        var mode = modality switch { "Remoto" => "remote", "Híbrido" => "hybrid", "Presencial" => "onsite", _ => null };
+        var accepted = prefs.Modalities.Select(m => m is "remote" or "hybrid" ? m : "onsite").ToHashSet();
+        if (mode is not null && accepted.Count > 0 && !accepted.Contains(mode))
+            return $"{modality}, e você aceita só {string.Join(" ou ", accepted.Select(m => m switch { "remote" => "remoto", "hybrid" => "híbrido", _ => "presencial" }))}.";
+        if ((pay?.Max ?? pay?.Min) is not { } top || top <= 0) return null;
+        var (floor, monthly, label) = pay!.Currency?.ToUpperInvariant() switch
+        {
+            "BRL" when pay.Contract?.Contains("pj", StringComparison.OrdinalIgnoreCase) == true => (prefs.FloorPjBrl, top, "PJ"),
+            "BRL" => (prefs.FloorCltBrl, top, "CLT"),
+            // Above 20 thousand a month is an annual figure: the floor is per month.
+            "USD" => (prefs.FloorUsdMonth, top > 20_000 ? top / 12 : top, "em dólar"),
+            _ => ((int?)null, top, "")
+        };
+        var br = System.Globalization.CultureInfo.GetCultureInfo("pt-BR");
+        return floor is { } f && f > 0 && monthly < f ? $"Paga até {pay.Currency} {monthly.ToString("N0", br)} por mês, abaixo do seu piso {label} de {f.ToString("N0", br)}." : null;
+    }
 
     private static HashSet<string> Words(string normalized) =>
         [.. normalized.Split(' ', StringSplitOptions.RemoveEmptyEntries).Where(w => w.Length >= 3 && w is not ("para" or "com" or "and" or "the" or "with" or "dos" or "das"))];

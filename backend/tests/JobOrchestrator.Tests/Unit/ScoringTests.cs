@@ -84,4 +84,33 @@ public sealed class ScoringTests
         Assert.False(token.IsValid(key, now.AddMinutes(11)));
         Assert.False(token.IsValid(new byte[32], now));
     }
+
+    private static readonly Preferences OnlyRemote = new(["remote"], 9000, 12000, 5000);
+
+    [Theory]
+    [InlineData("Presencial", null, null, null, null, "Presencial, e você aceita só remoto.")]
+    [InlineData("Híbrido", null, null, null, null, "Híbrido, e você aceita só remoto.")]
+    [InlineData("Remoto", null, null, null, null, null)]
+    [InlineData(null, null, null, null, null, null)]
+    [InlineData("Remoto", 6000, 8000, "BRL", "clt", "Paga até BRL 8.000 por mês, abaixo do seu piso CLT de 9.000.")]
+    [InlineData("Remoto", 10000, 11000, "BRL", "pj", "Paga até BRL 11.000 por mês, abaixo do seu piso PJ de 12.000.")]
+    [InlineData("Remoto", 9500, 10000, "BRL", "clt", null)]
+    [InlineData("Remoto", 50000, 60000, "USD", null, null)]
+    [InlineData("Remoto", 40000, 48000, "USD", null, "Paga até USD 4.000 por mês, abaixo do seu piso em dólar de 5.000.")]
+    [InlineData("Remoto", 90000, 120000, "USD", null, null)]
+    public void Your_limits_cut_only_what_the_job_states(string? modality, int? min, int? max, string? currency, string? contract, string? reason)
+    {
+        var pay = new JobPay(min, max, currency, contract);
+        var broken = Scoring.Breaks(OnlyRemote, modality, pay);
+        Assert.Equal(reason, broken);
+    }
+
+    [Fact]
+    public void A_job_below_your_floor_leaves_the_queue_with_the_reason()
+    {
+        var e = Scoring.Evaluate(Campaign, "Senior Backend Engineer (.NET)", "C# and .NET with ASP.NET Core, PostgreSQL and AWS. Remote.", "Remote (LATAM)", "Remoto",
+            OnlyRemote, new JobPay(3000, 4000, "USD", null));
+        Assert.Equal(0, e.Score);
+        Assert.Contains("abaixo do seu piso", e.Rejection);
+    }
 }

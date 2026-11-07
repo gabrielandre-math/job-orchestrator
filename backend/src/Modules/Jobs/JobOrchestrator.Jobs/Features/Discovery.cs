@@ -20,7 +20,10 @@ internal sealed class RunRequestedConsumer(
     {
         var run = message.Read<RunRequestedV1>();
         var campaign = await campaigns.GetAsync(run.CampaignId, ct);
-        var policy = Policy(await profiles.CurrentAsync(ct));
+        var profile = await profiles.CurrentAsync(ct);
+        var policy = Policy(profile);
+        var prefs = profile?.Confirmations is { ConfirmedAt: not null } c
+            ? new Preferences(c.Modalities, c.FloorCltBrl, c.FloorPjBrl, c.FloorUsdMonth) : Preferences.None;
         if (campaign is null) return;
 
         var found = new List<(DiscoveredPosting Posting, PostingStatus Status)>();
@@ -102,7 +105,8 @@ internal sealed class RunRequestedConsumer(
 
             await SnapshotAsync(posting.Id, p.RawJson, now, ct);
             posting.Verified(status, now);
-            var passed = posting.Evaluate(Scoring.Evaluate(campaign, posting.Title, posting.Description, posting.Location, posting.Modality), campaign.MinFitScore, policy);
+            var passed = posting.Evaluate(Scoring.Evaluate(campaign, posting.Title, posting.Description, posting.Location, posting.Modality, prefs,
+                new JobPay(posting.SalaryMin, posting.SalaryMax, posting.SalaryCurrency, posting.Contract)), campaign.MinFitScore, policy);
             if (posting.DuplicateOf is null && posting.Score is { } score) { scored++; bands[Math.Clamp(score / 10, 0, 9)]++; }
             if (passed)
             {
