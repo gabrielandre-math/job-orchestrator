@@ -19,27 +19,56 @@ internal sealed class Stack : IAsyncDisposable
     private readonly int _ats = FreePort();
     private readonly int _api = FreePort();
     private Process? _atsProcess, _apiProcess, _worker;
+    private readonly Dictionary<string, string> _extra = [];
+
+    /// <summary>The run's database, data folder and logs, for the night rehearsal's own checks.</summary>
+    public string Database => _db;
+    public string DataDir => Path.Combine(_dir, "data");
+    public string Folder => _dir;
+    public string Connection => $"Host=127.0.0.1;Port=5463;Username=jo;Password=jo-test;Database={_db}";
 
     public HttpClient Http { get; } = new() { Timeout = TimeSpan.FromSeconds(30) };
     public string Api => $"http://127.0.0.1:{_api}/api";
     public string Ats => $"http://127.0.0.1:{_ats}";
 
-    public static async Task<Stack> StartAsync(string? crashAt = null)
+    public static async Task<Stack> StartAsync(string? crashAt = null, Dictionary<string, string>? extra = null)
     {
         var s = new Stack();
+        foreach (var (k, v) in extra ?? []) s._extra[k] = v;
         await using (var c = new NpgsqlConnection(Admin))
         {
             await c.OpenAsync();
             await new NpgsqlCommand($"create database {s._db}", c).ExecuteNonQueryAsync();
         }
-        s._atsProcess = s.Launch("Tools/JobOrchestrator.FakeAts", new()
-        {
-            ["FAKEATS_URL"] = s.Ats, ["FAKEATS_STATE"] = Path.Combine(s._dir, "ats.json"), ["FAKEATS_SLOW_SECONDS"] = "12"
-        });
-        s._apiProcess = s.Launch("Bootstrappers/JobOrchestrator.Api", s.Env(new() { ["Urls"] = $"http://127.0.0.1:{s._api}" }));
-        await s.WaitAsync(async () => (await s.Http.GetAsync($"{s.Api}/health")).IsSuccessStatusCode, TimeSpan.FromSeconds(60), "API não subiu");
+        s.StartAts();
+        await s.StartApiAsync();
         s.StartWorker(crashAt);
         return s;
+    }
+
+    public void StartAts() => _atsProcess = Launch("Tools/JobOrchestrator.FakeAts", new()
+    {
+        ["FAKEATS_URL"] = Ats, ["FAKEATS_STATE"] = Path.Combine(_dir, "ats.json"), ["FAKEATS_SLOW_SECONDS"] = "12"
+    });
+
+    public async Task StartApiAsync()
+    {
+        _apiProcess = Launch("Bootstrappers/JobOrchestrator.Api", Env(new() { ["Urls"] = $"http://127.0.0.1:{_api}" }));
+        await WaitAsync(async () => (await Http.GetAsync($"{Api}/health")).IsSuccessStatusCode, TimeSpan.FromSeconds(90), "API não subiu");
+    }
+
+    /// <summary>Kills a process like kill -9 ("api", "worker" or "ats"), for the night rehearsal's faults.</summary>
+    public async Task KillAsync(string which)
+    {
+        var p = which switch { "api" => _apiProcess, "worker" => _worker, "ats" => _atsProcess, _ => throw new ArgumentException(which) };
+        if (p is { HasExited: false }) { p.Kill(entireProcessTree: true); await p.WaitForExitAsync(); }
+    }
+
+    /// <summary>Resident memory of the API and the Worker, in MB.</summary>
+    public (long Api, long Worker) Memory()
+    {
+        long Mb(Process? p) { if (p is not { HasExited: false }) return 0; p.Refresh(); return p.WorkingSet64 / 1048576; }
+        return (Mb(_apiProcess), Mb(_worker));
     }
 
     public void StartWorker(string? crashAt = null) =>
@@ -145,6 +174,7 @@ internal sealed class Stack : IAsyncDisposable
             ["Explorer__Enabled"] = "false", ["Search__IntervalMinutes"] = "1440",
             ["Logging__LogLevel__Default"] = "Warning"
         };
+        foreach (var (k, v) in _extra) env[k] = v;
         foreach (var (k, v) in extra) env[k] = v;
         return env;
     }

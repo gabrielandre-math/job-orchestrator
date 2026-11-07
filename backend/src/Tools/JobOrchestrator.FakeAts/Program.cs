@@ -45,8 +45,15 @@ Job[] extras =
     new(301, "Backend Developer (.NET)", "Farol Lever", "Remote, Brazil", "lever", "Backend in C#, .NET and ASP.NET Core with PostgreSQL and AWS. Remote in Brazil."),
 ];
 var byId = jobs.Concat(extras).ToDictionary(j => j.Id);
+// Quadro da noite (ensaio de horas): vagas novas sob demanda, em várias formas, para a fila nunca secar.
+var night = new ConcurrentDictionary<int, Job>();
+var nextNight = 1000;
+string[] nightKinds = ["normal", "normal", "normal", "normal", "normal", "normal", "email", "email", "captcha", "slow", "question"];
+string[] nightTitles = ["Backend Developer .NET", "Senior .NET Engineer", "Software Engineer (C#)", "Desenvolvedor .NET Pleno", "Backend Engineer, Payments (.NET)"];
+bool TryJob(int id, out Job job) => byId.TryGetValue(id, out job!) || night.TryGetValue(id, out job!);
 string ApplyUrl(Job j) => j.Scenario switch
 {
+    "email" => $"{baseUrl}/vagas/{j.Id}",
     "ashby" => $"{baseUrl}/ashby/aurora/{j.Id}/application",
     "lever" => $"{baseUrl}/lever/farol/{j.Id}/apply",
     _ => $"{baseUrl}/jobs/{j.Id}/apply",
@@ -69,15 +76,35 @@ app.MapGet("/boards/agregador/jobs", () => Results.Ok(Board(jobs.Where(j => j.Id
 app.MapGet("/boards/cenarios", () => Results.Ok(new { name = "Cenários" }));
 app.MapGet("/boards/cenarios/jobs", () => Results.Ok(Board(extras)));
 
+app.MapPost("/lab/noite", (int? count) =>
+{
+    var made = new List<int>();
+    for (var i = 0; i < Math.Clamp(count ?? 3, 1, 20); i++)
+    {
+        var id = Interlocked.Increment(ref nextNight);
+        var kind = nightKinds[id % nightKinds.Length];
+        var description = "Backend em C#, .NET e ASP.NET Core com PostgreSQL e AWS. Remoto no Brasil."
+            + (kind == "email" ? $" Interessados, enviem o currículo para vagas@noite{id}.example" : "");
+        night[id] = new Job(id, nightTitles[id % nightTitles.Length], $"Noite {id}", "Remote, Brazil", kind, description);
+        made.Add(id);
+    }
+    return Results.Ok(new { made });
+});
+app.MapGet("/boards/noite", () => Results.Ok(new { name = "Noite" }));
+app.MapGet("/boards/noite/jobs", () => Results.Ok(Board(night.Values.OrderBy(j => j.Id))));
+app.MapGet("/vagas/{id:int}", (int id) => TryJob(id, out var job)
+    ? Results.Content(Html.Page($"<h1>{WebUtility.HtmlEncode(job.Title)}</h1><p>{WebUtility.HtmlEncode(job.Description)}</p>"), "text/html; charset=utf-8")
+    : Results.NotFound());
+
 app.MapGet("/jobs/{id:int}/apply", (int id) =>
 {
-    if (!byId.TryGetValue(id, out var job) || job.Scenario is "closed" or "ashby" or "lever") return Results.NotFound();
+    if (!TryJob(id, out var job) || job.Scenario is "closed" or "ashby" or "lever") return Results.NotFound();
     return Results.Content(job.Scenario == "mfa" ? Html.Mfa() : Html.Form(job), "text/html; charset=utf-8");
 });
 
 app.MapPost("/jobs/{id:int}/apply", async (int id, HttpRequest request) =>
 {
-    if (!byId.TryGetValue(id, out var job) || job.Scenario == "closed") return Results.NotFound();
+    if (!TryJob(id, out var job) || job.Scenario == "closed") return Results.NotFound();
     var form = await request.ReadFormAsync();
     var email = form["email"].ToString().Trim().ToLowerInvariant();
     var missing = new[] { "first_name", "last_name", "email", "q_years", "q_auth", "q_sponsor" }.Where(f => string.IsNullOrWhiteSpace(form[f])).ToList();
@@ -91,19 +118,19 @@ app.MapPost("/jobs/{id:int}/apply", async (int id, HttpRequest request) =>
 
 // Ashby: nome completo e campos extras (localização obrigatória, pretensão e como soube; pronomes e novidades são opcionais).
 app.MapGet("/ashby/{company}/{id:int}/application", (string company, int id) =>
-    byId.TryGetValue(id, out var job) && job.Scenario == "ashby" ? Results.Content(Html.Ashby(job), "text/html; charset=utf-8") : Results.NotFound());
+    TryJob(id, out var job) && job.Scenario == "ashby" ? Results.Content(Html.Ashby(job), "text/html; charset=utf-8") : Results.NotFound());
 app.MapPost("/ashby/{company}/{id:int}/application", (string company, int id, HttpRequest request) =>
     Receive(id, request, "AB", _ => ["name", "email", "location", "how_heard"]));
 
 // Lever: nome completo, upload e uma pergunta que abre outra (autorizado a trabalhar no Brasil? "Yes" abre a cidade, obrigatória).
 app.MapGet("/lever/{company}/{id:int}/apply", (string company, int id) =>
-    byId.TryGetValue(id, out var job) && job.Scenario == "lever" ? Results.Content(Html.Lever(job), "text/html; charset=utf-8") : Results.NotFound());
+    TryJob(id, out var job) && job.Scenario == "lever" ? Results.Content(Html.Lever(job), "text/html; charset=utf-8") : Results.NotFound());
 app.MapPost("/lever/{company}/{id:int}/apply", (string company, int id, HttpRequest request) =>
     Receive(id, request, "LV", form => form["authorized"] == "Yes" ? ["name", "email", "authorized", "city"] : ["name", "email", "authorized"]));
 
 async Task<IResult> Receive(int id, HttpRequest request, string prefix, Func<IFormCollection, string[]> required)
 {
-    if (!byId.TryGetValue(id, out var job)) return Results.NotFound();
+    if (!TryJob(id, out var job)) return Results.NotFound();
     var form = await request.ReadFormAsync();
     var email = form["email"].ToString().Trim().ToLowerInvariant();
     var missing = required(form).Where(f => string.IsNullOrWhiteSpace(form[f])).ToList();
