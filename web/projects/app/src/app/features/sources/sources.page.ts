@@ -12,6 +12,7 @@ import { SOURCE_TABS, Tabs } from '../../shared/tabs';
 import { AddSource } from './add-source';
 import { Alerts } from './alerts';
 import { LinkedIn } from './linkedin';
+import { Platforms } from './platforms';
 import { ApiKeys } from './api-keys';
 import { Explorer } from './explorer';
 import { Hunter } from './hunter';
@@ -26,7 +27,7 @@ const GROUPS: { kind: SourceInfo['kind']; title: string; hint: string }[] = [
 /** Fontes: de onde vêm as vagas da campanha, agrupadas, com o resultado da última rodada de cada uma e o assistente para adicionar. */
 @Component({
   selector: 'app-sources',
-  imports: [RouterLink, AddSource, Alerts, ApiKeys, Company, Explorer, Hunter, Icon, LinkedIn, PageHero, Tabs],
+  imports: [RouterLink, AddSource, Alerts, ApiKeys, Company, Explorer, Hunter, Icon, LinkedIn, PageHero, Platforms, Tabs],
   templateUrl: './sources.page.html',
   styleUrl: './sources.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -23,6 +23,8 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
     /// <summary>No ATS falso, cada formato mora num caminho próprio do mesmo host.</summary>
     protected abstract Regex FakePath { get; }
     public IReadOnlyList<string> Domains => [.. RealDomains, .. options.Value.FakeAtsHosts];
+    public IReadOnlyList<string> LiveDomains => RealDomains;
+    public bool CanReconcile(Uri url) => options.Value.FakeAtsHosts.Contains(url.Authority, StringComparer.OrdinalIgnoreCase);
     protected AutomationOptions Options => options.Value;
 
     public double Fit(Uri url) =>

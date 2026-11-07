@@ -3,7 +3,7 @@ import { Router, RouterLink } from '@angular/router';
 import { Copilot } from './copilot';
 import { InterviewPanel } from './interview-panel';
 import { Badge } from '@jo/ui/badge';
-import { ApplicationDetail, send } from '../../core/api';
+import { ApplicationDetail, ApplyCapability, send } from '../../core/api';
 import { command } from '../../core/command';
 import { query } from '../../core/query';
 import { clock, evidenceLabel, stateLabel, stateTone } from '../../core/format';
@@ -32,6 +32,13 @@ export class ApplicationPage {
   protected async arrived2() { await this.data.reload(); }
   protected async arrived() { if ((await this.declaring.run(undefined)) !== null) await this.data.reload(); }
   /** Envio incerto que a reconciliação não achou: só você sabe se chegou (e-mail de confirmação, portal do candidato). */
+  /** O que o app faz nesta vaga, antes de você confiar a noite a ele. */
+  protected capability(c: ApplyCapability) {
+    if (c.channel === 'email') return 'Nesta vaga o app escreve o e-mail e envia pela sua conta. A confirmação é o servidor aceitar; um envio interrompido fica em dúvida e espera você.';
+    if (c.channel === 'ats') return `Nesta vaga o app preenche e envia o ${(c.platform ?? 'formulário').replace('Formulário', 'formulário')}, com o recibo da página de confirmação. `
+      + (c.recover === 'portal' ? 'Se cair no meio, ele pergunta ao próprio site.' : 'Se cair no meio, você confere o e-mail de confirmação.');
+    return 'Nesta vaga o envio é seu: o copiloto traz o currículo e as respostas prontas, e você registra o envio.';
+  }
   /** Uma parede que o robô não passa (CAPTCHA, login): o caminho é o copiloto no seu navegador, não refazer o preparo. */
   protected readonly wall = computed(() => (this.data.value()?.tasks ?? []).find((t) => !t.resolvedAt && (t.kind === 'Captcha' || t.kind === 'Login'))?.kind ?? null);
   protected readonly uncertain = computed(() => (this.data.value()?.tasks ?? []).some((t) => !t.resolvedAt && t.kind === 'Reconcile'));

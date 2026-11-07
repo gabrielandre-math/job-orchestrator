@@ -9,6 +9,9 @@ internal sealed class AutomationApi(
 {
     public Task<IReadOnlyList<DiscoveredPosting>> DiscoverAsync(string source, CancellationToken ct) => DiscoverAsync(source, [], ct);
 
+    public ApplyCapability CapabilityOf(string applyUrl, string channel) => ApplyCapabilities.Of(forms, applyUrl, channel);
+    public IReadOnlyList<PlatformCapability> Platforms() => ApplyCapabilities.Matrix(forms);
+
     public Task<IReadOnlyList<RegistryEntry>> RegistryAsync(CancellationToken ct)
     {
         var probe = SourcesRegistryEndpoints.LastProbe();

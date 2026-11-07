@@ -15,6 +15,7 @@
         }
       </div>
     </header>
+    <p class="muted capability">{{ capability(d.capability) }}</p>
 
     @for (p of [approve.problem(), withdraw.problem(), retry.problem(), archiving.problem()]; track $index) { @if (p) { <p class="problem">{{ p.detail }}</p> } }
 

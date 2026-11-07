@@ -12,7 +12,7 @@ internal sealed record TaskRow(Guid Id, Guid ApplicationId, string Kind, string 
 /// <summary>A candidatura aberta: dados, payload preparado, histórico, evidências e pendências.</summary>
 internal sealed record ApplicationDetail(
     ApplicationRow Application, string ApplyUrl, string? PayloadHash, IReadOnlyList<FieldValue> Fields, bool HasResume,
-    IReadOnlyList<HistoryRow> History, IReadOnlyList<EvidenceRow> Evidence, IReadOnlyList<TaskRow> Tasks);
+    IReadOnlyList<HistoryRow> History, IReadOnlyList<EvidenceRow> Evidence, IReadOnlyList<TaskRow> Tasks, ApplyCapability Capability);
 
 internal static class Reads
 {
@@ -31,20 +31,21 @@ internal sealed class ListApplicationsHandler(IReadDb<ApplicationsDbContext> db)
 
 internal sealed record GetApplicationQuery(Guid Id) : IQuery<ApplicationDetail>;
 
-internal sealed class GetApplicationHandler(IReadDb<ApplicationsDbContext> db) : IQueryHandler<GetApplicationQuery, ApplicationDetail>
+internal sealed class GetApplicationHandler(IReadDb<ApplicationsDbContext> db, IAutomationApi automation) : IQueryHandler<GetApplicationQuery, ApplicationDetail>
 {
-    private sealed record Extra(string ApplyUrl, string? PayloadHash, string PreparedFields, string? ResumePath);
+    private sealed record Extra(string ApplyUrl, string? PayloadHash, string PreparedFields, string? ResumePath, string ApplyChannel);
 
     public async Task<Result<ApplicationDetail>> Handle(GetApplicationQuery q, CancellationToken ct)
     {
         var row = await db.FirstAsync<ApplicationRow>($"select {Reads.Columns} from applications.applications where id = @Id", new { q.Id }, ct);
         if (row is null) return Error.NotFound("application-not-found", "Candidatura não encontrada.");
-        var extra = (await db.FirstAsync<Extra>("select apply_url, payload_hash, prepared_fields::text as prepared_fields, resume_path from applications.applications where id = @Id", new { q.Id }, ct))!;
+        var extra = (await db.FirstAsync<Extra>("select apply_url, payload_hash, prepared_fields::text as prepared_fields, resume_path, apply_channel from applications.applications where id = @Id", new { q.Id }, ct))!;
         var history = await db.ListAsync<HistoryRow>("select at, \"from\", \"to\", reason, actor, detail::text as detail from applications.events where application_id = @Id order by id", new { q.Id }, ct);
         var evidence = await db.ListAsync<EvidenceRow>("select level, kind, detail, at from applications.evidence where application_id = @Id order by at", new { q.Id }, ct);
         var tasks = await db.ListAsync<TaskRow>("select id, application_id, kind, title, detail, created_at, resolved_at, resolution from applications.human_tasks where application_id = @Id order by created_at", new { q.Id }, ct);
         var fields = JsonSerializer.Deserialize<List<FieldValue>>(extra.PreparedFields, JsonSerializerOptions.Web) ?? [];
-        return new ApplicationDetail(row, extra.ApplyUrl, extra.PayloadHash, fields, extra.ResumePath is not null && File.Exists(extra.ResumePath), history, evidence, tasks);
+        return new ApplicationDetail(row, extra.ApplyUrl, extra.PayloadHash, fields, extra.ResumePath is not null && File.Exists(extra.ResumePath), history, evidence, tasks,
+            automation.CapabilityOf(extra.ApplyUrl, extra.ApplyChannel));
     }
 }
 

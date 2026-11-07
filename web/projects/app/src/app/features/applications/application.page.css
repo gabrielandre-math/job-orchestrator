@@ -23,3 +23,5 @@
 .list li { display: grid; gap: 2px; padding: 11px 16px; border-bottom: 1px solid var(--line); }
 .list li:last-child { border-bottom: 0; }
 @media (max-width: 1200px) { .cols { grid-template-columns: 1fr; } }
+
+.capability { margin: -6px 0 14px; font-size: 12.5px; max-width: 92ch; }

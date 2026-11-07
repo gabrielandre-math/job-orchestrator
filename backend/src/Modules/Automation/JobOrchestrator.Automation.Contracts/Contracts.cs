@@ -98,8 +98,20 @@ public sealed record SubmitToken(Guid IntentId, Guid ApplicationId, string Paylo
 /// <summary>Uma plataforma do registro como está agora: estado, países, se há conector, se o portão está aberto e a última sondagem.</summary>
 public sealed record RegistryEntry(string Prefix, string Name, string Lifecycle, string[] Countries, bool Connector, bool GateOpen, bool? ProbeOk, int ProbeCount);
 
+/// <summary>
+/// What the app does with one application, before you trust it with the night. Confirm: receipt (the ATS confirmation page), smtp
+/// (accepted by the mail server) or declared (you say it was sent). Recover: portal (the site is asked), email (you check the
+/// confirmation e-mail), uncertain (an interrupted send waits for you) or you.
+/// </summary>
+public sealed record ApplyCapability(string Channel, string? Platform, bool Prepare, bool Submit, string Confirm, string Recover);
+
+/// <summary>One platform the app fills and sends by itself, on its real sites (the test ATS left out).</summary>
+public sealed record PlatformCapability(string Id, string Name, IReadOnlyList<string> Domains, bool Prepare, bool Submit, bool Confirm, bool Recover);
+
 public interface IAutomationApi
 {
+    ApplyCapability CapabilityOf(string applyUrl, string channel);
+    IReadOnlyList<PlatformCapability> Platforms();
     /// <summary>O registro de fontes ao vivo, para a cobertura por país.</summary>
     Task<IReadOnlyList<RegistryEntry>> RegistryAsync(CancellationToken ct);
     Task<IReadOnlyList<DiscoveredPosting>> DiscoverAsync(string source, CancellationToken ct);

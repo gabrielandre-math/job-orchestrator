@@ -48,7 +48,8 @@ export interface Field { label: string; value: string; source: string; }
 export interface HistoryRow { at: string; from: string | null; to: string; reason: string; actor: string; detail: string | null; }
 export interface EvidenceRow { level: number; kind: string; detail: string; at: string; }
 export interface TaskRow { id: string; applicationId: string; kind: string; title: string; detail: string; createdAt: string; resolvedAt: string | null; resolution: string | null; }
-export interface ApplicationDetail { application: ApplicationRow; applyUrl: string; payloadHash: string | null; fields: Field[]; hasResume: boolean; history: HistoryRow[]; evidence: EvidenceRow[]; tasks: TaskRow[]; }
+export interface ApplyCapability { channel: string; platform: string | null; prepare: boolean; submit: boolean; confirm: string; recover: string; }
+export interface ApplicationDetail { application: ApplicationRow; applyUrl: string; payloadHash: string | null; fields: Field[]; hasResume: boolean; history: HistoryRow[]; evidence: EvidenceRow[]; tasks: TaskRow[]; capability: ApplyCapability; }
 export interface Campaign { id: string; name: string; enabled: boolean; mode: string; minFitScore: number; maxSubmissionsPerDay: number; technologies: string[]; titles: string[]; locations: string[]; sources: string[]; timeZone: string; window: string; lastRunAt: string | null; }
 export interface UsageWindow { name: string; usedPercent: number | null; resetsAt: string | null; }
 export interface LlmResult { ok: boolean; json: string | null; providerId: string; model: string; effort: string; error: string | null; seconds: number; degraded: boolean; cached: boolean; }
