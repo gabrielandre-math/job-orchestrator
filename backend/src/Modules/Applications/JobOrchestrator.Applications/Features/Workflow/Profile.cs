@@ -9,9 +9,23 @@ namespace JobOrchestrator.Applications.Features.Workflow;
 /// Pacote do formulário a partir do perfil verdadeiro (módulo Profile): dados pessoais e as respostas do banco para esta vaga.
 /// Anos com cada tecnologia saem das datas das experiências; pretensão sai do piso do vínculo e da moeda da vaga.
 /// </summary>
-internal sealed partial class Bundles(IProfileApi profiles, IJobsApi jobs)
+internal sealed partial class Bundles(IProfileApi profiles, IJobsApi jobs, ApplicationsDbContext db)
 {
-    public Task<MaterialBundle?> ForAsync(JobApplication app, CancellationToken ct) => ForJobAsync(app.JobId, app.ResumePath!, ct);
+    public Task<MaterialBundle?> ForAsync(JobApplication app, CancellationToken ct) => ForAsync(app, false, ct);
+
+    /// <summary>
+    /// The application's bundle: the job's bundle plus the answers the AI wrote from your profile for this form (yours still win), and
+    /// whether your authorization accepts, in your name, the privacy and terms boxes.
+    /// </summary>
+    public async Task<MaterialBundle?> ForAsync(JobApplication app, bool acceptDeclarations, CancellationToken ct)
+    {
+        if (await ForJobAsync(app.JobId, app.ResumePath!, ct) is not { } bundle) return null;
+        var drafted = await db.FormAnswers.AsNoTracking().Where(f => f.ApplicationId == app.Id && f.Accepted).Select(f => new { f.Question, f.Answer }).ToListAsync(ct);
+        if (drafted.Count == 0) return bundle with { AcceptDeclarations = acceptDeclarations };
+        var answers = new Dictionary<string, string>(bundle.Answers, StringComparer.Ordinal);
+        foreach (var d in drafted) answers[CustomAnswer.AiKey(d.Question)] = d.Answer;
+        return bundle with { Answers = answers, AcceptDeclarations = acceptDeclarations };
+    }
 
     /// <summary>O mesmo pacote para uma vaga da fila, com o currículo dado (o ensaio dos formulários usa o base).</summary>
     public async Task<MaterialBundle?> ForJobAsync(Guid jobId, string resumePath, CancellationToken ct)

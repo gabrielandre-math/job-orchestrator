@@ -14,6 +14,7 @@ internal sealed class ApplicationsDbContext(DbContextOptions<ApplicationsDbConte
     public DbSet<HumanTask> Tasks => Set<HumanTask>();
     public DbSet<InterviewRound> Interviews => Set<InterviewRound>();
     public DbSet<ApprovalDecision> Approvals => Set<ApprovalDecision>();
+    public DbSet<FormAnswer> FormAnswers => Set<FormAnswer>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -110,6 +111,21 @@ internal sealed class ApplicationsDbContext(DbContextOptions<ApplicationsDbConte
             e.HasKey(x => x.Id);
             e.Property(x => x.PayloadHash).HasMaxLength(64);
             e.HasIndex(x => x.ApplicationId);
+        });
+        b.Entity<FormAnswer>(e =>
+        {
+            e.ToTable("form_answers");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.QuestionKey).HasMaxLength(200);
+            e.Property(x => x.Question).HasMaxLength(1000);
+            e.Property(x => x.Kind).HasMaxLength(20);
+            e.Property(x => x.Answer).HasMaxLength(4000);
+            e.Property(x => x.Note).HasMaxLength(500);
+            e.Property(x => x.Basis).HasMaxLength(2000);
+            e.Property(x => x.ProviderId).HasMaxLength(40);
+            e.Property(x => x.Model).HasMaxLength(80);
+            e.HasOne<JobApplication>().WithMany().HasForeignKey(x => x.ApplicationId);
+            e.HasIndex(x => new { x.ApplicationId, x.QuestionKey }).IsUnique();
         });
     }
 

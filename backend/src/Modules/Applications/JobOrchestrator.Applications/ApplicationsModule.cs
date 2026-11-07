@@ -34,6 +34,7 @@ public static class ApplicationsModule
         s.AddSingleton<TokenIssuer>();
         s.TryAddScoped<Bundles>();
         s.AddScoped<StepKit>();
+        s.AddScoped<Answerer>();
         s.AddScoped<IStep, MaterialsStep>();
         s.AddScoped<IStep, PrepareStep>();
         s.AddScoped<IStep, SubmitStep>();

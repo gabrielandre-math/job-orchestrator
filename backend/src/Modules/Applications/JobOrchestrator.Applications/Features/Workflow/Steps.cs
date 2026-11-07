@@ -34,6 +34,9 @@ internal sealed class StepKit(ApplicationsDbContext db, IAutomationApi automatio
     public bool IsTestHost(string url) =>
         (config.GetSection("Automation:FakeAtsHosts").Get<string[]>() ?? []).Contains(new Uri(url).Authority, StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>Only an authorization in force that accepts the declarations lets the app tick privacy and terms boxes in your name.</summary>
+    public static bool AcceptsDeclarations(CampaignSettings campaign) => campaign.Mode == SubmissionMode.AutoSubmit && campaign.Authorization is { AcceptDeclarations: true };
+
     public static HumanTaskKind TaskFor(string? code) => code switch
     {
         "captcha" => HumanTaskKind.Captcha,
@@ -114,7 +117,7 @@ internal sealed class MaterialsStep(StepKit k) : IStep
 }
 
 /// <summary>Agente Preparador: preenche pelo roteador (com fallback) e entrega ao Guardião. Nunca envia.</summary>
-internal sealed class PrepareStep(StepKit k) : IStep
+internal sealed class PrepareStep(StepKit k, Answerer answerer) : IStep
 {
     public WorkStep Step => WorkStep.Prepare;
 
@@ -134,7 +137,7 @@ internal sealed class PrepareStep(StepKit k) : IStep
         }
 
         var campaign = await k.CampaignAsync(app.CampaignId, ct);
-        var bundle = await k.Bundles.ForAsync(app, ct) ?? throw new InvalidOperationException("Perfil sumiu entre as etapas.");
+        var bundle = await k.Bundles.ForAsync(app, StepKit.AcceptsDeclarations(campaign), ct) ?? throw new InvalidOperationException("Perfil sumiu entre as etapas.");
         var outcome = await k.Automation.PrepareAsync(new ApplyTarget(app.Id, app.ApplyUrl), bundle, ct);
         var now = k.Now;
         switch (outcome.Kind)
@@ -153,8 +156,16 @@ internal sealed class PrepareStep(StepKit k) : IStep
                 if (next == ApplicationState.AwaitingApproval) k.Db.AddTask(app.Id, HumanTaskKind.Approval, "Aprovar envio", $"{app.Title}, {app.Company}", now);
                 break;
             case AdapterResultKind.NeedsHuman or AdapterResultKind.Unsupported:
-                app.Move(ApplicationState.NeedsHuman, outcome.Detail, "Preparador", now, new { outcome.ReasonCode, outcome.Route });
-                k.Db.AddTask(app.Id, StepKit.TaskFor(outcome.ReasonCode), outcome.ReasonCode == "captcha" ? "Resolver CAPTCHA" : outcome.ReasonCode == "login" ? "Entrar no site" : "Responder pergunta nova", outcome.Detail, now);
+                // Questions the form asked and nobody answered yet go to the AI with your profile's facts; with answers, the form is filled again.
+                if (outcome.Questions is { Count: > 0 } asked && await answerer.AnswerAsync(app, asked, ct) is { Retry: true } round)
+                {
+                    app.Move(ApplicationState.RetryScheduled, round.Reason, "Respondente", now, new { round.Answered, round.Provider, outcome.Route });
+                    k.Enqueue(app.Id, WorkStep.Prepare, round.Delay);
+                    break;
+                }
+                var detail = outcome.Questions is { Count: > 0 } && await answerer.RefusalsAsync(app.Id, ct) is { } refused ? $"{outcome.Detail} {refused}" : outcome.Detail;
+                app.Move(ApplicationState.NeedsHuman, detail.Length > 500 ? detail[..499] + "…" : detail, "Preparador", now, new { outcome.ReasonCode, outcome.Route });
+                k.Db.AddTask(app.Id, StepKit.TaskFor(outcome.ReasonCode), outcome.ReasonCode == "captcha" ? "Resolver CAPTCHA" : outcome.ReasonCode == "login" ? "Entrar no site" : "Responder pergunta nova", detail.Length > 500 ? detail[..499] + "…" : detail, now);
                 break;
             case AdapterResultKind.PermanentFailure:
                 app.Move(ApplicationState.Failed, outcome.Detail, "Preparador", now, new { outcome.ReasonCode, outcome.Route });
@@ -248,7 +259,7 @@ internal sealed class SubmitStep(StepKit k, TokenIssuer tokens) : IStep
         app.Move(ApplicationState.Submitting, "O Guardião liberou. Intenção gravada antes do clique.", "Guardião", k.Now, new { intentId = intent.Id });
         await db.SaveChangesAsync(ct);
 
-        var bundle = await k.Bundles.ForAsync(app, ct) ?? throw new InvalidOperationException("Perfil sumiu entre as etapas.");
+        var bundle = await k.Bundles.ForAsync(app, StepKit.AcceptsDeclarations(campaign), ct) ?? throw new InvalidOperationException("Perfil sumiu entre as etapas.");
         var outcome = await k.Automation.SubmitAsync(new ApplyTarget(app.Id, app.ApplyUrl), bundle, tokens.Issue(intent), app.PreparedBy!, ct);
         var now = k.Now;
         switch (outcome.Kind)

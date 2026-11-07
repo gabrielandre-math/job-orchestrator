@@ -158,6 +158,82 @@ namespace JobOrchestrator.Applications.Data.Migrations
                     b.ToTable("evidence", "applications");
                 });
 
+            modelBuilder.Entity("JobOrchestrator.Applications.Domain.FormAnswer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("Accepted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("accepted");
+
+                    b.Property<string>("Answer")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("answer");
+
+                    b.Property<Guid>("ApplicationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("application_id");
+
+                    b.Property<string>("Basis")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("basis");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("Model")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("model");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("note");
+
+                    b.Property<string>("ProviderId")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("provider_id");
+
+                    b.Property<string>("Question")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("question");
+
+                    b.Property<string>("QuestionKey")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("question_key");
+
+                    b.HasKey("Id")
+                        .HasName("pk_form_answers");
+
+                    b.HasIndex("ApplicationId", "QuestionKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_form_answers_application_id_question_key");
+
+                    b.ToTable("form_answers", "applications");
+                });
+
             modelBuilder.Entity("JobOrchestrator.Applications.Domain.HumanTask", b =>
                 {
                     b.Property<Guid>("Id")
@@ -589,6 +665,16 @@ namespace JobOrchestrator.Applications.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_events_applications_application_id");
+                });
+
+            modelBuilder.Entity("JobOrchestrator.Applications.Domain.FormAnswer", b =>
+                {
+                    b.HasOne("JobOrchestrator.Applications.Domain.JobApplication", null)
+                        .WithMany()
+                        .HasForeignKey("ApplicationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_form_answers_applications_application_id");
                 });
 
             modelBuilder.Entity("JobOrchestrator.Applications.Domain.InterviewRound", b =>
