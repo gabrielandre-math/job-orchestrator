@@ -77,7 +77,7 @@ internal sealed class IntelligenceApi(ProviderSet set, IntelligenceDbContext db,
         if (r.Thread is { } thread)
             await SayAsync(thread, r.Agent, "ask", $"Pede {Label(r.Task)}, degrau {RungPt(r.Rung)}", Excerpt(r.Prompt, 8000), null, null, null, 0, true, "Roteador", ct);
 
-        var key = CacheKey(r);
+        var key = CacheKey(r, Policy(config));
         var hit = await db.Cache.AsNoTracking().FirstOrDefaultAsync(x => x.Key == key && x.ExpiresAt > Now, ct);
         if (hit is not null)
         {
@@ -107,6 +107,9 @@ internal sealed class IntelligenceApi(ProviderSet set, IntelligenceDbContext db,
             }
             if (r.Thread is { } working) await SayAsync(working, Who(v.Id), "working", $"Pegou o pedido do {r.Agent}", null, v.Id, null, null, 0, true, r.Agent, ct);
             last = await providers.First(p => p.Id == v.Id).RunAsync(r, ct);
+            // JSON that parses but has the wrong shape is a failed answer: the next provider tries, and nothing wrong is cached.
+            if (last.Ok && r.JsonSchema.Length > 0 && !JsonShape.Matches(r.JsonSchema, last.Json))
+                last = last with { Ok = false, Error = "A resposta não segue o formato pedido." };
             await RecordAsync(r, last, ct);
             if (last.Ok)
             {
@@ -121,6 +124,7 @@ internal sealed class IntelligenceApi(ProviderSet set, IntelligenceDbContext db,
         {
             if (r.Thread is { } working) await SayAsync(working, Who("ollama"), "working", $"Nuvem fora: o modelo local forte faz um rascunho para o {r.Agent}", null, "ollama", null, null, 0, true, r.Agent, ct);
             var draft = await ollama.RunAsync(r with { Rung = Rung.LocalStrong, TimeoutSeconds = Math.Max(r.TimeoutSeconds, 600) }, ct) with { Degraded = true };
+            if (draft.Ok && r.JsonSchema.Length > 0 && !JsonShape.Matches(r.JsonSchema, draft.Json)) draft = draft with { Ok = false, Error = "A resposta não segue o formato pedido." };
             await RecordAsync(r, draft, ct);
             if (draft.Ok) return draft;
             last = draft;
@@ -256,8 +260,15 @@ internal sealed class IntelligenceApi(ProviderSet set, IntelligenceDbContext db,
         await db.SaveChangesAsync(ct);
     }
 
-    internal static string CacheKey(LlmRequest r) =>
-        Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(string.Join('\u001f', r.Task, r.Rung, r.AvoidFamily ?? "", r.System, r.JsonSchema, r.Prompt))));
+    /// <summary>The cache key holds the AI settings too (providers, models, order): another model never gets an answer cached from the old one.</summary>
+    internal static string CacheKey(LlmRequest r, string policy) =>
+        Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(string.Join('\u001f', CacheVersion, policy, r.Task, r.Rung, r.AvoidFamily ?? "", r.System, r.JsonSchema, r.Prompt))));
+
+    private const string CacheVersion = "2";
+
+    internal static string Policy(IConfiguration config) =>
+        string.Join(';', config.GetSection("Llm").AsEnumerable().Where(kv => kv.Value is not null && !kv.Key.EndsWith(":Budget", StringComparison.Ordinal))
+            .OrderBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => $"{kv.Key}={kv.Value}"));
 
     private static string Cut(string s, int max) => s.Length > max ? s[..max] : s;
 }

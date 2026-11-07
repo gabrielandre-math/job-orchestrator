@@ -159,6 +159,31 @@ public sealed class RouterTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Json_fora_do_formato_passa_para_o_proximo_e_nao_vai_para_o_cache()
+    {
+        await using var db = Db();
+        var wrong = new Fake("claude-pro", "anthropic", run: _ => new LlmResult(true, "{\"nada\":1}", "claude-pro", "m", "low", null, 0.1));
+        var right = new Fake("codex", "openai", run: _ => new LlmResult(true, "{\"ok\":true}", "codex", "m", "low", null, 0.1));
+        var api = Router(db, [wrong, right, new Fake("ollama", "local")]);
+        var shaped = new LlmRequest("test.shape", "s", "p", "{\"type\":\"object\",\"required\":[\"ok\"],\"properties\":{\"ok\":{\"type\":\"boolean\"}}}", Rung.Medium);
+
+        var r = await api.CompleteAsync(shaped, default);
+
+        Assert.Equal("codex", r.ProviderId);
+        Assert.Single(wrong.Calls);
+        Assert.DoesNotContain(await db.Cache.ToListAsync(), c => c.Json.Contains("nada"));
+    }
+
+    [Fact]
+    public void Trocar_de_modelo_muda_a_chave_do_cache()
+    {
+        var request = new LlmRequest("resume.tailor", "s", "p", "{}", Rung.Medium);
+        var before = IntelligenceApi.CacheKey(request, IntelligenceApi.Policy(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["Llm:Ollama:Models:Local"] = "qwen3:4b" }).Build()));
+        var after = IntelligenceApi.CacheKey(request, IntelligenceApi.Policy(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["Llm:Ollama:Models:Local"] = "qwen3.5:4b" }).Build()));
+        Assert.NotEqual(before, after);
+    }
+
+    [Fact]
     public async Task Teto_diario_corta_a_nuvem()
     {
         await using var db = Db();
