@@ -55,9 +55,12 @@ internal static class AnswerBank
 
         if (conf.ConfirmedAt is not null)
         {
-            var country = (c.Country ?? "BR").ToUpperInvariant();
-            Put("work_authorization", conf.AuthorizedCountries.Contains(country, StringComparer.OrdinalIgnoreCase) ? T("Sim", "Yes") : T("Não", "No"));
-            Put("needs_sponsorship", conf.NeedsSponsorship ? T("Sim", "Yes") : T("Não", "No"));
+            // Without the job's country nobody can say if you may work there: both questions are left for you.
+            if (c.Country is { } country)
+            {
+                Put("work_authorization", conf.AuthorizedCountries.Contains(country, StringComparer.OrdinalIgnoreCase) ? T("Sim", "Yes") : T("Não", "No"));
+                Put("needs_sponsorship", conf.NeedsSponsorship ? T("Sim", "Yes") : T("Não", "No"));
+            }
             Put("salary_expectation", Salary(conf, c, en));
             Put("start_date", conf.StartAvailability);
             Put("relocation", conf.Relocate ? T("Sim", "Yes") : T("Não", "No"));

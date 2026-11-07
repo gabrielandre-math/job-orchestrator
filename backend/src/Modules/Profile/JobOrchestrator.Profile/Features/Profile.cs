@@ -209,7 +209,8 @@ internal sealed class ProfileEndpoints : ICarterModule
             (await sender.Send(body, ct)).ToHttp(_ => Results.NoContent()));
         group.MapGet("answers", async (string? lang, string? contract, string? currency, string? country, string? tech, IProfileApi api, CancellationToken ct) =>
         {
-            var context = new AnswerContext(contract, currency, country, (tech ?? "C#,.NET,AWS,PostgreSQL").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
+            // A preview of the bank for a Brazilian job unless another country is asked for.
+            var context = new AnswerContext(contract, currency, country ?? "BR", (tech ?? "C#,.NET,AWS,PostgreSQL").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
                 lang == "en" ? "en" : "pt", "greenhouse");
             return Results.Ok(await api.AnswersAsync(context, ct));
         });
