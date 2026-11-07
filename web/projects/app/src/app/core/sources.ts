@@ -2,6 +2,7 @@
 export interface SourceInfo { source: string; platform: string; platformName: string; platformDomain: string; target: string; label: string; company: string | null; companyDomain: string | null; kind: 'ats' | 'api' | 'site' | 'community' }
 
 export const PLATFORMS: Record<string, { name: string; domain: string; kind: SourceInfo['kind'] }> = {
+  'linkedin-session': { name: 'LinkedIn: minha sessão', domain: 'linkedin.com', kind: 'site' },
   greenhouse: { name: 'Greenhouse', domain: 'greenhouse.io', kind: 'ats' }, lever: { name: 'Lever', domain: 'lever.co', kind: 'ats' },
   ashby: { name: 'Ashby', domain: 'ashbyhq.com', kind: 'ats' }, smartrecruiters: { name: 'SmartRecruiters', domain: 'smartrecruiters.com', kind: 'ats' },
   recruitee: { name: 'Recruitee', domain: 'recruitee.com', kind: 'ats' }, breezy: { name: 'Breezy HR', domain: 'breezy.hr', kind: 'ats' },

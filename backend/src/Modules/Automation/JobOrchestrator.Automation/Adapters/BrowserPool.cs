@@ -27,29 +27,43 @@ internal sealed class BrowserPool(IOptions<AutomationOptions> options, ILogger<B
 
     public int TimeoutMs => _o.TimeoutSeconds * 1000;
 
-    public async Task<BrowserLease> LeaseAsync(IReadOnlyCollection<string> allowedHosts, CancellationToken ct)
+    public async Task<BrowserLease> LeaseAsync(IReadOnlyCollection<string> allowedHosts, CancellationToken ct, bool challengeResources = false, string? navigationOrigin = null, bool? headless = null)
     {
         await _slots.WaitAsync(ct);
         Interlocked.Increment(ref _active);
+        IBrowser? dedicated = null;
+        IBrowserContext? context = null;
         try
         {
-            var browser = await BrowserAsync();
-            var context = await browser.NewContextAsync(new BrowserNewContextOptions { AcceptDownloads = false, Locale = "en-US" });
+            // Interactive controlled tests use a separate browser, so they never change the production pool's headless setting.
+            var browser = headless is { } requested && requested != _o.Headless
+                ? dedicated = await (await PlaywrightAsync()).Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = requested, ExecutablePath = _o.ExecutablePath })
+                : await BrowserAsync();
+            context = await browser.NewContextAsync(new BrowserNewContextOptions { AcceptDownloads = false, Locale = "en-US" });
             context.SetDefaultTimeout(TimeoutMs);
             await context.RouteAsync("**/*", async route =>
             {
-                if (Heavy.Contains(route.Request.ResourceType)) await route.AbortAsync("blockedbyclient");
+                if (navigationOrigin is not null && route.Request.IsNavigationRequest && route.Request.Frame.ParentFrame is null
+                    && (!Uri.TryCreate(route.Request.Url, UriKind.Absolute, out var navigation) || navigation.GetLeftPart(UriPartial.Authority) != navigationOrigin)) await route.AbortAsync("blockedbyclient");
+                else if (Heavy.Contains(route.Request.ResourceType) && !(challengeResources && route.Request.ResourceType == "image")) await route.AbortAsync("blockedbyclient");
                 else if (Allowed(route.Request.Url, allowedHosts)) await route.ContinueAsync();
                 else await route.AbortAsync("blockedbyclient");
             });
-            return new BrowserLease(context, _slots, Returned);
+            return new BrowserLease(context, _slots, Returned, dedicated);
         }
         catch
         {
-            Returned();
-            _slots.Release();
+            try { if (context is not null) await context.CloseAsync(); if (dedicated is not null) await dedicated.CloseAsync(); }
+            finally { Returned(); _slots.Release(); }
             throw;
         }
+    }
+
+    private async Task<IPlaywright> PlaywrightAsync()
+    {
+        await _launch.WaitAsync();
+        try { return _playwright ??= await Playwright.CreateAsync(); }
+        finally { _launch.Release(); }
     }
 
     /// <summary>Contexto devolvido: marca a hora para o fechamento por inatividade.</summary>
@@ -126,13 +140,15 @@ internal sealed class BrowserPool(IOptions<AutomationOptions> options, ILogger<B
 }
 
 /// <summary>Um contexto emprestado. Ao devolver, o contexto fecha e a vaga volta ao pool.</summary>
-internal sealed class BrowserLease(IBrowserContext context, SemaphoreSlim slots, Action returned) : IAsyncDisposable
+internal sealed class BrowserLease(IBrowserContext context, SemaphoreSlim slots, Action returned, IBrowser? dedicated = null) : IAsyncDisposable
 {
+    private int disposed;
     public IBrowserContext Context => context;
 
     public async ValueTask DisposeAsync()
     {
-        try { await context.CloseAsync(); }
+        if (Interlocked.Exchange(ref disposed, 1) != 0) return;
+        try { try { await context.CloseAsync(); } finally { if (dedicated is not null) await dedicated.CloseAsync(); } }
         finally { returned(); slots.Release(); }
     }
 }

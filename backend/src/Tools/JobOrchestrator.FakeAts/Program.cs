@@ -120,6 +120,8 @@ app.MapGet("/api/receipts", (int job, string email) =>
 app.MapGet("/api/submissions", () => Results.Ok(store.All()));
 app.MapPost("/api/reset", () => { store.Reset(); return Results.NoContent(); });
 if (Environment.GetEnvironmentVariable("FAKEATS_CAPTCHA_LAB") == "1") new CaptchaLab().Map(app);
+if (Environment.GetEnvironmentVariable("JO_CONTROLLED_TESTS") == "1")
+    new ControlledCaptchaServer(ControlledCaptchaSetup.FromEnvironment(), new HttpClient { Timeout = TimeSpan.FromSeconds(20) }, TimeProvider.System).Map(app);
 app.Run();
 
 internal sealed record Job(int Id, string Title, string Company, string Location, string Scenario, string Description);

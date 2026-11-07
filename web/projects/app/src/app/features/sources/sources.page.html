@@ -1,9 +1,10 @@
 <section class="page">
   <jo-tabs [items]="tabs" label="Fontes" />
   <jo-page-hero title="Fontes" [scene]="['radar', 'router', 'inbox']" [stats]="stats()"
-    lead="De onde vêm as vagas: os quadros oficiais das empresas, APIs públicas de todas as áreas, comunidades e sites de carreira. Tudo pela porta oficial, sem login e sem robô em rede social.">
+    lead="De onde vêm as vagas: quadros das empresas, APIs públicas, comunidades e sites de carreira. Você também pode conectar uma sessão local para buscar vagas do LinkedIn.">
     <button type="button" class="btn primary" (click)="adding.set(true)" [disabled]="!campaign()"><jo-icon name="plus" [size]="14" />Adicionar fonte</button>
     <a class="btn" routerLink="/busca"><jo-icon name="magnifying-glass" [size]="14" />Ver a busca ao vivo</a>
+    <a class="btn" routerLink="/testes">Testar LinkedIn e CAPTCHA</a>
   </jo-page-hero>
 
   <jo-explorer />

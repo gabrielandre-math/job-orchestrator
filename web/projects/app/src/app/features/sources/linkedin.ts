@@ -16,13 +16,14 @@ const ORIGIN: Record<string, string> = { 'alertas:email': 'Alertas por e-mail', 
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="panel">
-      <header><h2>LinkedIn</h2><span class="faint small">sem robô: o LinkedIn proíbe automação</span></header>
+      <header><h2>LinkedIn</h2><span class="faint small">sessão local, alertas e captura</span></header>
       <div class="body">
         <ul class="modes">
           <li><strong>Perfil</strong><span class="muted">O export do LinkedIn (ZIP) traz experiências, formação, competências, certificados e idiomas, sem IA. <a routerLink="/perfil" [queryParams]="{ conectar: 'linkedin' }">Conectar</a></span></li>
+          <li><strong>Busca pela conta</strong><span class="muted">A sessão local pode buscar por termos, ler detalhes e alimentar a campanha. Você faz login na janela separada. <a routerLink="/testes">Conectar e configurar busca</a></span></li>
           <li><strong>Vagas por alerta</strong><span class="muted">O alerta de vaga do LinkedIn chega no seu e-mail com título, empresa, local e o link da vaga. A descrição completa não vem no e-mail.</span></li>
-          <li><strong>Vaga que você abriu</strong><span class="muted">O favorito de captura (em Campanha) leva o texto que você selecionou na vaga e o link.</span></li>
-          <li><strong>Candidatura</strong><span class="muted">O copiloto preenche o formulário no seu navegador com o currículo e as respostas. O envio é seu.</span></li>
+          <li><strong>Vagas da sua aba</strong><span class="muted">Na extensão, clique em Ler esta página e confira a prévia. A captura traz cartões ou os detalhes abertos, atualizando a mesma vaga sem duplicar. <a routerLink="/testes">Preparar teste</a></span></li>
+          <li><strong>Candidatura</strong><span class="muted">No LinkedIn, copie o currículo e as respostas do copiloto e envie pelo site. A extensão de preenchimento não executa nessa plataforma.</span></li>
           <li><strong>Recrutador</strong><span class="muted">Só quando a vaga publica um contato. O app não procura nem deduz e-mail de ninguém.</span></li>
           <li><strong>Laboratório</strong><span class="muted"><span class="mono">scripts/labs.sh</span> roda os extratores e o CAPTCHA contra páginas locais sintéticas.</span></li>
         </ul>

@@ -7,6 +7,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
       if (msg.type === 'status') {
         const r = await fetch(`${API}/api/health`);
         reply({ up: r.ok });
+      } else if (msg.type === 'capture-linkedin') {
+        const r = await fetch(`${API}/api/inbox/linkedin`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(msg.page) });
+        const body = await r.json();
+        reply(r.ok ? { ok: true, jobs: body } : { ok: false, error: body.detail || body.title || 'Não foi possível salvar as vagas.' });
       } else if (msg.type === 'match') {
         const r = await fetch(`${API}/api/copilot/match?url=${encodeURIComponent(msg.url)}`);
         if (r.ok) { reply({ found: true, ...(await r.json()) }); return; }

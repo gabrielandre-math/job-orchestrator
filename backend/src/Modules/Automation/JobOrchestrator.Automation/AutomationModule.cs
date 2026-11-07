@@ -40,6 +40,11 @@ public static class AutomationModule
         .SelectPipelineByAuthority();
         s.TryAddSingleton<GuardKey>();
         s.AddSingleton<BrowserPool>();
+        s.AddSingleton<Features.ControlledTests>();
+        s.AddSingleton<Features.LinkedInSession>();
+        s.AddSingleton<ILocalBrowserSessions, Features.LocalBrowserSessions>();
+        s.AddHttpClient("linkedin-session", c => c.Timeout = TimeSpan.FromMinutes(3));
+        s.AddScoped<ISourceConnector, Features.LinkedInSessionSource>();
         s.AddScoped<ISourceConnector, GreenhouseLikeSource>();
         s.AddScoped<ISourceConnector, LeverSource>();
         s.AddScoped<ISourceConnector, AshbySource>();

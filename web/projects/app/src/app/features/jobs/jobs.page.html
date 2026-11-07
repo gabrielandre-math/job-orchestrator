@@ -340,6 +340,15 @@
             </section>
           }
 
+          @if (sourceEvidence.value(); as evidence) {
+            @if (evidence.contact; as contact) {
+              <section class="d-sec"><h3>Contato publicado para candidatura</h3>
+                @if (contact.email) { <p>{{ contact.email }}</p><blockquote>{{ contact.evidence }}</blockquote> }
+                @else { <p>{{ contact.status === 'ambiguous' ? 'Há mais de um contato possível. Confira a publicação antes de enviar.' : 'Nenhum e-mail publicado para candidatura foi identificado no texto capturado.' }}</p> }
+                @if (evidence.externalApplyUrl) { <a [href]="evidence.externalApplyUrl" target="_blank" rel="noopener">Abrir candidatura externa publicada</a> }
+              </section>
+            }
+          }
           <section class="d-sec">
             <h3>Resumo</h3>
             <dl class="facts">

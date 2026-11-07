@@ -5,7 +5,13 @@
   <header><img src="icons/icon-32.png" alt=""><div><strong>Job Orchestrator</strong><span id="state">Conferindo o app…</span></div></header>
   <section id="job" hidden><span class="label">Candidatura</span><strong id="title"></strong><span id="company"></span></section>
   <section id="none" hidden><p>Esta página não está nas suas candidaturas. Dá para preencher só os dados pessoais e as respostas gerais do perfil.</p></section>
-  <section id="blocked" hidden><p>O LinkedIn não aceita preenchimento automático. Use o copiloto do app para copiar as respostas.</p></section>
+  <section id="blocked" hidden>
+    <strong>Capturar vagas do LinkedIn</strong>
+    <p>Lê as vagas que já estão nesta aba. Não navega, não lê mensagens e não envia candidaturas.</p>
+    <button id="capture">Ler esta página</button>
+    <div id="capture-preview" hidden><div id="capture-list"></div><p id="capture-note"></p><button id="capture-save">Salvar selecionadas no app</button></div>
+    <p>Para completar uma vaga, abra seus detalhes, expanda a descrição e capture de novo. O app atualiza sem duplicar.</p>
+  </section>
   <button id="fill" disabled>Preencher este formulário</button>
   <p class="note">Só preenche campos vazios e anexa o currículo da vaga. Confira tudo e envie você mesmo: a extensão nunca clica em enviar.</p>
   <p id="result" class="result" hidden></p>
