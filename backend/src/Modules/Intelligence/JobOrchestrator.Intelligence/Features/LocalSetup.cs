@@ -41,6 +41,23 @@ internal sealed class LocalSetup(IHttpClientFactory http, IConfiguration config,
         new("qwen3:4b", "alibaba", 2.5, 3.0, 93, "rápido", "Versão anterior; os novos acertam mais.", false, null),
     ];
 
+    /// <summary>
+    /// Size of the MLX build that Ollama pulls on Apple silicon instead of the GGUF one, from the registry's manifest lists
+    /// (November 2026). Models left out have only the GGUF build.
+    /// </summary>
+    private static readonly Dictionary<string, double> Mlx = new()
+    {
+        ["gemma4:e4b"] = 8.8, ["qwen3.5:9b"] = 7.1, ["qwen3.5:4b"] = 3.7, ["gemma4:e2b"] = 7.0,
+        ["qwen3.5:2b"] = 2.9, ["qwen3.5:0.8b"] = 1.2, ["gemma4:12b"] = 7.2, ["qwen3.5:27b"] = 18.4,
+    };
+
+    /// <summary>The catalog as this machine downloads it. On Apple silicon the whole model sits in unified memory, MLX build when there is one.</summary>
+    internal static IReadOnlyList<CatalogModel> CatalogFor(bool apple) =>
+        [.. Known.Select(m => !apple ? m
+            : Mlx.TryGetValue(m.Name, out var gb)
+                ? m with { DiskGb = gb, VramGb = Math.Max(m.VramGb, gb), Note = gb > m.DiskGb + 1 ? $"{m.Note} No chip da Apple, a versão MLX tem {gb:0.0} GB." : m.Note }
+                : m with { VramGb = Math.Max(m.VramGb, m.DiskGb) })];
+
     private static readonly Lock Gate = new();
     private static List<InstallStep> steps = [];
     private static bool running, failed, done;
@@ -104,12 +121,13 @@ internal sealed class LocalSetup(IHttpClientFactory http, IConfiguration config,
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or KeyNotFoundException) { }
         var bench = Bench();
-        var models = Known.Select(m => m with { Installed = installed.Contains(m.Name), BenchScore = bench.TryGetValue(m.Name, out var b) ? b : null }).ToList();
+        var models = CatalogFor(hw.Gpus.Any(g => g.Vendor == "apple")).Select(m => m with { Installed = installed.Contains(m.Name), BenchScore = bench.TryGetValue(m.Name, out var b) ? b : null }).ToList();
         return new LocalCatalog(hw, models, Recommend(hw, models, loadedVramMb), config["Llm:Ollama:Models:Local"], config["Llm:Ollama:Models:LocalStrong"]);
     }
 
     /// <summary>
-    /// Rápido: o de melhor nota que cabe inteiro na VRAM que o desktop deixa livre. Forte: o melhor que cabe dividindo com a RAM.
+    /// Rápido: o de melhor nota que cabe inteiro na VRAM que o desktop deixa livre. Forte: o melhor que cabe dividindo com a RAM
+    /// (no chip da Apple, até o limite do Metal), nunca abaixo do rápido.
     /// Sem placa de vídeo, modelos pequenos que rodam bem na CPU.
     /// </summary>
     internal static Recommendation Recommend(Hardware hw, IReadOnlyList<CatalogModel> models, int loadedVramMb)
@@ -128,10 +146,13 @@ internal sealed class LocalSetup(IHttpClientFactory http, IConfiguration config,
         var budget = Math.Round((gpu.TotalMb * 0.94 - desktop) / 1024.0, 1);
         var fits = models.Where(m => m.VramGb <= budget).OrderByDescending(Rank).ThenBy(m => m.VramGb).ToList();
         var fast = fits.FirstOrDefault(m => m.Speed == "rápido") ?? fits.FirstOrDefault() ?? models.OrderBy(m => m.VramGb).First();
-        var offload = budget + Math.Min(hw.RamFreeMb / 1024.0 * 0.5, 8);
-        var strong = models.Where(m => m.VramGb <= offload && m.Name != fast.Name && m.DiskGb >= fast.DiskGb).OrderByDescending(Rank).ThenByDescending(m => m.VramGb).FirstOrDefault() ?? fast;
+        // Unified memory has no separate RAM to spill into: Ollama loads a model only while it fits in Metal's share minus 512 MiB.
+        var apple = gpu.Vendor == "apple";
+        var offload = apple ? gpu.TotalMb / 1024.0 - 0.5 : budget + Math.Min(hw.RamFreeMb / 1024.0 * 0.5, 8);
+        var strong = models.Where(m => m.VramGb <= offload && m.Name != fast.Name && Rank(m) >= Rank(fast))
+            .OrderByDescending(Rank).ThenByDescending(m => m.VramGb).FirstOrDefault() ?? fast;
         var why = $"{gpu.Name} com {gpu.TotalMb / 1024.0:0.0} GB, {budget:0.0} GB livres além do desktop. Rápido: {fast.Name}, inteiro na GPU. Forte: {strong.Name}"
-            + (strong.VramGb > budget ? ", dividindo com a RAM quando precisa." : ".");
+            + (strong.VramGb <= budget ? "." : apple ? ", perto do limite de memória que o Metal libera para modelos." : ", dividindo com a RAM quando precisa.");
         return new Recommendation(fast.Name, strong.Name, why, budget);
     }
 
