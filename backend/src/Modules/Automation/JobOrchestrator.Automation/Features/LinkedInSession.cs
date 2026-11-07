@@ -113,8 +113,16 @@ internal sealed class LinkedInSession(IOptions<AutomationOptions> options, TimeP
         for (var i = 0; i < await challenges.CountAsync(); i++)
             if (await challenges.Nth(i).IsVisibleAsync())
             { state = "VerificationRequired"; detail = "O LinkedIn pediu verificação. A busca está pausada; conclua na mesma janela e confira a sessão."; return false; }
+        if (browser is null || !HasAuthentication(await browser.CookiesAsync(["https://www.linkedin.com"]), time.GetUtcNow()))
+        { state = "LoginRequired"; detail = "A página pública abriu, mas não há sessão autenticada local. Entre na sua conta na mesma janela e confira a sessão."; return false; }
         state = "Ready"; detail = null; return true;
     }
+
+    internal static bool HasAuthentication(IEnumerable<BrowserContextCookiesResult> cookies, DateTimeOffset now) =>
+        cookies.Any(c => c.Name == "li_at" && !string.IsNullOrWhiteSpace(c.Value)
+            && (c.Domain.TrimStart('.').Equals("linkedin.com", StringComparison.OrdinalIgnoreCase)
+                || c.Domain.TrimStart('.').Equals("www.linkedin.com", StringComparison.OrdinalIgnoreCase))
+            && (c.Expires == -1 || c.Expires > now.ToUnixTimeSeconds()));
 
     public async Task<IReadOnlyList<DiscoveredPosting>> SearchAsync(string query, CancellationToken ct)
     {

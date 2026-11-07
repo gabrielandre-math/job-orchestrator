@@ -60,7 +60,7 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
         var filled = await FillAsync(page, target, materials);
         return filled.Kind == AdapterResultKind.Completed
             ? AdapterResult<PreparedForm>.Ok(filled.Value!, "Formulário preenchido e conferido. Nada foi enviado.")
-            : AdapterResult<PreparedForm>.Fail(filled.Kind, filled.ReasonCode!, filled.Detail);
+            : filled;
     }
 
     public async Task<AdapterResult<SubmissionReceipt>> SubmitAsync(ApplyTarget target, MaterialBundle materials, SubmitToken token, CancellationToken ct)
@@ -75,6 +75,11 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
         if (filled.Value!.PayloadHash != token.PayloadHash)
             return AdapterResult<SubmissionReceipt>.Fail(AdapterResultKind.BlockedByPolicy, "payload-changed", "O formulário mudou desde a aprovação. Nada foi enviado.");
 
+        // Instructions and hidden success templates are not evidence that this submission arrived.
+        var priorConfirmations = await VisibleTextAsync(page.GetByText(Confirmed));
+        var priorDuplicates = await VisibleTextAsync(page.GetByText(AlreadyApplied()));
+        var priorAlerts = await VisibleTextAsync(page.Locator("[role=alert]"));
+        var priorReceipts = await VisibleTextAsync(page.GetByText(ReceiptId()));
         Chaos.Point("before-click");
         try
         {
@@ -87,25 +92,41 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
         }
         Chaos.Point("after-click");
 
-        try
+        var waiting = System.Diagnostics.Stopwatch.StartNew();
+        string[] confirmations = [], duplicates = [], alerts = [];
+        do
         {
-            await page.GetByText(Confirmed).Or(page.GetByText(AlreadyApplied())).Or(page.Locator("[role=alert]")).First
-                .WaitForAsync(new LocatorWaitForOptions { Timeout = browsers.TimeoutMs });
+            ct.ThrowIfCancellationRequested();
+            confirmations = (await VisibleTextAsync(page.GetByText(Confirmed))).Except(priorConfirmations, StringComparer.Ordinal).ToArray();
+            duplicates = (await VisibleTextAsync(page.GetByText(AlreadyApplied()))).Except(priorDuplicates, StringComparer.Ordinal).ToArray();
+            alerts = (await VisibleTextAsync(page.Locator("[role=alert]"))).Except(priorAlerts, StringComparer.Ordinal).ToArray();
+            if (confirmations.Length > 0 || duplicates.Length > 0 || alerts.Length > 0) break;
+            await Task.Delay(100, ct);
         }
-        catch (TimeoutException)
-        {
-            return AdapterResult<SubmissionReceipt>.Fail(AdapterResultKind.SubmissionUnknown, "no-confirmation", "Clicou em enviar, mas a confirmação não apareceu a tempo.");
-        }
+        while (waiting.ElapsedMilliseconds < browsers.TimeoutMs);
 
-        var body = await page.Locator("body").InnerTextAsync();
-        if (AlreadyApplied().IsMatch(body))
+        if (duplicates.Length > 0)
             return AdapterResult<SubmissionReceipt>.Fail(AdapterResultKind.PermanentFailure, "already-applied", "O ATS recusou: já existe candidatura com este e-mail.");
-        if (!Confirmed.IsMatch(body))
+        if (confirmations.Length == 0 && alerts.Length > 0)
             return AdapterResult<SubmissionReceipt>.Fail(AdapterResultKind.PermanentFailure, "ats-validation", "O ATS recusou o formulário e mostrou erro de validação.");
-        var receipt = ReceiptId().Match(body);
+        if (confirmations.Length == 0)
+            return AdapterResult<SubmissionReceipt>.Fail(AdapterResultKind.SubmissionUnknown, "no-confirmation", "Clicou em enviar, mas nenhuma nova confirmação visível apareceu. O envio precisa de reconciliação.");
+        var newReceipts = (await VisibleTextAsync(page.GetByText(ReceiptId()))).Except(priorReceipts, StringComparer.Ordinal);
+        var receipt = ReceiptId().Match(string.Join('\n', confirmations.Concat(newReceipts)));
         return receipt.Success
             ? AdapterResult<SubmissionReceipt>.Ok(new SubmissionReceipt(receipt.Groups[1].Value, 4, "Página de confirmação com número do recibo."))
             : AdapterResult<SubmissionReceipt>.Ok(new SubmissionReceipt("", 3, "Página de confirmação reconhecida, sem número de recibo."));
+    }
+
+    private static async Task<string[]> VisibleTextAsync(ILocator locator)
+    {
+        var result = new HashSet<string>(StringComparer.Ordinal);
+        for (var i = 0; i < Math.Min(await locator.CountAsync(), 100); i++)
+        {
+            var node = locator.Nth(i);
+            if (await node.IsVisibleAsync()) result.Add(Regex.Replace(await node.InnerTextAsync(), @"\s+", " ").Trim());
+        }
+        return [.. result.Where(t => t.Length > 0)];
     }
 
     /// <summary>Só leitura: pergunta ao portal do ATS se existe candidatura deste e-mail para esta vaga.</summary>
