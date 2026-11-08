@@ -39,10 +39,12 @@ internal sealed class Router(IEnumerable<IFormAdapter> adapters, AutomationDbCon
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 log.LogWarning(ex, "Adapter {Adapter} failed on {Capability}", adapter.Id, capability);
-                // Depois de começar um envio, exceção não prova nada: só a reconciliação decide.
-                result = capability == Capability.SubmitApplication
-                    ? AdapterResult<T>.Fail(AdapterResultKind.SubmissionUnknown, "exception", "O adapter caiu durante o envio.")
-                    : AdapterResult<T>.Fail(AdapterResultKind.RetryableFailure, "exception", "O adapter caiu; a etapa pode ser repetida.");
+                // Depois de começar um envio, exceção não prova nada (o erro pode vir do redirecionamento depois do clique): só a
+                // reconciliação decide. Fora do envio, uma página que nem abriu diz o que houve.
+                result = (capability == Capability.SubmitApplication ? null : Unreachable<T>(ex.Message))
+                    ?? (capability == Capability.SubmitApplication
+                        ? AdapterResult<T>.Fail(AdapterResultKind.SubmissionUnknown, "exception", "O adapter caiu durante o envio.")
+                        : AdapterResult<T>.Fail(AdapterResultKind.RetryableFailure, "exception", "O adapter caiu; a etapa pode ser repetida."));
             }
             route.Add(new(adapter.Id, Math.Round(score, 3), result.Kind.ToString(), $"{why}; {result.Detail}"));
             await RecordAsync(adapter, url.Authority, capability, result, ct);
@@ -50,7 +52,7 @@ internal sealed class Router(IEnumerable<IFormAdapter> adapters, AutomationDbCon
             // A form that opened and only lacks answers is not the adapter's fault: another adapter would ask the same questions.
             var fallback = pinnedAdapter is null && capability == Capability.PrepareForm && result.Questions is null
                 && result.Kind is AdapterResultKind.Unsupported or AdapterResultKind.PermanentFailure;
-            if (!fallback || result.ReasonCode == "posting-closed") break;
+            if (!fallback || result.ReasonCode is "posting-closed" or "site-unreachable") break;
         }
 
         db.Routes.Add(new RoutingRecord
@@ -61,6 +63,20 @@ internal sealed class Router(IEnumerable<IFormAdapter> adapters, AutomationDbCon
         });
         await db.SaveChangesAsync(ct);
         return outcome;
+    }
+
+    /// <summary>
+    /// The job's page never loaded while preparing: a domain that does not exist is gone for good, a site that refused or did not answer
+    /// is tried again later. Any other exception stays the adapter's.
+    /// </summary>
+    internal static AdapterResult<T>? Unreachable<T>(string error)
+    {
+        if (error.Contains("net::ERR_NAME_NOT_RESOLVED", StringComparison.Ordinal))
+            return AdapterResult<T>.Fail(AdapterResultKind.PermanentFailure, "site-unreachable", "O endereço da vaga não existe mais: o domínio não responde. Nada foi enviado.");
+        if (error.Contains("net::ERR_CONNECTION_REFUSED", StringComparison.Ordinal) || error.Contains("net::ERR_CONNECTION_TIMED_OUT", StringComparison.Ordinal)
+            || error.Contains("net::ERR_CONNECTION_RESET", StringComparison.Ordinal) || error.Contains("net::ERR_ADDRESS_UNREACHABLE", StringComparison.Ordinal))
+            return AdapterResult<T>.Fail(AdapterResultKind.RetryableFailure, "site-down", "O site da vaga não respondeu agora. Nada foi enviado; o app tenta de novo mais tarde.");
+        return null;
     }
 
     /// <summary>Nota de 0 a 1 (docs/PLANO.md §5). Sucesso suavizado: (confirmados + 1) / (tentativas + 2).</summary>

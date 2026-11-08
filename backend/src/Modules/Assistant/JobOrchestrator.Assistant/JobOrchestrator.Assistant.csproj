@@ -7,5 +7,6 @@
     <ProjectReference Include="../../Profile/JobOrchestrator.Profile.Contracts/JobOrchestrator.Profile.Contracts.csproj" />
     <ProjectReference Include="../../Campaigns/JobOrchestrator.Campaigns.Contracts/JobOrchestrator.Campaigns.Contracts.csproj" />
     <ProjectReference Include="../../Jobs/JobOrchestrator.Jobs.Contracts/JobOrchestrator.Jobs.Contracts.csproj" />
+    <ProjectReference Include="../../Applications/JobOrchestrator.Applications.Contracts/JobOrchestrator.Applications.Contracts.csproj" />
   </ItemGroup>
 </Project>

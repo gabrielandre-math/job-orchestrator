@@ -19,6 +19,7 @@ public static class ApplicationsModule
         s.TryAddScoped<Bundles>();
         s.AddSingleton<Rehearsal>();
         s.AddScoped<Interviews>();
+        s.AddScoped<IApplicationsApi, Features.ApplicationsApi>();
         return s;
     }
 

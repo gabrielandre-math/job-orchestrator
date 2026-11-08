@@ -247,7 +247,14 @@ internal sealed partial class AssistantService(IIntelligenceApi ai, IServiceScop
             sb.AppendLine($"Campanha: modo {camp.Mode}, nota mínima {camp.MinFitScore}, palavras-chave [{string.Join(", ", camp.Technologies)}], locais [{string.Join(", ", camp.Locations)}], fontes [{string.Join(", ", camp.Sources)}].");
         else sb.AppendLine("Campanha: nenhuma ainda.");
         var counts = await jobs.CountsAsync(ct);
-        sb.AppendLine($"Vagas: {counts.Total} lidas, {counts.Shortlisted} na fila, {counts.Rejected} cortadas.");
+        sb.AppendLine($"Vagas: {counts.Total} lidas, {counts.Shortlisted} na fila do currículo, {counts.Rejected} cortadas.");
+        // The applications by where they are: without them a question like "what waits for my approval?" was answered with the jobs queue.
+        await using (var scope = scopes.CreateAsyncScope())
+        {
+            var a = await scope.ServiceProvider.GetRequiredService<JobOrchestrator.Applications.Contracts.IApplicationsApi>().CountsAsync(ct);
+            sb.AppendLine($"Candidaturas: {a.AwaitingApproval} esperando a sua aprovação (tela Revisão), {a.WaitingForAnswer} esperando uma resposta sua (janela de perguntas), "
+                + $"{a.ToSendYourself} para você enviar pelo site da vaga, {a.InProgress} em preparo, {a.Sent} enviadas ({a.SentToday} hoje), {a.Failed} com falha, {a.Withdrawn} retiradas.");
+        }
         sb.AppendLine($"Contas de IA prontas: {string.Join(", ", providers.Where(x => x.Available).Select(x => x.Name).DefaultIfEmpty("nenhuma"))}.");
         return sb.ToString();
     }
