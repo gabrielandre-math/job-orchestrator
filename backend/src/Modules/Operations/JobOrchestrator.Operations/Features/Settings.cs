@@ -88,7 +88,7 @@ internal sealed class SettingsEndpoints : ICarterModule
             return Results.Ok(new { authorizations = auth, mail });
         });
 
-        g.MapPost("wipe", async (WipeInput body, [FromKeyedServices("operations")] NpgsqlDataSource data, JobOrchestrator.Automation.Contracts.ILocalBrowserSessions browsers, ILogger<SettingsEndpoints> log, CancellationToken ct) =>
+        g.MapPost("wipe", async (WipeInput body, [FromKeyedServices("operations")] NpgsqlDataSource data, JobOrchestrator.Automation.Contracts.ILocalBrowserSessions browsers, Trail trail, ILogger<SettingsEndpoints> log, CancellationToken ct) =>
         {
             if (body.Confirm?.Trim() != Phrase) return Results.Problem($"Digite {Phrase} para confirmar.", statusCode: 400);
             await browsers.ClearAsync(ct);
@@ -96,6 +96,10 @@ internal sealed class SettingsEndpoints : ICarterModule
             await WipeAsync(c);
             foreach (var dir in new[] { "profile", "resumes", "materials", "reports" }.Select(d => Path.Combine(AppPaths.Data, d)).Where(Directory.Exists))
                 try { Directory.Delete(dir, recursive: true); } catch (IOException ex) { log.LogWarning("Wipe left {Dir}: {Error}", dir, ex.Message); }
+            // Your answers to the questions the profile does not cover live in a file, not in the database.
+            if (Path.Combine(AppPaths.Data, "answers.json") is var answers && File.Exists(answers))
+                try { File.Delete(answers); } catch (IOException ex) { log.LogWarning("Wipe left {File}: {Error}", answers, ex.Message); }
+            trail.Clear();
             log.LogWarning("Everything wiped by the user");
             return Results.NoContent();
         });

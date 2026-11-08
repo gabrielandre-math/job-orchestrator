@@ -31,6 +31,9 @@ public sealed class Trail : IAsyncDisposable
     private readonly string folder;
     private readonly Task writer;
     private long next;
+    // "Apagar tudo": events up to this id are gone, and the writer starts over with no files.
+    private long clearedThrough;
+    private bool clearFiles;
 
     public Trail(TimeProvider time, string? folder = null)
     {
@@ -49,6 +52,18 @@ public sealed class Trail : IAsyncDisposable
         pending.Writer.TryWrite(entry);
     }
 
+    /// <summary>"Apagar tudo" takes the trail too: the events in memory and every file on disk. The next event starts a new file.</summary>
+    public void Clear()
+    {
+        lock (gate)
+        {
+            Array.Clear(ring);
+            Interlocked.Exchange(ref clearedThrough, Interlocked.Read(ref next));
+            Volatile.Write(ref clearFiles, true);
+        }
+        Add("trail", "info", "Rastro apagado", "O Apagar tudo levou o rastro junto.");
+    }
+
     public void Info(string kind, string name, string? detail = null, int? ms = null, IReadOnlyDictionary<string, string?>? data = null) => Add(kind, "info", name, detail, ms, null, data);
     public void Warn(string kind, string name, string? detail = null, int? ms = null, string? code = null, IReadOnlyDictionary<string, string?>? data = null) => Add(kind, "warn", name, detail, ms, code, data);
     public void Error(string kind, string name, string? detail = null, int? ms = null, string? code = null, IReadOnlyDictionary<string, string?>? data = null) => Add(kind, "error", name, detail, ms, code, data);
@@ -59,7 +74,8 @@ public sealed class Trail : IAsyncDisposable
         TrailEntry[] all;
         lock (gate) all = [.. ring.OfType<TrailEntry>()];
         var kinds = string.IsNullOrWhiteSpace(kind) ? null : kind.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        return [.. all.Where(e => e.Id > after)
+        var cleared = Interlocked.Read(ref clearedThrough);
+        return [.. all.Where(e => e.Id > after && e.Id > cleared)
             .Where(e => kinds is null || kinds.Contains(e.Kind))
             .Where(e => level switch { "error" => e.Level == "error", "warn" => e.Level is "warn" or "error", _ => true })
             .Where(e => string.IsNullOrWhiteSpace(trace) || e.Trace == trace)
@@ -86,6 +102,14 @@ public sealed class Trail : IAsyncDisposable
             {
                 while (pending.Reader.TryRead(out var e))
                 {
+                    if (e.Id <= Interlocked.Read(ref clearedThrough)) continue;
+                    if (Volatile.Read(ref clearFiles))
+                    {
+                        Volatile.Write(ref clearFiles, false);
+                        if (file is not null) { await file.DisposeAsync(); file = null; }
+                        foreach (var old in Directory.Exists(folder) ? new DirectoryInfo(folder).GetFiles("trail-*.jsonl") : [])
+                            try { old.Delete(); } catch (IOException) { }
+                    }
                     var today = e.At.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
                     if (today != day || file is null)
                     {

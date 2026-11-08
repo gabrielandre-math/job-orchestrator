@@ -102,7 +102,7 @@
     <header><h2>Apagar tudo</h2></header>
     <div class="rows">
       <div class="row">
-        <span><strong>Perfil, documentos, vagas, candidaturas, e-mails, conversas e relatórios</strong><p class="muted">Não tem volta. Contas de IA, a campanha e as configurações ficam. Digite <span class="mono">{{ phrase }}</span> para liberar o botão.</p>
+        <span><strong>Perfil, documentos, vagas, candidaturas, respostas, e-mails, conversas, relatórios e o rastro</strong><p class="muted">Não tem volta. Contas de IA, a campanha e as configurações ficam. Digite <span class="mono">{{ phrase }}</span> para liberar o botão.</p>
           <input class="mono" [value]="typed()" (input)="typed.set($any($event.target).value)" [placeholder]="phrase" aria-label="Frase de confirmação" /></span>
         <button type="button" class="btn danger-btn" (click)="wipe()" [disabled]="typed().trim() !== phrase || wiping.running()"><jo-icon name="trash" [size]="14" />Apagar tudo</button>
       </div>
