@@ -99,5 +99,15 @@ public sealed class ResumeQualityTests
     [InlineData("Inglês - Avançado", "Inglês (Avançado)")]
     [InlineData("Português (nativo)", "Português (nativo)")]
     public void A_language_level_goes_in_parentheses(string line, string expected) => Assert.Equal(expected, Tailor.Level(line));
+
+    [Fact]
+    public void A_headline_loses_only_the_part_without_facts()
+    {
+        var d = new Draft(new Claim("Full Stack Engineer (.NET + React)", ["F1", "F2"]), null, [new DraftExperience("F1", "Senior .NET Developer", [])], [], [], []);
+        var outcome = Conferente.Check(d, English with { Matched = ["PostgreSQL", "C#", "Angular"] });
+        Assert.Equal("Full Stack Engineer | PostgreSQL | C# | Angular", outcome.Draft.Headline?.Text);
+        // When the role itself has no facts, nothing is trimmed.
+        Assert.Null(Conferente.Trimmed("React Developer | C#", ["React"], English));
+    }
 }
 

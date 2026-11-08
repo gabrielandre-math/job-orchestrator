@@ -34,6 +34,15 @@ internal static partial class Conferente
                 lines.Add(Line(section, null, c.Text, known, "ok"));
                 return c with { Facts = known };
             }
+            // A headline loses only the part without facts: "Full Stack Engineer (.NET + React)" with no React is "Full Stack Engineer",
+            // followed by the job's keywords the person has, instead of a generic title that every resume would share.
+            if (section == "headline" && known.Length > 0 && Trimmed(c.Text, missing, s) is { } trimmed
+                && Claims.Unsupported(trimmed, [.. Sources(known), .. stack]).Count == 0)
+            {
+                removed.Add($"{section}: sem fato para {string.Join(", ", missing)}, saiu só esse pedaço");
+                lines.Add(Line(section, null, trimmed, known, "ok, sem o pedaço recusado"));
+                return c with { Text = trimmed, Facts = known };
+            }
             // A summary keeps the sentences its facts support: one sentence with a word too many does not take the other two with it.
             if (section == "summary" && known.Length > 0)
             {
@@ -180,6 +189,23 @@ internal static partial class Conferente
         return missing + twice + unknown == 0 ? null
             : $"o Revisor não avaliou cada afirmação uma vez ({missing} sem veredito, {twice} repetidas, {unknown} que não existem no rascunho)";
     }
+
+    /// <summary>
+    /// The headline without the parentheses and " | " parts that hold a word without facts, with the job's keywords the person has after it
+    /// when nothing else is left to say. Null when the role itself is the problem.
+    /// </summary>
+    internal static string? Trimmed(string headline, IReadOnlyList<string> missing, Selection s)
+    {
+        bool Bad(string part) => missing.Any(m => part.Contains(m.Replace(" (negado no fato)", ""), StringComparison.OrdinalIgnoreCase));
+        var parts = headline.Split(" | ").Select(p => Parenthesis().Replace(p, m => Bad(m.Value) ? "" : m.Value).Trim().TrimEnd(',', '-').Trim()).ToList();
+        if (parts.Count == 0 || parts[0].Length < 3 || Bad(parts[0])) return null;
+        var kept = parts.Where((p, i) => i == 0 || p.Length > 0 && !Bad(p)).ToList();
+        if (kept.Count == 1) kept.AddRange(s.Matched.Where(k => !kept[0].Contains(k, StringComparison.OrdinalIgnoreCase)).Take(3));
+        var text = Tailor.Fit(string.Join(" | ", kept), 64);
+        return text == headline ? null : text;
+    }
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"\s*\([^)]*\)")] private static partial System.Text.RegularExpressions.Regex Parenthesis();
 
     /// <summary>The sentences of a summary, each with its end mark; ".NET" and "Node.js" do not end a sentence.</summary>
     internal static IEnumerable<string> Sentences(string text) =>
