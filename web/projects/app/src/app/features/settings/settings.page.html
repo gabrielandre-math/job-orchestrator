@@ -76,7 +76,7 @@
         <a class="btn" href="/api/settings/export" download><jo-icon name="download-simple" [size]="14" />Exportar</a>
       </div>
       <div class="row">
-        <span><strong>Revogar tudo</strong><p class="muted">Desliga qualquer autorização de envio e o envio automático do e-mail. Nada sai sem você.</p></span>
+        <span><strong>Revogar tudo</strong><p class="muted">Desliga o envio automático de e-mail: cada e-mail volta a esperar o seu ok.</p></span>
         <button type="button" class="btn" [class.armed]="arming()" (click)="revoke()" [disabled]="revoking.running()">{{ arming() ? 'Confirmar' : 'Revogar' }}</button>
       </div>
     </div>

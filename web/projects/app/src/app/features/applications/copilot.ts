@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Icon } from '@jo/ui/icon';
 import { Iso } from '@jo/ui/iso';
@@ -25,7 +26,7 @@ const LABEL: Record<string, string> = {
  */
 @Component({
   selector: 'app-copilot',
-  imports: [Icon, Iso, RouterLink],
+  imports: [Icon, Iso, NgTemplateOutlet, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="panel copilot">
@@ -43,13 +44,23 @@ const LABEL: Record<string, string> = {
           <li class="wide">
             <jo-iso name="form" [size]="44" />
             <div><strong>O que escrever em cada campo</strong><p class="muted small">Para o que o copiloto não preencher: copie, ou ajuste antes de colar. As respostas vêm do seu perfil; nada aqui é inventado.</p></div>
-            @if (kit().length) {
+            <ng-template #lines let-list>
               <ul class="answers">
-                @for (a of kit(); track a.key) {
+                @for (a of list; track a.key) {
                   <li [class.draft]="a.source === 'draft'"><span class="k">{{ a.label }}<span class="src">{{ a.tag }}</span></span><span class="v">{{ a.value }}</span>
                     <button type="button" class="btn ghost" (click)="copy(a.key, a.value)" [attr.aria-label]="'Copiar ' + a.label"><jo-icon [name]="copied() === a.key ? 'check' : 'copy'" [size]="14" /></button></li>
                 }
               </ul>
+            </ng-template>
+            @if (kit().form.length) {
+              <ng-container *ngTemplateOutlet="lines; context: { $implicit: kit().form }" />
+              @if (kit().profile.length) {
+                <details class="others"><summary>Outras respostas do seu perfil ({{ kit().profile.length }})</summary>
+                  <ng-container *ngTemplateOutlet="lines; context: { $implicit: kit().profile }" />
+                </details>
+              }
+            } @else if (kit().profile.length) {
+              <ng-container *ngTemplateOutlet="lines; context: { $implicit: kit().profile }" />
             } @else { <p class="faint small none">O formulário desta vaga ainda não foi lido. Abra preenchida: o copiloto lê as perguntas na página e a IA responde as que ficarem vazias.</p> }
           </li>
           <li class="wide">
@@ -95,7 +106,11 @@ const LABEL: Record<string, string> = {
     .steps > li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--line); }
     .steps > li:last-child { border-bottom: 0; }
     .steps > li.wide { grid-template-columns: auto minmax(0, 1fr) auto; }
-    .steps > li.wide > :is(ul, textarea, .row, p.warn, p.none) { grid-column: 2 / -1; }
+    .steps > li.wide > :is(ul, textarea, .row, p.warn, p.none, details) { grid-column: 2 / -1; }
+    .others { margin-top: 4px; }
+    .others > summary { cursor: pointer; width: fit-content; padding: 4px 0; color: var(--text-2); font-size: 12.5px; }
+    .others > summary:hover, .others[open] > summary { color: var(--text); }
+    .others > ul { margin-top: 6px; }
     .steps p { margin: 2px 0 0; }
     .answers { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
     .answers li { display: grid; grid-template-columns: 170px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 4px 6px 4px 10px; border-radius: 4px; background: var(--surface-2); font-size: 12.5px; }
@@ -128,12 +143,12 @@ export class Copilot {
   protected readonly writing = command((jobId: string) => send<CoverLetter>('POST', `/assistant/cover/${jobId}`, { tone: this.tone(), language: this.lang() || null }));
   protected readonly declaring = command((id: string) => send('POST', `/applications/${id}/declare`, {}), 'Registrada como enviada por você.');
   /**
-   * The kit: the form's own questions first (what the app filled, the AI's answers, its drafts to review), then your profile's answers
-   * the form did not ask by name.
+   * The kit: the form's own questions (what the app filled, the AI's answers, its drafts to review), and your profile's answers the
+   * form did not ask by name, folded away once the form has been read.
    */
   protected readonly kit = computed(() => {
     const v = this.view.value();
-    if (!v) return [];
+    if (!v) return { form: [], profile: [] };
     const form = (v.form ?? []).map((l, i) => ({ key: `f${i}`, label: l.question, value: l.answer, source: l.source, tag: SOURCE[l.source] }));
     // Your profile's answers by their readable name only, and never one the form lines already show (same question or same value).
     const asked = new Set(form.map((l) => l.label.trim().toLowerCase()));
@@ -146,7 +161,7 @@ export class Copilot {
       shown.add(value);
       profile.push({ key: a.key, label, value: a.value, source: 'form' as const, tag: 'do seu perfil' });
     }
-    return [...form, ...profile];
+    return { form, profile };
   });
   protected async write() {
     const l = await this.writing.run(this.jobId());

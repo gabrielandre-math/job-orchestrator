@@ -74,7 +74,7 @@
         @if (saving.problem(); as p) { <p class="problem" role="alert">{{ p.detail }}</p> }
       </div>
       <footer>
-        <p>{{ answered() }} de {{ groups().length }} {{ groups().length === 1 ? 'respondido' : 'respondidos' }}. O que ficar em branco continua esperando; o resto volta ao preparo dentro do modo, da autorização e dos limites da campanha.</p>
+        <p>{{ answered() }} de {{ groups().length }} {{ groups().length === 1 ? 'respondido' : 'respondidos' }}. O que ficar em branco continua esperando; o resto volta ao preparo e fica pronto para você enviar.</p>
         <div class="actions"><button type="button" class="btn" (click)="later()" [disabled]="saving.running()">Responder depois</button><button type="submit" class="btn primary" [disabled]="!answered() || saving.running()">{{ saving.running() ? 'Salvando…' : 'Salvar e continuar' }}<jo-icon name="arrow-right" [size]="15" /></button></div>
       </footer>
     </form>

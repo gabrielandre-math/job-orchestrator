@@ -52,7 +52,7 @@ export class SettingsPage {
   protected readonly nightSaving = command((x: { c: Campaign; on: boolean }) => send('PUT', `/campaigns/${x.c.id}`, {
     mode: x.c.mode, minFitScore: x.c.minFitScore, maxSubmissionsPerDay: x.c.maxSubmissionsPerDay, technologies: x.c.technologies, locations: x.c.locations, sources: x.c.sources, night: x.on,
   }), (r) => 'Busca da noite atualizada.');
-  protected readonly revoking = command((_: void) => send<{ authorizations: number; mail: number }>('POST', '/settings/revoke'), (r) => `Revogado: ${r.authorizations} autorizações de envio e ${r.mail} envio automático de e-mail.`);
+  protected readonly revoking = command((_: void) => send<{ authorizations: number; mail: number }>('POST', '/settings/revoke'), (r) => (r.mail ? 'Envio automático de e-mail desligado: cada e-mail espera o seu ok.' : 'O envio automático de e-mail já estava desligado.'));
   protected readonly wiping = command((_: void) => send('POST', '/settings/wipe', { confirm: this.typed() }), 'Tudo apagado. Contas de IA e campanha continuam.');
 
   protected async privacy(localOnly: boolean) { const s = this.settings.value(); if (s && (await this.saving.run({ ...s, localOnly })) !== null) await this.settings.reload(); }

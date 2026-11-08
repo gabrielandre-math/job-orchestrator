@@ -132,7 +132,7 @@
               }
             </ul>
           }
-          @if (reading()) { <p class="reading"><span class="live-dot on" aria-hidden="true"></span>Lendo o documento. A conversa dos agentes aparece no Mapa ao vivo.<a routerLink="/fluxo">Abrir o mapa</a></p> }
+          @if (reading()) { <p class="reading"><span class="live-dot on" aria-hidden="true"></span>Lendo o documento. Os fatos aparecem aqui quando a leitura termina.</p> }
         </article>
 
         @if (!p.synthetic && p.status !== 'Empty' && form(); as f) {
