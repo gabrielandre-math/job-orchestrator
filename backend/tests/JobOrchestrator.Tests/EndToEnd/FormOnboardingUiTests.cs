@@ -70,8 +70,10 @@ public sealed class FormOnboardingUiTests
         await Assertions.Expect(dialog.GetByRole(AriaRole.Button, new() { Name = "Salvar e continuar" })).ToBeDisabledAsync();
         await page.Keyboard.PressAsync("Escape");
         await Assertions.Expect(dialog).Not.ToBeVisibleAsync();
+        // Deferred, the questions stay one click away on Início too: they are its next step, with the button that opens them.
         if (width < 650) await page.GetByRole(AriaRole.Button, new() { Name = "Abrir menu", Exact = true }).ClickAsync();
-        await page.GetByRole(AriaRole.Button, new() { Name = "Completar respostas" }).ClickAsync();
+        await page.GetByRole(AriaRole.Link, new() { Name = "Início" }).ClickAsync();
+        await page.GetByRole(AriaRole.Button, new() { Name = "Responder agora" }).ClickAsync();
         await Assertions.Expect(dialog).ToBeVisibleAsync();
         await dialog.GetByLabel("Data de nascimento", new() { Exact = true }).FillAsync("2000-02-29");
         await dialog.GetByRole(AriaRole.Radio, new() { Name = "Aceito em meu nome" }).ClickAsync();

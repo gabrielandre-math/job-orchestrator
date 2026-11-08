@@ -72,7 +72,7 @@ export class OverviewPage {
   protected readonly declaring = command((id: string) => send('POST', `/applications/${id}/declare`, {}), 'Registrada como enviada por você.');
 
   private readonly inbox = computed(() => {
-    const mine = (this.profile.value()?.identity.email ?? '').trim().toLowerCase();
+    const mine = (this.profile.value()?.identity?.email ?? '').trim().toLowerCase();
     const read = (this.accounts.value() ?? []).map((a) => a.address.toLowerCase());
     if (!this.accounts.value() || !this.profile.value()) return null;
     if (read.length === 0) return { mine, read: null as string | null };
@@ -127,7 +127,7 @@ export class OverviewPage {
 
   protected readonly greeting = computed(() => {
     const h = new Date().getHours();
-    const name = (this.profile.value()?.identity.fullName ?? '').split(' ')[0];
+    const name = (this.profile.value()?.identity?.fullName ?? '').split(' ')[0];
     return `${h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite'}${name ? `, ${name}` : ''}.`;
   });
   protected readonly lead = computed(() => {
