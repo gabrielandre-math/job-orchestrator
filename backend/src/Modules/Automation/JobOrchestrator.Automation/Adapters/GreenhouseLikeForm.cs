@@ -43,7 +43,7 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
         (new Regex(@"sal[aá]r|pretens|compensation|remunera|expected pay|pay expectation", RegexOptions.IgnoreCase), "salary_expectation"),
         (new Regex(@"notice period|aviso pr|start date|quando (você )?pode(ria)? começar|disponibilidade (de |para )?(in[ií]cio|come[cç]ar)|data de in[ií]cio|availability to start", RegexOptions.IgnoreCase), "start_date"),
         (new Regex(@"english|ingl", RegexOptions.IgnoreCase), "english_level"),
-        (new Regex(@"hear about|soube da vaga", RegexOptions.IgnoreCase), "how_heard"),
+        (new Regex(@"hear about|how did you (?:find|learn about)|soube (?:da|desta|dessa) vaga|como (?:voc[eê] )?(?:ficou sabendo|soube|conheceu|chegou at[eé]|encontrou)", RegexOptions.IgnoreCase), "how_heard"),
         (new Regex(@"relocat|mudan[cç]a (de|para outra) (cidade|estado|pa[ií]s)|disponibilidade (de|para) mudan[cç]a|aceita(ria)? (se )?mudar|mudar de cidade", RegexOptions.IgnoreCase), "relocation"),
         (new Regex(@"(which|what) city|current location|where are you (currently )?based|based in|cidade|onde (você )?mora|localiza|^address$|^endere[cç]o", RegexOptions.IgnoreCase), "location"),
         (new Regex(@"github", RegexOptions.IgnoreCase), "github_url"),
@@ -162,6 +162,38 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
 
     internal static bool SaysSubmitted(string text) => Confirmation().IsMatch(text);
 
+    internal sealed record CheckboxGroup(string Label, bool Required, List<string> Ids, List<string> Options);
+
+    /// <summary>The boxes that share this box's fieldset and legend, or null for a box that stands alone.</summary>
+    private static async Task<CheckboxGroup?> GroupAsync(ILocator box)
+    {
+        var g = await box.EvaluateAsync<System.Text.Json.JsonElement>("""
+            e => {
+              const fs = e.closest('fieldset'); if (!fs) return null;
+              const boxes = [...fs.querySelectorAll('input[type=checkbox]')]; const legend = (fs.querySelector('legend')?.innerText ?? '').trim();
+              if (boxes.length < 2 || !legend) return null;
+              return { label: legend, required: boxes.some(b => b.required) || /\*\s*$/.test(legend) || fs.getAttribute('aria-required') === 'true',
+                ids: boxes.map(b => b.id), options: boxes.map(b => (document.querySelector(`label[for="${CSS.escape(b.id)}"]`)?.innerText ?? b.value ?? '').trim()) };
+            }
+            """);
+        if (g.ValueKind != System.Text.Json.JsonValueKind.Object) return null;
+        return new CheckboxGroup(Clean(g.GetProperty("label").GetString() ?? ""), g.GetProperty("required").GetBoolean(),
+            [.. g.GetProperty("ids").EnumerateArray().Select(x => x.GetString() ?? "")], [.. g.GetProperty("options").EnumerateArray().Select(x => Clean(x.GetString() ?? ""))]);
+    }
+
+    /// <summary>
+    /// The options an answer names (the option's own text inside it, since options carry commas: "Amigos, colegas ou familiares"). With
+    /// no option named, "how did you hear about us" takes the company's site or careers page, then LinkedIn, then "other".
+    /// </summary>
+    internal static List<int> Picks(CheckboxGroup group, string? answer)
+    {
+        var named = answer is null ? [] : group.Options.Select((o, i) => (o, i)).Where(x => x.o.Length > 0 && (SameAnswer(x.o, answer) || answer.Contains(x.o, StringComparison.OrdinalIgnoreCase))).Select(x => x.i).ToList();
+        if (named.Count > 0 || !Questions.Any(q => q.Answer == "how_heard" && q.Label.IsMatch(group.Label))) return named;
+        foreach (var prefer in new[] { @"\bsite\b|carreira|career|p[aá]gina|portal|website", @"linkedin", @"^outr|^other" })
+            if (group.Options.FindIndex(o => Regex.IsMatch(o, prefer, RegexOptions.IgnoreCase)) is var i and >= 0) return [i];
+        return [];
+    }
+
     /// <summary>
     /// A closed Greenhouse job answers 200 on the company's board with ?error=true instead of the job: that is a closed job, not a
     /// page without a form for you to try.
@@ -208,6 +240,22 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
                 var tag = await control.EvaluateAsync<string>("e => e.tagName.toLowerCase()");
                 var type = (await control.GetAttributeAsync("type"))?.ToLowerInvariant() ?? "";
                 var required = await control.EvaluateAsync<bool>("e => e.required");
+                // "Como você conheceu a nossa empresa?" with eleven boxes under one legend is one question with eleven options, not
+                // eleven questions; an optional group (disability, for one) stays blank.
+                if (type == "checkbox" && await GroupAsync(control) is { } group)
+                {
+                    done.UnionWith(group.Ids);
+                    if (!group.Required) continue;
+                    var picks = Picks(group, Resolve(group.Label, "checkboxes", m).Value);
+                    if (picks.Count == 0)
+                    {
+                        missing.Add(new FormQuestion(group.Label, "checkboxes", group.Options));
+                        continue;
+                    }
+                    foreach (var i in picks) await page.Locator($"[id='{group.Ids[i]}']").CheckAsync();
+                    fields.Add(new FieldValue(group.Label, string.Join("; ", picks.Select(i => group.Options[i])), "banco de respostas"));
+                    continue;
+                }
                 if (type == "checkbox")
                 {
                     // Optional boxes (newsletter, future openings) stay blank. A required one is a declaration or a fact about you.
