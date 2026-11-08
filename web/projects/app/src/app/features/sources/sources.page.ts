@@ -8,7 +8,7 @@ import { command } from '../../core/command';
 import { query } from '../../core/query';
 import { SearchRun } from '../../core/search';
 import { SourceInfo, describeSource } from '../../core/sources';
-import { SOURCE_TABS, Tabs } from '../../shared/tabs';
+import { SETTINGS_TABS, Tabs } from '../../shared/tabs';
 import { AddSource } from './add-source';
 import { Alerts } from './alerts';
 import { LinkedIn } from './linkedin';
@@ -34,7 +34,7 @@ const GROUPS: { kind: SourceInfo['kind']; title: string; hint: string }[] = [
 })
 export class SourcesPage {
   private readonly search = inject(SearchRun);
-  protected readonly tabs = SOURCE_TABS;
+  protected readonly tabs = SETTINGS_TABS;
   protected readonly campaigns = query<Campaign[]>(() => '/campaigns', 0);
   protected readonly adding = signal(false);
   protected readonly removing = signal<string | null>(null);

@@ -242,6 +242,9 @@ export class JobsPage {
 
   /** A lista monta 60 cartões por vez (500 de uma vez eram 44 mil elementos e travavam a tela ao abrir); o filtro novo volta para o começo. */
   protected readonly page = signal(1);
+  /** Cards or a compact list (kept in this browser). */
+  protected readonly view = signal<'cards' | 'list'>(readView() === 'list' ? 'list' : 'cards');
+  protected setView(v: 'cards' | 'list') { this.view.set(v); try { localStorage.setItem('jo.jobs.view', v); } catch { /* sem armazenamento */ } }
   protected readonly shown = computed(() => this.rows().slice(0, this.page() * 60));
   private readonly backToStart = effect(() => {
     // Só filtro e ordem voltam a lista para o começo; a releitura das vagas a cada 8 s não.
@@ -381,3 +384,5 @@ function fold(s: string) { return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toL
 
 /** "1 vaga", "1.067 vagas": o número das dicas dos gráficos. */
 function vagas(n: number) { return `${n.toLocaleString('pt-BR')} ${n === 1 ? 'vaga' : 'vagas'}`; }
+
+function readView(): string | null { try { return localStorage.getItem('jo.jobs.view'); } catch { return null; } }

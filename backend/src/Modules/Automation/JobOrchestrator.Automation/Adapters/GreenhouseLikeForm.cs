@@ -74,6 +74,9 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
             return AdapterResult<SubmissionReceipt>.Fail(filled.Kind, filled.ReasonCode!, filled.Detail);
         if (filled.Value!.PayloadHash != token.PayloadHash)
             return AdapterResult<SubmissionReceipt>.Fail(AdapterResultKind.BlockedByPolicy, "payload-changed", "O formulário mudou desde a aprovação. Nada foi enviado.");
+        // The site checks at the send that a person is there (Greenhouse then mails you a code): the robot never clicks, the send is yours.
+        if (filled.Value.HumanCheck is { } check)
+            return AdapterResult<SubmissionReceipt>.Fail(AdapterResultKind.NeedsHuman, "human-check", $"{check} Nada foi clicado.");
 
         // Instructions and hidden success templates are not evidence that this submission arrived.
         var priorConfirmations = await VisibleTextAsync(page.GetByText(Confirmed));
@@ -103,6 +106,9 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
             confirmations = (await VisibleTextAsync(page.GetByText(Confirmed))).Except(priorConfirmations, StringComparer.Ordinal).ToArray();
             duplicates = (await VisibleTextAsync(page.GetByText(AlreadyApplied()))).Except(priorDuplicates, StringComparer.Ordinal).ToArray();
             alerts = (await VisibleTextAsync(page.Locator("[role=alert]"))).Except(priorAlerts, StringComparer.Ordinal).ToArray();
+            if (confirmations.Length == 0 && await page.Locator(PersonCheck).Filter(new LocatorFilterOptions { Visible = true }).CountAsync() > 0)
+                return AdapterResult<SubmissionReceipt>.Fail(AdapterResultKind.NeedsHuman, "human-check",
+                    "O site pediu para confirmar que é uma pessoa (um código no seu e-mail ou um CAPTCHA): a candidatura não foi aceita.");
             if (confirmations.Length > 0 || duplicates.Length > 0 || alerts.Length > 0) break;
             await Task.Delay(100, ct);
         }
@@ -224,6 +230,22 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
     /// <summary>CAPTCHA e verificação anti-robô (reCAPTCHA, hCaptcha, Cloudflare Turnstile): o robô para e a vaga fica com você.</summary>
     protected const string BotCheck = "[data-sitekey], .g-recaptcha, .h-captcha, .cf-turnstile, iframe[src*='captcha'], iframe[src*='challenges.cloudflare.com'], [data-captcha]";
 
+    /// <summary>What a site shows after the click when it holds the application for a person: Greenhouse's e-mailed security code, or a CAPTCHA.</summary>
+    private const string PersonCheck = "#email-verification, input[id^='security-input-'], " + BotCheck;
+
+    /// <summary>
+    /// An invisible check at the send (reCAPTCHA Enterprise on Greenhouse, hCaptcha, Turnstile): nothing shows until the click, and the
+    /// robot never loads it, so the site would hold the application. Found in the page's own code; null when the page has none.
+    /// </summary>
+    protected static async Task<string?> HumanCheckAsync(IPage page) => await page.EvaluateAsync<string?>("""
+        () => {
+          const html = document.documentElement.innerHTML;
+          return /RECAPTCHA_INVISIBLE_KEY|recaptcha\/(enterprise|api)\.js|grecaptcha\./i.test(html) ? 'reCAPTCHA'
+            : /hcaptcha\.com\/1\/api\.js|hcaptcha\.execute/i.test(html) ? 'hCaptcha'
+            : /challenges\.cloudflare\.com\/turnstile/i.test(html) ? 'Turnstile' : null;
+        }
+        """) is { } name ? $"O site confirma no envio que é uma pessoa ({name})." : null;
+
     /// <summary>Abre, confere bloqueios, preenche por rótulo (em até três passadas, para campo condicional) e lê de volta. Mesmo caminho no preparo e no envio.</summary>
     protected virtual async Task<AdapterResult<PreparedForm>> FillAsync(IPage page, ApplyTarget target, MaterialBundle m)
     {
@@ -340,7 +362,7 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
                 """)));
         if (fields.Count == 0) return AdapterResult<PreparedForm>.Fail(AdapterResultKind.Unsupported, "no-fields", "Nenhum campo com rótulo foi reconhecido.");
         var hash = PayloadHash(fields);
-        return AdapterResult<PreparedForm>.Ok(new PreparedForm(Id, Version, new Uri(target.ApplyUrl).Authority, hash, fields));
+        return AdapterResult<PreparedForm>.Ok(new PreparedForm(Id, Version, new Uri(target.ApplyUrl).Authority, hash, fields, await HumanCheckAsync(page)));
     }
 
     private static readonly string[][] Equivalents =

@@ -161,3 +161,25 @@
 .lh { display: flex; align-items: center; gap: 6px; }
 .fb-label jo-help { margin-left: 4px; vertical-align: -3px; }
 .old { padding: 1px 6px; border-radius: 3px; font-size: 11px; color: var(--warn); background: color-mix(in oklch, var(--warn) 12%, transparent); }
+
+.views { display: inline-flex; gap: 3px; padding: 3px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-2); }
+.views button { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border: 0; border-radius: 4px; background: transparent; color: var(--text-2); font: 500 12.5px var(--font-ui); cursor: pointer; }
+.views button.on { background: var(--surface); color: var(--text); box-shadow: 0 0 0 1px var(--line-strong); }
+.jlist { overflow: hidden; }
+.jlist ul { list-style: none; margin: 0; padding: 0; }
+.jlist li + li { border-top: 1px solid var(--line); }
+.jrow { display: grid; grid-template-columns: auto minmax(0, 1.6fr) minmax(0, 1fr) auto 44px 76px; gap: 14px; align-items: center; width: 100%; padding: 10px 16px; border: 0;
+  background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.jrow:hover { background: var(--surface-2); }
+.jrow.current { background: color-mix(in oklch, var(--accent) 8%, transparent); }
+.jrow.cut { opacity: 0.7; }
+.jt { display: grid; gap: 2px; min-width: 0; }
+.jt strong { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jt span { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jtags { display: flex; gap: 6px; flex-wrap: wrap; min-width: 0; }
+.jage { font-size: 12px; text-align: right; white-space: nowrap; }
+.insights { display: grid; gap: 12px; }
+.insights > summary { cursor: pointer; width: fit-content; padding: 8px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--text-2); font: 500 13px var(--font-ui); list-style: none; }
+.insights > summary::-webkit-details-marker { display: none; }
+.insights > summary:hover, .insights[open] > summary { color: var(--text); }
+@media (max-width: 900px) { .jrow { grid-template-columns: auto minmax(0, 1fr) 44px; } .jtags, .jrow jo-badge, .jage { display: none; } }

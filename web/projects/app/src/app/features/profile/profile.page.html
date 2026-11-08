@@ -212,7 +212,7 @@
                   <label class="check"><input type="radio" name="open" [checked]="f.openAnswersPolicy === 'auto_after_check'" (change)="set('openAnswersPolicy', 'auto_after_check')" />Respostas abertas vão sozinhas depois da checagem fato a fato</label>
                 </section>
                 <section class="sec wide note">
-                  <p class="faint small">Envio automático continua desligado e tem tela própria. Hoje a campanha só prepara: nada é enviado sem você. <a routerLink="/campanha">Ver campanha</a></p>
+                  <p class="faint small">O app prepara e você envia, com o copiloto: nada sai sem você. <a routerLink="/campanha">O que buscar</a></p>
                 </section>
               </div>
               @if (confirming.problem(); as e) { <p class="problem">{{ e.detail }}</p> }

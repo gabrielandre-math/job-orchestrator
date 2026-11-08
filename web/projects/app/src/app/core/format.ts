@@ -18,7 +18,7 @@ const STATES: Record<string, [string, Tone]> = {
   RetryScheduled: ['Nova tentativa', 'neutral'],
   DeadLetter: ['Travada', 'danger'],
   Withdrawn: ['Retirada', 'neutral'],
-  ManualHandoff: ['Com você', 'warn'],
+  ManualHandoff: ['Para enviar', 'warn'],
   SubmittedDeclared: ['Enviada por você', 'ok'],
 };
 
@@ -33,7 +33,7 @@ const JOBS: Record<string, [string, Tone]> = {
 
 const MODES: Record<string, string> = {
   DiscoveryOnly: 'Só descobrir',
-  PrepareOnly: 'Só preparar',
+  PrepareOnly: 'Prepara, você envia',
   ReviewRequired: 'Revisão sua',
   AutoSubmit: 'Automático',
 };

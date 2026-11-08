@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { SETTINGS_TABS, Tabs } from '../../shared/tabs';
 import { ModelMark } from '../../shared/model-mark';
 import { Badge } from '@jo/ui/badge';
 import { Icon } from '@jo/ui/icon';
@@ -40,12 +41,13 @@ const KINDS = [
  */
 @Component({
   selector: 'app-providers',
-  imports: [Badge, Icon, Iso, PageHero, Connect, Sensors, ModelMark],
+  imports: [Tabs, Badge, Icon, Iso, PageHero, Connect, Sensors, ModelMark],
   templateUrl: './providers.page.html',
   styleUrl: './providers.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ProvidersPage {
+  protected readonly tabs = SETTINGS_TABS;
   private readonly destroy = inject(DestroyRef);
   protected readonly list = query<Provider[]>(() => '/providers', 15000);
   protected readonly accounts = query<Account[]>(() => '/accounts', 15000);

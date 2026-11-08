@@ -19,7 +19,8 @@ internal static class Transitions
         [ApplicationState.Shortlisted] = [ApplicationState.MaterialsReady, ApplicationState.NeedsHuman, ApplicationState.PausedProvider, ApplicationState.RetryScheduled, ApplicationState.Withdrawn, ApplicationState.DeadLetter],
         [ApplicationState.MaterialsReady] = [ApplicationState.FormPreparing, ApplicationState.ManualHandoff, ApplicationState.Withdrawn],
         [ApplicationState.FormPreparing] = [ApplicationState.FormValidated, ApplicationState.NeedsHuman, ApplicationState.RetryScheduled, ApplicationState.Failed, ApplicationState.BlockedByPolicy, ApplicationState.ManualHandoff, ApplicationState.Withdrawn, ApplicationState.DeadLetter],
-        [ApplicationState.FormValidated] = [ApplicationState.AwaitingApproval, ApplicationState.ReadyToSubmit, ApplicationState.BlockedByPolicy, ApplicationState.FormPreparing, ApplicationState.Withdrawn],
+        // Pronta num site que confirma no envio que é uma pessoa: o robô não envia, ela vai para você enviar com o copiloto.
+        [ApplicationState.FormValidated] = [ApplicationState.AwaitingApproval, ApplicationState.ReadyToSubmit, ApplicationState.BlockedByPolicy, ApplicationState.FormPreparing, ApplicationState.Withdrawn, ApplicationState.ManualHandoff],
         [ApplicationState.AwaitingApproval] = [ApplicationState.ReadyToSubmit, ApplicationState.FormPreparing, ApplicationState.Withdrawn],
         // Pronta pela autorização que acabou volta para a sua aprovação.
         [ApplicationState.ReadyToSubmit] = [ApplicationState.Submitting, ApplicationState.AwaitingApproval, ApplicationState.BlockedByPolicy, ApplicationState.Withdrawn],

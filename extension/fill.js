@@ -76,7 +76,10 @@
     el.dispatchEvent(new Event('blur', { bubbles: true }));
   }
 
-  function mark(el) { el.style.outline = '2px solid #ff90ac'; el.style.outlineOffset = '2px'; el.dataset.joFilled = '1'; delete el.dataset.joMissing; }
+  function mark(el, byAi = false) {
+    el.style.outline = '2px solid #ff90ac'; el.style.outlineOffset = '2px'; el.dataset.joFilled = '1'; delete el.dataset.joMissing;
+    if (byAi) el.title = 'Escrito pela IA a partir do seu perfil: confira antes de enviar';
+  }
   // Yours to answer: outlined in yellow, and still open to a later pass (a step that brings the answer, or you).
   function flag(el) { el.style.outline = '2px solid #e6b450'; el.style.outlineOffset = '2px'; el.dataset.joMissing = '1'; }
 
@@ -173,6 +176,100 @@
     return n;
   }
 
+  // Self-identification and birth date are yours alone: the AI never answers them.
+  const PRIVATE = /g[eê]nero|ra[cç]a|etnia|\bcor\b|defici[eê]ncia|orienta[cç][aã]o sexual|gender|race|ethnicity|disability|veteran|pronoun|nascimento|birth/i;
+  const clean = (t) => (t || '').replace(/\s+/g, ' ').replace(/\s*\*\s*$/, '').trim();
+  // The question a person reads next to the field (its label, legend or placeholder), without the page's internal names.
+  function questionOf(el) {
+    const own = el.id && document.querySelector(`label[for="${CSS.escape(el.id)}"]`);
+    const by = (el.getAttribute('aria-labelledby') || '').split(/\s+/).map((id) => id && document.getElementById(id)?.innerText).filter(Boolean).join(' ');
+    const box = el.closest('.field, .form-group, .application-question, fieldset, [class*="question"], [class*="field"]');
+    return clean(own?.innerText || el.closest('label')?.innerText || by || el.getAttribute('aria-label') || box?.querySelector('label, legend, .label, [class*="label"]')?.innerText || el.getAttribute('placeholder') || '');
+  }
+  const optionText = (el) => clean(document.querySelector(`label[for="${CSS.escape(el.id || '')}"]`)?.innerText || el.closest('label')?.innerText || el.value);
+
+  // What is still empty after the fill, as questions for the AI: what the field asks, its kind and its options, with the fields themselves.
+  function openQuestions() {
+    const asked = (window.__joAsked ||= new Set());
+    const out = [];
+    const add = (label, kind, options, els) => {
+      const l = clean(label).slice(0, 300);
+      if (l.length < 3 || AVOID.test(l) || PRIVATE.test(l) || asked.has(fold(l))) return;
+      asked.add(fold(l));
+      out.push({ label: l, kind, options, els });
+    };
+    const radios = new Map(), boxes = new Map();
+    for (const el of document.querySelectorAll('input, textarea, select')) {
+      if (!visible(el) || el.dataset.joFilled) continue;
+      const type = (el.type || '').toLowerCase();
+      if (['submit', 'button', 'password', 'file', 'hidden', 'search', 'email', 'tel'].includes(type)) continue;
+      if (type === 'radio') { if (el.name) radios.set(el.name, [...(radios.get(el.name) || []), el]); continue; }
+      if (type === 'checkbox') { const fs = el.closest('fieldset'); if (fs && fs.querySelectorAll('input[type=checkbox]').length > 1) boxes.set(fs, [...(boxes.get(fs) || []), el]); continue; }
+      if (el instanceof HTMLSelectElement) {
+        if (el.value && el.selectedIndex > 0) continue;
+        add(questionOf(el), 'select', [...el.options].filter((o) => o.value !== '' && !o.disabled).map((o) => clean(o.text)).slice(0, 60), [el]);
+      } else if (!el.value) add(questionOf(el), el instanceof HTMLTextAreaElement ? 'textarea' : type === 'number' ? 'number' : type === 'date' ? 'date' : 'text', [], [el]);
+    }
+    for (const group of radios.values()) {
+      if (group.some((r) => r.checked)) continue;
+      const box = group[0].closest('fieldset, [role=radiogroup]');
+      add(box?.querySelector('legend')?.innerText || (box ? questionOf(box) : ''), 'radio', group.map(optionText), group);
+    }
+    for (const [fs, group] of boxes) {
+      if (group.some((b) => b.checked)) continue;
+      add(fs.querySelector('legend')?.innerText || '', 'checkboxes', group.map(optionText), group);
+    }
+    return out.slice(0, 40);
+  }
+
+  // Puts the AI's answer in the field it was asked for, the way a person would.
+  function put(q, answer) {
+    const want = fold(answer);
+    if (q.kind === 'radio') {
+      if (q.els.some((x) => x.checked)) return false;
+      const r = q.els.find((x) => fold(optionText(x)) === want || fold(x.value) === want);
+      if (!r) return false;
+      r.click(); mark(r.parentElement || r, true); return true;
+    }
+    if (q.kind === 'checkboxes') {
+      const picks = answer.split('\n').map(fold).filter(Boolean);
+      let any = false;
+      for (const b of q.els) if (!b.checked && picks.includes(fold(optionText(b)))) { b.click(); mark(b.parentElement || b, true); any = true; }
+      return any;
+    }
+    const el = q.els[0];
+    if (el instanceof HTMLSelectElement) {
+      const o = pickOption(el, answer);
+      if (!o) return false;
+      el.value = o.value; el.dispatchEvent(new Event('change', { bubbles: true })); mark(el, true); return true;
+    }
+    if (el.value) return false;
+    setValue(el, answer); mark(el, true); return true;
+  }
+
+  // The fields still empty go to the AI, which answers from your profile's facts (never inventing); what it answers is filled and
+  // marked, what it cannot stays with you, in yellow, and the app's answer kit keeps it all to copy.
+  function askAi() {
+    if (!context.applicationId || window.__joAsking || window.top !== window) return;
+    const open = openQuestions();
+    if (open.length === 0) return;
+    window.__joAsking = true;
+    banner(`A IA está escrevendo ${open.length === 1 ? 'a resposta de 1 campo vazio' : `as respostas de ${open.length} campos vazios`} a partir do seu perfil…`, true);
+    chrome.runtime.sendMessage({ type: 'answer', applicationId: context.applicationId, fields: open.map(({ label, kind, options }) => ({ label, kind, options })) }, (answers) => {
+      void chrome.runtime.lastError;
+      window.__joAsking = false;
+      let n = 0;
+      for (const q of open) {
+        const a = (answers || []).find((x) => x.checked && x.answer && fold(x.question) === fold(q.label));
+        if (a && put(q, a.answer)) n++;
+      }
+      const left = missing();
+      banner(n
+        ? `A IA preencheu ${n} ${n === 1 ? 'campo' : 'campos'} a partir do seu perfil (contornados em rosa)${left ? `; ${left} ${left === 1 ? 'obrigatório fica' : 'obrigatórios ficam'} com você (em amarelo)` : ''}. Confira tudo e envie.`
+        : `A IA não achou no seu perfil o que responder${left ? `: ${left} ${left === 1 ? 'obrigatório fica' : 'obrigatórios ficam'} com você (em amarelo)` : ''}. O kit de respostas, no app, tem o resto para copiar.`, true);
+    });
+  }
+
   const confirmation = () => (document.body?.innerText || '').match(CONFIRM)?.[0] ?? null;
   const formless = () => [...document.querySelectorAll('input, textarea, select')].filter((el) => visible(el) && el.type !== 'search').length < 3;
 
@@ -207,6 +304,7 @@
         // A new step of the form: fill what appeared.
         const n = fillAll(v, resume);
         if (n > 0 && window.top === window) banner(`${n} ${n === 1 ? 'campo preenchido' : 'campos preenchidos'} nesta etapa. Confira e siga.`, true);
+        askAi();
       }, 700);
     });
     observer.observe(document.body, { childList: true, subtree: true, characterData: true });
@@ -228,6 +326,7 @@
       banner(open ? `Clique em "${(open.innerText || '').trim()}" (contornado em rosa) para abrir o formulário: o copiloto preenche quando ele aparecer.` : 'Abra o formulário de candidatura no site: o copiloto preenche quando ele aparecer.', !!extra.applicationId);
     } else if (window.top === window && (count > 0 || extra.watch))
       banner(`${count} ${count === 1 ? 'campo preenchido' : 'campos preenchidos'}${window.__joResumeDone ? ', com o currículo anexado' : ''} (contornados em rosa)${left ? `; ${left} ${left === 1 ? 'obrigatório falta' : 'obrigatórios faltam'} (em amarelo)` : ''}. Confira e envie você mesmo.`, !!extra.applicationId);
+    if (!formless()) askAi();
     return count;
   };
 

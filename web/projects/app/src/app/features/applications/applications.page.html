@@ -1,63 +1,88 @@
 <section class="page">
-  <jo-page-hero title="Candidaturas" lead="Cada vaga que entrou na fila, com o estado atual, quem mexeu por último e a prova de envio." [scene]="['form', 'guardian', 'send']" [stats]="heroStats()" />
-  <app-rehearsal />
-  <div class="bar">
-    <div class="seg-view" role="radiogroup" aria-label="Ver como">
-      <button type="button" role="radio" [attr.aria-checked]="view() === 'board'" [class.on]="view() === 'board'" (click)="setView('board')"><jo-icon name="squares-four" [size]="14" />Quadro</button>
-      <button type="button" role="radio" [attr.aria-checked]="view() === 'table'" [class.on]="view() === 'table'" (click)="setView('table')"><jo-icon name="list-checks" [size]="14" />Tabela</button>
+  <header class="head">
+    <div>
+      <h1>Candidaturas</h1>
+      <p class="muted">Cada vaga que entrou no seu caminho, da preparação à resposta da empresa. Depois do envio, a IA lê o seu e-mail e move o cartão sozinha; você também pode arrastar.</p>
     </div>
-  </div>
+    <div class="tools">
+      <label class="search"><jo-icon name="magnifying-glass" [size]="14" /><span class="sr-only">Buscar</span><input type="search" placeholder="Empresa ou cargo" [value]="text()" (input)="text.set($any($event.target).value)" /></label>
+      <div class="seg" role="radiogroup" aria-label="Ordem">
+        <button type="button" role="radio" [attr.aria-checked]="sort() === 'recent'" [class.on]="sort() === 'recent'" (click)="sort.set('recent')">Recentes</button>
+        <button type="button" role="radio" [attr.aria-checked]="sort() === 'score'" [class.on]="sort() === 'score'" (click)="sort.set('score')">Maior nota</button>
+      </div>
+      <div class="seg" role="radiogroup" aria-label="Ver como">
+        <button type="button" role="radio" [attr.aria-checked]="view() === 'board'" [class.on]="view() === 'board'" (click)="setView('board')"><jo-icon name="squares-four" [size]="14" />Quadro</button>
+        <button type="button" role="radio" [attr.aria-checked]="view() === 'list'" [class.on]="view() === 'list'" (click)="setView('list')"><jo-icon name="list-checks" [size]="14" />Lista</button>
+      </div>
+    </div>
+  </header>
+
+  @if (all.problem(); as p) { <p class="problem">{{ p.detail }}</p> }
+
   @if (view() === 'board') {
-    <div class="board" [style.--cols]="columns().length">
+    <div class="board">
       @for (c of columns(); track c.key) {
-        <section class="col" [class.drop]="c.drop !== null" [class.over]="over() === c.key && c.drop !== null && dragging()"
+        <section class="col" [attr.data-stage]="c.key" [class.drop]="c.drop !== null" [class.over]="over() === c.key && c.drop !== null && dragging()"
                  (dragover)="c.drop !== null && $event.preventDefault()" (dragenter)="c.drop !== null && over.set(c.key)" (drop)="drop($event, c.drop)">
-          <header><strong>{{ c.label }}</strong><span class="n num">{{ c.items.length }}</span></header>
-          <p class="faint small hint">{{ c.hint }}</p>
-          @for (a of c.items; track a.id) {
-            <article class="card" [class.draggable]="isSent(a)" [attr.draggable]="isSent(a)"
-                     (dragstart)="dragging.set(a.id); $event.dataTransfer?.setData('text/plain', a.id)" (dragend)="dragging.set(null); over.set(null)">
-              <a class="who" [routerLink]="['/candidaturas', a.id]"><jo-company [name]="a.company" [size]="28" /><span><span class="title">{{ a.title }}</span><span class="company">{{ a.company }}</span></span></a>
-              <span class="meta"><jo-score [value]="a.score" /><span class="faint small">{{ ago(a.outcomeAt ?? a.updatedAt) }}</span></span>
-              @if (isSent(a)) {
-                <label class="to small"><span class="sr-only">Mover para</span>
-                  <select [value]="a.outcome ?? ''" (change)="move(a.id, $any($event.target).value)">
-                    <option value="">Enviada</option>@for (o of steps; track o) { <option [value]="o">{{ o }}</option> }
-                  </select>
-                </label>
-              } @else if (c.key !== 'prep') { <span class="faint small state">{{ label(a.state) }}</span> }
-            </article>
-          } @empty { <p class="empty faint small">{{ c.drop !== null ? 'Solte aqui' : 'Nada agora' }}</p> }
+          <header><span class="dot" aria-hidden="true"></span><strong>{{ c.label }}</strong><span class="n num">{{ c.items.length }}</span></header>
+          <p class="hint faint">{{ c.hint }}</p>
+          <div class="cards">
+            @for (a of c.items; track a.id) {
+              <article class="card" [class.draggable]="isSent(a)" [attr.draggable]="isSent(a)"
+                       (dragstart)="dragging.set(a.id); $event.dataTransfer?.setData('text/plain', a.id)" (dragend)="dragging.set(null); over.set(null)">
+                <a class="who" [routerLink]="['/candidaturas', a.id]">
+                  <jo-company [name]="a.company" [size]="30" />
+                  <span class="txt"><span class="title">{{ a.title }}</span><span class="company">{{ a.company }}</span></span>
+                </a>
+                <div class="meta"><jo-score [value]="a.score" /><span class="faint">{{ ago(a.outcomeAt ?? a.updatedAt) }}</span></div>
+                @if (a.state === 'ManualHandoff') {
+                  <button type="button" class="btn sm" (click)="copilot.open({ id: a.id })"><jo-icon name="arrow-square-out" [size]="13" />Abrir preenchida</button>
+                } @else if (a.state === 'NeedsHuman') {
+                  <a class="btn sm" [routerLink]="['/candidaturas', a.id]">Ver o que falta</a>
+                } @else if (isSent(a)) {
+                  <label class="to"><span class="sr-only">Mover para</span>
+                    <select [value]="a.outcome ?? ''" (change)="move(a.id, $any($event.target).value)">
+                      <option value="">Enviada</option><option value="Entrevista">Entrevista</option><option value="Oferta">Oferta</option>
+                      <option value="Aceita">Aceita</option><option value="Recusada">Recusada</option>
+                    </select>
+                  </label>
+                }
+              </article>
+            } @empty { <p class="empty faint">{{ c.drop !== null ? 'Arraste para cá' : 'Nada agora' }}</p> }
+          </div>
         </section>
       }
     </div>
   } @else {
-  <div class="chips" role="group" aria-label="Filtrar por estado">
-    @for (f of filters; track f.label) {
-      <button type="button" class="chip" [attr.aria-pressed]="state() === f.key" (click)="filter(f.key)">{{ f.label }}<span class="n">{{ count(f.key) }}</span></button>
-    }
-  </div>
-  @if (all.problem(); as p) { <p class="problem">{{ p.detail }}</p> }
-  <section class="panel">
-    @if (all.value() && rows().length === 0) {
-      <jo-empty title="Nenhuma candidatura neste filtro." hint="As candidaturas nascem quando uma vaga passa no corte da campanha." />
-    } @else {
-      <table class="grid">
-        <thead><tr><th>Empresa e cargo</th><th>Estado</th><th>Nota</th><th>Prova</th><th>Último passo</th><th class="right">Atualizada</th></tr></thead>
-        <tbody>
+    <div class="chips" role="group" aria-label="Filtrar por etapa">
+      <button type="button" class="chip" [attr.aria-pressed]="!etapa()" (click)="filter(undefined)">Todas<span class="n">{{ count(undefined) }}</span></button>
+      @for (s of stages; track s.key) {
+        <button type="button" class="chip" [attr.aria-pressed]="etapa() === s.key" (click)="filter(s.key)">{{ s.label }}<span class="n">{{ count(s.key) }}</span></button>
+      }
+    </div>
+    <section class="panel list">
+      @if (all.value() && rows().length === 0) {
+        <jo-empty title="Nenhuma candidatura aqui." hint="As candidaturas nascem quando uma vaga passa na nota de corte." />
+      } @else {
+        <ul>
           @for (a of rows(); track a.id) {
-            <tr class="row" [routerLink]="['/candidaturas', a.id]">
-              <td><span class="who"><jo-company [name]="a.company" [size]="34" /><span><span class="title">{{ a.title }}</span><span class="company">{{ a.company }}</span></span></span></td>
-              <td><jo-badge [label]="label(a.state)" [tone]="tone(a.state)" /></td>
-              <td><jo-score [value]="a.score" /></td>
-              <td><span class="muted">{{ evidence(a.evidenceLevel) }}</span>@if (a.receiptId) {<span class="mono faint receipt">{{ a.receiptId }}</span>}</td>
-              <td class="muted reason">{{ a.lastReason }}</td>
-              <td class="right faint">{{ ago(a.updatedAt) }}</td>
-            </tr>
+            <li [attr.data-stage]="stageKey(a)">
+              <a class="who" [routerLink]="['/candidaturas', a.id]">
+                <jo-company [name]="a.company" [size]="34" />
+                <span class="txt"><span class="title">{{ a.title }}</span><span class="company">{{ a.company }}</span></span>
+              </a>
+              <span class="stage"><span class="dot" aria-hidden="true"></span>{{ stage(a).label }}</span>
+              <jo-score [value]="a.score" />
+              <span class="line muted">{{ line(a) }}</span>
+              <span class="when faint">{{ ago(a.outcomeAt ?? a.updatedAt) }}</span>
+              <span class="act">
+                @if (a.state === 'ManualHandoff') { <button type="button" class="btn sm" (click)="copilot.open({ id: a.id })">Abrir preenchida</button> }
+                @else { <a class="btn sm ghost" [routerLink]="['/candidaturas', a.id]">Ver</a> }
+              </span>
+            </li>
           }
-        </tbody>
-      </table>
-    }
-  </section>
+        </ul>
+      }
+    </section>
   }
 </section>

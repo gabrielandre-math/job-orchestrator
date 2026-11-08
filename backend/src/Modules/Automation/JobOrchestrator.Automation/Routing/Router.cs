@@ -100,11 +100,13 @@ internal sealed class Router(IEnumerable<IFormAdapter> adapters, AutomationDbCon
         // A send the robot could not confirm is not a failure of the adapter (the site may just say "thank you" in other words): it does
         // not pause the adapter, or one unrecognized confirmation page would hold every approved application behind it.
         var failure = r.Kind is AdapterResultKind.RetryableFailure or AdapterResultKind.PermanentFailure;
+        // A site that asked for a person is no fault of the adapter either, but it is remembered: the next ones go to you without a try.
+        var noted = failure || r.ReasonCode == "human-check";
         var openUntil = time.GetUtcNow().UtcDateTime.Add(CircuitPause);
         return db.Database.ExecuteSqlInterpolatedAsync($"""
             INSERT INTO automation.adapter_stats (adapter_id, domain, capability, version, attempts, confirmed, failures, consecutive_failures, last_failure_at, last_failure_code)
             VALUES ({a.Id}, {domain}, {capability.ToString()}, {a.Version}, 1, {(ok ? 1 : 0)}, {(failure ? 1 : 0)}, {(failure ? 1 : 0)},
-                    {(failure ? time.GetUtcNow().UtcDateTime : null)}, {(failure ? r.ReasonCode : null)})
+                    {(noted ? time.GetUtcNow().UtcDateTime : null)}, {(noted ? r.ReasonCode : null)})
             ON CONFLICT (adapter_id, domain, capability) DO UPDATE SET
               version = excluded.version,
               attempts = adapter_stats.attempts + 1,

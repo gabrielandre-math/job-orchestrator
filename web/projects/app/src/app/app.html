@@ -18,19 +18,12 @@
   </div>
   <nav aria-label="Principal" #navEl>
     <span class="glider" aria-hidden="true" [style.transform]="'translateY(' + glide().top + 'px)'" [style.height.px]="glide().height" [style.opacity]="glide().height ? 1 : 0"></span>
-    @for (g of nav; track g.group) {
-      @if (g.advanced) {
-        <button type="button" class="group toggle" [attr.aria-expanded]="advanced()" (click)="toggleAdvanced()">{{ g.group }}<jo-icon name="caret-down" [size]="11" /></button>
-      } @else if (g.group) { <p class="group">{{ g.group }}</p> }
-      @if (!g.advanced || advanced()) {
-        @for (i of g.items; track i.label) {
-          <a [routerLink]="i.path" [queryParams]="i.query ?? null" routerLinkActive="active" [routerLinkActiveOptions]="i.query ? { paths: 'exact', queryParams: 'exact', fragment: 'ignored', matrixParams: 'ignored' } : { exact: !!i.exact }" [attr.title]="collapsed() ? i.label : null">
-            <jo-icon [name]="i.icon" [size]="18" />
-            <span class="label">{{ i.label }}</span>
-            @if (count(i.count) > 0) { <span class="count" [attr.aria-label]="count(i.count) + ' pendentes'">{{ count(i.count) }}</span> }
-          </a>
-        }
-      }
+    @for (i of nav; track i.path) {
+      <a [routerLink]="i.path" [class.active]="active(i)" [attr.aria-current]="active(i) ? 'page' : null" [attr.title]="collapsed() ? i.label : null">
+        <jo-icon [name]="i.icon" [size]="18" />
+        <span class="label">{{ i.label }}</span>
+        @if (count(i.count) > 0) { <span class="count" [attr.aria-label]="count(i.count) + ' esperando você'">{{ count(i.count) }}</span> }
+      </a>
     }
   </nav>
   <footer>
@@ -40,7 +33,6 @@
         <span class="mini-bar" aria-hidden="true"><span [style.width.%]="search.progress() * 100"></span></span>
       </a>
     }
-    @if (formQuestions.count()) { <button type="button" class="theme" (click)="formQuestions.open.set(true)"><jo-icon name="identification-card" [size]="18" /><span class="label">Completar respostas</span><span class="count" [attr.aria-label]="formQuestions.count() + ' pendentes'">{{ formQuestions.count() }}</span></button> }
     <span class="status" [class.on]="online()" [attr.title]="online() ? 'API no ar' : 'API fora do ar'"><span class="label">{{ online() ? 'API no ar' : 'API fora do ar' }}</span></span>
     <button class="theme" type="button" (click)="theme.toggle()" [attr.title]="theme.mode() === 'dark' ? 'Tema claro' : 'Tema escuro'">
       <jo-icon [name]="theme.mode() === 'dark' ? 'sun' : 'moon'" [size]="18" />

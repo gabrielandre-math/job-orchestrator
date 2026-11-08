@@ -61,7 +61,7 @@ export class Welcome {
     const c = campaigns[0];
     if (!c) throw { status: 0, code: 'no-campaign', detail: 'Nenhuma campanha para configurar.' };
     const sources = [...new Set([...this.picks().filter((p) => p.on).map((p) => p.source)])];
-    await send('PUT', `/campaigns/${c.id}`, { mode: c.mode, minFitScore: this.minScore(), maxSubmissionsPerDay: c.maxSubmissionsPerDay, technologies: this.keywords(), titles: this.titles(), locations: this.locations(), sources, name: this.proposal()?.area || undefined });
+    await send('PUT', `/campaigns/${c.id}`, { mode: 'PrepareOnly', minFitScore: this.minScore(), maxSubmissionsPerDay: c.maxSubmissionsPerDay, technologies: this.keywords(), titles: this.titles(), locations: this.locations(), sources, name: this.proposal()?.area || undefined });
     await send('PUT', '/onboarding', { done: true });
   }, 'Ambiente pronto. A primeira busca já começou.');
 
@@ -148,8 +148,8 @@ export class Welcome {
     this.step.set(6);
     await this.search.start();
   }
-  /** O passo seguinte do primeiro uso: fecha este e abre o Automatizar tudo no Início. */
-  protected automate() { this.close.emit(); void this.router.navigate(['/'], { queryParams: { configurar: '1' } }); }
+  /** The copilot's install steps, in Configurações. */
+  protected goCopilot() { this.close.emit(); void this.router.navigate(['/configuracoes'], { fragment: 'copiloto' }); }
   protected go(path: string) { this.close.emit(); void this.router.navigate([path]); }
   protected async later() { this.close.emit(); }
   protected providerLogo(p: Provider) { return p.family === 'anthropic' ? 'claude' : p.family === 'openai' ? 'openai' : p.family === 'local' ? 'ollama' : null; }

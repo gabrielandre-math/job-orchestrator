@@ -18,7 +18,7 @@ internal sealed class GetOverviewHandler(IReadDb<ApplicationsDbContext> db, ICam
           count(*) filter (where state = 'FormValidated')::int as prepared,
           count(*) filter (where state = 'AwaitingApproval')::int as awaiting_approval,
           count(*) filter (where state in ('ReadyToSubmit','Submitting'))::int as sending,
-          count(*) filter (where state = 'SubmittedConfirmed')::int as confirmed,
+          count(*) filter (where state in ('SubmittedConfirmed','SubmittedDeclared'))::int as confirmed,
           count(*) filter (where state = 'SubmissionUnknown')::int as unknown,
           count(*) filter (where state = 'NeedsHuman')::int as needs_human,
           count(*) filter (where state = 'BlockedByPolicy')::int as blocked,
@@ -32,10 +32,10 @@ internal sealed class GetOverviewHandler(IReadDb<ApplicationsDbContext> db, ICam
         var campaign = (await campaigns.ListAsync(ct)).FirstOrDefault();
         var counts = (await db.FirstAsync<StateCounts>(CountsSql, null, ct))!;
         var pending = await db.FirstAsync<int>("select count(*)::int from applications.human_tasks where resolved_at is null", null, ct);
-        // Enviadas hoje pela hora da confirmação no histórico: marcar entrevista numa antiga não conta como envio de hoje.
+        // Enviadas hoje pela hora do envio no histórico (confirmada pelo site ou registrada por você): marcar entrevista numa antiga não conta.
         var today = await db.FirstAsync<int>("""
             select count(distinct e.application_id)::int from applications.events e join applications.applications a on a.id = e.application_id
-            where e."to" = 'SubmittedConfirmed' and e.at >= @Since and a.archived_at is null
+            where e."to" in ('SubmittedConfirmed', 'SubmittedDeclared') and e.at >= @Since and a.archived_at is null
             """, new { Since = SubmissionGuard.StartOfDay(time.GetUtcNow().UtcDateTime, campaign?.TimeZone) }, ct);
         var activity = await db.ListAsync<ActivityRow>("""
             select e.at, e.application_id, a.company, a.title, e."from", e."to", e.reason, e.actor

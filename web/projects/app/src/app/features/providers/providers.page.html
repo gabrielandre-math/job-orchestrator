@@ -1,5 +1,6 @@
 <section class="page">
-  <jo-page-hero title="Provedores de IA" [scene]="['model', 'router', 'chart']" [stats]="hero()"
+  <jo-tabs [items]="tabs" label="Configurações" />
+  <jo-page-hero title="IA" [scene]="['model', 'router', 'chart']" [stats]="hero()"
     lead="As suas contas, quantas quiser de cada provedor. A ordem da lista é a ordem de gasto; cada conta pausa sozinha na reserva e chave de API para no teto do mês.">
     <button type="button" class="btn primary" (click)="wizard.set(true)"><jo-icon name="plus" [size]="14" />Conectar conta</button>
   </jo-page-hero>

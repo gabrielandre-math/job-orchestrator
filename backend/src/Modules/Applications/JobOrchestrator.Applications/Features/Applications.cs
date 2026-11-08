@@ -143,7 +143,13 @@ internal sealed class DeclareHandler(ApplicationsDbContext db, TimeProvider time
 }
 
 /// <summary>O que o copiloto mostra para você candidatar pelo site original: o link, o currículo da vaga e as respostas aprovadas, prontas para copiar.</summary>
-internal sealed record CopilotView(string ApplyUrl, string Channel, bool HasResume, IReadOnlyList<CopilotAnswer> Answers, string FirstName, string LastName, string Email, string Phone, string LinkedIn);
+internal sealed record CopilotView(string ApplyUrl, string Channel, bool HasResume, IReadOnlyList<CopilotAnswer> Answers, string FirstName, string LastName, string Email, string Phone, string LinkedIn,
+    IReadOnlyList<KitLine>? Form = null);
+/// <summary>
+/// One line of the answer kit, for a form you fill by hand: the question and what to write. Source: "form" (the robot filled it this
+/// way), "ai" (the AI answered from your profile and the check passed) or "draft" (the AI's text the check did not pass: yours to edit).
+/// </summary>
+internal sealed record KitLine(string Question, string Answer, string Source);
 internal sealed record CopilotAnswer(string Key, string Value);
 
 internal sealed record DeclareBody(string? Note);
@@ -205,9 +211,14 @@ internal sealed class ApplicationEndpoints : ICarterModule
             var a = await db.Applications.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
             if (a is null) return Results.NotFound();
             var b = await bundles.ForAsync(a, ct);
+            // The kit: what the robot filled on this form, then the AI's answers to the questions it asked (newest per question).
+            var written = (await db.FormAnswers.AsNoTracking().Where(f => f.ApplicationId == id && f.Answer != "").OrderByDescending(f => f.CreatedAt).ToListAsync(ct))
+                .DistinctBy(f => f.QuestionKey).Select(f => new KitLine(f.Question, f.Answer, f.Accepted ? "ai" : "draft"));
+            var form = Copilot.Prepared(a.PreparedFields).Select(q => new KitLine(q.Question, q.Answer, "form")).Concat(written)
+                .DistinctBy(l => l.Question.Trim(), StringComparer.OrdinalIgnoreCase).ToList();
             return Results.Ok(new CopilotView(a.ApplyUrl, a.ApplyChannel, a.ResumePath is not null && File.Exists(a.ResumePath),
                 b is null ? [] : [.. b.Answers.Where(x => !string.IsNullOrWhiteSpace(x.Value)).Select(x => new CopilotAnswer(x.Key, x.Value))],
-                b?.FirstName ?? "", b?.LastName ?? "", b?.Email ?? "", b?.Phone ?? "", b?.LinkedIn ?? ""));
+                b?.FirstName ?? "", b?.LastName ?? "", b?.Email ?? "", b?.Phone ?? "", b?.LinkedIn ?? "", form));
         });
         app.MapGet("/api/tasks", async (ISender sender, CancellationToken ct) => (await sender.Send(new ListTasksQuery(), ct)).ToHttp(Results.Ok)).WithTags("Applications");
         // Extensão do copiloto: acha a candidatura da página aberta (mesmo site, caminho mais parecido) e devolve o que preencher.

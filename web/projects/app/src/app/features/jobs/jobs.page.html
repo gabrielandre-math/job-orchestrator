@@ -1,95 +1,13 @@
 <section class="page">
   <jo-page-hero title="Vagas" [scene]="['ats', 'queue', 'chart']" [stats]="hero()"
     lead="Tudo que as fontes trouxeram, com a elegibilidade de quem mora no Brasil. A nota mede a aderência à campanha, não a chance de contratação.">
+    <div class="views" role="radiogroup" aria-label="Ver como">
+      <button type="button" role="radio" [attr.aria-checked]="view() === 'cards'" [class.on]="view() === 'cards'" (click)="setView('cards')"><jo-icon name="squares-four" [size]="14" />Cartões</button>
+      <button type="button" role="radio" [attr.aria-checked]="view() === 'list'" [class.on]="view() === 'list'" (click)="setView('list')"><jo-icon name="list-checks" [size]="14" />Lista</button>
+    </div>
     <a class="btn" routerLink="/busca"><jo-icon name="magnifying-glass" [size]="14" />Busca ao vivo</a>
-    <a class="btn ghost" routerLink="/fontes"><jo-icon name="plugs-connected" [size]="14" />Fontes</a>
   </jo-page-hero>
   @if (all.problem(); as p) { <p class="problem">{{ p.detail }}</p> }
-
-  @if (stats.value(); as st) {
-    <article class="panel funnel" aria-label="Funil das vagas">
-      <header>
-        <div class="lh"><h2>Funil</h2>
-          <jo-help term="Funil" iso="queue">
-            <dl>
-              <dt>Encontradas</dt><dd>Tudo o que as fontes trouxeram, com as repetidas.</dd>
-              <dt>Únicas</dt><dd>Sem as repetidas: a mesma vaga em duas fontes conta uma vez.</dd>
-              <dt>Elegíveis</dt><dd>As únicas que não foram cortadas nem encerradas.</dd>
-              <dt>Na fila</dt><dd>As elegíveis com nota igual ou acima do corte da campanha. Para elas o sistema prepara currículo e candidatura.</dd>
-            </dl>
-            <p>A porcentagem embaixo de cada etapa é quanto passou da etapa anterior.</p>
-          </jo-help>
-        </div>
-        <span class="faint small num"><jo-count [value]="st.total" /> no total</span>
-      </header>
-      <ol class="steps">
-        @for (s of funnelSteps(); track s.label) {
-          <li [class.accent]="s.accent">
-            <span class="v num"><jo-count [value]="s.value" /></span>
-            <span class="l">{{ s.label }}</span>
-            <span class="track"><span class="fill" [style.width.%]="s.pct"></span></span>
-            <span class="faint small">{{ s.rate === null ? 'tudo o que as fontes trouxeram' : s.rate + '% da etapa anterior' }}</span>
-          </li>
-        }
-      </ol>
-    </article>
-    <div class="charts">
-      <article class="panel chart">
-        <header><h2>Por fonte</h2></header>
-        <jo-hbars class="body" [data]="sources()" />
-      </article>
-      <article class="panel chart">
-        <header>
-          <div class="lh"><h2>Notas</h2>
-            <jo-help term="Nota" iso="chart">
-              <p>A nota vai de 0 a 100 e mede o quanto a vaga combina com a campanha, não a chance de contratação. Ela soma quatro partes:</p>
-              <dl>
-                <dt>Palavras-chave, até 45</dt><dd>Quantas das suas palavras-chave e competências a vaga cita.</dd>
-                <dt>Cargo, até 25</dt><dd>O quanto o título se parece com os seus cargos-alvo.</dd>
-                <dt>Nível, até 15</dt><dd>Se o nível do cargo parece perto do seu.</dd>
-                <dt>Modalidade, até 15</dt><dd>Remoto vale mais, depois híbrido, depois presencial.</dd>
-              </dl>
-              <p>A linha do <strong>corte</strong> é a nota mínima para entrar na fila, escolhida na Campanha.</p>
-            </jo-help>
-          </div>
-          <span class="faint small">de 0 a 100</span>
-        </header>
-        <jo-columns class="body" [data]="scores()" [cutAt]="8" cutLabel="corte 80" />
-      </article>
-      <article class="panel chart">
-        <header><h2>Novas por dia</h2><span class="faint small">últimos 14 dias</span></header>
-        <jo-area class="body" [data]="days()" />
-      </article>
-      <article class="panel chart full">
-        <header><h2>Ferramentas mais pedidas</h2>@if (profile.value()?.facts?.length) { <span class="faint small">verde: você tem</span> }</header>
-        <ul class="stack">
-          @for (t of stack(); track t.key) {
-            <li [class.have]="t.have === true" [class.missing]="t.have === false">
-              <jo-tech [name]="t.key" [have]="t.have" />
-              <span class="track"><span class="fill" [style.width.%]="t.pct"></span></span>
-              <span class="num">{{ t.value }}</span>
-            </li>
-          }
-        </ul>
-      </article>
-      <article class="panel chart">
-        <header><h2>Perfil das vagas</h2></header>
-        <div class="shape">
-          @for (g of shape(); track g.title) {
-            <div class="seg-group">
-              <p class="faint small">{{ g.title }}</p>
-              <div class="seg" role="img" [attr.aria-label]="g.title">
-                @for (x of g.parts; track x.label) { <span [style.width.%]="x.pct" [attr.data-i]="x.i % 5" [joTip]="x.label + '\n' + x.value.toLocaleString('pt-BR') + (x.value === 1 ? ' vaga' : ' vagas') + ' (' + Math.round(x.pct) + '%)'"></span> }
-              </div>
-              <p class="legend small">@for (x of g.parts; track x.label) { <span><i [attr.data-i]="x.i % 5"></i>{{ x.label }} <b class="num">{{ x.value }}</b></span> }</p>
-            </div>
-          }
-        </div>
-      </article>
-    </div>
-  } @else {
-    <div class="charts">@for (i of [1, 2, 3, 4]; track i) { <div class="panel chart skeleton"></div> }</div>
-  }
 
   <section class="panel filterbar" aria-label="Filtros das vagas">
     <div class="fb-top">
@@ -207,7 +125,7 @@
           <span class="fb-label">Mais
             <jo-help term="Como se candidatar" iso="ats">
               <dl>
-                <dt>Formulário do ATS</dt><dd>ATS é o sistema de vagas que a empresa usa, como Greenhouse, Lever e Ashby. O app preenche o formulário de lá e, no automático, envia.</dd>
+                <dt>Formulário do ATS</dt><dd>ATS é o sistema de vagas que a empresa usa, como Greenhouse, Lever e Ashby. O app lê o formulário e prepara as respostas; o copiloto preenche e você envia.</dd>
                 <dt>Pelo site, com você</dt><dd>LinkedIn, Gupy e outros sites onde quem envia é você. O app deixa o currículo e as respostas prontos.</dd>
                 <dt>Por e-mail</dt><dd>A vaga pede currículo por e-mail. O app escreve e manda pelo seu e-mail conectado.</dd>
                 <dt>Pelo link da vaga</dt><dd>O anúncio só tem um link. Você abre e se candidata por lá.</dd>
@@ -246,6 +164,29 @@
     <div class="panel"><jo-empty title="Nenhuma vaga neste filtro." hint="As vagas existem, mas nenhuma passa por todos os filtros escolhidos."><button type="button" class="btn ghost" (click)="clearFilters()"><jo-icon name="x" [size]="14" />Limpar filtros</button></jo-empty></div>
   } @else if (!all.value()) {
     <div class="cards">@for (i of [1, 2, 3, 4, 5, 6]; track i) { <div class="panel card skeleton"></div> }</div>
+  } @else if (view() === 'list') {
+    <section class="panel jlist">
+      <ul>
+        @for (j of shown(); track j.id) {
+          <li>
+            <button type="button" class="jrow" [class.current]="open() === j.id" [class.cut]="j.status === 'Rejected' || j.status === 'Duplicate' || j.status === 'Expired'" (click)="open.set(j.id)">
+              <jo-company [name]="j.company" [domain]="j.companyDomain" [size]="32" />
+              <span class="jt"><strong>{{ j.title }}</strong><span class="muted">{{ company(j.company) }}@if (j.location) { · {{ j.location }} }</span></span>
+              <span class="jtags">
+                @if (j.modality) { <span class="tag">{{ j.modality }}</span> }
+                @if (j.salaryText) { <span class="tag money">{{ j.salaryText }}</span> }
+              </span>
+              <jo-badge [label]="label(j.status)" [tone]="tone(j.status)" />
+              <jo-score [value]="j.status === 'Rejected' ? null : j.score" />
+              <span class="faint jage">{{ ago(j.firstSeenAt) }}</span>
+            </button>
+          </li>
+        }
+      </ul>
+    </section>
+    @if (rows().length > shown().length) {
+      <div class="more"><button type="button" class="btn" (click)="page.set(page() + 1)">Mostrar mais {{ Math.min(60, rows().length - shown().length) }} de {{ rows().length - shown().length }}</button></div>
+    }
   } @else {
     <div class="cards">
       @for (j of shown(); track j.id) {
@@ -264,7 +205,7 @@
             @if (j.seniority) { <span class="tag">{{ j.seniority }}</span> }
             @if (j.contract) { <span class="tag">{{ j.contract }}</span> }
             @if (j.salaryText) { <span class="tag money">{{ j.salaryText }}</span> }
-            @if (j.sentBy) { <span class="tag">envio pelo app: {{ j.sentBy }}</span> } @else { <span class="tag manual">{{ channel(j.applyChannel === 'ats' ? 'manual' : j.applyChannel) }}</span> }
+            <span class="tag manual">{{ channel(j.applyChannel === 'ats' ? 'manual' : j.applyChannel) }}</span>
           </span>
           @if (j.stack.length > 0) {
             <span class="techs">
@@ -287,6 +228,94 @@
       <div class="more"><button type="button" class="btn" (click)="page.set(page() + 1)">Mostrar mais {{ Math.min(60, rows().length - shown().length) }} de {{ rows().length - shown().length }}</button></div>
     }
   }
+
+  <details class="insights">
+    <summary>Ver os números das vagas</summary>
+  @if (stats.value(); as st) {
+    <article class="panel funnel" aria-label="Funil das vagas">
+      <header>
+        <div class="lh"><h2>Funil</h2>
+          <jo-help term="Funil" iso="queue">
+            <dl>
+              <dt>Encontradas</dt><dd>Tudo o que as fontes trouxeram, com as repetidas.</dd>
+              <dt>Únicas</dt><dd>Sem as repetidas: a mesma vaga em duas fontes conta uma vez.</dd>
+              <dt>Elegíveis</dt><dd>As únicas que não foram cortadas nem encerradas.</dd>
+              <dt>Na fila</dt><dd>As elegíveis com nota igual ou acima do corte da campanha. Para elas o sistema prepara currículo e candidatura.</dd>
+            </dl>
+            <p>A porcentagem embaixo de cada etapa é quanto passou da etapa anterior.</p>
+          </jo-help>
+        </div>
+        <span class="faint small num"><jo-count [value]="st.total" /> no total</span>
+      </header>
+      <ol class="steps">
+        @for (s of funnelSteps(); track s.label) {
+          <li [class.accent]="s.accent">
+            <span class="v num"><jo-count [value]="s.value" /></span>
+            <span class="l">{{ s.label }}</span>
+            <span class="track"><span class="fill" [style.width.%]="s.pct"></span></span>
+            <span class="faint small">{{ s.rate === null ? 'tudo o que as fontes trouxeram' : s.rate + '% da etapa anterior' }}</span>
+          </li>
+        }
+      </ol>
+    </article>
+    <div class="charts">
+      <article class="panel chart">
+        <header><h2>Por fonte</h2></header>
+        <jo-hbars class="body" [data]="sources()" />
+      </article>
+      <article class="panel chart">
+        <header>
+          <div class="lh"><h2>Notas</h2>
+            <jo-help term="Nota" iso="chart">
+              <p>A nota vai de 0 a 100 e mede o quanto a vaga combina com a campanha, não a chance de contratação. Ela soma quatro partes:</p>
+              <dl>
+                <dt>Palavras-chave, até 45</dt><dd>Quantas das suas palavras-chave e competências a vaga cita.</dd>
+                <dt>Cargo, até 25</dt><dd>O quanto o título se parece com os seus cargos-alvo.</dd>
+                <dt>Nível, até 15</dt><dd>Se o nível do cargo parece perto do seu.</dd>
+                <dt>Modalidade, até 15</dt><dd>Remoto vale mais, depois híbrido, depois presencial.</dd>
+              </dl>
+              <p>A linha do <strong>corte</strong> é a nota mínima para entrar na fila, escolhida na Campanha.</p>
+            </jo-help>
+          </div>
+          <span class="faint small">de 0 a 100</span>
+        </header>
+        <jo-columns class="body" [data]="scores()" [cutAt]="8" cutLabel="corte 80" />
+      </article>
+      <article class="panel chart">
+        <header><h2>Novas por dia</h2><span class="faint small">últimos 14 dias</span></header>
+        <jo-area class="body" [data]="days()" />
+      </article>
+      <article class="panel chart full">
+        <header><h2>Ferramentas mais pedidas</h2>@if (profile.value()?.facts?.length) { <span class="faint small">verde: você tem</span> }</header>
+        <ul class="stack">
+          @for (t of stack(); track t.key) {
+            <li [class.have]="t.have === true" [class.missing]="t.have === false">
+              <jo-tech [name]="t.key" [have]="t.have" />
+              <span class="track"><span class="fill" [style.width.%]="t.pct"></span></span>
+              <span class="num">{{ t.value }}</span>
+            </li>
+          }
+        </ul>
+      </article>
+      <article class="panel chart">
+        <header><h2>Perfil das vagas</h2></header>
+        <div class="shape">
+          @for (g of shape(); track g.title) {
+            <div class="seg-group">
+              <p class="faint small">{{ g.title }}</p>
+              <div class="seg" role="img" [attr.aria-label]="g.title">
+                @for (x of g.parts; track x.label) { <span [style.width.%]="x.pct" [attr.data-i]="x.i % 5" [joTip]="x.label + '\n' + x.value.toLocaleString('pt-BR') + (x.value === 1 ? ' vaga' : ' vagas') + ' (' + Math.round(x.pct) + '%)'"></span> }
+              </div>
+              <p class="legend small">@for (x of g.parts; track x.label) { <span><i [attr.data-i]="x.i % 5"></i>{{ x.label }} <b class="num">{{ x.value }}</b></span> }</p>
+            </div>
+          }
+        </div>
+      </article>
+    </div>
+  } @else {
+    <div class="charts">@for (i of [1, 2, 3, 4]; track i) { <div class="panel chart skeleton"></div> }</div>
+  }
+  </details>
 
   @if (open()) {
     <div class="scrim" (click)="open.set(null)" aria-hidden="true"></div>

@@ -13,3 +13,9 @@
 .calm p { margin: 0; }
 @keyframes row-in { from { opacity: 0; transform: translateY(4px); } }
 @media (max-width: 760px) { .list li { grid-template-columns: auto minmax(0, 1fr) auto; } .src { display: none; } }
+
+.more { display: grid; gap: 16px; }
+.more > summary { cursor: pointer; width: fit-content; padding: 8px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--text-2); font: 500 13px var(--font-ui); list-style: none; }
+.more > summary::-webkit-details-marker { display: none; }
+.more > summary:hover { color: var(--text); }
+.more[open] > summary { color: var(--text); }

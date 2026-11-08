@@ -45,10 +45,12 @@ export class Tabs {
   }
 }
 
-export const SOURCE_TABS: TabItem[] = [
-  { path: '/fontes', label: 'Na campanha', icon: 'list-checks' },
-  { path: '/fontes/varredura', label: 'Varredura da internet', icon: 'globe' },
-  { path: '/fontes/adapters', label: 'Conectores', icon: 'plugs-connected' },
-  { path: '/fontes/registro', label: 'Registro', icon: 'shield-check' },
-  { path: '/fontes/cobertura', label: 'Cobertura', icon: 'map-pin' },
+/** Configurações: the settings pages, one tab each, under the single "Configurações" entry of the menu. */
+export const SETTINGS_TABS: TabItem[] = [
+  { path: '/configuracoes', label: 'Geral', icon: 'gear-six' },
+  { path: '/campanha', label: 'O que buscar', icon: 'magnifying-glass' },
+  { path: '/provedores', label: 'IA', icon: 'cpu' },
+  { path: '/fontes', label: 'Fontes', icon: 'plugs-connected' },
+  { path: '/email', label: 'E-mail', icon: 'envelope-simple' },
+  { path: '/diagnostico', label: 'Diagnóstico', icon: 'pulse' },
 ];

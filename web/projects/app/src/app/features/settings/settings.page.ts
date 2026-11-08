@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { SETTINGS_TABS, Tabs } from '../../shared/tabs';
 import { Icon } from '@jo/ui/icon';
 import { PageHero } from '@jo/ui/page-hero';
 import { Campaign, ExploreStatus, send } from '../../core/api';
@@ -19,12 +20,13 @@ const PHRASE = 'APAGAR TUDO';
  */
 @Component({
   selector: 'app-settings',
-  imports: [Icon, PageHero, TermsDialog],
+  imports: [Tabs, Icon, PageHero, TermsDialog],
   templateUrl: './settings.page.html',
   styleUrl: './settings.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SettingsPage {
+  protected readonly tabs = SETTINGS_TABS;
   protected readonly termsInfo = query<{ version: string; accepted: boolean; acceptedAt: string | null }>(() => '/terms', 0);
   protected readonly readingTerms = signal(false);
   protected async termsClosed() { this.readingTerms.set(false); await this.termsInfo.reload(); }

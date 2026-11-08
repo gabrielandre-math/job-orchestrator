@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, afterNextRender, computed, inject, signal, viewChild } from '@angular/core';
-import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { Icon } from '@jo/ui/icon';
 import { Mark } from '@jo/ui/mark';
 import { Overview } from './core/api';
@@ -12,25 +12,24 @@ import { Toasts } from './core/toast';
 import { SearchRun } from './core/search';
 import { QuestionDialog } from './features/applications/question-dialog';
 import { TrailClient } from './core/trail';
-import { FormQuestions } from './core/form-questions';
 import { Welcome } from './features/welcome/welcome';
 import { Quit } from './features/quit/quit';
 import { TermsDialog } from './features/terms/terms';
 import { get } from './core/api';
 
-interface NavItem { path: string; label: string; icon: string; exact?: boolean; count?: 'review' | 'attention' | 'you'; query?: Record<string, string>; }
+/** A menu entry; "also" lists the other pages that belong to it (the tabs of Configurações), so it stays lit on them. */
+interface NavItem { path: string; label: string; icon: string; exact?: boolean; count?: 'you'; also?: string[] }
 
 /** Shell: barra lateral recolhível (lembrada neste navegador), contadores reais e o estado da API. */
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icon, Mark, Welcome, Quit, TermsDialog, QuestionDialog],
+  imports: [RouterOutlet, RouterLink, Icon, Mark, Welcome, Quit, TermsDialog, QuestionDialog],
   templateUrl: './app.html',
   styleUrl: './app.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '[class.collapsed]': 'collapsed()', '[class.drawer-open]': 'drawer()' },
 })
 export class App {
-  protected readonly formQuestions = inject(FormQuestions);
   protected readonly theme = inject(Theme);
   protected readonly live = inject(Live);
   protected readonly toasts = inject(Toasts);
@@ -50,35 +49,22 @@ export class App {
   protected readonly online = computed(() => this.overview.problem() === null && this.overview.value() !== undefined);
   protected readonly mode = computed(() => modeLabel(this.overview.value()?.campaign?.mode ?? ''));
   /**
-   * Menu do dia a dia à vista; o técnico fica em "Avançado", fechado e lembrado neste navegador. O que depende de você
-   * (Atenção e Revisão) soma no Início, para nada importante ficar escondido.
+   * Five entries, one job each: what to do now, the jobs found, the applications you follow, your profile and the settings. Everything
+   * else lives inside these pages; the count on Início is what waits for you.
    */
-  protected readonly nav: { group: string; advanced?: boolean; items: NavItem[] }[] = [
-    { group: '', items: [
-      { path: '/', label: 'Início', icon: 'house', exact: true, count: 'you' },
-      { path: '/vagas', label: 'Vagas', icon: 'briefcase' },
-      { path: '/candidaturas', label: 'Candidaturas', icon: 'paper-plane-tilt' },
-      { path: '/email', label: 'E-mail', icon: 'envelope-simple' },
-      { path: '/perfil', label: 'Perfil', icon: 'identification-card' },
-      { path: '/', label: 'Configurar tudo', icon: 'lightning', exact: true, query: { configurar: '1' } },
-    ] },
-    { group: 'Avançado', advanced: true, items: [
-      { path: '/assistente', label: 'Assistente', icon: 'chats' },
-      { path: '/busca', label: 'Busca ao vivo', icon: 'magnifying-glass' },
-      { path: '/atencao', label: 'Atenção', icon: 'bell-simple', count: 'attention' },
-      { path: '/revisao', label: 'Revisão', icon: 'check-square-offset', count: 'review' },
-      { path: '/fontes', label: 'Fontes', icon: 'plugs-connected' },
-      { path: '/provedores', label: 'Provedores de IA', icon: 'cpu' },
-      { path: '/campanha', label: 'Campanha', icon: 'sliders-horizontal' },
-      { path: '/configuracoes', label: 'Configurações', icon: 'gear-six' },
-      { path: '/diagnostico', label: 'Diagnóstico', icon: 'pulse' },
-    ] },
+  protected readonly nav: NavItem[] = [
+    { path: '/', label: 'Início', icon: 'house', exact: true, count: 'you' },
+    { path: '/vagas', label: 'Vagas', icon: 'briefcase', also: ['/busca', '/salvar'] },
+    { path: '/candidaturas', label: 'Candidaturas', icon: 'paper-plane-tilt' },
+    { path: '/perfil', label: 'Perfil', icon: 'identification-card' },
+    { path: '/configuracoes', label: 'Configurações', icon: 'gear-six', also: ['/campanha', '/provedores', '/fontes', '/email', '/diagnostico', '/assistente'] },
   ];
-  protected readonly advanced = signal(storedFlag('jo.nav.avancado'));
-  protected toggleAdvanced() {
-    const open = !this.advanced();
-    this.advanced.set(open);
-    try { localStorage.setItem('jo.nav.avancado', open ? '1' : '0'); } catch { /* sem armazenamento: só não lembra */ }
+  /** The page open now, to light its entry (and the entry its tabs belong to). */
+  private readonly url = signal(typeof location !== 'undefined' ? location.pathname : '/');
+  protected active(i: NavItem) {
+    const url = this.url().split(/[?#]/)[0];
+    const at = (p: string) => (p === '/' ? url === '/' : url === p || url.startsWith(p + '/'));
+    return at(i.path) || (i.also ?? []).some(at);
   }
 
   /** Primeiro contato: abre sozinho enquanto o ambiente não foi montado; "Agora não" vale até recarregar a página. */
@@ -90,7 +76,7 @@ export class App {
     // Primeira vez: os termos de uso vêm antes de tudo (sem o aceite, nada roda sozinho); as boas-vindas só depois deles.
     if (!this.bare) void get<{ accepted: boolean }>('/terms').then((t) => { if (t.accepted) this.greet(); else this.terms.set(true); }).catch(() => this.greet());
     const destroy = inject(DestroyRef);
-    const sub = this.router.events.subscribe((e) => { if (e instanceof NavigationEnd) requestAnimationFrame(() => this.measure()); });
+    const sub = this.router.events.subscribe((e) => { if (e instanceof NavigationEnd) { this.url.set(e.urlAfterRedirects); requestAnimationFrame(() => this.measure()); } });
     const resize = () => this.measure();
     afterNextRender(() => { this.measure(); addEventListener('resize', resize); });
     destroy.onDestroy(() => { sub.unsubscribe(); removeEventListener('resize', resize); });
@@ -103,10 +89,10 @@ export class App {
 
   protected doneSources() { return this.search.state()?.sources.filter((x) => x.state === 'done' || x.state === 'failed').length ?? 0; }
 
+  /** What waits for you: every open task (a job to send, a question, a login) has one, plus the e-mails to approve. */
   protected count(kind?: NavItem['count']): number {
     const d = this.overview.value();
-    if (!d || !kind) return 0;
-    return kind === 'review' ? d.applications.awaitingApproval : kind === 'attention' ? d.pendingTasks : d.applications.awaitingApproval + d.pendingTasks;
+    return d && kind ? d.pendingTasks : 0;
   }
 
   protected readonly terms = signal(false);
@@ -127,6 +113,3 @@ export function sessionStorageSet(key: string, value: string) { try { sessionSto
 function read(key: string): string | null { try { return localStorage.getItem(key); } catch { return null; } }
 function write(key: string, value: string) { try { localStorage.setItem(key, value); } catch { /* armazenamento indisponível */ } }
 
-function storedFlag(key: string) {
-  try { return localStorage.getItem(key) === '1'; } catch { return false; }
-}

@@ -1,29 +1,34 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input, signal, untracked } from '@angular/core';
-import { Automate } from './automate';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { Badge } from '@jo/ui/badge';
-import { ChartRow, HBars } from '@jo/ui/charts';
-import { Count } from '@jo/ui/count';
-import { Empty } from '@jo/ui/empty';
+import { Company } from '@jo/ui/company';
 import { Icon } from '@jo/ui/icon';
 import { Iso } from '@jo/ui/iso';
-import { RouteHero, RouteStop } from '@jo/ui/route-hero';
-import { ApplicationRow, ExploreStatus, MailOverview, OutgoingMail, Overview, Profile, send, TaskRow } from '../../core/api';
+import { Score } from '@jo/ui/score';
+import { ApplicationRow, MailAccountView, MailOverview, Overview, Profile, TaskRow, send } from '../../core/api';
+import { BrowserCopilot, CopilotQueueItem } from '../../core/browser-copilot';
 import { command } from '../../core/command';
-import { ago, clock, modeLabel, plural, stateLabel, stateTone } from '../../core/format';
-import { AGENT_ICON, Live, PROVIDER_LOGO } from '../../core/live';
+import { ago, clock, plural } from '../../core/format';
 import { FormQuestions } from '../../core/form-questions';
+import { Live } from '../../core/live';
 import { query } from '../../core/query';
 import { SearchRun } from '../../core/search';
 import { WelcomeHub } from '../../core/welcome-hub';
 
+/** One step of the path: what it is, how many wait, and the single action that moves it. */
+interface Step {
+  key: 'setup' | 'copilot' | 'questions' | 'site' | 'inbox' | 'mail' | 'other';
+  label: string; hint: string; doneHint: string; n: number;
+  iso: string; title: string; text: string; action: string; short: string;
+  alt?: { label: string; link: string };
+}
+
 /**
- * Início: a marca como cenário (a rota com as estações dos agentes), a frase do dia, os números contando, o funil, os agentes
- * ao vivo e o que precisa de você. É a primeira tela, então diz em segundos se está tudo andando.
+ * Início: one next step with one button, the path in the order that unlocks the most (configure, install the copilot, answer the
+ * questions, send what is ready, connect the inbox), the results that count, and what the app is doing now. Nothing else.
  */
 @Component({
   selector: 'app-overview',
-  imports: [RouterLink, Badge, Count, Empty, HBars, Icon, Iso, RouteHero, Automate],
+  imports: [RouterLink, Company, Icon, Iso, Score],
   templateUrl: './overview.page.html',
   styleUrl: './overview.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -32,182 +37,159 @@ export class OverviewPage {
   protected readonly live = inject(Live);
   protected readonly search = inject(SearchRun);
   protected readonly hub = inject(WelcomeHub);
-  private readonly questionsHub = inject(FormQuestions);
-  protected readonly automating = signal(false);
-  /** "Configurar tudo" do menu chega aqui como ?configurar=1 e abre o passo a passo guiado. */
+  protected readonly questions = inject(FormQuestions);
+  protected readonly copilot = inject(BrowserCopilot);
+  private readonly router = inject(Router);
+  /** The old "Configurar tudo" link (?configurar=1) still opens the guided setup. */
   readonly configurar = input<string | undefined>();
   private readonly openSetup = effect(() => {
     if (!this.configurar() || !this.hub.state()) return;
     untracked(() => {
-      if (this.setup() && !this.allDone()) this.hub.open.set(true); else this.automating.set(true);
-      // Abriu: tira o ?configurar=1, para recarregar a página não abrir de novo.
+      this.hub.open.set(true);
       void this.router.navigate([], { queryParams: { configurar: null }, queryParamsHandling: 'merge', replaceUrl: true });
     });
   });
-  private readonly router = inject(Router);
-  /** Fechou o passo a passo: tira o ?configurar=1, para recarregar a página não abrir de novo. */
-  protected closeSetup() { this.automating.set(false); }
-  /** Configuração pendente: o que falta para a busca andar sozinha. */
-  protected readonly setup = computed(() => {
-    const o = this.hub.state();
-    if (!o || o.done) return null;
-    return [
-      { label: 'IA conectada', done: o.aiReady, hint: o.aiReady ? o.accounts.slice(0, 3).join(', ') : 'Claude, ChatGPT, chave de API ou modelo local' },
-      { label: 'Currículo lido', done: o.facts > 0, hint: o.facts > 0 ? `${o.facts} fatos verificados` : 'PDF, DOCX ou o export do LinkedIn' },
-      { label: 'Busca montada', done: o.keywords > 0 && o.sources > 0, hint: o.keywords > 0 ? `${o.keywords} palavras, ${o.sources} fontes` : 'cargos, palavras, locais e fontes' },
-    ];
-  });
-  protected readonly allDone = computed(() => (this.setup() ?? []).every((s) => s.done));
-  protected readonly stages = computed(() => {
-    const s = this.search.state();
-    const n = s?.sources.length ?? 0;
-    const done = s?.sources.filter((x) => x.state === 'done' || x.state === 'failed').length ?? 0;
-    const at = !s ? -1 : !s.running ? 5 : s.scored !== null ? 4 : s.fresh !== null ? 3 : done === n && n > 0 ? 2 : 0;
-    return [
-      { iso: 'radar', label: 'Fontes', value: s ? `${done}/${n}` : '—' }, { iso: 'reader', label: 'Da sua área', value: s ? String(s.kept) : '—' },
-      { iso: 'checker', label: 'Novas', value: s?.fresh ?? '—' }, { iso: 'chart', label: 'Nota', value: s?.above ?? '—' }, { iso: 'queue', label: 'Na fila', value: s && !s.running ? (s.shortlisted ?? 0) : '—' },
-    ].map((x, i) => ({ ...x, state: at < 0 ? 'idle' : i < at ? 'done' : i === at && s?.running ? 'working' : at === 5 ? 'done' : 'idle' }));
-  });
-  protected readonly data = query<Overview>(() => '/overview', 4000);
-  private readonly mail = query<MailOverview>(() => '/mail/overview', 15000);
-  private readonly outgoing = query<OutgoingMail[]>(() => '/mail/outgoing', 30000);
-  private readonly apps = query<ApplicationRow[]>(() => '/applications', 15000);
 
-  /** O Início responde três perguntas: o que saiu, o que voltou e o que depende de você, cada linha com o caminho para resolver. */
-  protected readonly today = computed(() => {
-    const d = this.data.value(), m = this.mail.value(), apps = this.apps.value() ?? [], mails = this.outgoing.value() ?? [];
-    const lost = mails.filter((x) => x.status === 'Bounced' || x.status === 'Failed').length;
-    const outcome = (o: string) => apps.filter((a) => a.outcome === o).length;
-    // What waits for you today: the questions window's lines (not an old rehearsal's), and the applications handed to you for the
-    // site, counted apart from the other pending tasks so nothing is counted twice.
-    const questions = this.questionsHub.count();
-    const bySite = (this.tasks.value() ?? []).filter((t) => !t.resolvedAt && t.kind === 'Review' && t.title.startsWith('Candidatar-se pelo site')).length;
-    type Line = { n: number; label: string; link: string; query?: Record<string, string>; tone?: string };
-    const sent: Line[] = [
-      { n: d?.confirmedToday ?? 0, label: word(d?.confirmedToday ?? 0, 'candidatura enviada hoje', 'candidaturas enviadas hoje'), link: '/candidaturas' },
-      { n: m?.sentToday ?? 0, label: word(m?.sentToday ?? 0, 'e-mail enviado hoje', 'e-mails enviados hoje'), link: '/email' },
-      { n: lost, label: word(lost, 'e-mail não chegou', 'e-mails não chegaram'), link: '/email', tone: 'bad' },
-      { n: d?.applications.confirmed ?? 0, label: 'enviadas no total', link: '/candidaturas' },
-    ];
-    const back: Line[] = [
-      { n: m?.replied ?? 0, label: word(m?.replied ?? 0, 'resposta por e-mail', 'respostas por e-mail'), link: '/email' },
-      { n: outcome('Entrevista') + (m?.interviews ?? 0), label: word(outcome('Entrevista') + (m?.interviews ?? 0), 'entrevista', 'entrevistas'), link: '/candidaturas', tone: 'ok' },
-      { n: outcome('Oferta'), label: word(outcome('Oferta'), 'oferta', 'ofertas'), link: '/candidaturas', tone: 'ok' },
-      { n: outcome('Recusada'), label: word(outcome('Recusada'), 'recusa', 'recusas'), link: '/candidaturas' },
-    ];
-    const you: Line[] = [
-      { n: d?.applications.awaitingApproval ?? 0, label: word(d?.applications.awaitingApproval ?? 0, 'formulário para aprovar', 'formulários para aprovar'), link: '/revisao', tone: 'warn' },
-      { n: Math.max(0, (d?.pendingTasks ?? 0) - bySite), label: word(Math.max(0, (d?.pendingTasks ?? 0) - bySite), 'pendência para resolver', 'pendências para resolver'), link: '/atencao', tone: 'warn' },
-      { n: m?.awaiting ?? 0, label: word(m?.awaiting ?? 0, 'e-mail para aprovar', 'e-mails para aprovar'), link: '/email', tone: 'warn' },
-      { n: questions, label: word(questions, 'pergunta de formulário sem resposta', 'perguntas de formulário sem resposta'), link: '/candidaturas', tone: 'warn' },
-      { n: bySite, label: word(bySite, 'vaga para você enviar pelo site', 'vagas para você enviar pelo site'), link: '/atencao', tone: 'warn' },
-    ];
-    return { sent, back, you, sentN: (d?.confirmedToday ?? 0) + (m?.sentToday ?? 0), backN: back.slice(0, 3).reduce((n, l) => n + l.n, 0), youN: you.reduce((n, l) => n + l.n, 0) };
-  });
-  protected readonly tasks = query<TaskRow[]>(() => '/tasks', 4000);
-  protected readonly profile = query<Profile>(() => '/profile', 0);
-  protected readonly linkedinOn = computed(() => (this.profile.value()?.documents ?? []).some((d) => d.kind === 'linkedin' && d.status === 'Ready'));
-  protected readonly explore = query<ExploreStatus>(() => '/explore/status', 15000);
-  /** Relógio de 30 s para os "em 12 min" do hero andarem sozinhos. */
-  private readonly now = signal(Date.now());
-  private readonly tick = setInterval(() => this.now.set(Date.now()), 30_000);
-  private readonly untick = inject(DestroyRef).onDestroy(() => clearInterval(this.tick));
-  protected readonly run = command((id: string) => send('POST', `/campaigns/${id}/runs`), 'Rodada pedida. As fontes começam a ser lidas.');
-  protected readonly label = stateLabel;
-  protected readonly tone = stateTone;
+  protected readonly data = query<Overview>(() => '/overview', 4000);
+  private readonly tasks = query<TaskRow[]>(() => '/tasks', 6000);
+  private readonly mail = query<MailOverview>(() => '/mail/overview', 20000);
+  private readonly accounts = query<MailAccountView[]>(() => '/mail/accounts', 30000);
+  private readonly profile = query<Profile>(() => '/profile', 0);
+  private readonly apps = query<ApplicationRow[]>(() => '/applications', 15000);
+  private readonly queue = query<CopilotQueueItem[]>(() => '/copilot/queue', 6000);
   protected readonly ago = ago;
   protected readonly clock = clock;
-  protected readonly icons = AGENT_ICON;
-  protected readonly logos = PROVIDER_LOGO;
-  protected readonly mode = computed(() => modeLabel(this.data.value()?.campaign?.mode ?? ''));
+
+  /** Jobs skipped in this visit: they stay ready, the card shows the next one. */
+  private readonly skipped = signal<ReadonlySet<string>>(new Set());
+  /** The job opened from the card: the card then waits for the send instead of opening the same one again. */
+  protected readonly opened = signal<string | null>(null);
+  protected readonly ready = computed(() => (this.queue.value() ?? []).filter((q) => !this.skipped().has(q.id)));
+  protected readonly current = computed(() => {
+    const list = this.ready();
+    return list.find((q) => q.id === this.opened()) ?? list[0] ?? null;
+  });
+  protected readonly declaring = command((id: string) => send('POST', `/applications/${id}/declare`, {}), 'Registrada como enviada por você.');
+
+  private readonly inbox = computed(() => {
+    const mine = (this.profile.value()?.identity.email ?? '').trim().toLowerCase();
+    const read = (this.accounts.value() ?? []).map((a) => a.address.toLowerCase());
+    if (!this.accounts.value() || !this.profile.value()) return null;
+    if (read.length === 0) return { mine, read: null as string | null };
+    return mine && !read.includes(mine) ? { mine, read: read[0] } : null;
+  });
+
+  protected readonly steps = computed<Step[]>(() => {
+    const o = this.hub.state(), d = this.data.value(), tasks = (this.tasks.value() ?? []).filter((t) => !t.resolvedAt);
+    const missing = !o || o.done ? [] : [!o.aiReady && 'a IA', o.facts === 0 && 'o currículo', (o.keywords === 0 || o.sources === 0) && 'o que buscar'].filter(Boolean) as string[];
+    const site = this.queue.value()?.length ?? 0;
+    const copilotOn = this.copilot.here() || !!this.copilot.status.value()?.connected;
+    const asked = this.questions.count(), waiting = this.questions.waiting();
+    const inbox = this.inbox();
+    const isSite = (t: TaskRow) => t.kind === 'Review' && t.title.startsWith('Candidatar-se pelo site');
+    const other = tasks.filter((t) => !isSite(t) && t.kind !== 'Question').length;
+    const steps: Step[] = [
+      { key: 'setup', label: 'Configurar a busca', hint: `Falta ${missing.join(', ')}`, doneHint: 'IA, currículo e o que buscar prontos', n: missing.length,
+        iso: 'identity', title: 'Termine a configuração', text: `Falta ${missing.join(', ')}. O assistente guia cada passo e monta a busca a partir do seu currículo.`,
+        action: 'Continuar a configuração', short: 'Continuar' },
+      this.copilot.outdated()
+        ? { key: 'copilot', label: 'Recarregar o copiloto', hint: `Versão ${this.copilot.status.value()?.latest} disponível`, doneHint: 'Copiloto atualizado', n: 1,
+            iso: 'selector', title: 'Recarregue o copiloto no Chrome', text: 'A versão nova pede à IA as respostas dos campos que ficarem vazios. No Chrome, abra chrome://extensions e clique na seta de recarregar do Job Orchestrator: leva cinco segundos.',
+            action: 'Ver como recarregar', short: 'Recarregar' }
+        : { key: 'copilot', label: 'Instalar o copiloto do navegador', hint: 'Abre cada vaga já preenchida, com o currículo anexado', doneHint: 'Copiloto conectado', n: site > 0 && !copilotOn ? 1 : 0,
+            iso: 'selector', title: 'Instale o copiloto do navegador', text: 'Leva dois minutos. Com ele, cada vaga abre no seu navegador já preenchida e com o currículo anexado: você confere e clica em enviar, e a candidatura conta como enviada.',
+            action: 'Ver como instalar', short: 'Instalar' },
+      { key: 'questions', label: 'Responder perguntas dos formulários', hint: asked ? `${plural(waiting, 'candidatura espera', 'candidaturas esperam')} por elas` : '', doneHint: 'Nenhuma pergunta sem resposta', n: asked,
+        iso: 'form', title: asked === 1 ? 'Responda 1 pergunta' : `Responda ${asked} perguntas`, text: 'Os formulários perguntaram o que o seu perfil não responde. Cada resposta vale para todas as vagas que perguntam o mesmo.',
+        action: 'Responder agora', short: 'Responder' },
+      { key: 'site', label: 'Enviar as candidaturas prontas', hint: 'A IA preparou; você confere e clica em enviar no site', doneHint: 'Nenhuma esperando envio', n: site,
+        iso: 'send', title: 'Envie a próxima vaga', text: 'Ela abre no seu navegador já preenchida, com o currículo da vaga anexado. Confira, clique em enviar no site e a confirmação conta aqui sozinha. O que o copiloto não preencher está no kit de respostas.',
+        action: 'Abrir preenchida', short: 'Enviar' },
+      { key: 'inbox', label: 'Conectar o e-mail das candidaturas', hint: 'A IA lê as respostas das empresas e move as suas candidaturas', doneHint: 'A IA lê a caixa que vai nos formulários', n: inbox ? 1 : 0,
+        iso: 'inbox', title: inbox?.read ? `Conecte ${inbox.mine}` : 'Conecte o seu e-mail',
+        text: inbox?.read ? `Os formulários usam ${inbox.mine}, mas o app lê ${inbox.read}. As confirmações e as respostas das empresas chegam em ${inbox.mine}: conectado, a IA lê e organiza tudo sozinha.`
+          : 'Com o e-mail conectado, a IA lê as confirmações, convites de entrevista e recusas e move cada candidatura sozinha.',
+        action: inbox?.read ? `Conectar ${inbox?.mine}` : 'Conectar o e-mail', short: 'Conectar',
+        alt: inbox?.read ? { label: `Usar ${inbox.read} nos formulários`, link: '/perfil' } : undefined },
+      { key: 'mail', label: 'Aprovar e-mails para recrutadores', hint: 'Vagas que pedem o currículo por e-mail', doneHint: 'Nenhum e-mail esperando', n: this.mail.value()?.awaiting ?? 0,
+        iso: 'writer', title: 'Revise os e-mails escritos pela IA', text: 'Algumas vagas pedem o currículo por e-mail. A IA escreveu cada um a partir do seu currículo: revise e aprove.',
+        action: 'Revisar os e-mails', short: 'Revisar' },
+      { key: 'other', label: 'Resolver outras pendências', hint: 'Login ou verificação que só você faz', doneHint: 'Nada mais esperando você', n: other,
+        iso: 'guardian', title: other === 1 ? '1 candidatura precisa de você' : `${other} candidaturas precisam de você`, text: 'O site pediu login ou uma verificação que só você faz. Cada uma está no quadro de Candidaturas, com o próximo passo.',
+        action: 'Ver no quadro', short: 'Ver' },
+    ];
+    // Steps that never apply here (no e-mail flow, nothing else waiting) stay out of the list instead of showing as done forever.
+    return steps.filter((s) => s.n > 0 || ['setup', 'questions', 'site', 'inbox'].includes(s.key) || (s.key === 'copilot' && (site > 0 || copilotOn)));
+  });
+  /** The first step with something waiting: the one big card. */
+  protected readonly next = computed(() => this.steps().find((s) => s.n > 0) ?? null);
+  protected readonly doneCount = computed(() => this.steps().filter((s) => s.n === 0).length);
 
   protected readonly greeting = computed(() => {
     const h = new Date().getHours();
-    const part = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
     const name = (this.profile.value()?.identity.fullName ?? '').split(' ')[0];
-    return name ? `${part}, ${name}.` : `${part}.`;
+    return `${h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite'}${name ? `, ${name}` : ''}.`;
   });
-
-  protected readonly waiting = computed(() => { const a = this.data.value()?.applications; return a ? a.awaitingApproval + a.needsHuman : 0; });
-  protected readonly state = computed(() => this.live.busy() ? 'Agentes trabalhando agora' : this.waiting() > 0 ? plural(this.waiting(), 'coisa espera por você', 'coisas esperam por você') : 'Tudo em ordem');
-
-  /** A frase do dia: o que andou e o que espera por você, sem enfeite. */
-  protected readonly summary = computed(() => {
-    const d = this.data.value();
+  protected readonly lead = computed(() => {
+    const d = this.data.value(), site = this.queue.value()?.length ?? 0;
     if (!d) return '';
-    const waiting = d.applications.awaitingApproval + d.applications.needsHuman;
-    const queue = plural(d.jobs.shortlisted, 'vaga na fila', 'vagas na fila');
-    const prepared = plural(d.applications.prepared, 'candidatura preparada', 'candidaturas preparadas');
-    // A mesma conta do bloco "O que depende de você": formulários, pendências, e-mails, perguntas e envios pelo site.
-    const all = Math.max(waiting, this.today().youN);
-    const you = all === 0 ? 'nada esperando por você' : plural(all, 'coisa esperando por você', 'coisas esperando por você');
-    return `${queue}, ${prepared} e ${you}.`;
+    const sent = d.confirmedToday === 0 ? 'Nenhuma candidatura enviada hoje' : plural(d.confirmedToday, 'candidatura enviada hoje', 'candidaturas enviadas hoje');
+    return site > 0 ? `${sent}. ${plural(site, 'pronta', 'prontas')} para você enviar.` : `${sent}.`;
   });
 
-  /**
-   * O pulso do hero: a próxima busca, o que o Explorador fez no último ciclo e a IA ligada. Três colunas com rótulo, valor e
-   * detalhe, para o hero dizer o que vem a seguir e não só o que já aconteceu.
-   */
-  protected readonly pulse = computed(() => {
-    const now = this.now();
-    const e = this.explore.value(), s = this.search.state(), full = this.search.lastFull(), o = this.hub.state();
-    const every = e?.searchIntervalMinutes ?? 60;
-    const minutes = (iso: string | null | undefined) => iso ? Math.round((new Date(iso).getTime() - now) / 60_000) : null;
-    const due = full?.lastAt ? minutes(new Date(new Date(full.lastAt).getTime() + every * 60_000).toISOString()) : null;
-    const search = s?.running
-      ? { value: 'Agora', note: `${s.sources.filter((x) => x.state === 'done' || x.state === 'failed').length} de ${s.sources.length} fontes lidas` }
-      : { value: due === null ? `A cada ${every} min` : due <= 1 ? 'Em instantes' : `Em ${due} min`, note: full?.lastAt ? `última ${ago(full.lastAt)}, ${plural(full.kept, 'vaga da sua área', 'vagas da sua área')}` : 'ainda sem rodada completa' };
-    const last = e?.last;
-    const next = minutes(e?.next);
-    const explorer = !e ? { value: '—', note: 'carregando' }
-      : e.running ? { value: 'Testando fontes', note: `${e.frontier.toLocaleString('pt-BR')} candidatas na fila` }
-      : !e.enabled ? { value: 'Desligado', note: 'ligue em Fontes' }
-      : { value: last ? plural(last.added.length, 'fonte nova', 'fontes novas') : 'Sem ciclo ainda', note: last ? `${last.tested} testadas ${ago(last.at)}${next !== null && next > 0 ? `, próximo em ${next} min` : ''}` : `${e.frontier.toLocaleString('pt-BR')} candidatas na fila` };
-    const ai = !o ? { value: '—', note: 'carregando' }
-      : o.aiReady ? { value: plural(o.accounts.length, 'conta ligada', 'contas ligadas'), note: o.accounts.slice(0, 3).join(', ') }
-      : { value: 'Sem IA', note: 'conecte em Provedores' };
+  /** What the app is doing now, in one line. */
+  protected readonly now = computed(() => {
+    const s = this.search.state(), d = this.data.value();
+    const parts: string[] = [];
+    if (s?.running) parts.push(`Buscando vagas: ${s.sources.filter((x) => x.state === 'done' || x.state === 'failed').length} de ${s.sources.length} fontes lidas`);
+    else if (this.search.lastFull()?.lastAt) parts.push(`Última busca ${ago(this.search.lastFull()!.lastAt)}`);
+    if (d && d.applications.inProgress > 0) parts.push(`${plural(d.applications.inProgress, 'candidatura', 'candidaturas')} em preparo`);
+    return parts.join(' · ') || 'Parado. A próxima busca começa sozinha.';
+  });
+  protected readonly busy = computed(() => this.live.busy() || !!this.search.state()?.running);
+
+  /** The numbers that answer "is this working": sent today, sent in total, answers from companies, interviews. */
+  protected readonly results = computed(() => {
+    const d = this.data.value(), apps = this.apps.value() ?? [];
+    const answered = apps.filter((a) => a.outcome).length, interviews = apps.filter((a) => a.outcome === 'Entrevista').length;
     return [
-      { label: 'Próxima busca', ...search, link: '/busca' },
-      { label: 'Explorador', ...explorer, link: '/fontes' },
-      { label: 'IA', ...ai, link: '/provedores' },
+      { value: d?.confirmedToday ?? 0, label: 'enviadas hoje', link: '/candidaturas' },
+      { value: d?.applications.confirmed ?? 0, label: 'enviadas no total', link: '/candidaturas' },
+      { value: answered, label: answered === 1 ? 'empresa respondeu' : 'empresas responderam', link: '/candidaturas' },
+      { value: interviews, label: interviews === 1 ? 'entrevista' : 'entrevistas', link: '/candidaturas' },
     ];
   });
+  protected readonly activity = computed(() => (this.data.value()?.activity ?? []).slice(0, 6));
 
-  /** Estações da rota: acende a que trabalhou por último (ao vivo). */
-  protected readonly stops = computed<RouteStop[]>(() => {
-    const last = this.live.feed().at(-1)?.message.agent ?? '';
-    const on = (names: string[]) => this.live.busy() && names.includes(last);
-    return [
-      { at: 0.06, icon: 'radar', label: 'Batedor', active: on(['Batedor']) },
-      { at: 0.3, icon: 'chart', label: 'Analista', active: on(['Analista']) },
-      { at: 0.49, icon: 'writer', label: 'Redator', active: on(['Seletor', 'Redator', 'Conferente', 'Revisor', 'Renderizador', 'Inspetor ATS']) },
-      { at: 0.72, icon: 'guardian', label: 'Guardião', active: on(['Guardião']) },
-      { at: 0.94, icon: 'send', label: 'Envio', active: on(['Envio', 'Verificador']) },
-    ];
-  });
+  protected go(s: Step) {
+    switch (s.key) {
+      case 'setup': this.hub.open.set(true); break;
+      case 'copilot': void this.router.navigate(['/configuracoes'], { fragment: 'copiloto' }); break;
+      case 'questions': this.questions.open.set(true); break;
+      case 'site': this.openCurrent(); break;
+      case 'inbox': void this.router.navigate(['/email']); break;
+      case 'mail': void this.router.navigate(['/email']); break;
+      case 'other': void this.router.navigate(['/candidaturas']); break;
+    }
+  }
 
-
-  protected readonly funnel = computed<ChartRow[]>(() => {
-    const d = this.data.value();
-    if (!d) return [];
-    const a = d.applications;
-    return [
-      { label: 'Encontradas', value: d.jobs.total, tone: 'muted' },
-      { label: 'Na fila', value: d.jobs.shortlisted },
-      { label: 'Preparadas', value: a.prepared },
-      { label: 'Esperando você', value: a.awaitingApproval + a.needsHuman, tone: 'warn' },
-      { label: 'Confirmadas', value: a.confirmed, tone: 'ok' },
-    ];
-  });
-
-  /** As últimas falas dos agentes, ao vivo. */
-  protected readonly voices = computed(() => this.live.feed().slice(-5).reverse());
-
-  protected async runNow(id: string) {
-    await this.run.run(id);
-    await this.data.reload();
+  protected openCurrent() {
+    const job = this.current();
+    if (!job) return;
+    this.opened.set(job.id);
+    this.copilot.open({ id: job.id, applyUrl: job.applyUrl });
+  }
+  /** Next job: the one opened stays ready (it leaves the list when the send is confirmed). */
+  protected skip() {
+    const job = this.current();
+    if (!job) return;
+    this.skipped.update((s) => new Set([...s, job.id]));
+    this.opened.set(null);
+  }
+  protected async declare() {
+    const job = this.current();
+    if (!job || (await this.declaring.run(job.id)) === null) return;
+    this.opened.set(null);
+    await Promise.all([this.queue.reload(), this.data.reload()]);
   }
 }
-
-/** Só a palavra no singular ou no plural: o número vai à parte, em destaque. */
-function word(n: number, one: string, many: string) { return n === 1 ? one : many; }

@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
+import { SETTINGS_TABS, Tabs } from '../../shared/tabs';
 import { DatePipe } from '@angular/common';
 import { Icon } from '@jo/ui/icon';
 import { PageHero } from '@jo/ui/page-hero';
@@ -14,12 +15,13 @@ const KINDS: { id: string; label: string }[] = [
 /** Diagnóstico: the trail of the app, newest first, to see what happened before something went wrong. It stays on this machine. */
 @Component({
   selector: 'app-diagnostics',
-  imports: [DatePipe, Icon, PageHero],
+  imports: [Tabs, DatePipe, Icon, PageHero],
   templateUrl: './diagnostics.page.html',
   styleUrl: './diagnostics.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DiagnosticsPage {
+  protected readonly tabs = SETTINGS_TABS;
   protected readonly kinds = KINDS;
   protected readonly kind = signal('');
   protected readonly level = signal('');

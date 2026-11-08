@@ -164,6 +164,21 @@ internal sealed class PrepareStep(StepKit k, Answerer answerer) : IStep
             case AdapterResultKind.Completed:
                 app.Prepared(outcome.Value!, outcome.Route, now);
                 var (next, reason) = SubmissionGuard.AfterPrepare(campaign.Mode, campaign.Authorization, now, app.Score, outcome.Value!.AdapterId, await k.Jobs.EligibilityAsync(app.JobId, ct), app.ResumeVetted);
+                // The site checks at the send that a person is there: approving would lead nowhere, the robot cannot click. It goes straight
+                // to you, filled by the copilot, and your click on the site's own button is the approval.
+                if (outcome.Value.HumanCheck is { } check && next is ApplicationState.AwaitingApproval or ApplicationState.ReadyToSubmit)
+                {
+                    app.Move(ApplicationState.ManualHandoff, $"Pronta para você enviar. {check} Abra preenchida: o copiloto completa o formulário e o clique em enviar é seu.", "Guardião", now, new { check });
+                    k.Db.AddTask(app.Id, HumanTaskKind.Review, "Candidatar-se pelo site da vaga", $"{app.Title}, {app.Company}", now);
+                    break;
+                }
+                // The prepare mode, the one the app offers: the application is ready and the send is yours, with the copilot.
+                if (next == ApplicationState.FormValidated)
+                {
+                    app.Move(ApplicationState.ManualHandoff, "Pronta para você enviar. Abra preenchida: o copiloto completa o formulário e anexa o currículo, e o clique em enviar é seu.", "Preparador", now);
+                    k.Db.AddTask(app.Id, HumanTaskKind.Review, "Candidatar-se pelo site da vaga", $"{app.Title}, {app.Company}", now);
+                    break;
+                }
                 if (next == ApplicationState.ReadyToSubmit)
                 {
                     // Automático autorizado: a aprovação fica registrada como da autorização, para o payload exato preparado agora.
@@ -316,9 +331,9 @@ internal sealed class SubmitStep(StepKit k, TokenIssuer tokens) : IStep
                 intent.Close(IntentState.Discarded, "Nada foi clicado.", now);
                 app.Move(ApplicationState.BlockedByPolicy, outcome.Detail, "Remetente", now, new { outcome.ReasonCode });
                 break;
-            case AdapterResultKind.NeedsHuman when outcome.ReasonCode == "ats-validation":
-                // The click went out and the site refused the form with its own message (Workable answers "Something went wrong" to a
-                // robot): nothing was accepted. It goes by the site, where the copilot opens it filled for you to send.
+            case AdapterResultKind.NeedsHuman when outcome.ReasonCode is "ats-validation" or "human-check":
+                // The site refused the form with its own message (Workable answers "Something went wrong" to a robot) or held it for a
+                // person (Greenhouse mails a code): nothing was accepted. It goes by the site, where the copilot opens it filled for you.
                 intent.Close(IntentState.Discarded, outcome.Detail, now);
                 app.Move(ApplicationState.NeedsHuman, outcome.Detail, "Remetente", now, new { outcome.ReasonCode });
                 app.Move(ApplicationState.ManualHandoff, $"{outcome.Detail} Abra preenchida e envie você: o copiloto completa o formulário.", "Remetente", now);

@@ -19,14 +19,23 @@ public sealed class FlowTests
         return apps.Count >= expected && apps.All(a => !Busy.Contains(a.GetProperty("state").GetString()));
     }, Settle, "candidaturas estabilizarem");
 
+    /// <summary>Prepared in full (the form filled and checked) and waiting for the person to send it, with the copilot.</summary>
+    private static async Task ReadyForYouAsync(Stack s, string company)
+    {
+        Assert.Equal("ManualHandoff", await s.StateAsync(company));
+        var app = await s.ApplicationAsync(company);
+        var detail = await s.GetAsync($"/applications/{app!.Value.GetProperty("id").GetString()}");
+        Assert.False(string.IsNullOrEmpty(detail.GetProperty("payloadHash").GetString()), $"{company} sem formulário preparado");
+    }
+
     [Fact]
     public async Task So_preparar_nao_envia_nada_e_pausa_no_que_precisa_de_voce()
     {
         await using var s = await Stack.StartAsync();
         await s.RunAsync();
         await SettledAsync(s, 4);
-        Assert.Equal("FormValidated", await s.StateAsync("Norte Pagamentos"));
-        Assert.Equal("FormValidated", await s.StateAsync("Ponte Logística"));
+        await ReadyForYouAsync(s, "Norte Pagamentos");
+        await ReadyForYouAsync(s, "Ponte Logística");
         // A CAPTCHA is the site's own wall: the application goes by the site, with you; a question is what "needs you".
         Assert.Equal("ManualHandoff", await s.StateAsync("Atlas Saúde"));
         Assert.Equal("NeedsHuman", await s.StateAsync("Lume Educação"));
@@ -53,12 +62,12 @@ public sealed class FlowTests
         await s.SourcesAsync("PrepareOnly", $"greenhouse:{s.Ats}/boards/cenarios");
         await s.RunAsync();
         await SettledAsync(s, 5);
-        Assert.Equal("FormValidated", await s.StateAsync("Aurora Ashby"));   // 2: Ashby com campos extras
-        Assert.Equal("FormValidated", await s.StateAsync("Farol Lever"));    // 3: Lever com upload e pergunta condicional
-        Assert.Equal("FormValidated", await s.StateAsync("Muda Sempre"));    // 4: seletor que muda a cada carga
+        await ReadyForYouAsync(s, "Aurora Ashby");   // 2: Ashby com campos extras
+        await ReadyForYouAsync(s, "Farol Lever");    // 3: Lever com upload e pergunta condicional
+        await ReadyForYouAsync(s, "Muda Sempre");    // 4: seletor que muda a cada carga
         Assert.Equal("ManualHandoff", await s.StateAsync("Cofre Seguro"));   // 5: MFA, the site's wall: by the site, with you
         // 9: prompt injection na descrição é só dado: a vaga segue o caminho normal, a campanha não muda de modo e nada sai.
-        Assert.Equal("FormValidated", await s.StateAsync("Eco Injeção"));
+        await ReadyForYouAsync(s, "Eco Injeção");
         Assert.Equal("PrepareOnly", (await s.GetAsync("/campaigns"))[0].GetProperty("mode").GetString());
         Assert.Equal(0, await s.SubmissionsAsync());
     }

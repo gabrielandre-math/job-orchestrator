@@ -1,162 +1,95 @@
-<section class="page">
-  @if (setup(); as steps) {
-    <section class="setup panel">
-      <div class="s-text">
-        <h2>{{ allDone() ? 'Revise a busca que o assistente montou' : 'Falta pouco para a sua busca andar sozinha' }}</h2>
-        <p class="muted">{{ allDone() ? 'Tudo conectado. Falta conferir cargos, palavras e fontes e salvar.' : 'O assistente guia cada passo e monta a busca a partir do seu currículo, para qualquer área.' }}</p>
-      </div>
-      <ol class="checks">
-        @for (s of steps; track s.label) { <li [class.done]="s.done"><span class="mark" aria-hidden="true">@if (s.done) { <jo-icon name="check" [size]="12" /> }</span><span class="what"><strong>{{ s.label }}</strong><span class="faint small">{{ s.hint }}</span></span></li> }
-      </ol>
-      <button type="button" class="btn primary" (click)="hub.open.set(true)"><jo-icon name="sparkle" [size]="14" />Continuar com o assistente</button>
-    </section>
-  }
-  @if (profile.value(); as p) {
-    @if (!setup() && !linkedinOn()) {
-      <a class="panel connect" routerLink="/perfil" [queryParams]="{ conectar: 'linkedin' }">
-        <jo-iso name="identity" [size]="56" />
-        <span class="c-text"><strong>Conecte o LinkedIn</strong><span class="muted small">Experiências, formação e competências entram no perfil e nos currículos, somadas ao seu currículo, pelo caminho oficial do LinkedIn: com dados específicos, o arquivo chega em minutos.</span></span>
-        <span class="btn">Conectar<jo-icon name="arrow-right" [size]="14" /></span>
-      </a>
-    }
-  }
-  <article class="hero panel">
-    <div class="hero-text">
-      <p class="eyebrow">
-        <span class="live-dot" [class.on]="live.busy()" [class.warn]="!live.busy() && waiting() > 0" aria-hidden="true"></span>{{ state() }}
-        @if (data.value()?.campaign) { <span class="sep">·</span><span>modo {{ mode() }}</span> }
-      </p>
-      <h1>{{ greeting() }}</h1>
-      <p class="lead">{{ summary() }}</p>
-      @if (data.value()?.campaign; as c) {
-        <p class="faint small">{{ c.name }}: corte {{ c.minFitScore }}, até {{ c.maxSubmissionsPerDay }} envios por dia, {{ c.sources }} fontes.</p>
-      }
-      <dl class="pulse">
-        @for (p of pulse(); track p.label) {
-          <a class="beat" [routerLink]="p.link"><dt>{{ p.label }}</dt><dd><strong>{{ p.value }}</strong><span>{{ p.note }}</span></dd></a>
-        }
-      </dl>
-      <div class="hero-actions">
-        @if (data.value()?.campaign; as c) {
-          <button class="btn primary" type="button" (click)="automating.set(true)"><jo-icon name="lightning" [size]="14" />Automatizar tudo</button>
-          <button class="btn" type="button" [disabled]="search.state()?.running || search.starting()" (click)="search.start()"><jo-icon name="magnifying-glass" [size]="14" />{{ search.state()?.running || search.starting() ? 'Buscando…' : 'Buscar agora' }}</button>
-        }
-        <a class="btn" routerLink="/vagas">Ver vagas</a>
-        <a class="btn ghost" routerLink="/fluxo"><jo-icon name="flow-arrow" [size]="14" />Mapa ao vivo</a>
-      </div>
-    </div>
-    <jo-route-hero class="hero-art" [stops]="stops()" [busy]="live.busy()" />
-  </article>
+<section class="page home">
+  <header class="intro">
+    <p class="eyebrow"><span class="live-dot" [class.on]="busy()" aria-hidden="true"></span>{{ now() }}</p>
+    <h1>{{ greeting() }}</h1>
+    <p class="lead">{{ lead() }}</p>
+  </header>
 
   @if (data.problem(); as p) { <p class="problem">{{ p.detail }}</p> }
 
-  <div class="today">
-    <article class="panel col sent">
-      <header><jo-iso name="send" [size]="40" /><div><h2>O que saiu</h2><span class="big num"><jo-count [value]="today().sentN" /></span><span class="faint small">{{ today().sentN === 1 ? 'enviado hoje' : 'enviados hoje' }}</span></div></header>
-      <ul>@for (l of today().sent; track l.label) { @if (l.n > 0 || $first) { <li><a [routerLink]="l.link" [class]="l.tone ?? ''"><strong class="num">{{ l.n }}</strong>{{ l.label }}<jo-icon name="caret-right" [size]="12" /></a></li> } }</ul>
-    </article>
-    <article class="panel col back">
-      <header><jo-iso name="inbox" [size]="40" /><div><h2>O que voltou</h2><span class="big num"><jo-count [value]="today().backN" /></span><span class="faint small">respostas e entrevistas</span></div></header>
-      <ul>
-        @for (l of today().back; track l.label) { @if (l.n > 0) { <li><a [routerLink]="l.link" [class]="l.tone ?? ''"><strong class="num">{{ l.n }}</strong>{{ l.label }}<jo-icon name="caret-right" [size]="12" /></a></li> } }
-        @if (today().backN === 0) { <li class="calm faint small">Nada voltou ainda. As respostas das empresas aparecem aqui assim que chegam.</li> }
-      </ul>
-    </article>
-    <article class="panel col you" [class.due]="today().youN > 0">
-      <header><jo-iso name="you" [size]="40" /><div><h2>O que depende de você</h2><span class="big num"><jo-count [value]="today().youN" /></span><span class="faint small">{{ today().youN === 0 ? 'nada esperando' : 'esperando você' }}</span></div></header>
-      <ul>
-        @for (l of today().you; track l.label) { @if (l.n > 0) { <li><a [routerLink]="l.link" [class]="l.tone ?? ''"><strong class="num">{{ l.n }}</strong>{{ l.label }}<span class="go">Resolver<jo-icon name="caret-right" [size]="12" /></span></a></li> } }
-        @if (today().youN === 0) { <li class="calm faint small">Tudo em dia. Quando algo precisar de você, aparece aqui com o botão para resolver.</li> }
-      </ul>
-    </article>
-  </div>
-
-  <a class="panel live-run" routerLink="/busca" [class.running]="search.state()?.running">
-    <header>
-      <h2><span class="pulse" aria-hidden="true"></span>Busca ao vivo</h2>
-      <span class="faint small">@if (search.state(); as st) { {{ st.running ? 'buscando agora' : 'última ' + ago(st.lastAt) }} } @else { nenhuma busca ainda }</span>
-    </header>
-    <ol class="mini-line">
-      @for (st of stages(); track st.label; let last = $last) {
-        <li [class]="st.state"><jo-iso [name]="st.iso" [size]="44" /><strong class="num">{{ st.value }}</strong><span class="faint small">{{ st.label }}</span></li>
-        @if (!last) { <li class="belt" [class.on]="st.state === 'working'" aria-hidden="true"></li> }
-      }
-    </ol>
-    <span class="bar" aria-hidden="true"><span [style.width.%]="search.progress() * 100"></span></span>
-  </a>
-
-  <div class="cols">
-    <section class="panel">
-      <header><h2>Funil</h2><a class="btn ghost" routerLink="/candidaturas">Candidaturas</a></header>
-      <jo-hbars class="pad" [data]="funnel()" />
-    </section>
-
-    <section class="panel">
-      <header><h2>Agentes agora</h2><a class="btn ghost" routerLink="/fluxo">Mapa ao vivo</a></header>
-      @if (voices().length === 0) {
-        <p class="faint pad small">Quando um agente trabalhar, a fala dele aparece aqui na hora.</p>
-      } @else {
-        <ol class="voices">
-          @for (v of voices(); track v.message.id) {
-            <li>
-              @if ((v.message.kind === 'answer' || v.message.kind === 'working') && v.message.providerId && logos[v.message.providerId]; as g) {
-                <span class="who provider">
-                  @if (g.mono) { <span class="logo mono" [style.--logo]="'url(/logos/' + g.file + '.svg)'"></span> } @else { <img [src]="'/logos/' + g.file + '.svg'" alt="" width="16" height="16" /> }
-                </span>
-              } @else { <jo-iso class="who" [name]="icons[v.message.agent] ?? 'model'" [size]="34" /> }
-              <span class="what"><b>{{ v.message.agent }}</b> <span class="faint">{{ clock(v.message.at) }}</span><span class="t">{{ v.message.title }}</span></span>
-            </li>
+  @if (next(); as s) {
+    <article class="next panel" [attr.data-step]="s.key">
+      <jo-iso class="art" [name]="s.iso" [size]="112" />
+      <div class="body">
+        <p class="eyebrow">Próximo passo</p>
+        <h2>{{ s.title }}</h2>
+        @if (s.key === 'site' && current(); as job) {
+          <a class="job" [routerLink]="['/candidaturas', job.id]">
+            <jo-company [name]="job.company" [size]="40" />
+            <span class="j-text"><strong>{{ job.title }}</strong><span class="muted">{{ job.company }}</span></span>
+            <jo-score [value]="job.score" />
+          </a>
+          @if (opened() === job.id) {
+            <p class="muted">Aberta no seu navegador. Confira o formulário e clique em enviar no site: a página de confirmação conta aqui sozinha e a próxima vaga aparece.</p>
+            <div class="actions">
+              <button type="button" class="btn primary" (click)="skip()"><jo-icon name="arrow-right" [size]="14" />Próxima vaga</button>
+              <button type="button" class="btn" (click)="declare()" [disabled]="declaring.running()"><jo-icon name="check" [size]="14" />Já enviei</button>
+              <button type="button" class="btn ghost" (click)="openCurrent()">Abrir de novo</button>
+            </div>
+          } @else {
+            <p class="muted">{{ s.text }}</p>
+            <div class="actions">
+              <button type="button" class="btn primary" (click)="openCurrent()"><jo-icon name="arrow-square-out" [size]="14" />{{ s.action }}</button>
+              <a class="btn" [routerLink]="['/candidaturas', job.id]"><jo-icon name="list-checks" [size]="14" />Kit de respostas</a>
+              <button type="button" class="btn ghost" (click)="skip()">Pular esta</button>
+            </div>
           }
+          <p class="faint small">{{ ready().length === 1 ? 'Última pronta' : ready().length + ' prontas, a de maior nota primeiro' }}</p>
+        } @else {
+          <p class="muted">{{ s.text }}</p>
+          <div class="actions">
+            <button type="button" class="btn primary" (click)="go(s)">{{ s.action }}<jo-icon name="arrow-right" [size]="14" /></button>
+            @if (s.alt; as alt) { <a class="btn ghost" [routerLink]="alt.link">{{ alt.label }}</a> }
+          </div>
+        }
+      </div>
+    </article>
+  } @else if (data.value()) {
+    <article class="next panel calm">
+      <jo-iso class="art" name="checker" [size]="112" />
+      <div class="body">
+        <p class="eyebrow">Tudo em dia</p>
+        <h2>Nada esperando por você</h2>
+        <p class="muted">O app continua buscando e preparando. Quando uma candidatura ficar pronta para enviar, ela aparece aqui.</p>
+        <div class="actions"><a class="btn" routerLink="/vagas">Ver as vagas</a></div>
+      </div>
+    </article>
+  }
+
+  <div class="grid">
+    <section class="panel path">
+      <header><h2>Seu caminho</h2><span class="faint small">{{ doneCount() }} de {{ steps().length }} em dia</span></header>
+      <ol>
+        @for (s of steps(); track s.key; let i = $index) {
+          <li [class.done]="s.n === 0" [class.current]="s.key === next()?.key">
+            <span class="mark" aria-hidden="true">@if (s.n === 0) { <jo-icon name="check" [size]="12" /> } @else { {{ i + 1 }} }</span>
+            <span class="what"><strong>{{ s.label }}</strong><span class="faint small">{{ s.n === 0 ? s.doneHint : s.hint }}</span></span>
+            @if (s.n > 0) {
+              <span class="n num" [attr.aria-label]="s.n + ' esperando'">{{ s.n }}</span>
+              <button type="button" class="btn ghost" (click)="go(s)">{{ s.short }}</button>
+            }
+          </li>
+        }
+      </ol>
+    </section>
+
+    <section class="side">
+      <div class="results">
+        @for (r of results(); track r.label) {
+          <a class="stat panel" [routerLink]="r.link"><strong class="num">{{ r.value }}</strong><span class="muted small">{{ r.label }}</span></a>
+        }
+      </div>
+      <section class="panel feed">
+        <header><h2>Últimos movimentos</h2><a class="btn ghost" routerLink="/candidaturas">Candidaturas</a></header>
+        <ol>
+          @for (e of activity(); track $index) {
+            <li>
+              <span class="time num faint">{{ clock(e.at) }}</span>
+              <span class="what"><a [routerLink]="['/candidaturas', e.applicationId]"><strong>{{ e.company }}</strong></a><span class="muted small reason">{{ e.reason }}</span></span>
+            </li>
+          } @empty { <li class="faint small">Quando o app mexer numa candidatura, aparece aqui.</li> }
         </ol>
-      }
-    </section>
-  </div>
-
-  <div class="cols">
-    <section class="panel">
-      <header><h2>Precisa de você</h2><a class="btn ghost" routerLink="/atencao">Ver tudo</a></header>
-      @if (tasks.value(); as list) {
-        @if (list.length === 0) {
-          <jo-empty title="Nada esperando por você." hint="Aprovações, CAPTCHAs e perguntas novas aparecem aqui assim que surgem." />
-        } @else {
-          <ul class="tasks">
-            @for (t of list.slice(0, 6); track t.id) {
-              <li>
-                <a [routerLink]="['/candidaturas', t.applicationId]">
-                  <span class="t-title">{{ t.title }}</span>
-                  <span class="t-detail">{{ t.detail }}</span>
-                </a>
-                <span class="faint">{{ ago(t.createdAt) }}</span>
-              </li>
-            }
-          </ul>
-        }
-      }
-    </section>
-
-    <section class="panel">
-      <header><h2>Atividade</h2><a class="btn ghost" routerLink="/candidaturas">Candidaturas</a></header>
-      @if (data.value(); as d) {
-        @if (d.activity.length === 0) {
-          <jo-empty title="Nenhuma candidatura ainda." hint="Rode a campanha para buscar vagas nas fontes cadastradas." />
-        } @else {
-          <ol class="feed">
-            @for (e of d.activity; track $index) {
-              <li>
-                <span class="time num">{{ clock(e.at) }}</span>
-                <div>
-                  <a [routerLink]="['/candidaturas', e.applicationId]" class="who-link">{{ e.company }}</a>
-                  <span class="faint">, {{ e.title }}</span>
-                  <p>{{ e.reason }}</p>
-                </div>
-                <jo-badge [label]="label(e.to)" [tone]="tone(e.to)" />
-              </li>
-            }
-          </ol>
-        }
-      }
+      </section>
     </section>
   </div>
 </section>
-
-@if (automating()) { <app-automate (close)="closeSetup(); data.reload()" /> }

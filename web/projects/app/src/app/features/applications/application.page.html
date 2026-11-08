@@ -17,33 +17,9 @@
     </header>
     <p class="muted capability">{{ capability(d.capability) }}</p>
 
-    @for (p of [approve.problem(), withdraw.problem(), retry.problem(), archiving.problem()]; track $index) { @if (p) { <p class="problem">{{ p.detail }}</p> } }
+    @for (p of [withdraw.problem(), retry.problem(), archiving.problem()]; track $index) { @if (p) { <p class="problem">{{ p.detail }}</p> } }
 
-    @if (d.application.state === 'AwaitingApproval' && d.payloadHash) {
-      <div class="decision panel">
-        <div>
-          <h2>Aprovar o envio deste formulário</h2>
-          <p class="muted">A aprovação vale só para os valores abaixo (hash <span class="mono">{{ d.payloadHash.slice(0, 12) }}</span>). Se o formulário mudar, pede aprovação de novo.</p>
-        </div>
-        <div class="actions">
-          <button class="btn" type="button" [disabled]="withdraw.running()" (click)="doWithdraw()">Recusar</button>
-          @if (confirming()) { <span class="faint armed-hint">Clique de novo para enviar</span> }
-          <button class="btn primary" type="button" [disabled]="approve.running()" (click)="doApprove(d.payloadHash)">{{ confirming() ? 'Confirmar envio' : 'Aprovar envio' }}</button>
-        </div>
-      </div>
-    }
-    @if (d.application.state === 'NeedsHuman' && uncertain()) {
-      <div class="decision panel">
-        <div>
-          <h2>O envio chegou?</h2>
-          <p class="muted">O clique de envio pode ter saído e a confirmação não apareceu. Confira o e-mail de confirmação ou o portal do candidato antes de decidir: assim nada é enviado em dobro.</p>
-        </div>
-        <div class="actions">
-          <button class="btn" type="button" [disabled]="retry.running() || !d.hasResume" (click)="doRetry()">Não chegou, preparar de novo</button>
-          <button class="btn primary" type="button" [disabled]="declaring.running()" (click)="arrived()">Chegou</button>
-        </div>
-      </div>
-    } @else if (d.application.state === 'NeedsHuman' && wall()) {
+    @if (d.application.state === 'NeedsHuman' && wall()) {
       <div class="decision panel">
         <div>
           <h2>{{ wall() === 'Captcha' ? 'A página pede CAPTCHA' : 'O site pede login' }}</h2>
@@ -58,7 +34,7 @@
       <div class="decision panel">
         <div>
           <h2>Parada com você</h2>
-          <p class="muted">{{ d.application.lastReason }} O envio segue a autorização e os limites atuais da campanha.</p>
+          <p class="muted">{{ d.application.lastReason }}</p>
         </div>
         <div class="actions">
           <button class="btn" type="button" (click)="doWithdraw()">Retirar</button>
@@ -68,7 +44,7 @@
       </div>
     }
 
-    @if (d.application.state === 'ManualHandoff' || (d.application.state === 'NeedsHuman' && !uncertain())) {
+    @if (d.application.state === 'ManualHandoff' || d.application.state === 'NeedsHuman') {
       <app-copilot [applicationId]="d.application.id" [jobId]="d.application.jobId" (done)="arrived2()" />
     }
 

@@ -22,6 +22,8 @@ public static class ApplicationsModule
         s.AddScoped<IApplicationsApi, Features.ApplicationsApi>();
         // The copilot's routes live in the API process: in the split setup (API and Worker apart) the state must be here.
         s.AddSingleton<CopilotState>();
+        // The copilot asks the AI for the fields it could not fill, from the API process too.
+        s.TryAddScoped<Answerer>();
         return s;
     }
 
@@ -40,7 +42,7 @@ public static class ApplicationsModule
         s.AddSingleton<TokenIssuer>();
         s.TryAddScoped<Bundles>();
         s.AddScoped<StepKit>();
-        s.AddScoped<Answerer>();
+        s.TryAddScoped<Answerer>();
         s.AddScoped<IStep, MaterialsStep>();
         s.AddScoped<IStep, PrepareStep>();
         s.AddScoped<IStep, SubmitStep>();

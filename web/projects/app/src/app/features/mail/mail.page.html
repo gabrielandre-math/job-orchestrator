@@ -1,4 +1,5 @@
 <section class="page">
+  <jo-tabs [items]="settingsTabs" label="Configurações" />
   <jo-page-hero title="E-mail" [scene]="['send', 'inbox', 'guardian']" [stats]="stats()"
     lead="Para as vagas que pedem currículo por e-mail. A IA escreve a partir dos fatos do seu currículo, o Conferente tira o que não tem fonte e o Guardião só deixa sair para o endereço que a vaga publica, um por vaga e um lembrete.">
     @if (accounts.value()) {

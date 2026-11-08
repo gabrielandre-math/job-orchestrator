@@ -39,7 +39,7 @@ internal sealed class CopilotState(TimeProvider time)
     public CopilotStatus View()
     {
         var now = time.GetUtcNow().UtcDateTime;
-        return new CopilotStatus(seen is { } s && now - s.At < TimeSpan.FromMinutes(3), seen?.At, seen?.Version, CopilotExtension.Id);
+        return new CopilotStatus(seen is { } s && now - s.At < TimeSpan.FromMinutes(3), seen?.At, seen?.Version, CopilotExtension.Id, Copilot.Latest());
     }
 
     public void Expect(Guid id, string url) => expected[id] = (url, time.GetUtcNow().UtcDateTime + Window);
@@ -57,13 +57,18 @@ internal sealed class CopilotState(TimeProvider time)
     public void Done(Guid id) => expected.TryRemove(id, out _);
 }
 
-internal sealed record CopilotStatus(bool Connected, DateTime? SeenAt, string? Version, string ExtensionId);
+/// <summary>Latest: the version in the app's extension folder; a browser that reports an older one has to reload it.</summary>
+internal sealed record CopilotStatus(bool Connected, DateTime? SeenAt, string? Version, string ExtensionId, string? Latest = null);
 internal sealed record CopilotHello(string? Version);
 internal sealed record CopilotQueueItem(Guid Id, string Company, string Title, string ApplyUrl, int Score, bool HasResume, DateTime UpdatedAt);
 internal sealed record CopilotQuestion(string Question, string Answer);
 internal sealed record CopilotFill(Guid ApplicationId, string Company, string Title, string ApplyUrl, bool HasResume, string FirstName, string LastName, string Email,
     string Phone, string LinkedIn, IReadOnlyDictionary<string, string> Answers, IReadOnlyList<CopilotQuestion> Questions, IReadOnlyList<CopilotQuestion> Prepared);
 internal sealed record CopilotSentBody(Guid ApplicationId, string? Url, string? Text);
+/// <summary>A field the copilot left empty on the open page: its label, its kind (text, textarea, select, radio, checkboxes, number, date) and its options.</summary>
+internal sealed record CopilotField(string? Label, string? Kind, IReadOnlyList<string>? Options);
+internal sealed record CopilotAsk(IReadOnlyList<CopilotField>? Fields);
+internal sealed record CopilotSuggestion(string Question, string Answer, bool Checked);
 
 internal sealed class CopilotEndpoints : ICarterModule
 {
@@ -105,6 +110,26 @@ internal sealed class CopilotEndpoints : ICarterModule
                 b?.Answers.Where(x => !x.Key.StartsWith("custom:", StringComparison.Ordinal) && !string.IsNullOrWhiteSpace(x.Value)).ToDictionary() ?? new Dictionary<string, string>(),
                 await Copilot.QuestionsAsync(db, a.Id, ct), Copilot.Prepared(a.PreparedFields)));
         });
+        // The fields the copilot could not fill on the open page: the AI answers them from your profile's facts (the same answerer and
+        // checks as the robot's forms), and the copilot fills them, marked for you to check. Your own saved answers never go to a model.
+        g.MapPost("answer/{id:guid}", async (Guid id, CopilotAsk body, HttpContext http, IConfiguration config, ApplicationsDbContext db, Workflow.Answerer answerer, CancellationToken ct) =>
+        {
+            if (!CopilotExtension.From(http, config)) return Results.StatusCode(403);
+            var app = await db.Applications.FirstOrDefaultAsync(x => x.Id == id, ct);
+            if (app is null) return Results.NotFound();
+            var asked = (body.Fields ?? []).Where(f => !string.IsNullOrWhiteSpace(f.Label)).Take(40)
+                .Select(f => new FormQuestion(Copilot.Cut(f.Label!.Trim(), 1000), Copilot.KindOf(f.Kind), [.. (f.Options ?? []).Where(o => !string.IsNullOrWhiteSpace(o)).Take(60)]))
+                .DistinctBy(q => CustomAnswer.Normalize(q.Label)).ToList();
+            if (asked.Count > 0)
+            {
+                await answerer.AnswerAsync(app, asked, ct);
+                await db.SaveChangesAsync(ct);
+            }
+            var keys = asked.Select(q => CustomAnswer.Normalize(q.Label)).ToHashSet(StringComparer.Ordinal);
+            var answers = (await db.FormAnswers.AsNoTracking().Where(f => f.ApplicationId == id && f.Answer != "").OrderByDescending(f => f.CreatedAt).ToListAsync(ct))
+                .Where(f => keys.Contains(f.QuestionKey)).DistinctBy(f => f.QuestionKey).Select(f => new CopilotSuggestion(f.Question, f.Answer, f.Accepted)).ToList();
+            return Results.Ok(answers);
+        });
         g.MapPost("sent", async (CopilotSentBody body, HttpContext http, IConfiguration config, CopilotState state, ISender sender, CancellationToken ct) =>
         {
             if (!CopilotExtension.From(http, config)) return Results.StatusCode(403);
@@ -132,6 +157,19 @@ internal static class Copilot
 {
     public static string Folder => Path.Combine(AppPaths.Resources, "extension");
 
+    private static string? latest;
+    /// <summary>The version of the extension this app ships, read once from its manifest.</summary>
+    public static string? Latest()
+    {
+        if (latest is not null) return latest;
+        try
+        {
+            using var doc = JsonDocument.Parse(File.ReadAllText(Path.Combine(Folder, "manifest.json")));
+            return latest = doc.RootElement.GetProperty("version").GetString();
+        }
+        catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException or KeyNotFoundException) { return null; }
+    }
+
     /// <summary>The answers written for this job's questions, then yours from the questions window, each with the question as the form asked it.</summary>
     public static async Task<IReadOnlyList<CopilotQuestion>> QuestionsAsync(ApplicationsDbContext db, Guid applicationId, CancellationToken ct)
     {
@@ -139,6 +177,15 @@ internal static class Copilot
         var yours = AnswerStore.Load().Values.Where(s => !string.IsNullOrWhiteSpace(s.Answer)).Select(s => new CopilotQuestion(s.Question, s.Answer));
         return [.. mine.Concat(yours).DistinctBy(q => q.Question, StringComparer.OrdinalIgnoreCase)];
     }
+
+    internal static string Cut(string s, int max) => s.Length <= max ? s : s[..max];
+
+    /// <summary>The page's kind of field in the answerer's words; anything else is free text.</summary>
+    internal static string KindOf(string? kind) => kind switch
+    {
+        "textarea" or "select" or "radio" or "checkboxes" or "number" or "date" => kind,
+        _ => "text"
+    };
 
     /// <summary>What the robot already filled on this form, label by label; the resume line is a file, attached apart.</summary>
     public static IReadOnlyList<CopilotQuestion> Prepared(string json)

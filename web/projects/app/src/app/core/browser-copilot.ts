@@ -1,9 +1,9 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import { send } from './api';
 import { query } from './query';
 import { Toasts } from './toast';
 
-export interface CopilotStatus { connected: boolean; seenAt: string | null; version: string | null; extensionId: string }
+export interface CopilotStatus { connected: boolean; seenAt: string | null; version: string | null; extensionId: string; latest: string | null }
 export interface CopilotQueueItem { id: string; company: string; title: string; applyUrl: string; score: number; hasResume: boolean; updatedAt: string }
 export interface CopilotExtension { path: string; exists: boolean; id: string }
 
@@ -24,6 +24,8 @@ export class BrowserCopilot {
   readonly queue = query<CopilotQueueItem[]>(() => '/copilot/queue', 30000);
   /** The extension lives in this very browser. */
   readonly here = signal(false);
+  /** The browser runs an older copilot than the one this app ships: it has to be reloaded once in chrome://extensions. */
+  readonly outdated = computed(() => { const s = this.status.value(); return !!s?.connected && !!s.version && !!s.latest && s.version !== s.latest; });
   private readonly toasts = inject(Toasts);
 
   constructor() {

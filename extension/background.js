@@ -92,6 +92,10 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
         reply({ filled: await run(msg.tabId, msg.id) });
       } else if (msg.type === 'confirmed' && sender.tab?.id) {
         reply({ ok: await confirmed(sender.tab.id, msg) });
+      } else if (msg.type === 'answer') {
+        // The fields left empty on the page: the app's AI answers them from your profile (it can take a minute).
+        const r = await api(`/api/copilot/answer/${msg.applicationId}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fields: msg.fields }) });
+        reply(r?.ok ? await r.json() : []);
       } else if (msg.type === 'declare') {
         const r = await api(`/api/copilot/declare/${msg.applicationId}`, { method: 'POST' });
         if (r?.ok && sender.tab?.id) await untrack(sender.tab.id);

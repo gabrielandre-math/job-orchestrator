@@ -2,7 +2,7 @@
   <PropertyGroup>
     <AssemblyName>job-orchestrator</AssemblyName>
     <RootNamespace>JobOrchestrator.App</RootNamespace>
-    <Version>1.2.5</Version>
+    <Version>1.3.0</Version>
   </PropertyGroup>
   <!-- No Windows, app de janela (dois cliques não abrem console) e com o ícone; pelo terminal, a saída vai para o console de quem chamou. -->
   <PropertyGroup Condition="'$(RuntimeIdentifier)' != '' and $(RuntimeIdentifier.StartsWith('win'))">

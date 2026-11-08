@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Job Orchestrator: copiloto",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Preenche no seu navegador as candidaturas que o Job Orchestrator abriu para você: dados, respostas da vaga e o currículo anexado. Você confere e envia; a extensão nunca clica em enviar.",
   "permissions": [
     "activeTab",

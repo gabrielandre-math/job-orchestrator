@@ -71,8 +71,11 @@ public static class CustomAnswer
 /// <summary>Um campo preenchido e de onde veio o valor.</summary>
 public sealed record FieldValue(string Label, string Value, string Source);
 
-/// <summary>O formulário preenchido e validado, sem envio.</summary>
-public sealed record PreparedForm(string AdapterId, string AdapterVersion, string Domain, string PayloadHash, IReadOnlyList<FieldValue> Fields);
+/// <summary>
+/// O formulário preenchido e validado, sem envio. HumanCheck: o site confirma no envio que é uma pessoa (reCAPTCHA invisível, código por
+/// e-mail) ou recusou todos os envios do robô; o robô não passa por isso, então o clique final é seu, com o copiloto.
+/// </summary>
+public sealed record PreparedForm(string AdapterId, string AdapterVersion, string Domain, string PayloadHash, IReadOnlyList<FieldValue> Fields, string? HumanCheck = null);
 
 /// <summary>Um passo do roteamento: qual adapter, com que nota e por quê.</summary>
 public sealed record RoutingStep(string AdapterId, double Score, string Outcome, string Why);

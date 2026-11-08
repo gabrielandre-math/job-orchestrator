@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
+import { SETTINGS_TABS, Tabs } from '../../shared/tabs';
 import { RouterLink } from '@angular/router';
 import { Company } from '@jo/ui/company';
 import { Icon } from '@jo/ui/icon';
@@ -27,12 +28,13 @@ const MARKERS = ['{{empresa}}', '{{vaga}}', '{{experiencia}}', '{{competencias}}
  */
 @Component({
   selector: 'app-mail',
-  imports: [Company, Icon, Iso, MailConnect, PageHero, Help, RouterLink],
+  imports: [Tabs, Company, Icon, Iso, MailConnect, PageHero, Help, RouterLink],
   templateUrl: './mail.page.html',
   styleUrl: './mail.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MailPage {
+  protected readonly settingsTabs = SETTINGS_TABS;
   protected readonly overview = query<MailOverview>(() => '/mail/overview', 8000);
   protected readonly accounts = query<MailAccountView[]>(() => '/mail/accounts', 0);
   protected readonly settings = query<MailSettings>(() => '/mail/settings', 0);

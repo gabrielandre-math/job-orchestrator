@@ -1,5 +1,6 @@
 <section class="page">
-  <jo-page-hero title="Configurações e segurança" [scene]="['guardian', 'gate', 'identity']"
+  <jo-tabs [items]="tabs" label="Configurações" />
+  <jo-page-hero title="Configurações" [scene]="['guardian', 'gate', 'identity']"
     lead="A busca sozinha e a da noite, o que pode sair para a nuvem, por quanto tempo os registros ficam e os atalhos de segurança: exportar, revogar e apagar." />
 
   <section class="panel">
@@ -75,7 +76,7 @@
         <a class="btn" href="/api/settings/export" download><jo-icon name="download-simple" [size]="14" />Exportar</a>
       </div>
       <div class="row">
-        <span><strong>Revogar tudo</strong><p class="muted">Desliga as autorizações de envio automático e o automático do e-mail. A campanha volta para a revisão sua.</p></span>
+        <span><strong>Revogar tudo</strong><p class="muted">Desliga qualquer autorização de envio e o envio automático do e-mail. Nada sai sem você.</p></span>
         <button type="button" class="btn" [class.armed]="arming()" (click)="revoke()" [disabled]="revoking.running()">{{ arming() ? 'Confirmar' : 'Revogar' }}</button>
       </div>
     </div>
