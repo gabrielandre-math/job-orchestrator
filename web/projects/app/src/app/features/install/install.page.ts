@@ -52,8 +52,8 @@ export class InstallPage {
     // The installer page only exists while the installer runs (job-orchestrator --setup). With the app already installed and running,
     // the address leads to the panel instead of a wizard whose calls have nowhere to go.
     void fetch('/api/setup/info', { headers: { accept: 'application/json' } }).then(async (r) => {
-      if (r.ok) this.info.set(await r.json() as Info);
-      else if (r.status === 404) void this.router.navigateByUrl('/');
+      if (r.status === 200) this.info.set(await r.json() as Info);
+      else if (r.status === 204 || r.status === 404) void this.router.navigateByUrl('/');
     }).catch(() => undefined);
     inject(DestroyRef).onDestroy(() => clearInterval(this.timer));
   }

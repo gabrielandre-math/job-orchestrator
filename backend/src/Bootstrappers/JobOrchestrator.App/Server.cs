@@ -66,6 +66,8 @@ internal static class Server
         app.UseTrail();
         app.MapOpenApi("/api/openapi.json");
         app.MapGet("/api/health", () => Results.Ok(new { status = "ok", app = "job-orchestrator", version = Launcher.Version, sourceRevision = Launcher.SourceRevision, platform = Platform.Os })).WithTags("Health");
+        // The installer answers this while it runs (--setup); the installed app says there is nothing to install, so /instalar opens the panel.
+        app.MapGet("/api/setup/info", () => Results.NoContent()).WithTags("Health");
         var token = Convert.ToHexStringLower(System.Security.Cryptography.RandomNumberGenerator.GetBytes(24));
         var tokenFile = Path.Combine(AppPaths.In(AppPaths.Data, "run"), "control.token");
         File.WriteAllText(tokenFile, token);
