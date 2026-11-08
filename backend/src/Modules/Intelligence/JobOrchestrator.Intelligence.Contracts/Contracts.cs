@@ -57,8 +57,9 @@ public static class LlmTasks
     public static readonly LlmTask QuestionMap = new("question.map", Rung.Local, false, 0, "perfil minimizado");
     public static readonly LlmTask EmailClassify = new("email.classify", Rung.Local, false, 0, "privada, nunca vai para a nuvem", LocalOnly: true);
     public static readonly LlmTask ProfileExtract = new("profile.extract", Rung.Medium, true, 6, "currículo sem dados pessoais");
-    public static readonly LlmTask ResumeTailor = new("resume.tailor", Rung.Medium, true, 15, "perfil minimizado + vaga");
-    public static readonly LlmTask ResumeFactcheck = new("resume.factcheck", Rung.Light, true, 15, "perfil minimizado");
+    // 60 a day each (was 15): on a heavy day of sending, the writer and its reviewer stay in the cloud instead of falling to the local model.
+    public static readonly LlmTask ResumeTailor = new("resume.tailor", Rung.Medium, true, 60, "perfil minimizado + vaga");
+    public static readonly LlmTask ResumeFactcheck = new("resume.factcheck", Rung.Light, true, 60, "perfil minimizado");
     /// <summary>A second pass on a resume draft that came in two languages or with the CV's own summary: a light model, its own daily budget.</summary>
     public static readonly LlmTask ResumeFix = new("resume.fix", Rung.Light, true, 40, "perfil minimizado + vaga");
     public static readonly LlmTask CoverWrite = new("cover.write", Rung.Medium, true, 10, "perfil minimizado + vaga");

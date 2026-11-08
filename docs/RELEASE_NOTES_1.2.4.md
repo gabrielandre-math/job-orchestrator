@@ -19,3 +19,5 @@ A varredura completa do app: perguntas agrupadas pelo sentido, currículos que v
 - O histórico diz quando foi o e-mail, e não você, que marcou a etapa.
 - "Apagar tudo" agora leva também as suas respostas aos formulários e o rastro de diagnóstico; antes, as respostas ficavam num arquivo e voltavam nos próximos formulários.
 - /instalar com o app instalado abre o painel sem erro.
+- O Redator e o Revisor do currículo podem usar a nuvem 60 vezes por dia cada (eram 15). Em dia de muito envio, o currículo continua escrito e revisado na nuvem em vez de cair no modelo local.
+- O MediatR voltou para a 12.5, a última versão com licença Apache 2.0. O aviso de licença que aparecia a cada início sumiu.
