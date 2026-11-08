@@ -35,3 +35,16 @@ public sealed class CheckboxGroupTests
         Assert.Empty(GreenhouseLikeForm.Picks(Stone with { Label = "Qual motivo te fez querer se juntar ao nosso time?" }, null));
     }
 }
+
+/// <summary>The night of 07/11: a WhatsApp number and "where do you live" went to the person though the profile has both.</summary>
+public sealed class BankQuestionTests
+{
+    private static readonly JobOrchestrator.Automation.Contracts.MaterialBundle Ana = new("Ana", "Lima", "ana@example.com", "+55 21 90000-0000", "linkedin.com/in/ana", "/tmp/cv.pdf",
+        new Dictionary<string, string> { ["location"] = "Rio de Janeiro, RJ, Brasil" });
+
+    [Theory]
+    [InlineData("Please share your active WhatsApp number for smoother communication", "+55 21 90000-0000")]
+    [InlineData("What state do you live in?", "Rio de Janeiro, RJ, Brasil")]
+    [InlineData("Where do you live now?", "Rio de Janeiro, RJ, Brasil")]
+    public void The_profile_answers_them(string question, string expected) => Assert.Equal(expected, GreenhouseLikeForm.Resolve(question, "text", Ana).Value);
+}

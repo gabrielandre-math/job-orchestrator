@@ -45,7 +45,7 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
         (new Regex(@"english|ingl", RegexOptions.IgnoreCase), "english_level"),
         (new Regex(@"hear about|how did you (?:find|learn about)|soube (?:da|desta|dessa) vaga|como (?:voc[eê] )?(?:ficou sabendo|soube|conheceu|chegou at[eé]|encontrou)", RegexOptions.IgnoreCase), "how_heard"),
         (new Regex(@"relocat|mudan[cç]a (de|para outra) (cidade|estado|pa[ií]s)|disponibilidade (de|para) mudan[cç]a|aceita(ria)? (se )?mudar|mudar de cidade", RegexOptions.IgnoreCase), "relocation"),
-        (new Regex(@"(which|what) city|current location|where are you (currently )?based|based in|cidade|onde (você )?mora|localiza|^address$|^endere[cç]o", RegexOptions.IgnoreCase), "location"),
+        (new Regex(@"(which|what) (city|state|country)|current location|where are you (currently )?based|where do you (currently )?live|based in|cidade|estado (onde|em que)|onde (você )?mora|localiza|^address$|^endere[cç]o", RegexOptions.IgnoreCase), "location"),
         (new Regex(@"github", RegexOptions.IgnoreCase), "github_url"),
         (new Regex(@"portf[oó]lio|personal (url|website|site)|url pessoal|site pessoal|^website$|^site$", RegexOptions.IgnoreCase), "portfolio_url"),
         (new Regex(@"^headline$|^t[ií]tulo profissional", RegexOptions.IgnoreCase), "headline"),
@@ -314,9 +314,14 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
             await page.WaitForTimeoutAsync(150);
         }
         if (missing.Count > 0) return Missing(missing);
-        // A required box with no label of its own was never seen by the loop: the form would refuse to send, so it stops here.
-        if (await page.Locator("form input[type=checkbox][required]:not(:checked)").CountAsync() > 0)
-            return NeedsDeclaration(Clean(await page.Locator("form input[type=checkbox][required]:not(:checked)").First.EvaluateAsync<string>("e => (e.closest('label, p, div') || e).textContent")));
+        // A required box with no label of its own was never seen by the loop: the form would refuse to send, so it stops here. The
+        // other options of a group already answered are "required" too on Greenhouse, and are not a declaration.
+        var loose = (await page.Locator("form input[type=checkbox][required]:not(:checked)").EvaluateAllAsync<string[]>("bs => bs.map(b => b.id)")).Where(id => !done.Contains(id)).ToList();
+        if (loose.Count > 0)
+            return NeedsDeclaration(Clean(await page.Locator(loose[0].Length > 0 ? $"[id='{loose[0]}']" : "form input[type=checkbox][required]:not(:checked)").First.EvaluateAsync<string>("""
+                e => (document.querySelector(`label[for="${CSS.escape(e.id)}"]`)?.innerText || e.closest('label')?.innerText || e.getAttribute('aria-label')
+                  || e.closest('fieldset')?.querySelector('legend')?.innerText || e.closest('p, div, li')?.parentElement?.innerText || '').trim()
+                """)));
         if (fields.Count == 0) return AdapterResult<PreparedForm>.Fail(AdapterResultKind.Unsupported, "no-fields", "Nenhum campo com rótulo foi reconhecido.");
         var hash = PayloadHash(fields);
         return AdapterResult<PreparedForm>.Ok(new PreparedForm(Id, Version, new Uri(target.ApplyUrl).Authority, hash, fields));
@@ -455,7 +460,7 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
     [GeneratedRegex(@"^first name|^nome$|^primeiro nome", RegexOptions.IgnoreCase)] private static partial Regex FirstName();
     [GeneratedRegex(@"^last name|sobrenome", RegexOptions.IgnoreCase)] private static partial Regex LastName();
     [GeneratedRegex(@"^e-?mail", RegexOptions.IgnoreCase)] private static partial Regex Email();
-    [GeneratedRegex(@"phone|telefone|celular", RegexOptions.IgnoreCase)] protected static partial Regex Phone();
+    [GeneratedRegex(@"phone|telefone|celular|whats ?app", RegexOptions.IgnoreCase)] protected static partial Regex Phone();
     [GeneratedRegex(@"linkedin", RegexOptions.IgnoreCase)] private static partial Regex LinkedIn();
     [GeneratedRegex(@"resume|cv|curr[ií]culo", RegexOptions.IgnoreCase)] protected static partial Regex Resume();
     [GeneratedRegex(@"submit|send application|enviar candidatura", RegexOptions.IgnoreCase)] private static partial Regex SubmitButton();
