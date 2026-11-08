@@ -412,34 +412,34 @@ const STATIONS = ['radar', 'chart', 'writer', 'guardian', 'inbox'];
 const STORY = {
   en: {
     rail: 'How it works, step by step',
-    steps: ['Find', 'Sort', 'Write', 'Apply', 'Follow up'],
+    steps: ['Find', 'Sort', 'Write', 'Send', 'Follow up'],
     lines: [
-      'The Scout checks 52 job sources, and the Explorer adds new ones from your CV.',
+      'The Scout checks 53 job sources, and the Explorer adds new ones from your CV.',
       'The same job on two boards becomes one, jobs limited to countries where you cannot work leave, and the rest get a score from 0 to 100.',
       'The Writer makes a résumé for each job from the facts in your CV, and a checker ties every line to its source.',
-      'Your models fill the form, the local one first, and sending stops at the daily limit you set.',
-      'Replies in your Gmail move each application along. The conversation with the recruiter stays with you.',
+      'The copilot opens each job filled in your browser, the AI answers the fields left empty, and you click send.',
+      'The AI reads the replies in your e-mail and moves each application along. The conversation with the recruiter stays with you.',
     ],
     cols: { company: 'Company', source: 'Source', score: 'Score', model: 'Model', status: 'Status' },
-    st: { new: 'NEW', queued: 'QUEUED', dup: 'DUPLICATE', abroad: 'US ONLY', writing: 'WRITING', ready: 'READY', filling: 'FILLING', sent: 'SENT', tomorrow: 'TOMORROW', interview: 'INTERVIEW', replied: 'REPLIED', declined: 'DECLINED' },
+    st: { new: 'NEW', queued: 'QUEUED', dup: 'DUPLICATE', abroad: 'US ONLY', writing: 'WRITING', ready: 'READY', filling: 'FILLING', sent: 'SENT', interview: 'INTERVIEW', replied: 'REPLIED', declined: 'DECLINED' },
     count: { jobs: 'JOBS', kept: 'KEPT', resumes: 'RÉSUMÉS', today: 'TODAY', replies: 'REPLIES' },
   },
   pt: {
     rail: 'Como funciona, passo a passo',
-    steps: ['Encontrar', 'Separar', 'Escrever', 'Candidatar', 'Acompanhar'],
+    steps: ['Encontrar', 'Separar', 'Escrever', 'Enviar', 'Acompanhar'],
     lines: [
-      'O Batedor consulta 52 fontes de vagas, e o Explorador acrescenta novas a partir do seu currículo.',
+      'O Batedor consulta 53 fontes de vagas, e o Explorador acrescenta novas a partir do seu currículo.',
       'A mesma vaga em dois quadros vira uma só, as restritas a países onde você não pode trabalhar saem, e as outras ganham nota de 0 a 100.',
       'O Redator escreve um currículo para cada vaga com os fatos do seu currículo, e o Conferente liga cada linha à origem.',
-      'Os seus modelos preenchem o formulário, o local primeiro, e o envio para no limite por dia que você definiu.',
-      'As respostas no seu Gmail movem cada candidatura no funil. A conversa com o recrutador fica com você.',
+      'O copiloto abre cada vaga preenchida no seu navegador, a IA responde os campos vazios e você clica em enviar.',
+      'A IA lê as respostas no seu e-mail e move cada candidatura no funil. A conversa com o recrutador fica com você.',
     ],
     cols: { company: 'Empresa', source: 'Fonte', score: 'Nota', model: 'Modelo', status: 'Status' },
-    st: { new: 'NOVA', queued: 'NA FILA', dup: 'DUPLICADA', abroad: 'SÓ NOS EUA', writing: 'ESCREVENDO', ready: 'PRONTA', filling: 'PREENCHENDO', sent: 'ENVIADA', tomorrow: 'AMANHÃ', interview: 'ENTREVISTA', replied: 'RESPONDEU', declined: 'RECUSADA' },
+    st: { new: 'NOVA', queued: 'NA FILA', dup: 'DUPLICADA', abroad: 'SÓ NOS EUA', writing: 'ESCREVENDO', ready: 'PRONTA', filling: 'PREENCHENDO', sent: 'ENVIADA', interview: 'ENTREVISTA', replied: 'RESPONDEU', declined: 'RECUSADA' },
     count: { jobs: 'VAGAS', kept: 'MANTIDAS', resumes: 'CURRÍCULOS', today: 'HOJE', replies: 'RESPOSTAS' },
   },
 };
-const TONE = { new: '', queued: '', dup: 'q', abroad: 'q', writing: 'w', ready: 'w', filling: 'f', sent: 's', tomorrow: 'q', interview: 'r', replied: 'r', declined: 'q' };
+const TONE = { new: '', queued: '', dup: 'q', abroad: 'q', writing: 'w', ready: 'w', filling: 'f', sent: 's', interview: 'r', replied: 'r', declined: 'q' };
 // Fictional companies: [name, where the job was found, score].
 const JOBS = {
   atlas: ['ATLAS SAÚDE', 'GREENHOUSE', 87], fjord: ['FJORD CLOUD', 'LEVER', 83], vela: ['VELA LOG', 'E-MAIL', 64],
@@ -495,8 +495,8 @@ const CHAPTERS = [
     [3.5, both(upd('koru', { st: 'sent' }), count('today', 39))],
     [3.8, upd('brisa', { model: 'CHATGPT' })],
     [4.6, both(upd('brisa', { st: 'sent' }), count('today', 40))],
-    [5.0, upd('fjord', { st: 'tomorrow', model: '' })],
-    [5.3, upd('ipe', { st: 'tomorrow', model: '' })],
+    [5.0, upd('fjord', { st: 'ready', model: '' })],
+    [5.3, upd('ipe', { st: 'ready', model: '' })],
   ] },
   { d: 7.2, ops: [
     [0, count('replies', 0)],

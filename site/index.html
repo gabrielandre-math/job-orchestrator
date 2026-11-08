@@ -93,14 +93,13 @@
     <section class="shot-sec" aria-label="Product">
       <div class="shot-wrap">
         <figure class="shot">
-          <img class="t-dark" src="assets/screen-jobs-dark.webp" width="1440" height="900" alt="The Jobs screen: open jobs, the funnel from found to queued, jobs per source, score distribution and the tools employers ask for most." data-i18n-alt="shot.alt">
-          <img class="t-light" src="assets/screen-jobs-light.webp" width="1440" height="900" alt="The Jobs screen: open jobs, the funnel from found to queued, jobs per source, score distribution and the tools employers ask for most." data-i18n-alt="shot.alt" loading="lazy">
+          <img class="t-dark" src="assets/screen-home-dark.webp" width="1440" height="900" alt="The home screen: the next step with one button, the next job already filled and ready to send, the path in order and the results." data-i18n-alt="shot.alt">
+          <img class="t-light" src="assets/screen-home-light.webp" width="1440" height="900" alt="The home screen: the next step with one button, the next job already filled and ready to send, the path in order and the results." data-i18n-alt="shot.alt" loading="lazy">
         </figure>
       </div>
       <dl class="stats">
-        <div><dt data-i18n="s1">registered job sources</dt><dd data-count="52">52</dd></div>
+        <div><dt data-i18n="s1">registered job sources</dt><dd data-count="53">53</dd></div>
         <div><dt data-i18n="s2">company job boards in the catalog</dt><dd data-count="34880">34,880</dd></div>
-        <div><dt data-i18n="s3">countries and territories mapped</dt><dd data-count="249">249</dd></div>
         <div><dt data-i18n="s4">accounts, servers or trackers</dt><dd>0</dd></div>
       </dl>
     </section>
@@ -195,10 +194,10 @@
       <p class="eyebrow" data-i18n="rules.e">Plays by the rules</p>
       <h2 class="h2"><span data-i18n="rules.t1">Fast where it is allowed.</span><br><span class="dim" data-i18n="rules.t2">Off where it is not.</span></h2>
       <div class="rule-grid">
-        <div class="rule"><h3 data-i18n="r1.t">LinkedIn is never automated</h3><p data-i18n="r1.d">Its terms forbid it. Import your LinkedIn data export instead, and save LinkedIn jobs by link.</p></div>
+        <div class="rule"><h3 data-i18n="r1.t">LinkedIn is never automated</h3><p data-i18n="r1.d">Its terms forbid it. Import your LinkedIn data export, save LinkedIn jobs by link or capture the page you opened with the extension, and apply with the copilot.</p></div>
         <div class="rule"><h3 data-i18n="r2.t">No CAPTCHA solvers, no stealth</h3><p data-i18n="r2.d">The app never solves or bypasses CAPTCHAs or anti-bot checks: the copilot opens the job filled and you finish it.</p></div>
         <div class="rule"><h3 data-i18n="r3.t">Polite collection</h3><p data-i18n="r3.d">The scraper follows robots.txt, waits between requests and opens one connection per site.</p></div>
-        <div class="rule"><h3 data-i18n="r4.t">Terms on record</h3><p data-i18n="r4.d">Sources whose terms do not allow this use stay registered as blocked or partner-only, with the reason in view.</p></div>
+        <div class="rule"><h3 data-i18n="r4.t">Terms on record</h3><p data-i18n="r4.d">Sources whose terms do not allow this use stay registered as blocked or partner-only, and the app never reads them.</p></div>
       </div>
       <div class="registry">
         <div class="registry-head"><span data-i18n="reg.t">The 53 registered sources</span><span class="mono dim" data-i18n="reg.n">from the source registry</span></div>
@@ -219,34 +218,40 @@
       <p class="eyebrow" data-i18n="scr.e">A closer look</p>
       <h2 class="h2" data-i18n="scr.t">Built to be read at a glance.</h2>
       <div class="tabs" role="tablist" aria-label="Screens">
-        <button role="tab" aria-selected="true" data-tab="jobs" data-i18n="scr.jobs">Jobs</button>
-        <button role="tab" aria-selected="false" data-tab="live-map" data-i18n="scr.map">Live map</button>
-        <button role="tab" aria-selected="false" data-tab="coverage" data-i18n="scr.cov">Coverage</button>
+        <button role="tab" aria-selected="true" data-tab="home" data-i18n="scr.home">Home</button>
+        <button role="tab" aria-selected="false" data-tab="applications" data-i18n="scr.apps">Applications</button>
+        <button role="tab" aria-selected="false" data-tab="kit" data-i18n="scr.kit">Answer kit</button>
         <button role="tab" aria-selected="false" data-tab="questions" data-i18n="scr.q">Questions</button>
+        <button role="tab" aria-selected="false" data-tab="jobs" data-i18n="scr.jobs">Jobs</button>
       </div>
       <figure class="screen-stage">
-        <div class="screen on" data-screen="jobs">
-          <img class="t-dark" src="assets/screen-jobs-dark.webp" width="1440" height="900" loading="lazy" alt="">
-          <img class="t-light" src="assets/screen-jobs-light.webp" width="1440" height="900" loading="lazy" alt="">
+        <div class="screen on" data-screen="home">
+          <img class="t-dark" src="assets/screen-home-dark.webp" width="1440" height="900" loading="lazy" alt="">
+          <img class="t-light" src="assets/screen-home-light.webp" width="1440" height="900" loading="lazy" alt="">
         </div>
-        <div class="screen" data-screen="live-map">
-          <img class="t-dark" src="assets/screen-live-map-dark.webp" width="1440" height="900" loading="lazy" alt="">
-          <img class="t-light" src="assets/screen-live-map-light.webp" width="1440" height="900" loading="lazy" alt="">
+        <div class="screen" data-screen="applications">
+          <img class="t-dark" src="assets/screen-applications-dark.webp" width="1440" height="900" loading="lazy" alt="">
+          <img class="t-light" src="assets/screen-applications-light.webp" width="1440" height="900" loading="lazy" alt="">
         </div>
-        <div class="screen" data-screen="coverage">
-          <img class="t-dark" src="assets/screen-coverage-dark.webp" width="1440" height="900" loading="lazy" alt="">
-          <img class="t-light" src="assets/screen-coverage-light.webp" width="1440" height="900" loading="lazy" alt="">
+        <div class="screen" data-screen="kit">
+          <img class="t-dark" src="assets/screen-kit-dark.webp" width="1440" height="900" loading="lazy" alt="">
+          <img class="t-light" src="assets/screen-kit-light.webp" width="1440" height="900" loading="lazy" alt="">
         </div>
         <div class="screen" data-screen="questions">
           <img class="t-dark" src="assets/screen-questions-dark.webp" width="1440" height="900" loading="lazy" alt="">
           <img class="t-light" src="assets/screen-questions-light.webp" width="1440" height="900" loading="lazy" alt="">
         </div>
+        <div class="screen" data-screen="jobs">
+          <img class="t-dark" src="assets/screen-jobs-dark.webp" width="1440" height="900" loading="lazy" alt="">
+          <img class="t-light" src="assets/screen-jobs-light.webp" width="1440" height="900" loading="lazy" alt="">
+        </div>
       </figure>
       <figcaption class="screen-cap">
-        <p data-cap="jobs" class="on" data-i18n="cap.jobs">Open jobs, the funnel from found to queued, jobs per source and the tools employers ask for most.</p>
-        <p data-cap="live-map" data-i18n="cap.map">Every agent and what passes between them, updated while the search runs.</p>
-        <p data-cap="coverage" data-i18n="cap.cov">249 countries and territories: where a source works, where jobs show up and what is still unchecked.</p>
+        <p data-cap="home" class="on" data-i18n="cap.home">The next step with one button: the next job opens already filled, you check it and click send. Below it, the path in order and the results.</p>
+        <p data-cap="applications" data-i18n="cap.apps">Every application on its stage, from preparing to offer. After you send, the AI reads your inbox and moves the card; you can drag it too.</p>
+        <p data-cap="kit" data-i18n="cap.kit">For each application: the button that opens it filled, what to write in each field with a copy button, the cover letter and the résumé made for the job.</p>
         <p data-cap="questions" data-i18n="cap.q">What only you can answer, grouped by meaning: one answer covers every form that asks it, in any language. The AI answers the rest from your CV, and your answers stay on your machine.</p>
+        <p data-cap="jobs" data-i18n="cap.jobs">Everything the sources brought, as cards or a list, with the score, the work model and the salary when the job publishes it.</p>
         <p class="dim sm" data-i18n="scr.note">The interface is in Brazilian Portuguese. Résumés and answers come out in Portuguese for jobs in Brazil and in English everywhere else.</p>
       </figcaption>
     </section>
@@ -362,8 +367,8 @@ job-orchestrator --uninstall   <span class="c"># removes the app and keeps your 
       </ul>
       <div class="hood">
         <div><h3 data-i18n="h1.t">Backend</h3><p data-i18n="h1.d">.NET 10, a modular monolith in vertical slices with DDD and CQRS, an outbox and an inbox for events, Carter endpoints and Dapper over PostgreSQL.</p></div>
-        <div><h3 data-i18n="h2.t">Panel</h3><p data-i18n="h2.d">Angular 22 with signals. The live map is a hand-drawn SVG canvas, and every isometric icon comes from one shared geometry.</p></div>
-        <div><h3 data-i18n="h3.t">Collection</h3><p data-i18n="h3.d">Official APIs first, Scrapy spiders for career pages and a Playwright browser pool for pages that need JavaScript and for forms.</p></div>
+        <div><h3 data-i18n="h2.t">Panel</h3><p data-i18n="h2.d">Angular 22 with signals, and every isometric icon comes from one shared geometry. The copilot is a Manifest V3 extension that fills the open form with what the app prepared.</p></div>
+        <div><h3 data-i18n="h3.t">Collection</h3><p data-i18n="h3.d">Official APIs first, Scrapy spiders for career pages and a Playwright browser pool for pages that need JavaScript and for reading and preparing application forms, which it never sends.</p></div>
         <div><h3 data-i18n="h4.t">Tests and releases</h3><p data-i18n="h4.d">Unit and end-to-end suites against a fake ATS, with a real browser and database. Each release is built by GitHub Actions from the tested commit, with its SHA-256 and source revision.</p></div>
       </div>
     </section>

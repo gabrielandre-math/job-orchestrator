@@ -1,5 +1,7 @@
 # Laboratórios locais de CAPTCHA e vagas
 
+> **Fora do app desde a 1.3.0.** Os laboratórios de CAPTCHA serviam à página de testes, que saiu: o app nunca resolve CAPTCHA, e quem envia é você, com o copiloto. Este documento fica como registro.
+
 O Fake ATS serve páginas sintéticas em `127.0.0.1`. O laboratório de vagas combina dois extratores com um roteador de CAPTCHA. A primeira página entrega JSON-LD. A segunda pede o código de uma imagem e entrega cartões com uma vaga repetida. A terceira pede uma soma e entrega o último cartão.
 
 ## Referências comparadas

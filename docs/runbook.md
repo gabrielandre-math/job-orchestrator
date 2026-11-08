@@ -27,7 +27,7 @@ journalctl --user -u job-orchestrator-worker -f
 systemctl --user stop job-orchestrator-worker    # seguro: nada é clicado pela metade
 ```
 
-Parar o Worker no meio de um envio é seguro. A intenção é gravada antes do clique, e a próxima subida reconcilia o que ficou incerto, nunca reenvia. Os serviços ficam na fatia `jobs.slice`, com teto de 8 GB e prioridade baixa.
+Parar o Worker a qualquer momento é seguro: o app nunca envia candidatura, e o passo da fila que ficou no meio volta a rodar na próxima subida. Os serviços ficam na fatia `jobs.slice`, com teto de 8 GB e prioridade baixa.
 
 ## Docker
 
@@ -63,7 +63,7 @@ docker compose -f ../infra/compose.test.yaml up -d --wait                       
 dotnet test tests/JobOrchestrator.Tests --filter "FullyQualifiedName~FlowTests.X"  # um E2E por vez
 ```
 
-Rode os E2E um de cada vez e com teto de memória (`systemd-run --user --scope -p MemoryMax=5G`). Cada um sobe ATS falso, API, Worker e Chromium. Os 10 cenários do ATS falso estão descritos no topo de `backend/src/Tools/JobOrchestrator.FakeAts/Program.cs`.
+Rode os E2E um de cada vez e com teto de memória (`systemd-run --user --scope -p MemoryMax=5G`). Cada um sobe ATS falso, API, Worker e Chromium. Os testes de interface só rodam com `JO_WEB_TEST_ROOT` apontando para a interface compilada (`web/dist/app/browser`, depois de `npx ng build`), como na CI; sem a variável eles são pulados. Os 10 cenários do ATS falso estão descritos no topo de `backend/src/Tools/JobOrchestrator.FakeAts/Program.cs`.
 
 ## Problemas comuns
 

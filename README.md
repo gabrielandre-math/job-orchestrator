@@ -28,8 +28,8 @@ There is no Job Orchestrator account, server or subscription. You install it lik
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset=".github/assets/screen-jobs-dark.webp">
-    <img alt="The Jobs screen: open jobs, the funnel from found to queued, jobs per source, score distribution and the tools employers ask for most." src=".github/assets/screen-jobs-light.webp" width="100%">
+    <source media="(prefers-color-scheme: dark)" srcset=".github/assets/screen-home-dark.webp">
+    <img alt="The home screen: the next step with one button (the next job, already filled, ready to send), the path in order and the results: sent today, sent in total, companies that answered and interviews." src=".github/assets/screen-home-light.webp" width="100%">
   </picture>
 </p>
 
@@ -40,8 +40,8 @@ The interface is in Brazilian Portuguese. Résumés and form answers are written
 - **Everything runs on your machine.** The app, its database (a private PostgreSQL that the installer downloads, about 60 MB, no Docker needed), the browser automation, the scraper and the AI model. The panel only listens on `127.0.0.1:7410`.
 - **Your data stays in your user folder.** CV, profile, résumés, application history and e-mail metadata live in `~/.local/share/job-orchestrator` on Linux, `~/Library/Application Support/JobOrchestrator` on macOS and `%LOCALAPPDATA%\JobOrchestrator` on Windows. What leaves the computer is what a source needs to answer a request and the applications you send yourself.
 - **No telemetry.** Nothing reports usage anywhere.
-- **The local model comes first.** Reading CVs, scoring jobs and drafting text run on a model served by [Ollama](https://ollama.com). It uses your GPU when Ollama supports it (NVIDIA, AMD or Apple Silicon) and the CPU otherwise. The Providers screen installs the model for you.
-- **A trail for diagnosis, on your disk.** Requests that change something, each step of the queue, each change of state, the AI calls and the errors on screen go to a local log kept for 14 days, which the Diagnóstico screen filters. No answer, CV or e-mail body is written to it, and it is never sent anywhere.
+- **The local model comes first.** Reading CVs, scoring jobs and drafting text run on a model served by [Ollama](https://ollama.com). It uses your GPU when Ollama supports it (NVIDIA, AMD or Apple Silicon) and the CPU otherwise. The IA tab in Configurações installs the model for you.
+- **A trail for diagnosis, on your disk.** Requests that change something, each step of the queue, each change of state, the AI calls and the errors on screen go to a local log kept for 14 days, which the Diagnóstico tab in Configurações filters. No answer, CV or e-mail body is written to it, and it is never sent anywhere.
 - **Your own AI subscription is optional.** If you already use Claude Code or the Codex CLI, the app can call them for the heavier writing, in the order you choose and with a reserve, so the quota you need for your own work stays untouched. No paid API key is required.
 
 ## How it works
@@ -57,10 +57,10 @@ The interface is in Brazilian Portuguese. Résumés and form answers are written
   </tr>
   <tr>
     <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/step-writer-dark.svg"><img alt="" src=".github/assets/step-writer-light.svg" width="96"></picture></td>
-    <td><b>3. Write.</b> The Writer builds a résumé for each job using only facts found in your CV, your LinkedIn export and your profile, and it sells them: results first, the job's own words for the same work, the years counted from your dates and everything in the job's language. A draft that mixes languages or copies your old summary goes back to another model with the list of what to fix. A checker compares every line with its source, a reviewer from a different model family reads it again, and an ATS inspector parses the final PDF the way an applicant tracking system would. A cover letter is optional and follows the language of the job.</td>
+    <td><b>3. Write.</b> The Writer builds a résumé for each job using only facts found in your CV, your LinkedIn export and your profile, and it sells them: results first, the job's own words for the same work, the years counted from your dates and everything in the job's language. A draft that mixes languages or copies your old summary goes back to another model with the list of what to fix. A checker compares every line with its source, a reviewer from a different model family reads it again, and an ATS inspector parses the final PDF the way an applicant tracking system would. A cover letter in the job's language is ready when you open the application.</td>
   </tr>
   <tr>
-    <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/step-guardian-dark.svg"><img alt="" src=".github/assets/step-guardian-light.svg" width="96"></picture></td>
+    <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/step-you-dark.svg"><img alt="" src=".github/assets/step-you-light.svg" width="96"></picture></td>
     <td><b>4. Send, from your browser.</b> The app reads each form and prepares the answers, and the copilot extension opens the job already filled in your browser, with its résumé attached. Fields it could not fill go to the AI, which answers from your profile and never invents, and whatever is left waits in the application's answer kit with a copy button, next to a cover letter already written. What only you know, like your current pay, reaches you once, grouped by meaning, and one answer covers every form that asks it, in any language. You check the form and click send yourself: the app never clicks it, and the confirmation page marks the application as sent. On the home screen, "Send the next one" walks you through the ready applications, highest score first.</td>
   </tr>
   <tr>
@@ -69,40 +69,47 @@ The interface is in Brazilian Portuguese. Résumés and form answers are written
   </tr>
 </table>
 
-Job Orchestrator never clicks send: every application goes out from your own browser, after you read it.
+Job Orchestrator never clicks send on a form: every application goes out from your own browser, after you read it. A job that asks for the résumé by e-mail gets an e-mail written from your CV, which goes out from your account when you approve it, or on its own only if you turn on automatic e-mail, with its own consent and daily cap.
 
 ## Access and operating limits
 
-- An optional, disabled-by-default LinkedIn session connector reads job searches through a separate local browser you log in to. It is experimental, depends on the site's layout and can be interrupted by login, verification or access limits. LinkedIn restricts automated access in its terms. Profile export, alert e-mails and user-triggered page capture remain available. See the [setup and live-test guide](docs/REAL_LINKEDIN_AND_CAPTCHA.md).
+- LinkedIn is never automated, because its terms restrict automated access. You import your LinkedIn data export, save a LinkedIn job by its link or capture a page you opened with the extension's "Read this page", and apply with the copilot.
 - The app never solves or bypasses CAPTCHAs or anti-bot checks. When a site has one, the copilot opens the job filled in your browser and you finish it.
 - The scraper follows robots.txt, waits between requests and opens one connection per site.
 - The app does not sign in to Gupy, Indeed or Glassdoor with your account to search or apply, because their terms forbid automated access to accounts. It reads their public listings where that is allowed, the job alerts they e-mail you and their status e-mails, and the copilot fills the form while you apply in your own browser.
-- Sources whose terms do not allow this kind of use stay in the registry as blocked (LinkedIn Jobs, France Travail) or partner-only (the Gupy employer API and Singapore's MyCareersFuture), so you can see why they are off.
+- Sources whose terms do not allow this kind of use stay in the registry as blocked (LinkedIn Jobs, France Travail) or partner-only (the Gupy employer API and Singapore's MyCareersFuture), and the app never reads them.
 
 Of the 53 registered sources, 24 are stable, 21 are experimental, 4 need a free API key of your own, 2 are partner-only and 2 are blocked. The catalog behind the Scout lists 34,880 company job boards.
 
 ## A closer look
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/screen-live-map-dark.webp">
-  <img alt="The live map: sources on the left, then discovery, application and the AI agents, with counts on every edge." src=".github/assets/screen-live-map-light.webp" width="100%">
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/screen-applications-dark.webp">
+  <img alt="The applications board: preparing, to send (each card with an open filled button), sent, interview, offer and closed." src=".github/assets/screen-applications-light.webp" width="100%">
 </picture>
 
-**Live map.** Every agent and what passes between them, updated while the search runs.
+**Applications.** Each one on its stage: preparing, to send, sent, interview, offer and closed. After you send, the AI reads your inbox and moves the card, and you can drag it too. The same applications also come as a list you can search and sort.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/screen-coverage-dark.webp">
-  <img alt="The coverage screen: integrated countries, countries with open jobs seen, untested leads and countries not yet researched." src=".github/assets/screen-coverage-light.webp" width="100%">
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/screen-kit-dark.webp">
+  <img alt="An application ready to send: the button that opens it filled, and what to write in each field of its form, with a copy button on every line." src=".github/assets/screen-kit-light.webp" width="100%">
 </picture>
 
-**Coverage.** For 249 countries and territories: where a source works, where openings show up through global boards, and where nothing has been checked yet.
+**The answer kit.** For every application: the button that opens it filled in your browser, what to write in each field of its form with a copy button, the cover letter already written and the résumé made for that job. The copilot fills what it can, and the kit covers the rest.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset=".github/assets/screen-questions-dark.webp">
-  <img alt="The answers window: three jobs ask for the same consent, two ask whether you can travel, one asks your work model and one your current pay, each with one answer for all of them." src=".github/assets/screen-questions-light.webp" width="100%">
+  <img alt="The answers window: a question a form asked that only you can answer, with the job that asks it and room for one answer." src=".github/assets/screen-questions-light.webp" width="100%">
 </picture>
 
 **Your answers.** What only you can answer, grouped by meaning, so one answer covers every form that asks it, in any language. The AI answers the rest from your CV, and these answers stay on your machine and never go to a model.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/screen-jobs-dark.webp">
+  <img alt="The Jobs screen as a list: company, title, location, work model, status and score for every job the sources brought." src=".github/assets/screen-jobs-light.webp" width="100%">
+</picture>
+
+**Jobs.** Everything the sources brought, as cards or a list, with the score, the work model and the salary when the job publishes it. The numbers behind them (the funnel, jobs per source, the tools employers ask for most) are one click away.
 
 ## Coming soon: Job Orchestrator for recruiters
 
@@ -141,7 +148,7 @@ Today Job Orchestrator works for the person looking for a job. The next step is 
   </tr>
   <tr>
     <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/step-you-dark.svg"><img alt="" src=".github/assets/step-you-light.svg" width="96"></picture></td>
-    <td><b>Agents that talk in the open.</b> The two Job Orchestrators will handle the back and forth. They will find an interview time without exposing either calendar, answer standard questions from the candidate's saved answers and share the salary expectation only when the job publishes a range. Every message will show up live on both screens, like the agent chat on today's live map, and stay in the history.</td>
+    <td><b>Agents that talk in the open.</b> The two Job Orchestrators will handle the back and forth. They will find an interview time without exposing either calendar, answer standard questions from the candidate's saved answers and share the salary expectation only when the job publishes a range. Every message will show up live on both screens, like the agent messages in today's live search, and stay in the history.</td>
   </tr>
   <tr>
     <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/step-receipt-dark.svg"><img alt="" src=".github/assets/step-receipt-light.svg" width="96"></picture></td>
@@ -222,8 +229,8 @@ The builds are not signed with a paid certificate yet, so a file downloaded in t
 ## First run
 
 1. Run the installer. It checks the machine (browser, database, scraper, local model, GPU, disk space and keyring), copies the app to your user folder, starts its own PostgreSQL, prepares the scraper with a Python of its own and adds a menu entry. It never asks for an administrator password, and anything missing turns into a command or a link for you.
-2. When the app opens, a short setup asks you to connect an AI (the local model, your CLI or both), upload your CV as a PDF and confirm one screen with what it could not infer: work authorization, salary floor, work model, start date and English level. Connecting Gmail is optional.
-3. Optional: in Configurações, load the copilot extension in Chrome, Edge or Brave in four steps. The app window already has it.
+2. When the app opens, a short setup asks you to connect an AI (the local model, your CLI or both), upload your CV as a PDF and confirm one screen with what it could not infer: work authorization, salary floor, work model, start date and English level. Connecting your e-mail is optional, and it is what lets the AI follow the companies' answers.
+3. In Configurações, load the copilot extension in Chrome, Edge or Brave in four steps; the home screen asks for it when the first application is ready. The app window already has it.
 4. The home screen shows one next step at a time: answer the questions the forms asked, then send the ready applications one by one with the copilot.
 
 ```sh
@@ -243,12 +250,12 @@ job-orchestrator --uninstall   # removes the app and keeps your data (--purge re
   <img alt=".NET 10, C#, PostgreSQL, Angular, TypeScript, Python, Scrapy, Playwright, Ollama, Qwen, Chromium, Docker, Linux, macOS, Windows and Gmail." src=".github/assets/stack-light.svg" width="100%">
 </picture>
 
-- **Backend:** .NET 10, a modular monolith split into vertical slices with DDD and CQRS, an outbox and an inbox for events, Carter endpoints and Dapper over PostgreSQL. A worker process runs the schedules, the Explorer and the e-mail sync.
-- **Panel:** Angular 22 with signals. The live map is a hand-drawn SVG canvas, and the isometric icons are drawn in code from one shared geometry.
-- **Collection:** official APIs first, Scrapy spiders for career pages (robots.txt, AutoThrottle, JSON-LD JobPosting) and a Playwright browser pool for pages that need JavaScript and for filling in forms.
+- **Backend:** .NET 10, a modular monolith split into vertical slices with DDD and CQRS, an outbox and an inbox for events, Carter endpoints and Dapper over PostgreSQL. A worker process runs the schedules, the preparation queue, the Explorer and the e-mail sync.
+- **Panel and copilot:** Angular 22 with signals, with isometric icons drawn in code from one shared geometry. The copilot is a Manifest V3 extension that fills the open form with what the app prepared and talks only to the app on your machine.
+- **Collection:** official APIs first, Scrapy spiders for career pages (robots.txt, AutoThrottle, JSON-LD JobPosting) and a Playwright browser pool for pages that need JavaScript and for reading and preparing application forms, which it never sends.
 - **AI:** local models through Ollama, with Claude Code and Codex as optional providers. Each task starts on the smallest model that passes validation and only moves up when the output fails, and the reviewer never comes from the same model family as the writer.
 - **Packaging:** one self-contained binary per platform, an installer for each system and a built-in MCP server.
-- **Tests:** unit and end-to-end suites against a fake ATS with 10 scenarios, plus chaos tests that kill the process right before and right after the submit click and check that the application ends up sent exactly once or handed back to you.
+- **Tests:** unit and end-to-end suites against a fake ATS with 10 scenarios, with a real browser and database, UI tests on the built panel and tests of the extension, all run by CI before a release is built.
 
 More detail, in Portuguese: [user guide](docs/guia.md), [architecture](docs/architecture.md), [operations runbook](docs/runbook.md) and [threat model](docs/threat-model.md).
 
@@ -266,10 +273,6 @@ docker compose -f infra/compose.test.yaml up -d --wait
 dotnet test backend/tests/JobOrchestrator.Tests --filter "Category!=E2E"
 scripts/package.sh all            # the six platform builds, in dist/
 ```
-
-### Local CAPTCHA and jobs labs
-
-The Fake ATS includes image and arithmetic CAPTCHA challenges and a paginated job feed. The job router reads JSON-LD and HTML cards, deduplicates listings and can also process local HTML files. See the [lab guide and test commands](docs/labs.md).
 
 ## License
 

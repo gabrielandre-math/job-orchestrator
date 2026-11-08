@@ -28,8 +28,8 @@ Não existe conta, servidor nem assinatura do Job Orchestrator. A instalação �
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset=".github/assets/screen-jobs-dark.webp">
-    <img alt="A tela de Vagas: vagas abertas, o funil de encontradas até a fila, vagas por fonte, distribuição das notas e as ferramentas mais pedidas." src=".github/assets/screen-jobs-light.webp" width="100%">
+    <source media="(prefers-color-scheme: dark)" srcset=".github/assets/screen-home-dark.webp">
+    <img alt="O Início: o próximo passo com um botão (a próxima vaga, já preenchida, pronta para enviar), o caminho na ordem e os resultados: enviadas hoje, no total, empresas que responderam e entrevistas." src=".github/assets/screen-home-light.webp" width="100%">
   </picture>
 </p>
 
@@ -40,8 +40,8 @@ A interface é em português do Brasil. Currículos e respostas de formulário s
 - **Tudo roda na sua máquina.** O app, o banco (um PostgreSQL próprio que o instalador baixa, com uns 60 MB, sem Docker), a automação do navegador, o coletor e o modelo de IA. O painel só atende em `127.0.0.1:7410`.
 - **Os seus dados ficam na sua pasta de usuário.** Currículo, perfil, currículos gerados, histórico das candidaturas e dados dos e-mails ficam em `~/.local/share/job-orchestrator` no Linux, em `~/Library/Application Support/JobOrchestrator` no macOS e em `%LOCALAPPDATA%\JobOrchestrator` no Windows. Sai do computador apenas o que uma fonte precisa para responder e as candidaturas que você mesmo envia.
 - **Sem telemetria.** Nada informa uso para lugar nenhum.
-- **O modelo local vem primeiro.** Ler currículo, dar nota às vagas e escrever textos fica com um modelo servido pelo [Ollama](https://ollama.com). Ele usa a sua GPU quando o Ollama tem suporte a ela (NVIDIA, AMD ou Apple Silicon) e o processador nos outros casos. A tela de Provedores instala o modelo para você.
-- **Um rastro para diagnóstico, no seu disco.** Requisições que mudam algo, cada passo da fila, cada mudança de estado, as chamadas de IA e os erros da tela vão para um log local guardado por 14 dias, que a tela Diagnóstico filtra. Nenhuma resposta, currículo ou corpo de e-mail entra nele, e ele nunca é enviado a lugar nenhum.
+- **O modelo local vem primeiro.** Ler currículo, dar nota às vagas e escrever textos fica com um modelo servido pelo [Ollama](https://ollama.com). Ele usa a sua GPU quando o Ollama tem suporte a ela (NVIDIA, AMD ou Apple Silicon) e o processador nos outros casos. A aba IA, em Configurações, instala o modelo para você.
+- **Um rastro para diagnóstico, no seu disco.** Requisições que mudam algo, cada passo da fila, cada mudança de estado, as chamadas de IA e os erros da tela vão para um log local guardado por 14 dias, que a aba Diagnóstico, em Configurações, filtra. Nenhuma resposta, currículo ou corpo de e-mail entra nele, e ele nunca é enviado a lugar nenhum.
 - **A sua assinatura de IA é opcional.** Se você já usa o Claude Code ou o Codex CLI, o app pode chamá-los para os textos mais pesados, na ordem que você escolher e com uma reserva, para a cota do seu trabalho continuar intacta. Nenhuma chave de API paga é necessária.
 
 ## Como funciona
@@ -57,10 +57,10 @@ A interface é em português do Brasil. Currículos e respostas de formulário s
   </tr>
   <tr>
     <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/step-writer-dark.svg"><img alt="" src=".github/assets/step-writer-light.svg" width="96"></picture></td>
-    <td><b>3. Escrever.</b> O Redator monta um currículo para cada vaga apenas com fatos do seu currículo, da sua exportação do LinkedIn e do seu perfil, e vende esses fatos: resultado primeiro, as palavras da própria vaga para o mesmo trabalho, os anos contados pelas suas datas e tudo na língua da vaga. Um rascunho que mistura línguas ou copia o seu resumo antigo volta para outro modelo com a lista do que corrigir. O Conferente compara cada linha com a origem, um Revisor de outra família de modelos lê de novo e o Inspetor ATS lê o PDF final do jeito que um sistema de recrutamento leria. A carta de apresentação é opcional e segue a língua da vaga.</td>
+    <td><b>3. Escrever.</b> O Redator monta um currículo para cada vaga apenas com fatos do seu currículo, da sua exportação do LinkedIn e do seu perfil, e vende esses fatos: resultado primeiro, as palavras da própria vaga para o mesmo trabalho, os anos contados pelas suas datas e tudo na língua da vaga. Um rascunho que mistura línguas ou copia o seu resumo antigo volta para outro modelo com a lista do que corrigir. O Conferente compara cada linha com a origem, um Revisor de outra família de modelos lê de novo e o Inspetor ATS lê o PDF final do jeito que um sistema de recrutamento leria. A carta de apresentação, na língua da vaga, já está pronta quando você abre a candidatura.</td>
   </tr>
   <tr>
-    <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/step-guardian-dark.svg"><img alt="" src=".github/assets/step-guardian-light.svg" width="96"></picture></td>
+    <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/step-you-dark.svg"><img alt="" src=".github/assets/step-you-light.svg" width="96"></picture></td>
     <td><b>4. Enviar, do seu navegador.</b> O app lê cada formulário e prepara as respostas, e a extensão do copiloto abre a vaga já preenchida no seu navegador, com o currículo dela anexado. O campo que ela não preenche vai para a IA, que responde pelo seu perfil e nunca inventa, e o que sobrar fica no kit de respostas da candidatura, com botão de copiar, ao lado de uma carta de apresentação já escrita. O que só você sabe, como o seu salário atual, chega uma vez, agrupado pelo sentido, e uma resposta vale para todo formulário que pergunta a mesma coisa, em qualquer língua. Você confere e clica em enviar: o app nunca clica, e a página de confirmação marca a candidatura como enviada. No Início, "Envie a próxima" leva você pelas candidaturas prontas, a de maior nota primeiro.</td>
   </tr>
   <tr>
@@ -69,40 +69,47 @@ A interface é em português do Brasil. Currículos e respostas de formulário s
   </tr>
 </table>
 
-O Job Orchestrator nunca clica em enviar: toda candidatura sai do seu navegador, depois que você lê.
+O Job Orchestrator nunca clica em enviar num formulário: toda candidatura sai do seu navegador, depois que você lê. A vaga que pede o currículo por e-mail ganha um e-mail escrito a partir do seu currículo, que sai pela sua conta quando você aprova, ou sozinho só se você ligar o envio automático de e-mail, com consentimento e teto por dia próprios.
 
 ## Dentro das regras
 
-- A busca opcional do LinkedIn usa uma sessão autenticada no navegador local, com limites de consultas. Login e desafios exigem sua ação; Easy Apply permanece assistido. A extensão captura o conteúdo da página que você abriu. Veja o [guia e os limites de validação real](docs/REAL_LINKEDIN_AND_CAPTCHA.md); testes de DOM não comprovam acesso autenticado ao serviço.
+- O LinkedIn nunca é automatizado, porque os termos dele restringem o acesso automático. Você importa a exportação de dados do LinkedIn, salva uma vaga de lá pelo link ou captura uma página que abriu com o "Ler esta página" da extensão, e se candidata com o copiloto.
 - O app nunca resolve nem contorna CAPTCHA ou verificação anti-robô. Quando um site tem uma, o copiloto abre a vaga preenchida no seu navegador e você termina.
 - O coletor segue o robots.txt, espera entre as requisições e abre uma conexão por site.
 - O app não entra na Gupy, no Indeed nem no Glassdoor com a sua conta para buscar ou se candidatar, porque os termos deles proíbem acesso automatizado às contas. Ele lê as vagas públicas onde isso é permitido, os alertas que eles mandam para o seu e-mail e os e-mails de status, e o copiloto preenche o formulário enquanto você se candidata no seu próprio navegador.
-- Fontes cujos termos não permitem esse uso ficam no registro como bloqueadas (LinkedIn Jobs, France Travail) ou apenas com parceria (a API de empregador da Gupy e o MyCareersFuture de Singapura), com o motivo à vista.
+- Fontes cujos termos não permitem esse uso ficam no registro como bloqueadas (LinkedIn Jobs, France Travail) ou apenas com parceria (a API de empregador da Gupy e o MyCareersFuture de Singapura), e o app nunca as lê.
 
 Das 53 fontes registradas, 24 são estáveis, 21 são experimentais, 4 precisam de uma chave de API gratuita sua, 2 dependem de parceria e 2 estão bloqueadas. O catálogo do Batedor tem 34.880 quadros de vagas de empresas.
 
 ## De perto
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/screen-live-map-dark.webp">
-  <img alt="O mapa ao vivo: as fontes à esquerda e depois descoberta, candidatura e os agentes de IA, com números em cada aresta." src=".github/assets/screen-live-map-light.webp" width="100%">
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/screen-applications-dark.webp">
+  <img alt="O quadro de candidaturas: preparando, para enviar (cada cartão com o botão de abrir preenchida), enviada, entrevista, oferta e encerrada." src=".github/assets/screen-applications-light.webp" width="100%">
 </picture>
 
-**Mapa ao vivo.** Os agentes e o que passa entre eles, atualizados enquanto a busca roda.
+**Candidaturas.** Cada uma na sua etapa: preparando, para enviar, enviada, entrevista, oferta e encerrada. Depois do envio, a IA lê o seu e-mail e move o cartão, e você também pode arrastar. As mesmas candidaturas também aparecem numa lista com busca e ordem.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/screen-coverage-dark.webp">
-  <img alt="A tela de cobertura: países integrados, países com vaga aberta vista, pistas sem teste e países ainda não pesquisados." src=".github/assets/screen-coverage-light.webp" width="100%">
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/screen-kit-dark.webp">
+  <img alt="Uma candidatura pronta para enviar: o botão que abre a vaga preenchida e o que escrever em cada campo do formulário, com botão de copiar em cada linha." src=".github/assets/screen-kit-light.webp" width="100%">
 </picture>
 
-**Cobertura.** Para 249 países e territórios: onde uma fonte funciona, onde aparecem vagas por quadros globais e onde nada foi conferido ainda.
+**O kit de respostas.** Em cada candidatura: o botão que abre a vaga preenchida no seu navegador, o que escrever em cada campo do formulário com botão de copiar, a carta de apresentação já escrita e o currículo feito para aquela vaga. O copiloto preenche o que consegue, e o kit cobre o resto.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset=".github/assets/screen-questions-dark.webp">
-  <img alt="A janela de respostas: três vagas pedem o mesmo aceite, duas perguntam se você pode viajar, uma pergunta a modalidade e outra o salário atual, cada uma com uma resposta para todas." src=".github/assets/screen-questions-light.webp" width="100%">
+  <img alt="A janela de respostas: uma pergunta de formulário que só você responde, com a vaga que pergunta e espaço para uma resposta." src=".github/assets/screen-questions-light.webp" width="100%">
 </picture>
 
 **Suas respostas.** O que só você pode responder, agrupado pelo sentido, para que uma resposta valha para todo formulário que pergunta a mesma coisa, em qualquer língua. A IA responde o resto pelo seu currículo, e essas respostas ficam na sua máquina e nunca vão para um modelo.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/screen-jobs-dark.webp">
+  <img alt="A tela de Vagas em lista: empresa, cargo, local, modalidade, situação e nota de cada vaga que as fontes trouxeram." src=".github/assets/screen-jobs-light.webp" width="100%">
+</picture>
+
+**Vagas.** Tudo o que as fontes trouxeram, em cartões ou em lista, com a nota, a modalidade e o salário quando a vaga publica. Os números por trás delas (o funil, as vagas por fonte, as ferramentas mais pedidas) ficam a um clique.
 
 ## Em breve: o Job Orchestrator para recrutadores
 
@@ -141,7 +148,7 @@ Hoje o Job Orchestrator trabalha para a pessoa que procura emprego. O próximo p
   </tr>
   <tr>
     <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/step-you-dark.svg"><img alt="" src=".github/assets/step-you-light.svg" width="96"></picture></td>
-    <td><b>Agentes que conversam às claras.</b> Os dois Job Orchestrators vão cuidar do vai e vem. Vão achar um horário de entrevista sem expor nenhuma das agendas, responder perguntas padrão com as respostas salvas do candidato e só contar a pretensão salarial quando a vaga publicar a faixa. Cada mensagem vai aparecer ao vivo nas duas telas, como a conversa dos agentes no mapa ao vivo de hoje, e ficar no histórico.</td>
+    <td><b>Agentes que conversam às claras.</b> Os dois Job Orchestrators vão cuidar do vai e vem. Vão achar um horário de entrevista sem expor nenhuma das agendas, responder perguntas padrão com as respostas salvas do candidato e só contar a pretensão salarial quando a vaga publicar a faixa. Cada mensagem vai aparecer ao vivo nas duas telas, como as mensagens dos agentes na busca ao vivo de hoje, e ficar no histórico.</td>
   </tr>
   <tr>
     <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/step-receipt-dark.svg"><img alt="" src=".github/assets/step-receipt-light.svg" width="96"></picture></td>
@@ -222,8 +229,8 @@ Os pacotes ainda não têm assinatura com certificado pago, então o arquivo bai
 ## Primeira vez
 
 1. Rode o instalador. Ele confere a máquina (navegador, banco, coletor, modelo local, placa de vídeo, espaço em disco e chaveiro), copia o app para a sua pasta de usuário, liga o PostgreSQL próprio, prepara o coletor com um Python só dele e cria o atalho no menu. Nada pede senha de administrador, e o que faltar na máquina vira um comando ou um link para você.
-2. Quando o app abre, uma configuração curta pede para ligar uma IA (o modelo local, o seu CLI ou os dois), enviar o currículo em PDF e confirmar uma tela com o que ele não conseguiu deduzir: autorização de trabalho, piso salarial, modalidade, data de início e nível de inglês. Conectar o Gmail é opcional.
-3. Opcional: em Configurações, carregue a extensão do copiloto no Chrome, no Edge ou no Brave em quatro passos. A janela do app já vem com ela.
+2. Quando o app abre, uma configuração curta pede para ligar uma IA (o modelo local, o seu CLI ou os dois), enviar o currículo em PDF e confirmar uma tela com o que ele não conseguiu deduzir: autorização de trabalho, piso salarial, modalidade, data de início e nível de inglês. Conectar o seu e-mail é opcional, e é ele que deixa a IA acompanhar as respostas das empresas.
+3. Em Configurações, carregue a extensão do copiloto no Chrome, no Edge ou no Brave em quatro passos; o Início pede isso quando a primeira candidatura fica pronta. A janela do app já vem com ela.
 4. O Início mostra um próximo passo por vez: responder as perguntas que os formulários fizeram e depois enviar as candidaturas prontas, uma por uma, com o copiloto.
 
 ```sh
@@ -243,12 +250,12 @@ job-orchestrator --uninstall   # tira o app e mantém os seus dados (com --purge
   <img alt=".NET 10, C#, PostgreSQL, Angular, TypeScript, Python, Scrapy, Playwright, Ollama, Qwen, Chromium, Docker, Linux, macOS, Windows e Gmail." src=".github/assets/stack-light.svg" width="100%">
 </picture>
 
-- **Backend:** .NET 10, um monólito modular em fatias verticais com DDD e CQRS, outbox e inbox para os eventos, endpoints com Carter e Dapper sobre o PostgreSQL. Um processo Worker roda os agendamentos, o Explorador e a sincronização do e-mail.
-- **Painel:** Angular 22 com signals. O mapa ao vivo é um canvas em SVG desenhado à mão, e os ícones isométricos são desenhados por código a partir de uma geometria única.
-- **Coleta:** APIs oficiais primeiro, spiders do Scrapy para páginas de carreira (robots.txt, AutoThrottle, JobPosting em JSON-LD) e um pool de navegadores do Playwright para páginas que precisam de JavaScript e para preencher formulários.
+- **Backend:** .NET 10, um monólito modular em fatias verticais com DDD e CQRS, outbox e inbox para os eventos, endpoints com Carter e Dapper sobre o PostgreSQL. Um processo Worker roda os agendamentos, a fila de preparo, o Explorador e a sincronização do e-mail.
+- **Painel e copiloto:** Angular 22 com signals, com ícones isométricos desenhados por código a partir de uma geometria única. O copiloto é uma extensão Manifest V3 que preenche o formulário aberto com o que o app preparou e só conversa com o app na sua máquina.
+- **Coleta:** APIs oficiais primeiro, spiders do Scrapy para páginas de carreira (robots.txt, AutoThrottle, JobPosting em JSON-LD) e um pool de navegadores do Playwright para páginas que precisam de JavaScript e para ler e preparar formulários de candidatura, que ele nunca envia.
 - **IA:** modelos locais pelo Ollama, com o Claude Code e o Codex como provedores opcionais. Cada tarefa começa no menor modelo que passa na validação e só sobe quando a saída falha, e o revisor nunca é da mesma família de modelos do redator.
 - **Pacotes:** um binário autocontido por plataforma, um instalador para cada sistema e um servidor MCP embutido.
-- **Testes:** suítes de unidade e de ponta a ponta contra um ATS falso com 10 cenários, além de testes de caos que derrubam o processo logo antes e logo depois do clique de enviar e conferem que a candidatura sai uma vez só ou volta para você.
+- **Testes:** suítes de unidade e de ponta a ponta contra um ATS falso com 10 cenários, com navegador e banco de verdade, testes de interface sobre o painel compilado e testes da extensão, todos rodados pela CI antes de cada versão.
 
 Mais detalhes: [guia de uso](docs/guia.md), [arquitetura](docs/architecture.md), [manual de operação](docs/runbook.md) e [modelo de ameaças](docs/threat-model.md).
 
@@ -264,10 +271,6 @@ docker compose -f infra/compose.test.yaml up -d --wait
 dotnet test backend/tests/JobOrchestrator.Tests --filter "Category!=E2E"
 scripts/package.sh all            # os pacotes das seis plataformas, em dist/
 ```
-
-### Laboratórios locais de CAPTCHA e vagas
-
-O ATS falso oferece desafios de imagem e aritmética e uma lista paginada de vagas. O roteador de vagas lê JSON-LD e cartões HTML, remove duplicatas e também aceita arquivos HTML locais. Veja o [guia do laboratório e os comandos de teste](docs/labs.md).
 
 ## Licença
 

@@ -1,5 +1,7 @@
 # LinkedIn com sessão local e CAPTCHA em servidor próprio
 
+> **Fora do app desde a 1.3.0.** A busca do LinkedIn por sessão e o teste de CAPTCHA em servidor próprio saíram junto com a página de testes. O LinkedIn nunca é automatizado; o caminho é a exportação de dados, o link da vaga, o "Ler esta página" da extensão e o copiloto. Este documento fica como registro.
+
 Esta versão acrescenta busca real pelo navegador conectado ao LinkedIn, captura da aba por extensão e um fluxo de teste de CAPTCHA contra servidor configurável. Abra **Fontes → Testar LinkedIn e CAPTCHA**, ou `/testes`.
 
 ## Antes de testar
