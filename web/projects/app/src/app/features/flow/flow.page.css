@@ -59,8 +59,12 @@
 .node.source .tile { border-radius: 8px; }
 .node:hover .tile { transform: translateY(-2px); border-color: color-mix(in oklch, var(--c) 70%, transparent); box-shadow: 0 0 0 1px oklch(0% 0 0 / 0.35), 0 0 24px -8px var(--c); }
 .node.idle .tile { color: var(--text-3); border-color: oklch(100% 0 0 / 0.16); box-shadow: 0 0 0 1px oklch(0% 0 0 / 0.4); }
-.node.attention .tile { --c: oklch(83% 0.12 80); border-color: color-mix(in oklch, var(--c) 65%, transparent); animation: glow 3s ease-in-out infinite; }
-@keyframes glow { 50% { box-shadow: 0 0 0 1px oklch(0% 0 0 / 0.35), 0 0 26px -7px var(--c); } }
+.node.attention .tile { --c: oklch(83% 0.12 80); border-color: color-mix(in oklch, var(--c) 65%, transparent); }
+/* Glows sit on their own layer and only their opacity moves: a blurred box-shadow repainted on every frame made this page heavy. */
+.node.attention .tile::after, .node.station.working .iso-tile::after { content: ''; position: absolute; inset: -1.5px; border-radius: inherit; pointer-events: none;
+  opacity: 0; will-change: opacity; animation: glow 3s ease-in-out infinite; }
+.node.attention .tile::after { box-shadow: 0 0 0 1px oklch(0% 0 0 / 0.35), 0 0 26px -7px var(--c); }
+@keyframes glow { 50% { opacity: 1; } }
 .node.planned .tile { color: var(--text-3); background: transparent; border: 1.5px dashed oklch(100% 0 0 / 0.2); box-shadow: none; }
 .node.selected .tile { outline: 2px solid var(--accent); outline-offset: 5px; }
 .logo { display: block; mask: var(--logo) center / contain no-repeat; -webkit-mask: var(--logo) center / contain no-repeat; }
@@ -103,7 +107,8 @@ dd { margin: 0; color: var(--text-2); }
 :host-context([data-theme="light"]) .tile { background: oklch(100% 0 0); border: 1.5px solid color-mix(in oklch, var(--c) 40%, white); box-shadow: 0 1px 2px oklch(0% 0 0 / 0.06), 0 8px 18px -8px color-mix(in oklch, var(--c) 45%, transparent); }
 :host-context([data-theme="light"]) .node:hover .tile { box-shadow: 0 1px 2px oklch(0% 0 0 / 0.06), 0 12px 24px -8px color-mix(in oklch, var(--c) 55%, transparent); }
 :host-context([data-theme="light"]) .node.idle .tile { border-color: oklch(0% 0 0 / 0.12); box-shadow: 0 1px 2px oklch(0% 0 0 / 0.05); }
-:host-context([data-theme="light"]) .node.attention .tile { --c: oklch(62% 0.13 70); animation: none; box-shadow: 0 0 0 4px color-mix(in oklch, var(--c) 18%, transparent), 0 8px 18px -8px color-mix(in oklch, var(--c) 50%, transparent); }
+:host-context([data-theme="light"]) .node.attention .tile::after, :host-context([data-theme="light"]) .node.station.working .iso-tile::after { display: none; }
+:host-context([data-theme="light"]) .node.attention .tile { --c: oklch(62% 0.13 70); box-shadow: 0 0 0 4px color-mix(in oklch, var(--c) 18%, transparent), 0 8px 18px -8px color-mix(in oklch, var(--c) 50%, transparent); }
 :host-context([data-theme="light"]) .node.planned .tile { background: transparent; border-color: oklch(0% 0 0 / 0.18); box-shadow: none; }
 :host-context([data-theme="light"]) .count { background: oklch(100% 0 0); box-shadow: 0 1px 2px oklch(0% 0 0 / 0.08); }
 :host-context([data-theme="light"]) .phase { background: oklch(100% 0 0); border-color: oklch(0% 0 0 / 0.18); }
@@ -135,9 +140,9 @@ dd { margin: 0; color: var(--text-2); }
 .node.station.idle .iso-tile { border-color: oklch(100% 0 0 / 0.14); box-shadow: 0 0 0 1px oklch(0% 0 0 / 0.4); }
 .node.station.done .iso-tile { border-color: color-mix(in oklch, var(--c) 34%, transparent); }
 .node.station.spoke .iso-tile { border-color: var(--c); box-shadow: 0 0 0 1px oklch(0% 0 0 / 0.35), 0 0 28px -6px var(--c); }
-.node.station.working .iso-tile { border-color: var(--c); animation: working 1.4s ease-in-out infinite; }
+.node.station.working .iso-tile { border-color: var(--c); }
+.node.station.working .iso-tile::after { box-shadow: 0 0 0 1px oklch(0% 0 0 / 0.35), 0 0 34px -4px var(--c); animation-duration: 1.4s; }
 .node.station.working jo-iso { animation: bob 1.4s ease-in-out infinite; }
-@keyframes working { 50% { box-shadow: 0 0 0 1px oklch(0% 0 0 / 0.35), 0 0 34px -4px var(--c); } }
 @keyframes bob { 50% { transform: translateY(-3px); } }
 .prov { position: absolute; right: -9px; bottom: -9px; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 4px; background: var(--surface); border: 1px solid var(--line-strong); box-shadow: var(--shadow); }
 .prov .logo { width: 16px; height: 16px; }
@@ -157,9 +162,10 @@ dd { margin: 0; color: var(--text-2); }
 .pulse.ai.hot { opacity: 0.7; animation: run 1.1s linear infinite; }
 .edge-label.ai { color: var(--text-3); }
 .edge-label.ai.flow { color: oklch(78% 0.136 5); }
-.live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-3); }
-.live-dot.on { background: var(--accent); animation: ping 1.6s ease-out infinite; }
-@keyframes ping { 0% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--accent) 60%, transparent); } 100% { box-shadow: 0 0 0 8px transparent; } }
+.live-dot { position: relative; width: 8px; height: 8px; border-radius: 50%; background: var(--text-3); }
+.live-dot.on { background: var(--accent); }
+.live-dot.on::after { content: ''; position: absolute; inset: 0; border-radius: 50%; background: var(--accent); will-change: transform, opacity; animation: ping 1.6s ease-out infinite; }
+@keyframes ping { from { transform: scale(1); opacity: 0.6; } to { transform: scale(3); opacity: 0; } }
 :host-context([data-theme="light"]) [data-lane="ai"] { --c: oklch(59% 0.161 5); }
 :host-context([data-theme="light"]) .node.station.idle .iso-tile { border-color: oklch(0% 0 0 / 0.1); }
 :host-context([data-theme="light"]) .node.station.spoke .iso-tile, :host-context([data-theme="light"]) .node.station.working .iso-tile { box-shadow: 0 0 0 4px color-mix(in oklch, var(--c) 16%, transparent), 0 10px 22px -10px color-mix(in oklch, var(--c) 55%, transparent); animation: none; }
@@ -168,11 +174,11 @@ dd { margin: 0; color: var(--text-2); }
 :host-context([data-theme="light"]) .edge.ai-edge.hot { stroke: oklch(59% 0.161 5); filter: none; }
 :host-context([data-theme="light"]) .head.ai, :host-context([data-theme="light"]) .edge-label.ai.flow { fill: oklch(59% 0.161 5); color: oklch(59% 0.161 5); }
 :host-context([data-theme="light"]) .say { box-shadow: 0 10px 24px -14px oklch(0% 0 0 / 0.3); }
-@media (prefers-reduced-motion: reduce) { .node.station.working .iso-tile, .node.station.working jo-iso, .say, .pulse.ai.hot, .live-dot.on { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .node.attention .tile::after, .node.station.working .iso-tile::after, .node.station.working jo-iso, .say, .live .pulse, .pulse.ai.hot, .live-dot.on::after { animation: none; } }
 
 /* Painel ao vivo: o que os agentes dizem, sem clicar em nada. */
-.feed { position: absolute; top: 12px; right: 12px; width: 340px; max-height: calc(100% - 150px); display: flex; flex-direction: column; border-radius: 4px; background: color-mix(in oklch, var(--surface) 92%, transparent);
-  backdrop-filter: blur(8px); border: 1px solid var(--line-strong); box-shadow: var(--shadow); cursor: default; overflow: hidden; }
+.feed { position: absolute; top: 12px; right: 12px; width: 340px; max-height: calc(100% - 150px); display: flex; flex-direction: column; border-radius: 4px; background: color-mix(in oklch, var(--surface) 97%, transparent);
+  border: 1px solid var(--line-strong); box-shadow: var(--shadow); cursor: default; overflow: hidden; }
 .feed.closed { max-height: none; }
 .feed header { display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 12px; border-bottom: 1px solid var(--line); font-size: 12.5px; }
 .feed header .btn { margin-left: auto; height: 26px; padding: 0 7px; }

@@ -9,7 +9,7 @@ import { BRANDS } from './brands';
   selector: 'jo-company',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `@if (brand(); as b) { <img [src]="'/logos/brands/' + b.file + '.svg'" [class.dark]="b.dark" alt="" class="brand" /> }
-    @else if (domain() && !failed()) { <img [src]="'/api/companies/' + domain() + '/logo'" alt="" class="site" (error)="failed.set(true)" /> }
+    @else if (host() && !failed()) { <img [src]="'/api/companies/' + host() + '/logo'" alt="" class="site" (error)="failed.set(true)" /> }
     @else { <span class="mono" [style.--h]="hue()">{{ initials() }}</span> }`,
   styles: `
     :host { display: grid; place-items: center; flex: none; border-radius: 6px; background: var(--surface-2); border: 1px solid var(--line); overflow: hidden; }
@@ -28,6 +28,8 @@ export class Company {
   readonly domain = input<string | null>(null);
   readonly size = input(40);
   protected readonly failed = signal(false);
+  /** A career page key ("vetta.com.br/en/careers") or a full address still names one site: the logo is its host's. */
+  protected readonly host = computed(() => this.domain()?.replace(/^https?:\/\//i, '').split(/[/?#]/)[0].toLowerCase() || null);
 
   private readonly clean = computed(() => this.name().replace(/\s+-\s+linkedin$/i, '').replace(/\(.*?\)/g, '').replace(/\b(s\.?a\.?|ltda|inc\.?|llc|ltd)\b/gi, '').trim());
   protected readonly brand = computed(() => {

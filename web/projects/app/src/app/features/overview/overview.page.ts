@@ -8,10 +8,11 @@ import { Empty } from '@jo/ui/empty';
 import { Icon } from '@jo/ui/icon';
 import { Iso } from '@jo/ui/iso';
 import { RouteHero, RouteStop } from '@jo/ui/route-hero';
-import { ApplicationRow, ExploreStatus, JobRow, MailOverview, OutgoingMail, Overview, Profile, send, TaskRow } from '../../core/api';
+import { ApplicationRow, ExploreStatus, MailOverview, OutgoingMail, Overview, Profile, send, TaskRow } from '../../core/api';
 import { command } from '../../core/command';
 import { ago, clock, modeLabel, plural, stateLabel, stateTone } from '../../core/format';
 import { AGENT_ICON, Live, PROVIDER_LOGO } from '../../core/live';
+import { FormQuestions } from '../../core/form-questions';
 import { query } from '../../core/query';
 import { SearchRun } from '../../core/search';
 import { WelcomeHub } from '../../core/welcome-hub';
@@ -31,6 +32,7 @@ export class OverviewPage {
   protected readonly live = inject(Live);
   protected readonly search = inject(SearchRun);
   protected readonly hub = inject(WelcomeHub);
+  private readonly questionsHub = inject(FormQuestions);
   protected readonly automating = signal(false);
   /** "Configurar tudo" do menu chega aqui como ?configurar=1 e abre o passo a passo guiado. */
   readonly configurar = input<string | undefined>();
@@ -70,16 +72,16 @@ export class OverviewPage {
   private readonly mail = query<MailOverview>(() => '/mail/overview', 15000);
   private readonly outgoing = query<OutgoingMail[]>(() => '/mail/outgoing', 30000);
   private readonly apps = query<ApplicationRow[]>(() => '/applications', 15000);
-  private readonly rehearsal = query<{ running: boolean; last: { items: { kind: string; reason: string | null; detail: string | null }[] } | null }>(() => '/applications/rehearsal', 30000);
-  private readonly queue = query<JobRow[]>(() => '/jobs?status=Shortlisted', 60000);
 
   /** O Início responde três perguntas: o que saiu, o que voltou e o que depende de você, cada linha com o caminho para resolver. */
   protected readonly today = computed(() => {
     const d = this.data.value(), m = this.mail.value(), apps = this.apps.value() ?? [], mails = this.outgoing.value() ?? [];
     const lost = mails.filter((x) => x.status === 'Bounced' || x.status === 'Failed').length;
     const outcome = (o: string) => apps.filter((a) => a.outcome === o).length;
-    const questions = new Set((this.rehearsal.value()?.last?.items ?? []).filter((i) => i.reason === 'unsupported-field').flatMap((i) => [...(i.detail ?? '').matchAll(/"([^"]+)"/g)].map((x) => x[1]))).size;
-    const bySite = (this.queue.value() ?? []).filter((j) => j.applyChannel === 'manual').length;
+    // What waits for you today: the questions window's lines (not an old rehearsal's), and the applications handed to you for the
+    // site, counted apart from the other pending tasks so nothing is counted twice.
+    const questions = this.questionsHub.count();
+    const bySite = (this.tasks.value() ?? []).filter((t) => !t.resolvedAt && t.kind === 'Review' && t.title.startsWith('Candidatar-se pelo site')).length;
     type Line = { n: number; label: string; link: string; query?: Record<string, string>; tone?: string };
     const sent: Line[] = [
       { n: d?.confirmedToday ?? 0, label: word(d?.confirmedToday ?? 0, 'candidatura enviada hoje', 'candidaturas enviadas hoje'), link: '/candidaturas' },
@@ -95,10 +97,10 @@ export class OverviewPage {
     ];
     const you: Line[] = [
       { n: d?.applications.awaitingApproval ?? 0, label: word(d?.applications.awaitingApproval ?? 0, 'formulário para aprovar', 'formulários para aprovar'), link: '/revisao', tone: 'warn' },
-      { n: d?.pendingTasks ?? 0, label: word(d?.pendingTasks ?? 0, 'pendência para resolver', 'pendências para resolver'), link: '/atencao', tone: 'warn' },
+      { n: Math.max(0, (d?.pendingTasks ?? 0) - bySite), label: word(Math.max(0, (d?.pendingTasks ?? 0) - bySite), 'pendência para resolver', 'pendências para resolver'), link: '/atencao', tone: 'warn' },
       { n: m?.awaiting ?? 0, label: word(m?.awaiting ?? 0, 'e-mail para aprovar', 'e-mails para aprovar'), link: '/email', tone: 'warn' },
       { n: questions, label: word(questions, 'pergunta de formulário sem resposta', 'perguntas de formulário sem resposta'), link: '/candidaturas', tone: 'warn' },
-      { n: bySite, label: word(bySite, 'vaga para você enviar pelo site', 'vagas para você enviar pelo site'), link: '/vagas', tone: 'warn' },
+      { n: bySite, label: word(bySite, 'vaga para você enviar pelo site', 'vagas para você enviar pelo site'), link: '/atencao', tone: 'warn' },
     ];
     return { sent, back, you, sentN: (d?.confirmedToday ?? 0) + (m?.sentToday ?? 0), backN: back.slice(0, 3).reduce((n, l) => n + l.n, 0), youN: you.reduce((n, l) => n + l.n, 0) };
   });
