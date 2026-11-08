@@ -20,6 +20,8 @@ public static class ApplicationsModule
         s.AddSingleton<Rehearsal>();
         s.AddScoped<Interviews>();
         s.AddScoped<IApplicationsApi, Features.ApplicationsApi>();
+        // The copilot's routes live in the API process: in the split setup (API and Worker apart) the state must be here.
+        s.AddSingleton<CopilotState>();
         return s;
     }
 
@@ -32,7 +34,6 @@ public static class ApplicationsModule
         s.AddEventConsumer<JobEmailSentConsumer>();
         s.AddEventConsumer<JobEmailRepliedConsumer>();
         s.AddEventConsumer<HiringMailConsumer>();
-        s.AddSingleton<CopilotState>();
         s.AddHostedService<OutboxPublisher<ApplicationsDbContext>>();
         s.AddSingleton(new WorkQueue(NpgsqlDataSource.Create(config.ConnectionFor("Applications"))));
         s.TryAddSingleton<GuardKey>();
