@@ -20,6 +20,8 @@ public static class AutomationModule
             // O tempo de cada tentativa fica com a resiliência; o HttpClient guarda só o teto total.
             c.Timeout = TimeSpan.FromSeconds(90);
             c.DefaultRequestHeaders.UserAgent.ParseAdd("JobOrchestrator/1.0 (uso pessoal)");
+            // Firewalls like Sucuri (Rio Vagas) answer 403 to a request with no Accept, and HttpClient sends none by default.
+            c.DefaultRequestHeaders.Accept.ParseAdd("*/*");
         })
         .AddHttpMessageHandler<ResilienceErrors>()
         // Fonte instável não derruba a rodada nem as outras: nova tentativa com espera (o Retry-After do 429 manda), tempo por tentativa

@@ -9,7 +9,7 @@ public static class JobsModule
 
     public static IServiceCollection AddJobsModule(this IServiceCollection s, IConfiguration config)
     {
-        s.AddHttpClient("logos", c => { c.Timeout = TimeSpan.FromSeconds(8); c.DefaultRequestHeaders.UserAgent.ParseAdd("job-orchestrator"); });
+        s.AddHttpClient("logos", c => { c.Timeout = TimeSpan.FromSeconds(8); c.DefaultRequestHeaders.UserAgent.ParseAdd("job-orchestrator"); c.DefaultRequestHeaders.Accept.ParseAdd("*/*"); });
         s.AddSingleton<Features.CompanyLogos>();
         s.AddModuleDatabase<JobsDbContext>(config, "Jobs");
         s.AddTransient(typeof(IPipelineBehavior<,>), typeof(JobsTransaction<,>));

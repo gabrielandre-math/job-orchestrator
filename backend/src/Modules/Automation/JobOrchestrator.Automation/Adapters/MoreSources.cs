@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
 namespace JobOrchestrator.Automation.Adapters;
@@ -418,7 +419,7 @@ internal sealed class TeamtailorSource(IHttpClientFactory http) : PublicSource(h
 /// Feed RSS ou Atom de qualquer quadro de vagas (rss:https://site/feed): RSS 2.0, Atom e os campos do WP Job Manager (empresa, local, tipo).
 /// O robots.txt do site é conferido antes de ler o feed.
 /// </summary>
-internal sealed class RssSource(IHttpClientFactory http) : PublicSource(http, "rss")
+internal sealed partial class RssSource(IHttpClientFactory http) : PublicSource(http, "rss")
 {
     public override string Id => "rss-feed";
     public override string Name => "Feed RSS";
@@ -435,21 +436,75 @@ internal sealed class RssSource(IHttpClientFactory http) : PublicSource(http, "r
         catch (HttpRequestException) { /* sem robots.txt acessível: segue as regras padrão */ }
         var xml = await HttpBodies.XmlAsync(Client, url, ct);
         XNamespace atom = "http://www.w3.org/2005/Atom", wp = "https://wpjobmanager.com/";
-        var site = (string?)xml.Root?.Element("channel")?.Element("title") ?? (string?)xml.Root?.Element(atom + "title") ?? url.Host;
+        var site = Site((string?)xml.Root?.Element("channel")?.Element("title") ?? (string?)xml.Root?.Element(atom + "title") ?? url.Host);
         var items = xml.Descendants("item").Select(i => (
             Title: (string?)i.Element("title") ?? "", Link: (string?)i.Element("link") ?? "", Body: (string?)i.Elements().FirstOrDefault(e => e.Name.LocalName == "encoded")?.Value ?? (string?)i.Element("description") ?? "",
-            Date: (string?)i.Element("pubDate"), Company: Field(i, "company"), Place: Field(i, "location"), Type: Field(i, "job_type")))
+            Date: (string?)i.Element("pubDate"), Company: Field(i, "company"), Place: Field(i, "location"), Type: Field(i, "job_type"), Tags: i.Elements("category").Select(c => c.Value.Trim()).ToArray()))
             .Concat(xml.Descendants(atom + "entry").Select(e => (
                 Title: (string?)e.Element(atom + "title") ?? "", Link: (string?)e.Elements(atom + "link").FirstOrDefault()?.Attribute("href") ?? "", Body: (string?)e.Element(atom + "content") ?? (string?)e.Element(atom + "summary") ?? "",
-                Date: (string?)e.Element(atom + "updated") ?? (string?)e.Element(atom + "published"), Company: (string?)e.Element(atom + "author")?.Element(atom + "name") ?? "", Place: "", Type: "")));
-        return [.. items.Where(i => i.Title.Length > 2 && i.Link.Length > 0).Select(i =>
+                Date: (string?)e.Element(atom + "updated") ?? (string?)e.Element(atom + "published"), Company: (string?)e.Element(atom + "author")?.Element(atom + "name") ?? "", Place: "", Type: "", Tags: Array.Empty<string>())));
+        // Boards that blog in the same feed tag those posts as news: a horoscope is not a job.
+        return [.. items.Where(i => i.Title.Length > 2 && i.Link.Length > 0 && !i.Tags.Any(NotJobs.Contains)).Select(i =>
         {
+            var body = Json.Plain(i.Body);
+            var (title, sector, place, pay) = Parts(i.Title, i.Tags);
             // "Empresa: Cargo" e "Cargo at Empresa" são os formatos mais comuns quando o feed não tem o campo da empresa.
-            var (company, title) = i.Company.Length > 0 ? (i.Company, i.Title) : SplitTitle(i.Title, site);
-            return new DiscoveredPosting(source, i.Link, company, title, i.Place, i.Link, Json.Plain(i.Body), DateTime.TryParse(i.Date, out var d) ? d.ToUniversalTime() : null, i.Link,
-                Workplace: (i.Place + i.Title).Contains("remot", StringComparison.OrdinalIgnoreCase) ? "remote" : null, Employment: i.Type.Length > 0 ? i.Type : null, ListedAsOpen: true);
+            var (company, split) = i.Company.Length > 0 ? (i.Company, title) : Lead(body) is { } lead ? (lead, title) : sector is not null ? (sector, title) : SplitTitle(title, site);
+            var where = i.Place.Length > 0 ? i.Place : Region(place, i.Tags) ?? "";
+            // The pay in the title goes in front of the text, where the salary reader looks.
+            return new DiscoveredPosting(source, i.Link, company, split, where, i.Link, pay is null ? body : $"Salário: {pay}\n{body}", DateTime.TryParse(i.Date, out var d) ? d.ToUniversalTime() : null, i.Link,
+                Workplace: (where + i.Title).Contains("remot", StringComparison.OrdinalIgnoreCase) || i.Title.Contains("home office", StringComparison.OrdinalIgnoreCase) ? "remote" : null,
+                Employment: i.Type.Length > 0 ? i.Type : null, ListedAsOpen: true);
         })];
     }
+
+    /// <summary>
+    /// "Cargo – Setor – R$ 1.735,00 – Bairro – 2 vagas – Sem Experiência", the title of Rio Vagas and of other WordPress boards: the role, who hires
+    /// (often only the kind of business), the pay and the place come apart. The place is the part right after the pay or one the item is tagged
+    /// with; "Engineer - Platform - Acme" has neither and keeps Acme as who hires. A title with fewer than three parts stays whole.
+    /// </summary>
+    internal static (string Title, string? Sector, string? Place, string? Pay) Parts(string text, IReadOnlyCollection<string>? tags = null)
+    {
+        var parts = TitleDash().Split(text.Trim()).Select(x => x.Trim()).Where(x => x.Length > 0).ToList();
+        if (parts.Count < 3) return (text.Trim(), null, null, null);
+        var pay = parts.FindIndex(x => PayPart().IsMatch(x));
+        var rest = parts.Select((x, i) => (x, i)).Skip(1).Where(p => p.i != pay && !ExtraPart().IsMatch(p.x)).ToList();
+        var place = (pay > 0 ? rest.FirstOrDefault(p => p.i > pay).x : null) ?? rest.FirstOrDefault(p => tags?.Contains(p.x, StringComparer.OrdinalIgnoreCase) == true).x;
+        var sector = rest.FirstOrDefault(p => p.x != place).x;
+        return (parts[0], sector, place, pay > 0 ? parts[pay] : null);
+    }
+
+    /// <summary>The company line some boards open the text with: "Empresa de Bobinas e Etiquetas Cargo: Auxiliar...".</summary>
+    internal static string? Lead(string body) => LeadLine().Match(body) is { Success: true } m ? m.Groups[1].Value.Trim() : null;
+
+    /// <summary>The place, with the state or capital the item is tagged with when the place alone does not say it ("Copacabana, Rio de Janeiro").</summary>
+    internal static string? Region(string? place, IReadOnlyList<string> tags)
+    {
+        var region = tags.FirstOrDefault(t => Regions.Contains(t));
+        if (place is null) return region;
+        return region is null || place.Contains(region, StringComparison.OrdinalIgnoreCase) ? place : $"{place}, {region}";
+    }
+
+    /// <summary>"RIOVAGAS: O MAIOR SITE DE EMPREGOS DO RIO!" is "Riovagas": the name before the slogan, not shouting.</summary>
+    internal static string Site(string title)
+    {
+        var name = SiteSlogan().Split(title.Trim())[0].Trim();
+        return name.Length > 2 && name.All(c => !char.IsLetter(c) || char.IsUpper(c)) ? System.Globalization.CultureInfo.GetCultureInfo("pt-BR").TextInfo.ToTitleCase(name.ToLowerInvariant()) : name;
+    }
+
+    private static readonly HashSet<string> NotJobs = new(StringComparer.OrdinalIgnoreCase) { "Notícias", "Noticias", "News", "Blog", "Artigos", "Artigo", "Dicas", "Curiosidades", "Entretenimento" };
+
+    private static readonly HashSet<string> Regions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Rio de Janeiro", "São Paulo", "Minas Gerais", "Belo Horizonte", "Espírito Santo", "Vitória", "Paraná", "Curitiba", "Santa Catarina", "Florianópolis",
+        "Rio Grande do Sul", "Porto Alegre", "Bahia", "Salvador", "Pernambuco", "Recife", "Ceará", "Fortaleza", "Distrito Federal", "Brasília", "Goiás", "Goiânia"
+    };
+
+    [GeneratedRegex(@"\s[–—-]\s")] private static partial Regex TitleDash();
+    [GeneratedRegex(@"(?:R\$|US\$|€|£|\$)\s?\d|\d+[.,]\d{2}\b.*(?:/\s?(?:m[eê]s|dia|hora)|mensal)", RegexOptions.IgnoreCase)] private static partial Regex PayPart();
+    [GeneratedRegex(@"^(?:\d+\s+vagas?|sem experi[eê]ncia|com experi[eê]ncia|home office|h[ií]brido|remoto|presencial|pcd|tempor[aá]rio|est[aá]gio|jovem aprendiz|clt|pj|efetivo|urgente)$", RegexOptions.IgnoreCase)] private static partial Regex ExtraPart();
+    [GeneratedRegex(@"^\s*(\p{Lu}[^\n:]{2,80}?)\s+Cargo:\s")] private static partial Regex LeadLine();
+    [GeneratedRegex(@":|\s[|–—-]\s")] private static partial Regex SiteSlogan();
 
     private static string Field(XElement item, string name) => item.Elements().FirstOrDefault(e => e.Name.LocalName == name)?.Value.Trim() ?? "";
 
