@@ -20,6 +20,7 @@ public static class JobsModule
     public static IServiceCollection AddJobsWorker(this IServiceCollection s)
     {
         s.AddEventConsumer<Features.RunRequestedConsumer>();
+        s.AddEventConsumer<Features.PreparationStartedConsumer>();
         s.AddHostedService<OutboxPublisher<JobsDbContext>>();
         return s;
     }

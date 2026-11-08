@@ -45,6 +45,7 @@ internal sealed class AuthorizationEndpoints : ICarterModule
                 Text = body.AcceptDeclarations ? Text + DeclarationsText : Text,
             };
             db.Authorizations.Add(auth);
+            if (campaign.Mode == SubmissionMode.DiscoveryOnly) db.Publish(PreparationStartedV1.EventType, new PreparationStartedV1(id, now), now);
             campaign.EnableAuto(auth, now);
             db.Publish(AutoSubmitGrantedV1.EventType, new AutoSubmitGrantedV1(id, auth.AcceptDeclarations, now), now);
             await db.SaveChangesAsync(ct);

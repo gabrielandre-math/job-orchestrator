@@ -27,6 +27,15 @@ public sealed record RunRequestedV1(Guid RunId, Guid CampaignId, DateTime Reques
     public const string EventType = "campaigns.run-requested.v1";
 }
 
+/// <summary>
+/// Integration event: the campaign left "só buscar" (on the campaign screen or by an authorization). Jobs found while it only searched
+/// never got an application; now the ones still in the queue get theirs.
+/// </summary>
+public sealed record PreparationStartedV1(Guid CampaignId, DateTime At)
+{
+    public const string EventType = "campaigns.preparation-started.v1";
+}
+
 /// <summary>Evento de integração: o envio automático foi desligado (revogado ou trocado de modo). O que estava pronto pela autorização volta para você.</summary>
 public sealed record AutoSubmitEndedV1(Guid CampaignId, DateTime At)
 {

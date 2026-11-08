@@ -28,7 +28,9 @@ internal sealed class WorkQueue(NpgsqlDataSource source)
         where w.id = (
           select id from applications.work_items
           where completed_at is null and run_after <= now() and (lease_expires_at is null or lease_expires_at < now())
-          order by run_after limit 1 for update skip locked)
+          -- Later steps first: an application goes all the way to sending before the next resume starts, so a batch of 50 does not
+          -- write 50 resumes before the first form is even opened.
+          order by case step when 'Reconcile' then 0 when 'Submit' then 1 when 'Prepare' then 2 else 3 end, run_after limit 1 for update skip locked)
         returning w.id, w.application_id, w.step, w.attempts, w.max_attempts
         """;
 

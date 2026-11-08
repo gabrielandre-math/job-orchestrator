@@ -57,7 +57,9 @@ internal sealed class ConfigureCampaignHandler(CampaignsDbContext db, TimeProvid
         if (mode == SubmissionMode.AutoSubmit && campaign.Mode != SubmissionMode.AutoSubmit)
             return Error.Forbidden("consent-required", "O envio automático só liga com uma autorização criada na tela de autorizações.");
         var wasAuto = campaign.Mode == SubmissionMode.AutoSubmit;
+        var wasDiscovery = campaign.Mode == SubmissionMode.DiscoveryOnly;
         campaign.Configure(mode, c.MinFitScore, c.MaxSubmissionsPerDay, c.Technologies, c.Locations, c.Sources, time.GetUtcNow().UtcDateTime);
+        if (wasDiscovery && mode != SubmissionMode.DiscoveryOnly) db.Publish(PreparationStartedV1.EventType, new PreparationStartedV1(campaign.Id, time.GetUtcNow().UtcDateTime), time.GetUtcNow().UtcDateTime);
         // Saiu do automático por aqui: o que estava pronto pela autorização volta para a sua aprovação.
         if (wasAuto && mode != SubmissionMode.AutoSubmit) db.Publish(AutoSubmitEndedV1.EventType, new AutoSubmitEndedV1(campaign.Id, time.GetUtcNow().UtcDateTime), time.GetUtcNow().UtcDateTime);
         if (c.Name is { Length: > 0 } name) campaign.Rename(name);
