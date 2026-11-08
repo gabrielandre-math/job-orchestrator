@@ -19,7 +19,7 @@ const LOGO_BY_KIND: Record<string, { file: string; mono: boolean }> = {
 
 const TASKS: Record<string, string> = {
   'job.extract': 'Ler a vaga', 'question.map': 'Ligar pergunta ao banco', 'email.classify': 'Classificar e-mail',
-  'profile.extract': 'Ler o currículo', 'resume.tailor': 'Currículo por vaga', 'resume.factcheck': 'Revisão cruzada',
+  'profile.extract': 'Ler o currículo', 'resume.tailor': 'Currículo por vaga', 'resume.factcheck': 'Revisão cruzada', 'resume.fix': 'Acerto do currículo',
   'cover.write': 'Carta', 'question.draft': 'Resposta aberta', 'interview.prep': 'Guia de entrevista',
 };
 const RUNGS: Record<string, string> = { Local: 'local rápido', LocalStrong: 'local forte', Light: 'leve', Medium: 'médio', Strong: 'forte', Top: 'topo' };

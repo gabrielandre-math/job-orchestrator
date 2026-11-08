@@ -59,6 +59,8 @@ public static class LlmTasks
     public static readonly LlmTask ProfileExtract = new("profile.extract", Rung.Medium, true, 6, "currículo sem dados pessoais");
     public static readonly LlmTask ResumeTailor = new("resume.tailor", Rung.Medium, true, 15, "perfil minimizado + vaga");
     public static readonly LlmTask ResumeFactcheck = new("resume.factcheck", Rung.Light, true, 15, "perfil minimizado");
+    /// <summary>A second pass on a resume draft that came in two languages or with the CV's own summary: a light model, its own daily budget.</summary>
+    public static readonly LlmTask ResumeFix = new("resume.fix", Rung.Light, true, 40, "perfil minimizado + vaga");
     public static readonly LlmTask CoverWrite = new("cover.write", Rung.Medium, true, 10, "perfil minimizado + vaga");
     public static readonly LlmTask QuestionDraft = new("question.draft", Rung.Light, true, 30, "perfil minimizado + pergunta");
     public static readonly LlmTask InterviewPrep = new("interview.prep", Rung.LocalStrong, false, 0, "currículo da candidatura e feedback, no modelo local", LocalOnly: true);
@@ -71,7 +73,7 @@ public static class LlmTasks
     public static readonly LlmTask PageNavigate = new("page.navigate", Rung.Local, false, 0, "rótulos de botões e links de página pública de carreira");
     public static readonly LlmTask ExploreHunt = new("explore.hunt", Rung.Local, false, 0, "palavras da campanha e do currículo, fica na máquina");
 
-    public static IReadOnlyList<LlmTask> All { get; } = [JobExtract, JobFit, QuestionMap, EmailClassify, ProfileExtract, ResumeTailor, ResumeFactcheck, CoverWrite, QuestionDraft, InterviewPrep, InterviewPractice, PageJobs,
+    public static IReadOnlyList<LlmTask> All { get; } = [JobExtract, JobFit, QuestionMap, EmailClassify, ProfileExtract, ResumeTailor, ResumeFactcheck, ResumeFix, CoverWrite, QuestionDraft, InterviewPrep, InterviewPractice, PageJobs,
         AssistantTriage, AssistantChat, AssistantSetup, ExploreJudge, ExploreHunt];
 
     public static LlmTask? Find(string name) => All.FirstOrDefault(t => t.Name == name);

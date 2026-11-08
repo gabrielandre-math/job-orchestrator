@@ -6,7 +6,7 @@ namespace JobOrchestrator.Materials.Compose;
 internal sealed record Picked(string Label, ProfileFact Fact, string? ParentLabel);
 
 /// <summary>O que o Seletor separou: fatos, idioma do currículo e as tecnologias da vaga que você tem e que não tem.</summary>
-internal sealed record Selection(IReadOnlyList<Picked> Facts, string Language, IReadOnlyList<string> Matched, IReadOnlyList<string> Missing)
+internal sealed record Selection(IReadOnlyList<Picked> Facts, string Language, IReadOnlyList<string> Matched, IReadOnlyList<string> Missing, string Company = "")
 {
     public Picked? Get(string label) => Facts.FirstOrDefault(f => f.Label == label);
     public IEnumerable<Picked> Of(string kind) => Facts.Where(f => f.Fact.Kind == kind);
@@ -54,7 +54,7 @@ internal static partial class Selector
         foreach (var f in p.Facts.Where(f => f.Kind == "education").OrderByDescending(f => f.End ?? "9999").Take(3)) picked.Add(new(Next(), f, null));
         foreach (var f in p.Facts.Where(f => f.Kind == "language")) picked.Add(new(Next(), f, null));
         foreach (var f in p.Facts.Where(f => f.Kind == "certification").OrderByDescending(Score).Take(4)) picked.Add(new(Next(), f, null));
-        return new Selection(picked, Language(job.Description + " " + job.Title), matched, missing);
+        return new Selection(picked, Language(job.Description + " " + job.Title), matched, missing, job.Company);
     }
 
     // O currículo existe em português e inglês: vaga em outra língua (sueco, espanhol...) recebe o inglês.

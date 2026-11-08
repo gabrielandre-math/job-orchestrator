@@ -286,7 +286,7 @@ internal sealed class IntelligenceApi(ProviderSet set, IntelligenceDbContext db,
 
     private static string Label(string task) => task switch
     {
-        "profile.extract" => "a leitura do currículo", "resume.tailor" => "o currículo para a vaga", "resume.factcheck" => "a revisão das afirmações",
+        "profile.extract" => "a leitura do currículo", "resume.tailor" => "o currículo para a vaga", "resume.factcheck" => "a revisão das afirmações", "resume.fix" => "o acerto do currículo",
         "cover.write" => "a carta", "question.draft" => "a resposta aberta", "interview.prep" => "o guia de entrevista", "interview.practice" => "o feedback de treino", "question.map" => "a ligação da pergunta",
         "job.extract" => "a leitura da vaga", "email.classify" => "a classificação do e-mail", _ => task
     };

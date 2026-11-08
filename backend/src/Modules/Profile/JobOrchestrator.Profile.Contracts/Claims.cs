@@ -19,6 +19,8 @@ public static partial class Claims
     /// <summary>O que a afirmação diz e as fontes não sustentam. Lista vazia: tudo sustentado.</summary>
     public static IReadOnlyList<string> Unsupported(string claim, IEnumerable<string> sources)
     {
+        // "SQL-based" and "API-driven" say SQL and API: the suffix is English grammar, not a new term.
+        claim = Compound().Replace(claim, " ");
         var source = Fold(string.Join("\n", sources));
         var folded = Fold(claim);
         var values = Numbers(source).ToHashSet();
@@ -176,6 +178,7 @@ public static partial class Claims
     [GeneratedRegex(@"(?<![\p{L}\p{N}.,])(?<n>\d+(?:[.,]\d+)*)(?<u>\s?(?:k|mil|mi|milhoes|milhao|million|millions|thousand|m|bi|bilhoes|bilhao|billion|billions)\b)?")] private static partial Regex Number();
     [GeneratedRegex(@"^\d{1,3}(?:[.,]\d{3})+$")] private static partial Regex ThousandGroups();
     [GeneratedRegex(@"\s+")] private static partial Regex Spaces();
+    [GeneratedRegex(@"(?<=[\p{L}\p{N}#+])-(?:based|driven|oriented|focused|heavy|first|native|ready|facing|powered|centric|intensive|related|specific)\b", RegexOptions.IgnoreCase)] private static partial Regex Compound();
     [GeneratedRegex(@"(?<![\p{L}])(?:nao|nunca|jamais|never|not|didn't|didnt)(?![\p{L}])")] private static partial Regex Negation();
     // Technologies often written in lowercase, which the capitalization rule above misses ("implementei kubernetes"). Words that are also
     // common words (go, swift, spark, node) stay out.

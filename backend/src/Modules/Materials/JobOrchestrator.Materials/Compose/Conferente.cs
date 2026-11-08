@@ -4,7 +4,7 @@ namespace JobOrchestrator.Materials.Compose;
 /// Agente Conferente (sem IA): cada afirmação do rascunho precisa citar fatos que existem, do lugar certo, e não pode trazer
 /// número nem termo próprio que esses fatos não tenham (Claims.Unsupported). O que não passa sai do currículo, com o motivo.
 /// </summary>
-internal static class Conferente
+internal static partial class Conferente
 {
     public sealed record Outcome(Draft Draft, List<ProvenanceLine> Lines, List<string> Removed);
 
@@ -19,8 +19,10 @@ internal static class Conferente
                 .Where(x => x.Length > 0)
         ];
 
-        // Título e resumo podem citar qualquer skill ou tecnologia do perfil: listar o que você usa é verdade.
-        var stack = s.Of("skill").Select(x => x.Fact.Statement).Concat(s.Of("experience").SelectMany(x => x.Fact.Technologies)).ToList();
+        // Título e resumo falam da pessoa inteira: skills, tecnologias, anos pelas datas, cargos que ela teve e a área que o trabalho mostra.
+        // The hiring company may be named too ("to the Acme team"): it says where the person is going, not what they did.
+        var stack = Profile(s);
+        if (s.Company.Length > 0) stack.Add(s.Company);
 
         Claim? Single(Claim? c, string section, string? fallbackKind)
         {
@@ -32,13 +34,27 @@ internal static class Conferente
                 lines.Add(Line(section, null, c.Text, known, "ok"));
                 return c with { Facts = known };
             }
+            // A summary keeps the sentences its facts support: one sentence with a word too many does not take the other two with it.
+            if (section == "summary" && known.Length > 0)
+            {
+                var kept = Sentences(c.Text).Where(x => Claims.Unsupported(x, [.. Sources(known), .. stack]).Count == 0).ToList();
+                if (kept.Count > 0 && string.Join(" ", kept).Split(' ').Length >= 8)
+                {
+                    var text = string.Join(" ", kept);
+                    removed.Add($"{section}: frase sem fato para {string.Join(", ", missing)} saiu; o resto ficou");
+                    lines.Add(Line(section, null, text, known, "ok, sem a frase recusada"));
+                    return c with { Text = text, Facts = known };
+                }
+            }
             removed.Add($"{section}: \"{c.Text}\" (sem fato para {string.Join(", ", missing)})");
             return Fallback(section, fallbackKind);
         }
 
+        // The CV's own headline or summary stands in only when it is in the resume's language: an English resume with a Portuguese summary
+        // read as a mistake, and the same copied summary in every resume read as no tailoring at all. Otherwise the section stays out.
         Claim? Fallback(string section, string? kind)
         {
-            if (kind is null || s.Of(kind).FirstOrDefault() is not { } f) return null;
+            if (kind is null || s.Of(kind).FirstOrDefault() is not { } f || Languages.PtOrEn(f.Fact.Statement) != (s.Language == "en" ? "en" : "pt")) return null;
             lines.Add(Line(section, null, f.Fact.Statement, [f.Label], "ok, texto original do fato"));
             return new Claim(f.Fact.Statement, [f.Label]);
         }
@@ -107,6 +123,53 @@ internal static class Conferente
     /// Why the reviewer's verdicts do not count as a review: claims left without a verdict, judged twice or unknown. Null when every
     /// claim got exactly one verdict. An empty list on a draft with claims is no review at all.
     /// </summary>
+    /// <summary>
+    /// The reviewer's verdicts with the claim ids as the draft has them. Models write "C3", "c3", "3", "C3:" or the claim's own text:
+    /// all name the same claim. Before 1.2.4 anything but "C3" made the whole review fall and every resume wait for your approval.
+    /// </summary>
+    public static IReadOnlyList<Prompts.Verdict> Normalize(Draft d, IReadOnlyList<Prompts.Verdict> verdicts)
+    {
+        var claims = d.Claims().ToList();
+        var byText = claims.GroupBy(c => Same(c.Claim.Text)).ToDictionary(g => g.Key, g => g.First().Id);
+        return [.. verdicts.Select(v =>
+        {
+            var key = v.Claim.Trim();
+            if (ClaimId().Match(key) is { Success: true } m) return v with { Claim = $"C{int.Parse(m.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture)}" };
+            return byText.TryGetValue(Same(key), out var id) ? v with { Claim = id } : v;
+        })];
+    }
+
+    private static string Same(string text) => System.Text.RegularExpressions.Regex.Replace(Claims.Fold(text), @"[^\p{L}\p{N}]+", " ").Trim();
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"^\W*c?\s*(\d{1,3})\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase)]
+    private static partial System.Text.RegularExpressions.Regex ClaimId();
+
+    /// <summary>The CV's own headline or summary, only when it is in the resume's language.</summary>
+    private static Claim? InLanguage(Selection s, string kind) =>
+        s.Of(kind).FirstOrDefault() is { } f && Languages.PtOrEn(f.Fact.Statement) == (s.Language == "en" ? "en" : "pt") ? new Claim(f.Fact.Statement, [f.Label]) : null;
+
+    /// <summary>
+    /// What a headline or summary may say about the person as a whole, beyond the facts it cites: every skill and technology, the years
+    /// counted from the dates, the roles held ("Sênior" is true when a role says it), "developer" and "engineer" as the same profession,
+    /// and back end, front end or full stack when the person's technologies show that work. Bullets still answer only to their own facts.
+    /// </summary>
+    internal static List<string> Profile(Selection s)
+    {
+        var experiences = s.Of("experience").Select(x => x.Fact).ToList();
+        var tools = s.Of("skill").Select(x => x.Fact.Statement).Concat(experiences.SelectMany(x => x.Technologies)).ToList();
+        var words = new List<string>(tools) { $"{Prompts.Years(experiences)} anos years" };
+        words.AddRange(experiences.Select(x => x.Role ?? "").Where(r => r.Length > 0));
+        var folded = Claims.Fold(string.Join(" ", words));
+        if (System.Text.RegularExpressions.Regex.IsMatch(folded, @"\b(desenvolvedor|desenvolvedora|developer|engenheir|engineer|programador|programmer)"))
+            words.Add("developer engineer software engineer desenvolvedor desenvolvedora engenheiro engenheira programador programmer software");
+        var back = System.Text.RegularExpressions.Regex.IsMatch(folded, @"asp\.net|\.net|c#|java|spring|node|django|rails|laravel|php|golang|\bgo\b|postgres|sql|rabbitmq|kafka|\bapi");
+        var front = System.Text.RegularExpressions.Regex.IsMatch(folded, @"angular|react|vue|typescript|javascript|html|css|svelte");
+        if (back) words.Add("backend back-end back end");
+        if (front) words.Add("frontend front-end front end");
+        if (back && front) words.Add("full stack fullstack full-stack");
+        return words;
+    }
+
     public static string? Gap(Draft d, IReadOnlyList<Prompts.Verdict> verdicts)
     {
         var ids = d.Claims().Select(c => c.Id).ToHashSet();
@@ -117,6 +180,12 @@ internal static class Conferente
         return missing + twice + unknown == 0 ? null
             : $"o Revisor não avaliou cada afirmação uma vez ({missing} sem veredito, {twice} repetidas, {unknown} que não existem no rascunho)";
     }
+
+    /// <summary>The sentences of a summary, each with its end mark; ".NET" and "Node.js" do not end a sentence.</summary>
+    internal static IEnumerable<string> Sentences(string text) =>
+        SentenceEnd().Split(text.Trim()).Select(x => x.Trim()).Where(x => x.Length > 0);
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"(?<=[.!?])\s+(?=[A-ZÀ-Ú])")] private static partial System.Text.RegularExpressions.Regex SentenceEnd();
 
     /// <summary>Tira do rascunho as afirmações que o Revisor recusou; título e resumo voltam ao texto original do fato.</summary>
     public static (Draft Draft, List<string> Removed) Apply(Draft d, Selection s, IReadOnlyList<Prompts.Verdict> verdicts)
@@ -129,8 +198,8 @@ internal static class Conferente
         {
             if (!refused.TryGetValue(id, out var issue)) continue;
             removed.Add($"\"{claim.Text}\": {issue}");
-            if (where == "headline") headline = s.Of("headline").Select(h => new Claim(h.Fact.Statement, [h.Label])).FirstOrDefault();
-            else if (where == "summary") summary = s.Of("summary").Select(h => new Claim(h.Fact.Statement, [h.Label])).FirstOrDefault();
+            if (where == "headline") headline = InLanguage(s, "headline");
+            else if (where == "summary") summary = InLanguage(s, "summary");
             else
             {
                 var i = Array.FindIndex(experiences, x => x.Fact == where);

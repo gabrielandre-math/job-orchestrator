@@ -51,6 +51,23 @@ internal sealed class ResumeComposer(IProfileApi profiles, IJobsApi jobs, IIntel
         var written = await ai.CompleteAsync(LlmRequest.For(LlmTasks.ResumeTailor, Prompts.Writer(s.Language), Prompts.WriterPrompt(job, s), Prompts.WriterSchema,
             timeoutSeconds: 300, thread: thread, agent: "Redator"), ct);
         var parsed = written.Ok ? Draft.Parse(written.Json!) : null;
+        // A draft in two languages, with the CV's own summary or a bullet that only lists tools goes to another model, told what to fix.
+        if (parsed is not null && Quality.Problems(parsed, s) is { Count: > 0 } issues)
+        {
+            await ai.NoteAsync(thread, "Conferente", $"O rascunho tem {issues.Count} {(issues.Count == 1 ? "problema" : "problemas")} de redação; outro modelo reescreve", string.Join("\n", issues), "Redator", false, ct);
+            // The fix goes up the ladder from the model that wrote it (a cloud model after the local one), as a light task with its own
+            // daily budget: the writer's budget being spent for the day must not leave a resume in two languages.
+            var ladder = (await ai.LadderAsync(ct)).Select(v => v.Id).ToList();
+            var at = ladder.IndexOf(written.ProviderId);
+            foreach (var next in ladder.Skip(at + 1).Concat(ladder.Take(Math.Max(0, at))).Where(id => id != written.ProviderId))
+            {
+                var again = await ai.CompleteOnAsync(next, LlmRequest.For(LlmTasks.ResumeFix, Prompts.Writer(s.Language), Prompts.WriterPrompt(job, s) + Quality.Fix(issues), Prompts.WriterSchema,
+                    timeoutSeconds: 300, thread: thread, agent: "Redator"), ct);
+                if (!again.Ok) continue;
+                if (Draft.Parse(again.Json!) is { } better && Quality.Problems(better, s).Count < issues.Count) { parsed = better; written = again; }
+                break;
+            }
+        }
         if (parsed is not null)
         {
             draft = parsed;
@@ -87,7 +104,7 @@ internal sealed class ResumeComposer(IProfileApi profiles, IJobsApi jobs, IIntel
         {
             var review = await ai.CompleteAsync(LlmRequest.For(LlmTasks.ResumeFactcheck, Prompts.Reviewer, Prompts.ReviewerPrompt(draft, s), Prompts.ReviewerSchema,
                 avoidFamily: writerFamily, timeoutSeconds: 240, thread: thread, agent: "Revisor"), ct);
-            var verdicts = review.Ok ? Prompts.ParseVerdicts(review.Json!) : null;
+            var verdicts = review.Ok && Prompts.ParseVerdicts(review.Json!) is { } raw ? Conferente.Normalize(draft, raw) : null;
             var gap = verdicts is null ? review.Error : Conferente.Gap(draft, verdicts);
             if (verdicts is not null && gap is null)
             {
@@ -352,7 +369,7 @@ internal sealed record PdfCheck(int Pages, int Expected, int Found, List<string>
 /// que é a mesma que a vaga usa), o título do topo cabe numa linha, e experiência que ficou sem nenhum tópico ganha o próprio fato como
 /// tópico, se ele estiver no idioma do currículo. Nada entra sem fato.
 /// </summary>
-internal static class Tailor
+internal static partial class Tailor
 {
     public static Draft Finish(Draft d, Selection s)
     {
@@ -367,8 +384,65 @@ internal static class Tailor
             var own = s.Children(e.Fact).Prepend(parent).Where(p => p.Fact.Statement.Length > 30 && Languages.Detect(p.Fact.Statement) == s.Language).Take(2);
             return e with { Bullets = [.. own.Select(p => new Claim(p.Fact.Statement, [p.Label]))] };
         }).ToArray();
-        return d with { Skills = skills, Headline = headline, Experiences = experiences };
+        // No headline left after the checks: the most recent role as written in this resume, and the job's keywords the person has.
+        if (headline is null && experiences.FirstOrDefault() is { Title.Length: > 0 } last && !Quality.Untranslated(last.Title, s.Language))
+            headline = new Claim(Fit(string.Join(" | ", s.Matched.Take(3).Prepend(last.Title)), 64), [last.Fact]);
+        var years = Prompts.Years(s.Of("experience").Select(p => p.Fact));
+        var summaryClaim = d.Summary is { } given ? given with { Text = Counted(given.Text, years) } : Built(headline, experiences, skills, s, years);
+        var en = s.Language == "en";
+        return d with
+        {
+            Skills = skills, Headline = headline is null ? null : headline with { Text = Plain(headline.Text, en) }, Summary = summaryClaim is null ? null : summaryClaim with { Text = Plain(summaryClaim.Text, en) },
+            Experiences = [.. experiences.Select(e => e with { Title = Plain(e.Title, en), Bullets = [.. e.Bullets.Select(b => b with { Text = Plain(b.Text, en) })] })],
+            Education = [.. d.Education.Select(x => x with { Text = Plain(x.Text, en) })], Languages = [.. d.Languages.Select(x => x with { Text = Level(x.Text) })]
+        };
     }
+
+    /// <summary>
+    /// No summary survived the checks: one written from what did, the role of the headline, the years counted from the dates, the job's
+    /// keywords the person has and where the person worked. A resume with no summary sells less than a plain one with facts.
+    /// </summary>
+    internal static Claim? Built(Claim? headline, DraftExperience[] experiences, string[] skills, Selection s, int years)
+    {
+        var role = headline?.Text.Split(" | ")[0].Trim() ?? experiences.FirstOrDefault()?.Title;
+        if (string.IsNullOrWhiteSpace(role) || Quality.Untranslated(role, s.Language)) return null;
+        var en = s.Language == "en";
+        var tools = skills.Where(x => !role.Contains(x, StringComparison.OrdinalIgnoreCase)).Take(3).ToList();
+        var orgs = experiences.Select(e => s.Get(e.Fact)?.Fact.Organization).OfType<string>().Where(o => o.Length > 0).Distinct().Take(2).ToList();
+        var text = role + (years > 0 ? en ? $" with {years} years of experience" : $" com {years} anos de experiência" : "")
+            + (tools.Count > 0 ? (years > 0 ? en ? " in " : " em " : en ? " experienced in " : " com experiência em ") + Join(tools, en ? "and" : "e") : "")
+            + (orgs.Count > 0 ? en ? $", across {Join(orgs, "and")}" : $", com passagem por {Join(orgs, "e")}" : "") + ".";
+        return text.Split(' ').Length < 6 ? null : new Claim(text, [.. experiences.Select(e => e.Fact)]);
+    }
+
+    private static string Join(IReadOnlyList<string> items, string and) => items.Count == 1 ? items[0] : $"{string.Join(", ", items.Take(items.Count - 1))} {and} {items[^1]}";
+
+    /// <summary>The opening sentence never says fewer years than the dates count ("6 anos" from an old CV summary when the dates give 7).</summary>
+    internal static string Counted(string summary, int years)
+    {
+        if (years <= 0) return summary;
+        var first = SentenceStop().Match(summary) is { Success: true } stop ? stop.Index : summary.Length;
+        return YearsSaid().Replace(summary[..first], m => int.Parse(m.Groups[1].Value) < years ? $"{years}{m.Groups[2].Value}" : m.Value, 1) + summary[first..];
+    }
+
+    /// <summary>No dashes as punctuation, and thousands written the way the resume's language writes them (1,200 in English, 1.200 in Portuguese).</summary>
+    internal static string Plain(string text, bool en)
+    {
+        var t = Dash().Replace(text, ", ");
+        return en ? Thousands().Replace(t, "$1,$2") : ThousandsEn().Replace(t, "$1.$2");
+    }
+
+    /// <summary>"Portuguese — Native" is "Portuguese (Native)".</summary>
+    internal static string Level(string line) => LevelDash().Match(line) is { Success: true } m ? $"{m.Groups[1].Value.Trim()} ({m.Groups[2].Value.Trim()})" : Dash().Replace(line, ", ");
+
+    [GeneratedRegex(@"\b(\d{1,2})(\+?\s*(?:anos|years))\b", RegexOptions.IgnoreCase)] private static partial Regex YearsSaid();
+    // An em dash anywhere, an en dash between spaces; "2019–2022" keeps its range dash.
+    [GeneratedRegex(@"\s*—\s*|\s+–\s+")] private static partial Regex Dash();
+    // The end of a sentence: ".NET" and "ASP.NET Core" are not one.
+    [GeneratedRegex(@"[.!?](?=\s+\p{Lu}|\s*$)")] private static partial Regex SentenceStop();
+    [GeneratedRegex(@"^(.+?)\s+[—–-]\s+(.+)$")] private static partial Regex LevelDash();
+    [GeneratedRegex(@"(?<![\d.,])(\d{1,3})\.(\d{3})(?![\d.,])")] private static partial Regex Thousands();
+    [GeneratedRegex(@"(?<![\d.,])(\d{1,3}),(\d{3})(?![\d.,])")] private static partial Regex ThousandsEn();
 
     private static string Same(string text) => Regex.Replace(Claims.Fold(text), @"[^\p{L}\p{N}]+", " ").Trim();
 
