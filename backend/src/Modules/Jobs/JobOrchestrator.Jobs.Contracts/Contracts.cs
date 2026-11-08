@@ -113,6 +113,15 @@ public sealed record JobEmailRepliedV1(Guid JobId, string? Class, DateTime At)
     public const string EventType = "mail.job-email-replied.v1";
 }
 
+/// <summary>
+/// Published by Mail: an e-mail about a selection process that answers none of the app's e-mails, usually a platform's notice (Gupy, Greenhouse,
+/// Lever, Indeed: received, next step, interview, closed). Applications finds the application by the company. Company is what the local model read.
+/// </summary>
+public sealed record HiringMailV1(string MessageId, string Sender, string Subject, string Snippet, string? Company, string Class, DateTime At)
+{
+    public const string EventType = "mail.hiring-mail.v1";
+}
+
 /// <summary>Contrato público do módulo Jobs.</summary>
 public interface IJobsApi
 {

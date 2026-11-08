@@ -64,6 +64,59 @@ public sealed class MailToApplicationDbTests
         }
     }
 
+    [Fact]
+    public async Task A_platform_notice_confirms_the_application_you_sent_yourself_and_marks_the_step()
+    {
+        var name = $"jo_m2p_{Guid.NewGuid():N}"[..20];
+        await using (var admin = new NpgsqlConnection(Admin))
+        {
+            await admin.OpenAsync();
+            await admin.ExecuteAsync($"create database {name}");
+        }
+        var conn = new NpgsqlConnectionStringBuilder(Admin) { Database = name }.ConnectionString;
+        try
+        {
+            var options = new DbContextOptionsBuilder<ApplicationsDbContext>();
+            options.UseModuleDatabase(conn, "applications");
+            await using var db = new ApplicationsDbContext(options.Options);
+            await db.Database.MigrateAsync();
+            var now = DateTime.UtcNow;
+            JobApplication Handoff(string company, string title)
+            {
+                var app = JobApplication.Create(new JobShortlistedV1(Guid.NewGuid(), Guid.NewGuid(), $"{company}:{title}", company, title, "Remoto", "https://jobs.example/1", 80, "ats"), now);
+                app.MaterialsReady("/tmp/cv.pdf", new string('a', 64), now);
+                app.Move(ApplicationState.ManualHandoff, "Kit pronto para você.", "Supervisor", now);
+                db.Applications.Add(app);
+                return app;
+            }
+            var mine = Handoff("Konsi Tecnologia", "Desenvolvedor .NET");
+            var other = Handoff("Acme", "Analista de Dados");
+            await db.SaveChangesAsync();
+            var consumer = new HiringMailConsumer(db, TimeProvider.System);
+
+            // Mail from before the application existed is about something else.
+            await consumer.ConsumeAsync(Send(HiringMailV1.EventType, new HiringMailV1("<old@lever>", "Konsi <no-reply@hire.lever.co>", "Thanks for applying to Konsi", "", "Konsi", "application_received", now.AddDays(-30))), CancellationToken.None);
+            Assert.Equal(ApplicationState.ManualHandoff, (await db.Applications.AsNoTracking().SingleAsync(a => a.Id == mine.Id)).State);
+
+            await consumer.ConsumeAsync(Send(HiringMailV1.EventType, new HiringMailV1("<r1@lever>", "Konsi <no-reply@hire.lever.co>", "Thanks for applying to Konsi", "", "Konsi", "application_received", now.AddMinutes(1))), CancellationToken.None);
+            await consumer.ConsumeAsync(Send(HiringMailV1.EventType, new HiringMailV1("<r2@lever>", "Konsi <no-reply@hire.lever.co>", "Konsi: next steps", "We would like to schedule an interview", "Konsi", "interview_invite", now.AddMinutes(2))), CancellationToken.None);
+
+            var after = await db.Applications.AsNoTracking().SingleAsync(a => a.Id == mine.Id);
+            Assert.Equal(ApplicationState.SubmittedConfirmed, after.State);
+            Assert.Equal(3, after.EvidenceLevel);
+            Assert.Equal("Entrevista", after.Outcome);
+            Assert.Equal(2, await db.Evidence.AsNoTracking().CountAsync(x => x.ApplicationId == mine.Id && x.Kind == "platform_mail"));
+            Assert.Equal(ApplicationState.ManualHandoff, (await db.Applications.AsNoTracking().SingleAsync(a => a.Id == other.Id)).State);
+        }
+        finally
+        {
+            NpgsqlConnection.ClearAllPools();
+            await using var admin = new NpgsqlConnection(Admin);
+            await admin.OpenAsync();
+            await admin.ExecuteAsync($"drop database if exists {name} with (force)");
+        }
+    }
+
     [Theory]
     [InlineData("interview_invite", "Entrevista")]
     [InlineData("offer", "Oferta")]

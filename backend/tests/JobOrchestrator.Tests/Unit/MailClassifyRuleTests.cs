@@ -23,4 +23,14 @@ public sealed class MailClassifyRuleTests
     [InlineData("assessment", "Próxima etapa", "Envie o desafio técnico até sexta", "assessment")]
     public void The_model_class_needs_its_own_words(string category, string subject, string text, string expected) =>
         Assert.Equal(expected, MailService.Checked(category, subject, text));
+
+    [Theory]
+    [InlineData("no-reply@gupy.com.br", true)]
+    [InlineData("naoresponda@gupy.io", true)]
+    [InlineData("no-reply@us.greenhouse-mail.io", true)]
+    [InlineData("no-reply@hire.lever.co", true)]
+    [InlineData("imile@ses-mail.inhire.app", true)]
+    [InlineData("rh@konsi.com.br", false)]
+    [InlineData("vagas@notgupy.io", false)]
+    public void Platform_notices_are_read_whatever_the_subject(string from, bool platform) => Assert.Equal(platform, MailService.Platform().IsMatch(from));
 }

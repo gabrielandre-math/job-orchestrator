@@ -707,7 +707,7 @@ internal sealed partial class MailService(
                             }
                         continue;
                     }
-                    if (link is null && !ambiguous && !Hiring().IsMatch(subject)) continue;
+                    if (link is null && !ambiguous && !Hiring().IsMatch(subject) && !Platform().IsMatch(from)) continue;
                     var messageId = env.MessageId ?? $"{a.Id}:{summary.UniqueId.Id}";
                     if (await db.Incoming.AnyAsync(x => x.MessageId == messageId, ct)) continue;
                     var preview = Cut(summary.PreviewText ?? "", 600);
@@ -721,11 +721,17 @@ internal sealed partial class MailService(
                         continue;
                     }
                     // Rules first (newsletters, promotions, work tools, closed jobs); the model decides the rest and its answer is checked.
-                    (string? cls, bool action) = Rule(from, subject, preview) is { } ruled ? (ruled, false) : await ClassifyAsync(from, subject, preview, ct);
+                    (string? cls, bool action, string? company) = Rule(from, subject, preview) is { } ruled ? (ruled, false, null) : await ClassifyAsync(from, subject, preview, ct);
                     cls = Checked(cls, subject, preview);
                     // A recruiter writing first is a new opportunity, kept without a job; only unrelated mail is skipped.
                     if (link is null && !ambiguous && cls is "other" or "job_alert" or null) continue;
                     db.Incoming.Add(new IncomingMail { MessageId = messageId, From = from, Subject = Cut(subject, 300), Date = env.Date?.UtcDateTime ?? Now, Snippet = preview, Class = cls, ActionNeeded = action || ambiguous, OutgoingId = link, Ambiguous = ambiguous, ReceivedAt = Now });
+                    // A platform's notice about an application you sent through it (or by hand): Applications finds which one by the company.
+                    if (link is null && !ambiguous && cls is "application_received" or "rejection" or "interview_invite" or "assessment" or "offer" or "job_closed")
+                    {
+                        var name = env.From.Mailboxes.FirstOrDefault()?.Name;
+                        db.Publish(HiringMailV1.EventType, new HiringMailV1(messageId, string.IsNullOrWhiteSpace(name) ? from : $"{name} <{from}>", Cut(subject, 300), preview, company, cls, env.Date?.UtcDateTime ?? Now), Now);
+                    }
                     if (link is { } id && await db.Outgoing.FindAsync([id], ct) is { } o && o.Status is "Sent")
                     {
                         o.Status = "Replied";
@@ -829,16 +835,17 @@ internal sealed partial class MailService(
         return changed;
     }
 
-    private async Task<(string?, bool)> ClassifyAsync(string from, string subject, string text, CancellationToken ct)
+    private async Task<(string?, bool, string?)> ClassifyAsync(string from, string subject, string text, CancellationToken ct)
     {
         var res = await ai.CompleteAsync(LlmRequest.For(LlmTasks.EmailClassify, LocalTaskSpecs.EmailClassifySystem, LocalTaskSpecs.EmailClassifyPrompt(from, subject, text), LocalTaskSpecs.EmailClassifySchema, timeoutSeconds: 60), ct);
-        if (!res.Ok || res.Json is null) return (null, false);
+        if (!res.Ok || res.Json is null) return (null, false, null);
         try
         {
             using var d = JsonDocument.Parse(res.Json);
-            return (d.RootElement.GetProperty("category").GetString(), d.RootElement.TryGetProperty("action_needed", out var a) && a.ValueKind == JsonValueKind.True);
+            var company = d.RootElement.TryGetProperty("company", out var c) && c.ValueKind == JsonValueKind.String && c.GetString() is { Length: > 1 } named ? named.Trim() : null;
+            return (d.RootElement.GetProperty("category").GetString(), d.RootElement.TryGetProperty("action_needed", out var a) && a.ValueKind == JsonValueKind.True, company);
         }
-        catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { return (null, false); }
+        catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { return (null, false, null); }
     }
 
     // ---------- Texto ----------
@@ -883,5 +890,8 @@ internal sealed partial class MailService(
     private static string Slug(string s) => new string(s.Normalize(NormalizationForm.FormD).Where(c => char.IsLetterOrDigit(c) || c == '-').ToArray());
 
     [GeneratedRegex(@"(?<=[.!?])\s+")] private static partial Regex Sentence();
-    [GeneratedRegex(@"candidatura|processo seletivo|entrevista|vaga|application|interview|position|recruit|oferta|offer|teste t[eé]cnico|assessment", RegexOptions.IgnoreCase)] private static partial Regex Hiring();
+    [GeneratedRegex(@"candidat|processo seletivo|entrevista|vaga|application|applying|applied|interview|position|recruit|oferta|offer|teste t[eé]cnico|assessment|pr[oó]xima etapa|next step", RegexOptions.IgnoreCase)] private static partial Regex Hiring();
+    /// <summary>The applicant tracking systems and job sites that e-mail the status of an application (received, next step, closed).</summary>
+    [GeneratedRegex(@"@(?:[\w-]+\.)*(?:gupy\.(?:io|com\.br)|inhire\.app|abler\.com\.br|quickin\.io|99jobs\.com|revelo\.com(?:\.br)?|geekhunter\.com\.br|programathor\.com\.br|greenhouse-mail\.io|greenhouse\.io|lever\.co|workablemail\.com|workable\.com|ashbyhq\.com|smartrecruiters\.com|myworkday\.com|teamtailor(?:-mail)?\.com|recruitee\.com|breezy\.hr|bamboohr\.com|jobvite\.com|icims\.com|indeed\.com|indeedemail\.com|glassdoor\.com|kenoby\.com|solides\.com(?:\.br)?|recrutei\.com\.br|pandape\.com(?:\.br)?|infojobs\.com\.br|catho\.com\.br|vagas\.com\.br|factorialhr\.com|personio\.(?:de|com))$", RegexOptions.IgnoreCase)]
+    internal static partial Regex Platform();
 }
