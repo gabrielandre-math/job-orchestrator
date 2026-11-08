@@ -28,7 +28,10 @@ internal sealed class Router(IEnumerable<IFormAdapter> adapters, AutomationDbCon
             ranked.Add((a, Score(a, s, fit, out var why), why));
         }
 
-        AutomationOutcome<T> outcome = new(AdapterResultKind.Unsupported, default, "no-adapter", "Nenhum adapter testado atende este domínio e esta etapa.", route);
+        // Only a pause by repeated failures stood in the way: the step waits for it to end instead of handing the job to you.
+        AutomationOutcome<T> outcome = ranked.Count == 0 && route.Any(r => r.Why.StartsWith("circuito aberto", StringComparison.Ordinal))
+            ? new(AdapterResultKind.RetryableFailure, default, "circuit-open", "O adapter deste site está em pausa por falhas seguidas; tenta de novo quando a pausa acabar.", route)
+            : new(AdapterResultKind.Unsupported, default, "no-adapter", "Nenhum adapter testado atende este domínio e esta etapa.", route);
         foreach (var (adapter, score, why) in ranked.OrderByDescending(r => r.Score))
         {
             AdapterResult<T> result;
@@ -94,7 +97,9 @@ internal sealed class Router(IEnumerable<IFormAdapter> adapters, AutomationDbCon
     private Task RecordAsync<T>(IFormAdapter a, string domain, Capability capability, AdapterResult<T> r, CancellationToken ct)
     {
         var ok = r.Kind == AdapterResultKind.Completed;
-        var failure = r.Kind is AdapterResultKind.RetryableFailure or AdapterResultKind.PermanentFailure or AdapterResultKind.SubmissionUnknown;
+        // A send the robot could not confirm is not a failure of the adapter (the site may just say "thank you" in other words): it does
+        // not pause the adapter, or one unrecognized confirmation page would hold every approved application behind it.
+        var failure = r.Kind is AdapterResultKind.RetryableFailure or AdapterResultKind.PermanentFailure;
         var openUntil = time.GetUtcNow().UtcDateTime.Add(CircuitPause);
         return db.Database.ExecuteSqlInterpolatedAsync($"""
             INSERT INTO automation.adapter_stats (adapter_id, domain, capability, version, attempts, confirmed, failures, consecutive_failures, last_failure_at, last_failure_code)

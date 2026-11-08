@@ -1,6 +1,7 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { send } from './api';
 import { query } from './query';
+import { Toasts } from './toast';
 
 export interface CopilotStatus { connected: boolean; seenAt: string | null; version: string | null; extensionId: string }
 export interface CopilotQueueItem { id: string; company: string; title: string; applyUrl: string; score: number; hasResume: boolean; updatedAt: string }
@@ -23,6 +24,7 @@ export class BrowserCopilot {
   readonly queue = query<CopilotQueueItem[]>(() => '/copilot/queue', 30000);
   /** The extension lives in this very browser. */
   readonly here = signal(false);
+  private readonly toasts = inject(Toasts);
 
   constructor() {
     const rt = runtime();
@@ -34,6 +36,8 @@ export class BrowserCopilot {
   open(item: { id: string; applyUrl?: string | null }) {
     const url = item.applyUrl ?? this.queue.value()?.find((q) => q.id === item.id)?.applyUrl;
     if (this.here() || !url) { void this.openMany([item.id]); return; }
+    // Without the extension in this browser the job opens empty: say so, instead of letting "filled" fail quietly.
+    if (!this.status.value()?.connected) this.toasts.info('O copiloto não está neste navegador: a vaga abre sem preencher. Instale em Configurações › Copiloto do navegador, ou abra o app pela janela dele.');
     void send('POST', `/copilot/open/${item.id}`).catch(() => undefined);
     window.open(url, '_blank', 'noopener');
   }

@@ -317,10 +317,18 @@ internal sealed class SubmitStep(StepKit k, TokenIssuer tokens) : IStep
                 app.Move(ApplicationState.BlockedByPolicy, outcome.Detail, "Remetente", now, new { outcome.ReasonCode });
                 break;
             case AdapterResultKind.NeedsHuman when outcome.ReasonCode == "ats-validation":
-                // The click went out and the site refused the form with its own error: nothing was accepted. Yours to fix on the site.
+                // The click went out and the site refused the form with its own message (Workable answers "Something went wrong" to a
+                // robot): nothing was accepted. It goes by the site, where the copilot opens it filled for you to send.
                 intent.Close(IntentState.Discarded, outcome.Detail, now);
                 app.Move(ApplicationState.NeedsHuman, outcome.Detail, "Remetente", now, new { outcome.ReasonCode });
-                db.AddTask(app.Id, HumanTaskKind.Review, "Corrigir e enviar pelo site", outcome.Detail, now);
+                app.Move(ApplicationState.ManualHandoff, $"{outcome.Detail} Abra preenchida e envie você: o copiloto completa o formulário.", "Remetente", now);
+                db.AddTask(app.Id, HumanTaskKind.Review, "Candidatar-se pelo site da vaga", $"{app.Title}, {app.Company}", now);
+                break;
+            case AdapterResultKind.RetryableFailure when outcome.ReasonCode == "circuit-open":
+                // Nothing was clicked: the application stays approved and the send waits for the pause to end.
+                intent.Close(IntentState.Discarded, "Nada foi clicado.", now);
+                app.Move(ApplicationState.ReadyToSubmit, outcome.Detail, "Guardião", now);
+                k.Enqueue(app.Id, WorkStep.Submit, TimeSpan.FromMinutes(11));
                 break;
             default:
                 // O adapter só devolve estes resultados antes do clique: nada foi enviado.

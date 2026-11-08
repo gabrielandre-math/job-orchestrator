@@ -83,6 +83,9 @@ internal sealed partial class GenericForm(BrowserPool browsers, IHttpClientFacto
         if (new Uri(page.Url).Host.EndsWith("whatjobs.com", StringComparison.OrdinalIgnoreCase) && Listing().IsMatch(new Uri(page.Url).AbsolutePath))
             return AdapterResult<PreparedForm>.Fail(AdapterResultKind.PermanentFailure, "posting-closed", "A vaga não está mais no ar: o link do agregador leva para uma busca.");
         await DeclineCookiesAsync(page);
+        // Pages drawn in the browser (InHire, for one) show the form a few seconds after they load, with no button to press.
+        try { await page.Locator("form input[type=email], form input[type=file], input[autocomplete=email]").First.WaitForAsync(new LocatorWaitForOptions { State = WaitForSelectorState.Attached, Timeout = 8000 }); }
+        catch (TimeoutException) { /* a description page: the Apply button below opens the form */ }
         if (!await PickFormAsync(page))
         {
             // The form often opens behind an "Apply" button, on the same page or on the next one.

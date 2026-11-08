@@ -225,7 +225,7 @@ internal abstract partial class LabelForm
 
     // A salary mask can strip currency text. The same digits in a name or free-text answer do not preserve the answer.
     internal static bool AllowsNumericMask(string tag, string type, string label) => tag == "input"
-        && (type == "number" || type == "text" && Regex.IsMatch(label, @"sal[aá]r|pretens[aã]o|remunera|salary|compensation|expected pay|pay expectation", RegexOptions.IgnoreCase));
+        && (type == "number" || type == "text" && Regex.IsMatch(label, @"sal[aá]r|pretens[aã]o|remunera|salary|compensation|expected pay|pay expectation|how many years|quantos anos|years of (hands-on )?(experience|development)|anos de experi[eê]ncia", RegexOptions.IgnoreCase));
 
     protected static async Task<bool> PickAsync(IPage page, string name, string label)
     {

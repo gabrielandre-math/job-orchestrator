@@ -45,7 +45,7 @@
                 <strong>{{ t.title }}</strong>
                 <span class="muted detail">{{ t.detail || meta('Site').hint }}</span>
               </a>
-              <button type="button" class="btn" (click)="copilot.open({ id: t.applicationId })"><jo-icon name="arrow-square-out" [size]="14" />Abrir preenchida</button>
+              <button type="button" class="btn" (click)="copilot.open({ id: t.applicationId })"><jo-icon name="arrow-square-out" [size]="14" />{{ copilot.here() || copilot.status.value()?.connected ? 'Abrir preenchida' : 'Abrir a vaga' }}</button>
             </div>
           } @else {
           <a class="task" [routerLink]="['/candidaturas', t.applicationId]">

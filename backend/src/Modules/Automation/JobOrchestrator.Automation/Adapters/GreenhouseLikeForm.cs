@@ -167,6 +167,9 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
 
     internal static bool SaysSubmitted(string text) => Confirmation().IsMatch(text);
 
+    /// <summary>Where the form is: the job's link itself, unless the platform keeps the form on a page of its own.</summary>
+    protected internal virtual string FormUrl(string applyUrl) => applyUrl;
+
     internal sealed record CheckboxGroup(string Label, bool Required, List<string> Ids, List<string> Options);
 
     /// <summary>The boxes that share this box's fieldset and legend, or null for a box that stands alone.</summary>
@@ -209,6 +212,14 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
 
     private static string Cut(string text, int max) => text.Length <= max ? text : text[..max] + "…";
 
+    /// <summary>The job's link with the form's page appended, when the link is the bare job (that many path parts) on the real site.</summary>
+    internal static string OnPage(string applyUrl, int parts, string page)
+    {
+        if (!Uri.TryCreate(applyUrl, UriKind.Absolute, out var u)) return applyUrl;
+        var path = u.AbsolutePath.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
+        return path.Length == parts ? new UriBuilder(u) { Path = u.AbsolutePath.TrimEnd('/') + "/" + page }.Uri.ToString() : applyUrl;
+    }
+
     protected BrowserPool Browsers => browsers;
     /// <summary>CAPTCHA e verificação anti-robô (reCAPTCHA, hCaptcha, Cloudflare Turnstile): o robô para e a vaga fica com você.</summary>
     protected const string BotCheck = "[data-sitekey], .g-recaptcha, .h-captcha, .cf-turnstile, iframe[src*='captcha'], iframe[src*='challenges.cloudflare.com'], [data-captcha]";
@@ -216,7 +227,7 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
     /// <summary>Abre, confere bloqueios, preenche por rótulo (em até três passadas, para campo condicional) e lê de volta. Mesmo caminho no preparo e no envio.</summary>
     protected virtual async Task<AdapterResult<PreparedForm>> FillAsync(IPage page, ApplyTarget target, MaterialBundle m)
     {
-        var response = await page.GotoAsync(target.ApplyUrl, new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded });
+        var response = await page.GotoAsync(FormUrl(target.ApplyUrl), new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded });
         if (response is null || response.Status is 404 or 410 || Closed(target.ApplyUrl, page.Url))
             return AdapterResult<PreparedForm>.Fail(AdapterResultKind.PermanentFailure, "posting-closed", "A vaga não está mais no ar.");
         if (await page.Locator(BotCheck).CountAsync() > 0)
@@ -470,7 +481,7 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
     [GeneratedRegex(@"resume|cv|curr[ií]culo", RegexOptions.IgnoreCase)] protected static partial Regex Resume();
     [GeneratedRegex(@"submit|send application|enviar (candidatura|inscri[cç][aã]o)|candidatar-se|finalizar candidatura", RegexOptions.IgnoreCase)] private static partial Regex SubmitButton();
     // Workable says "Your application has been submitted successfully."
-    [GeneratedRegex(@"thank(s| you)( so much)? for (applying|your application)|application (has been |was )?(received|submitted|sent)|submitted successfully|candidatura (foi )?(recebida|enviada)", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"thank(s| you)( so much)? for (applying|your application)|application (has been |was )?(received|submitted|sent)|submitted successfully|candidatura (foi )?(recebida|enviada)|inscri[cç][aã]o (foi )?(enviada|recebida|realizada|conclu[ií]da)|obrigad[oa] (por|pela) (sua )?(inscri[cç][aã]o|candidatura|se candidatar|se inscrever)|recebemos (a |sua )?(inscri[cç][aã]o|candidatura)", RegexOptions.IgnoreCase)]
     private static partial Regex Confirmation();
     [GeneratedRegex(@"already (applied|submitted)|j[aá] se candidatou", RegexOptions.IgnoreCase)] private static partial Regex AlreadyApplied();
     [GeneratedRegex(@"verification code|c[oó]digo de verifica[cç][aã]o|two-factor|autentica[cç][aã]o em dois", RegexOptions.IgnoreCase)] protected static partial Regex Mfa();
@@ -513,6 +524,8 @@ internal sealed partial class LeverForm(BrowserPool browsers, IHttpClientFactory
     public override string Id => "lever-form";
     public override string Name => "Formulário Lever";
     protected override string[] RealDomains => ["jobs.lever.co", "jobs.eu.lever.co"];
+    /// <summary>jobs.lever.co/company/id is the description; the form is at /apply.</summary>
+    protected internal override string FormUrl(string applyUrl) => OnPage(applyUrl, 2, "apply");
     protected override Regex FakePath => Path();
     [GeneratedRegex(@"^/lever/[^/]+/\d+/apply")] private static partial Regex Path();
 }
@@ -524,6 +537,8 @@ internal sealed partial class AshbyForm(BrowserPool browsers, IHttpClientFactory
     public override string Id => "ashby-form";
     public override string Name => "Formulário Ashby";
     protected override string[] RealDomains => ["jobs.ashbyhq.com"];
+    /// <summary>jobs.ashbyhq.com/company/id is the description; the form is at /application.</summary>
+    protected internal override string FormUrl(string applyUrl) => OnPage(applyUrl, 2, "application");
     protected override Regex FakePath => Path();
     [GeneratedRegex(@"^/ashby/[^/]+/\d+/application")] private static partial Regex Path();
 }

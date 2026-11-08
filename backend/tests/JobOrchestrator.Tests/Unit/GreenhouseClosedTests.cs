@@ -48,3 +48,26 @@ public sealed class BankQuestionTests
     [InlineData("Where do you live now?", "Rio de Janeiro, RJ, Brasil")]
     public void The_profile_answers_them(string question, string expected) => Assert.Equal(expected, GreenhouseLikeForm.Resolve(question, "text", Ana).Value);
 }
+
+/// <summary>The night of 07/11: three Lever jobs went to the person as "no form" because the robot opened the description, not /apply.</summary>
+public sealed class FormPageTests
+{
+    [Theory]
+    [InlineData("https://jobs.lever.co/ciandt/fa720e93-a0b1-41b6-abbc-4b83d8e9dc7b", "apply", "https://jobs.lever.co/ciandt/fa720e93-a0b1-41b6-abbc-4b83d8e9dc7b/apply")]
+    [InlineData("https://jobs.lever.co/ciandt/fa720e93-a0b1-41b6-abbc-4b83d8e9dc7b/apply", "apply", "https://jobs.lever.co/ciandt/fa720e93-a0b1-41b6-abbc-4b83d8e9dc7b/apply")]
+    [InlineData("https://jobs.ashbyhq.com/acme/1b2c3d", "application", "https://jobs.ashbyhq.com/acme/1b2c3d/application")]
+    [InlineData("http://127.0.0.1:5480/lever/acme/12/apply", "apply", "http://127.0.0.1:5480/lever/acme/12/apply")]
+    public void The_robot_opens_the_page_with_the_form(string link, string page, string expected) => Assert.Equal(expected, GreenhouseLikeForm.OnPage(link, 2, page));
+}
+
+/// <summary>The night of 07/11: "How many years of hands-on C# experience" took only digits and the robot gave up on the form.</summary>
+public sealed class NumericMaskTests
+{
+    [Theory]
+    [InlineData("How many years of hands-on C# development experience do you have?", true)]
+    [InlineData("Quantos anos de experiência com .NET você tem?", true)]
+    [InlineData("Pretensão salarial", true)]
+    [InlineData("Why do you want to work here?", false)]
+    public void A_count_of_years_takes_the_digits(string label, bool digits) => Assert.Equal(digits, JobOrchestrator.Automation.Adapters.LabelForm.AllowsNumericMask("input", "text", label));
+}
+
