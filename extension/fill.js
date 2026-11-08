@@ -74,7 +74,9 @@
     el.dispatchEvent(new Event('blur', { bubbles: true }));
   }
 
-  function mark(el, color = '#ff90ac') { el.style.outline = `2px solid ${color}`; el.style.outlineOffset = '2px'; el.dataset.joFilled = '1'; }
+  function mark(el) { el.style.outline = '2px solid #ff90ac'; el.style.outlineOffset = '2px'; el.dataset.joFilled = '1'; delete el.dataset.joMissing; }
+  // Yours to answer: outlined in yellow, and still open to a later pass (a step that brings the answer, or you).
+  function flag(el) { el.style.outline = '2px solid #e6b450'; el.style.outlineOffset = '2px'; el.dataset.joMissing = '1'; }
 
   function pickOption(select, value) {
     const v = fold(value);
@@ -163,7 +165,7 @@
       const required = el.required || el.getAttribute('aria-required') === 'true';
       const type = (el.type || '').toLowerCase();
       if (!required || type === 'checkbox' || type === 'radio' || type === 'file' && el.files?.length || el.value) continue;
-      mark(el, '#e6b450');
+      flag(el);
       n++;
     }
     return n;
