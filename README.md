@@ -41,6 +41,7 @@ The interface is in Brazilian Portuguese. Résumés and form answers are written
 - **Your data stays in your user folder.** CV, profile, résumés, application history and e-mail metadata live in `~/.local/share/job-orchestrator` on Linux, `~/Library/Application Support/JobOrchestrator` on macOS and `%LOCALAPPDATA%\JobOrchestrator` on Windows. What leaves the computer is what a source needs to answer a request and the applications you approve.
 - **No telemetry.** Nothing reports usage anywhere.
 - **The local model comes first.** Reading CVs, scoring jobs and drafting text run on a model served by [Ollama](https://ollama.com). It uses your GPU when Ollama supports it (NVIDIA, AMD or Apple Silicon) and the CPU otherwise. The Providers screen installs the model for you.
+- **A trail for diagnosis, on your disk.** Requests that change something, each step of the queue, each change of state, the AI calls and the errors on screen go to a local log kept for 14 days, which the Diagnóstico screen filters. No answer, CV or e-mail body is written to it, and it is never sent anywhere.
 - **Your own AI subscription is optional.** If you already use Claude Code or the Codex CLI, the app can call them for the heavier writing, in the order you choose and with a reserve, so the quota you need for your own work stays untouched. No paid API key is required.
 
 ## How it works
@@ -48,7 +49,7 @@ The interface is in Brazilian Portuguese. Résumés and form answers are written
 <table>
   <tr>
     <td width="112" align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/step-radar-dark.svg"><img alt="" src=".github/assets/step-radar-light.svg" width="96"></picture></td>
-    <td><b>1. Find.</b> The Scout checks 52 registered sources through their official APIs or public pages: company career sites on Greenhouse, Lever, Ashby, SmartRecruiters, Workday, Workable and Teamtailor, Brazilian platforms such as Gupy, Sólides, InHire, Quickin and Pandapé, job APIs like Himalayas, Remotive, Remote OK and Get on Board, public employment services in Sweden, Norway, Czechia, Latvia and the United States, Hacker News and GitHub hiring threads, and the job alerts that land in your inbox. Every 10 minutes the Explorer looks for new sources based on your CV and keeps the ones that bring jobs you have not seen.</td>
+    <td><b>1. Find.</b> The Scout checks 53 registered sources through their official APIs or public pages: company career sites on Greenhouse, Lever, Ashby, SmartRecruiters, Workday, Workable and Teamtailor, Brazilian platforms such as Gupy, Sólides, InHire, Quickin and Pandapé, job APIs like Himalayas, Remotive, Remote OK and Get on Board, public employment services in Sweden, Norway, Czechia, Latvia and the United States, Hacker News and GitHub hiring threads, and the job alerts that land in your inbox. Every 10 minutes the Explorer looks for new sources based on your CV and keeps the ones that bring jobs you have not seen.</td>
   </tr>
   <tr>
     <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/step-chart-dark.svg"><img alt="" src=".github/assets/step-chart-light.svg" width="96"></picture></td>
@@ -56,15 +57,15 @@ The interface is in Brazilian Portuguese. Résumés and form answers are written
   </tr>
   <tr>
     <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/step-writer-dark.svg"><img alt="" src=".github/assets/step-writer-light.svg" width="96"></picture></td>
-    <td><b>3. Write.</b> The Writer builds a résumé for each job using only facts found in your CV, your LinkedIn export and your profile. A checker compares every line with its source, a reviewer from a different model family reads it again, and an ATS inspector parses the final PDF the way an applicant tracking system would. A cover letter is optional and follows the language of the job.</td>
+    <td><b>3. Write.</b> The Writer builds a résumé for each job using only facts found in your CV, your LinkedIn export and your profile, and it sells them: results first, the job's own words for the same work, the years counted from your dates and everything in the job's language. A draft that mixes languages or copies your old summary goes back to another model with the list of what to fix. A checker compares every line with its source, a reviewer from a different model family reads it again, and an ATS inspector parses the final PDF the way an applicant tracking system would. A cover letter is optional and follows the language of the job.</td>
   </tr>
   <tr>
     <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/step-guardian-dark.svg"><img alt="" src=".github/assets/step-guardian-light.svg" width="96"></picture></td>
-    <td><b>4. Apply, with your OK.</b> The form is filled in a real browser, and you can run a rehearsal that stops before the submit button. Nothing goes out without your approval or an authorization you set up for that kind of job, always within a daily cap and a time window. CAPTCHAs and logins are handed to you.</td>
+    <td><b>4. Apply, with your OK.</b> The form is filled in a real browser, and you can run a rehearsal that stops before the submit button. Open questions such as "tell us about a project" are answered from your CV. What only you know, like a declaration to accept or your current pay, reaches you once, grouped by meaning, and one answer covers every form that asks it, in any language. Nothing goes out without your approval or an authorization you set up for that kind of job, always within a daily cap and a time window. CAPTCHAs and logins are handed to you.</td>
   </tr>
   <tr>
     <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/step-inbox-dark.svg"><img alt="" src=".github/assets/step-inbox-light.svg" width="96"></picture></td>
-    <td><b>5. Follow up.</b> With read-only access to Gmail, replies move each application along the funnel. Every application keeps an append-only history and a proof of submission.</td>
+    <td><b>5. Follow up.</b> With read-only access to your inbox, replies move each application along the funnel, and the status e-mails from Gupy, Greenhouse, Lever, Indeed and other platforms confirm the applications you sent through them and mark interviews, offers and rejections. Every application keeps an append-only history and a proof of submission.</td>
   </tr>
 </table>
 
@@ -75,6 +76,7 @@ Job Orchestrator applies to jobs in your name. Read what it prepares before you 
 - An optional, disabled-by-default LinkedIn session connector reads job searches through a separate local browser you log in to. It is experimental, depends on the site's layout and can be interrupted by login, verification or access limits. LinkedIn restricts automated access in its terms. Profile export, alert e-mails and user-triggered page capture remain available. See the [setup and live-test guide](docs/REAL_LINKEDIN_AND_CAPTCHA.md).
 - CAPTCHAs on external job sites remain with the user. For your own server, the controlled test flow supports local image OCR, arithmetic and official Turnstile/reCAPTCHA v2/hCaptcha widgets with server validation and session continuity.
 - The scraper follows robots.txt, waits between requests and opens one connection per site.
+- The app does not sign in to Gupy, Indeed or Glassdoor with your account to search or apply, because their terms forbid automated access to accounts. It reads their public listings where that is allowed, the job alerts they e-mail you and their status e-mails, and the copilot fills the form while you apply in your own browser.
 - Sources whose terms do not allow this kind of use stay in the registry as blocked (LinkedIn Jobs, France Travail) or partner-only (the Gupy employer API and Singapore's MyCareersFuture), so you can see why they are off.
 
 Of the 53 registered sources, 24 are stable, 21 are experimental, 4 need a free API key of your own, 2 are partner-only and 2 are blocked. The catalog behind the Scout lists 34,880 company job boards.
@@ -94,6 +96,13 @@ Of the 53 registered sources, 24 are stable, 21 are experimental, 4 need a free 
 </picture>
 
 **Coverage.** For 249 countries and territories: where a source works, where openings show up through global boards, and where nothing has been checked yet.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/screen-questions-dark.webp">
+  <img alt="The answers window: three jobs ask for the same consent, two ask whether you can travel, one asks your work model and one your current pay, each with one answer for all of them." src=".github/assets/screen-questions-light.webp" width="100%">
+</picture>
+
+**Your answers.** What only you can answer, grouped by meaning, so one answer covers every form that asks it, in any language. The AI answers the rest from your CV, and these answers stay on your machine and never go to a model.
 
 ## Coming soon: Job Orchestrator for recruiters
 

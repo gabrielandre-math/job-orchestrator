@@ -71,7 +71,7 @@ export const PT = {
   'cap.jobs': 'Vagas abertas, o funil de encontradas até a fila, vagas por fonte e as ferramentas mais pedidas.',
   'cap.map': 'Os agentes e o que passa entre eles, atualizados enquanto a busca roda.',
   'cap.cov': '249 países e territórios: onde uma fonte funciona, onde aparecem vagas e o que falta conferir.',
-  'cap.q': 'O que só você pode responder, perguntado uma vez, com quantas candidaturas esperam cada resposta. As respostas ficam na sua máquina.',
+  'cap.q': 'O que só você pode responder, agrupado pelo sentido: uma resposta vale para todo formulário que pergunta a mesma coisa, em qualquer língua. A IA responde o resto pelo seu currículo, e as suas respostas ficam na sua máquina.',
   'scr.note': 'A interface é em português do Brasil. Currículos e respostas saem em português para vagas no Brasil e em inglês para as demais.',
   'soon.badge': 'Em breve',
   'rec.t2': 'para recrutadores.',

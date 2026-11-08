@@ -41,6 +41,7 @@ A interface é em português do Brasil. Currículos e respostas de formulário s
 - **Os seus dados ficam na sua pasta de usuário.** Currículo, perfil, currículos gerados, histórico das candidaturas e dados dos e-mails ficam em `~/.local/share/job-orchestrator` no Linux, em `~/Library/Application Support/JobOrchestrator` no macOS e em `%LOCALAPPDATA%\JobOrchestrator` no Windows. Sai do computador apenas o que uma fonte precisa para responder e as candidaturas que você aprova.
 - **Sem telemetria.** Nada informa uso para lugar nenhum.
 - **O modelo local vem primeiro.** Ler currículo, dar nota às vagas e escrever textos fica com um modelo servido pelo [Ollama](https://ollama.com). Ele usa a sua GPU quando o Ollama tem suporte a ela (NVIDIA, AMD ou Apple Silicon) e o processador nos outros casos. A tela de Provedores instala o modelo para você.
+- **Um rastro para diagnóstico, no seu disco.** Requisições que mudam algo, cada passo da fila, cada mudança de estado, as chamadas de IA e os erros da tela vão para um log local guardado por 14 dias, que a tela Diagnóstico filtra. Nenhuma resposta, currículo ou corpo de e-mail entra nele, e ele nunca é enviado a lugar nenhum.
 - **A sua assinatura de IA é opcional.** Se você já usa o Claude Code ou o Codex CLI, o app pode chamá-los para os textos mais pesados, na ordem que você escolher e com uma reserva, para a cota do seu trabalho continuar intacta. Nenhuma chave de API paga é necessária.
 
 ## Como funciona
@@ -48,7 +49,7 @@ A interface é em português do Brasil. Currículos e respostas de formulário s
 <table>
   <tr>
     <td width="112" align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/step-radar-dark.svg"><img alt="" src=".github/assets/step-radar-light.svg" width="96"></picture></td>
-    <td><b>1. Encontrar.</b> O Batedor consulta 52 fontes registradas pela API oficial ou pela página pública de cada uma: sites de carreira de empresas no Greenhouse, Lever, Ashby, SmartRecruiters, Workday, Workable e Teamtailor, plataformas brasileiras como Gupy, Sólides, InHire, Quickin e Pandapé, APIs de vagas como Himalayas, Remotive, Remote OK e Get on Board, serviços públicos de emprego da Suécia, da Noruega, da República Tcheca, da Letônia e dos Estados Unidos, as threads de contratação do Hacker News e do GitHub e os alertas de vaga que chegam ao seu e-mail. A cada 10 minutos, o Explorador procura fontes novas a partir do seu currículo e fica com as que trazem vagas inéditas.</td>
+    <td><b>1. Encontrar.</b> O Batedor consulta 53 fontes registradas pela API oficial ou pela página pública de cada uma: sites de carreira de empresas no Greenhouse, Lever, Ashby, SmartRecruiters, Workday, Workable e Teamtailor, plataformas brasileiras como Gupy, Sólides, InHire, Quickin e Pandapé, APIs de vagas como Himalayas, Remotive, Remote OK e Get on Board, serviços públicos de emprego da Suécia, da Noruega, da República Tcheca, da Letônia e dos Estados Unidos, as threads de contratação do Hacker News e do GitHub e os alertas de vaga que chegam ao seu e-mail. A cada 10 minutos, o Explorador procura fontes novas a partir do seu currículo e fica com as que trazem vagas inéditas.</td>
   </tr>
   <tr>
     <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/step-chart-dark.svg"><img alt="" src=".github/assets/step-chart-light.svg" width="96"></picture></td>
@@ -56,15 +57,15 @@ A interface é em português do Brasil. Currículos e respostas de formulário s
   </tr>
   <tr>
     <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/step-writer-dark.svg"><img alt="" src=".github/assets/step-writer-light.svg" width="96"></picture></td>
-    <td><b>3. Escrever.</b> O Redator monta um currículo para cada vaga apenas com fatos do seu currículo, da sua exportação do LinkedIn e do seu perfil. O Conferente compara cada linha com a origem, um Revisor de outra família de modelos lê de novo e o Inspetor ATS lê o PDF final do jeito que um sistema de recrutamento leria. A carta de apresentação é opcional e segue a língua da vaga.</td>
+    <td><b>3. Escrever.</b> O Redator monta um currículo para cada vaga apenas com fatos do seu currículo, da sua exportação do LinkedIn e do seu perfil, e vende esses fatos: resultado primeiro, as palavras da própria vaga para o mesmo trabalho, os anos contados pelas suas datas e tudo na língua da vaga. Um rascunho que mistura línguas ou copia o seu resumo antigo volta para outro modelo com a lista do que corrigir. O Conferente compara cada linha com a origem, um Revisor de outra família de modelos lê de novo e o Inspetor ATS lê o PDF final do jeito que um sistema de recrutamento leria. A carta de apresentação é opcional e segue a língua da vaga.</td>
   </tr>
   <tr>
     <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/step-guardian-dark.svg"><img alt="" src=".github/assets/step-guardian-light.svg" width="96"></picture></td>
-    <td><b>4. Candidatar, com o seu ok.</b> O formulário é preenchido num navegador de verdade, e um ensaio para antes do botão de enviar. Nada sai sem a sua aprovação ou sem uma autorização que você deu para aquele tipo de vaga, sempre dentro de um teto por dia e de uma janela de horário. CAPTCHA e login ficam com você.</td>
+    <td><b>4. Candidatar, com o seu ok.</b> O formulário é preenchido num navegador de verdade, e um ensaio para antes do botão de enviar. Perguntas abertas como "conte um projeto" são respondidas pelo seu currículo. O que só você sabe, como uma declaração para aceitar ou o seu salário atual, chega uma vez, agrupado pelo sentido, e uma resposta vale para todo formulário que pergunta a mesma coisa, em qualquer língua. Nada sai sem a sua aprovação ou sem uma autorização que você deu para aquele tipo de vaga, sempre dentro de um teto por dia e de uma janela de horário. CAPTCHA e login ficam com você.</td>
   </tr>
   <tr>
     <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/step-inbox-dark.svg"><img alt="" src=".github/assets/step-inbox-light.svg" width="96"></picture></td>
-    <td><b>5. Acompanhar.</b> Com acesso só de leitura ao Gmail, as respostas movem cada candidatura no funil. Toda candidatura tem um histórico que só cresce e uma prova de envio.</td>
+    <td><b>5. Acompanhar.</b> Com acesso só de leitura ao seu e-mail, as respostas movem cada candidatura no funil, e os e-mails de status da Gupy, do Greenhouse, do Lever, do Indeed e de outras plataformas confirmam as candidaturas enviadas por elas e marcam entrevista, oferta e recusa. Toda candidatura tem um histórico que só cresce e uma prova de envio.</td>
   </tr>
 </table>
 
@@ -75,9 +76,10 @@ O Job Orchestrator se candidata em seu nome. Leia o que ele prepara antes de dei
 - A busca opcional do LinkedIn usa uma sessão autenticada no navegador local, com limites de consultas. Login e desafios exigem sua ação; Easy Apply permanece assistido. A extensão captura o conteúdo da página que você abriu. Veja o [guia e os limites de validação real](docs/REAL_LINKEDIN_AND_CAPTCHA.md); testes de DOM não comprovam acesso autenticado ao serviço.
 - CAPTCHAs de sites externos ficam com você. Quando um site bloqueia acesso automático, a fonte fica de fora.
 - O coletor segue o robots.txt, espera entre as requisições e abre uma conexão por site.
+- O app não entra na Gupy, no Indeed nem no Glassdoor com a sua conta para buscar ou se candidatar, porque os termos deles proíbem acesso automatizado às contas. Ele lê as vagas públicas onde isso é permitido, os alertas que eles mandam para o seu e-mail e os e-mails de status, e o copiloto preenche o formulário enquanto você se candidata no seu próprio navegador.
 - Fontes cujos termos não permitem esse uso ficam no registro como bloqueadas (LinkedIn Jobs, France Travail) ou apenas com parceria (a API de empregador da Gupy e o MyCareersFuture de Singapura), com o motivo à vista.
 
-Das 52 fontes registradas, 24 são estáveis, 20 são experimentais, 4 precisam de uma chave de API gratuita sua, 2 dependem de parceria e 2 estão bloqueadas. O catálogo do Batedor tem 34.880 quadros de vagas de empresas.
+Das 53 fontes registradas, 24 são estáveis, 21 são experimentais, 4 precisam de uma chave de API gratuita sua, 2 dependem de parceria e 2 estão bloqueadas. O catálogo do Batedor tem 34.880 quadros de vagas de empresas.
 
 ## De perto
 
@@ -94,6 +96,13 @@ Das 52 fontes registradas, 24 são estáveis, 20 são experimentais, 4 precisam 
 </picture>
 
 **Cobertura.** Para 249 países e territórios: onde uma fonte funciona, onde aparecem vagas por quadros globais e onde nada foi conferido ainda.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/screen-questions-dark.webp">
+  <img alt="A janela de respostas: três vagas pedem o mesmo aceite, duas perguntam se você pode viajar, uma pergunta a modalidade e outra o salário atual, cada uma com uma resposta para todas." src=".github/assets/screen-questions-light.webp" width="100%">
+</picture>
+
+**Suas respostas.** O que só você pode responder, agrupado pelo sentido, para que uma resposta valha para todo formulário que pergunta a mesma coisa, em qualquer língua. A IA responde o resto pelo seu currículo, e essas respostas ficam na sua máquina e nunca vão para um modelo.
 
 ## Em breve: o Job Orchestrator para recrutadores
 
