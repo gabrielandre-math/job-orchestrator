@@ -30,6 +30,8 @@
   // O mesmo texto de confirmação que o app reconhece quando ele mesmo envia.
   const CONFIRM = /thank(s| you)( so much)? for (applying|your (application|interest))|application (has been |was )?(received|submitted|sent|completed?)|we('ve| have) received your application|successfully (applied|submitted)|obrigad[oa] (por (se candidatar|sua candidatura|seu interesse|participar))|candidatura (foi )?(recebida|enviada|realizada|conclu[ií]da)|recebemos (a |sua )?candidatura|inscri[cç][aã]o (foi )?(realizada|conclu[ií]da|enviada)|gracias por (postularte|tu postulaci[oó]n|aplicar)|postulaci[oó]n (enviada|recibida)/i;
   const SEND = /enviar|submit|apply|candidat|finalizar|concluir|send|postular/i;
+  // The button that opens the form on a job's description page (never a send button).
+  const OPEN = /^\s*(apply( now| for this job)?|candidat(ar|e)-se|quero me candidatar|aplicar|inscrever-se|i'?m interested|postularme)\s*$/i;
 
   const fold = (s) => (s || '').toString().normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
 
@@ -219,7 +221,12 @@
     const count = fillAll(v, resume);
     const left = missing();
     if (extra.watch) watch(v, resume);
-    if (window.top === window && (count > 0 || extra.watch))
+    // The description page of the job, before the form: point at the button that opens it; the fill comes when the form appears.
+    if (window.top === window && count === 0 && formless()) {
+      const open = [...document.querySelectorAll('a, button, [role=button]')].find((b) => b.offsetParent && OPEN.test(b.innerText || b.getAttribute('aria-label') || ''));
+      if (open) { open.style.outline = '3px solid #ff90ac'; open.style.outlineOffset = '3px'; }
+      banner(open ? `Clique em "${(open.innerText || '').trim()}" (contornado em rosa) para abrir o formulário: o copiloto preenche quando ele aparecer.` : 'Abra o formulário de candidatura no site: o copiloto preenche quando ele aparecer.', !!extra.applicationId);
+    } else if (window.top === window && (count > 0 || extra.watch))
       banner(`${count} ${count === 1 ? 'campo preenchido' : 'campos preenchidos'}${window.__joResumeDone ? ', com o currículo anexado' : ''} (contornados em rosa)${left ? `; ${left} ${left === 1 ? 'obrigatório falta' : 'obrigatórios faltam'} (em amarelo)` : ''}. Confira e envie você mesmo.`, !!extra.applicationId);
     return count;
   };
