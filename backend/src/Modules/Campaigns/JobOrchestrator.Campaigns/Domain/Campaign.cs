@@ -1,6 +1,6 @@
 namespace JobOrchestrator.Campaigns.Domain;
 
-/// <summary>Agregado: uma campanha de busca, com critérios, limites e até onde pode ir sozinha.</summary>
+/// <summary>Agregado: uma campanha de busca, com critérios e até onde vai (só buscar, ou buscar e preparar).</summary>
 internal sealed class Campaign : AggregateRoot
 {
     private Campaign() { }
@@ -21,7 +21,7 @@ internal sealed class Campaign : AggregateRoot
     public DateTime UpdatedAt { get; private set; }
     public uint Version { get; private set; }
 
-    /// <summary>Toda campanha nasce só preparando: enviar exige mudança explícita do dono.</summary>
+    /// <summary>Toda campanha nasce preparando: o app prepara e você envia.</summary>
     public static Campaign Create(string name, IEnumerable<string> technologies, IEnumerable<string> locations, IEnumerable<string> sources, DateTime now) => new()
     {
         Id = Guid.CreateVersion7(),
@@ -37,28 +37,10 @@ internal sealed class Campaign : AggregateRoot
         UpdatedAt = now
     };
 
-    /// <summary>Liga o envio automático: só com uma autorização ativa, criada na tela (nunca por configuração).</summary>
-    public void EnableAuto(SubmitAuthorization authorization, DateTime now)
-    {
-        if (authorization.CampaignId != Id || !authorization.Active(now)) throw new DomainRuleException("A autorização não vale para esta campanha agora.");
-        Mode = SubmissionMode.AutoSubmit;
-        UpdatedAt = now;
-    }
-
-    /// <summary>Revogada ou vencida: volta para a revisão sua, que nunca envia sem o seu ok.</summary>
-    public void DisableAuto(DateTime now)
-    {
-        if (Mode != SubmissionMode.AutoSubmit) return;
-        Mode = SubmissionMode.ReviewRequired;
-        UpdatedAt = now;
-    }
-
-    /// <summary>Envio automático não se liga por aqui: só por autorização dada no painel.</summary>
+    /// <summary>Critérios da busca. Só buscar fica só buscar; qualquer outro modo prepara (os antigos de envio valem como preparar).</summary>
     public void Configure(SubmissionMode mode, int minFitScore, int maxSubmissionsPerDay, IEnumerable<string> technologies, IEnumerable<string> locations, IEnumerable<string> sources, DateTime now)
     {
-        // Automático não se liga por aqui; se já está ligado (por autorização), salvar outros critérios mantém.
-        if (mode == SubmissionMode.AutoSubmit && Mode != SubmissionMode.AutoSubmit) throw new DomainRuleException("O envio automático exige uma autorização dada no painel.");
-        Mode = mode;
+        Mode = mode == SubmissionMode.DiscoveryOnly ? SubmissionMode.DiscoveryOnly : SubmissionMode.PrepareOnly;
         MinFitScore = minFitScore;
         MaxSubmissionsPerDay = maxSubmissionsPerDay;
         Technologies = [.. technologies.Select(t => t.Trim()).Where(t => t.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase)];
@@ -126,7 +108,7 @@ internal sealed class CampaignRun
         new() { Id = Guid.CreateVersion7(), CampaignId = campaignId, Trigger = trigger, RequestedAt = now };
 }
 
-/// <summary>Autorização de envio automático: escopo (campanha e adapters), limites (por dia, nota mínima), validade e revogação.</summary>
+/// <summary>Autorização do antigo envio automático: a tabela fica pelo histórico; nada mais a usa.</summary>
 internal sealed class SubmitAuthorization
 {
     public Guid Id { get; init; } = Guid.CreateVersion7();
@@ -140,5 +122,4 @@ internal sealed class SubmitAuthorization
     public bool AcceptDeclarations { get; init; }
     public string Text { get; init; } = "";
     public DateTime? RevokedAt { get; set; }
-    public bool Active(DateTime now) => RevokedAt is null && now < ExpiresAt;
 }

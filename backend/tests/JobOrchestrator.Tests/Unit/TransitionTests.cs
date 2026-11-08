@@ -38,21 +38,12 @@ public sealed class TransitionTests
     [Fact]
     public void Confirmacao_sem_evidencia_forte_e_recusada()
     {
-        var app = Ready();
-        app.Move(ApplicationState.Submitting, "teste", "teste", Now);
-        Assert.Throws<DomainRuleException>(() => app.Confirmed(new SubmissionReceipt("", 2, "clicou"), "teste", Now));
-        app.Confirmed(new SubmissionReceipt("GH-1", 4, "recibo"), "teste", Now);
-        Assert.Equal(ApplicationState.SubmittedConfirmed, app.State);
-    }
-
-    [Fact]
-    public void Aprovacao_vale_so_para_o_payload_exato()
-    {
+        // The copilot's path: ready for you, then the confirmation page in your browser (level 3) or a receipt (level 4).
         var app = Prepared();
-        app.Move(ApplicationState.AwaitingApproval, "teste", "teste", Now);
-        Assert.Throws<DomainRuleException>(() => app.Approve(new string('0', 64), Now));
-        app.Approve(new string('a', 64), Now);
-        Assert.Equal(ApplicationState.ReadyToSubmit, app.State);
+        app.Move(ApplicationState.ManualHandoff, "teste", "teste", Now);
+        Assert.Throws<DomainRuleException>(() => app.Confirmed(new SubmissionReceipt("", 2, "clicou"), "teste", Now));
+        app.Confirmed(new SubmissionReceipt("", 3, "página de confirmação"), "Copiloto", Now);
+        Assert.Equal(ApplicationState.SubmittedConfirmed, app.State);
     }
 
     [Fact]
@@ -72,27 +63,6 @@ public sealed class TransitionTests
         app.MaterialsReady("/tmp/cv.pdf", "hash", Now);
         app.Move(ApplicationState.FormPreparing, "teste", "teste", Now);
         app.Prepared(new PreparedForm("a", "1", "x", new string('a', 64), []), [], Now);
-        return app;
-    }
-
-    [Fact]
-    public void Adiar_o_envio_deixa_pronta_e_poe_o_motivo_no_historico()
-    {
-        var app = Ready();
-        var before = app.History.Count;
-        app.Postpone("Teto de 3 envios por dia da autorização atingido. O envio fica para amanhã.", "Guardião", Now);
-        Assert.Equal(ApplicationState.ReadyToSubmit, app.State);
-        Assert.Equal(before + 1, app.History.Count);
-        Assert.Equal(("ReadyToSubmit", "ReadyToSubmit"), (app.History[^1].From, app.History[^1].To));
-        Assert.Contains("amanhã", app.LastReason ?? "");
-        Assert.Throws<DomainRuleException>(() => Prepared().Postpone("teto", "Guardião", Now));
-    }
-
-    private static JobApplication Ready()
-    {
-        var app = Prepared();
-        app.Move(ApplicationState.AwaitingApproval, "teste", "teste", Now);
-        app.Approve(new string('a', 64), Now);
         return app;
     }
 }

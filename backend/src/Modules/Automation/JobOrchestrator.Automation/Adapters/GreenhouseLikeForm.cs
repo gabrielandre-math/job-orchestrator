@@ -7,24 +7,23 @@ namespace JobOrchestrator.Automation.Adapters;
 
 /// <summary>
 /// Base dos formulários de candidatura preenchidos por rótulo (getByLabel), nunca por seletor frágil: o id do campo pode mudar a cada
-/// carga que o rótulo continua o mesmo. Prepara sem clicar em enviar; envia só com token válido e payload igual ao aprovado; reconcilia
-/// só lendo. Campo que aparece depois de uma resposta (pergunta condicional) entra numa segunda passada. CAPTCHA, login e MFA param
-/// para a pessoa. A declaração obrigatória (privacidade, termos) só é marcada quando a sua autorização aceita as declarações.
+/// carga que o rótulo continua o mesmo. Lê e prepara sem nunca enviar: quem envia é você, com o copiloto. Campo que aparece depois de
+/// uma resposta (pergunta condicional) entra numa segunda passada. CAPTCHA, login e MFA param para a pessoa. A declaração obrigatória
+/// (privacidade, termos) é marcada só no navegador do preparo, que nunca envia; no site, a caixa é sua.
 /// </summary>
-internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFactory http, GuardKey key, TimeProvider time, IOptions<AutomationOptions> options) : IFormAdapter
+internal abstract partial class LabelForm(BrowserPool browsers, IOptions<AutomationOptions> options) : IFormAdapter
 {
     public abstract string Id { get; }
     public string Version => "1.1.0";
     public abstract string Name { get; }
     public string Kind => "Navegador (Playwright)";
     public double Risk => 0.3;
-    public IReadOnlyList<Capability> Capabilities { get; } = [Capability.PrepareForm, Capability.SubmitApplication, Capability.ReconcileSubmission];
+    public IReadOnlyList<Capability> Capabilities { get; } = [Capability.PrepareForm];
     protected abstract string[] RealDomains { get; }
     /// <summary>No ATS falso, cada formato mora num caminho próprio do mesmo host.</summary>
     protected abstract Regex FakePath { get; }
     public IReadOnlyList<string> Domains => [.. RealDomains, .. options.Value.FakeAtsHosts];
     public IReadOnlyList<string> LiveDomains => RealDomains;
-    public bool CanReconcile(Uri url) => options.Value.FakeAtsHosts.Contains(url.Authority, StringComparer.OrdinalIgnoreCase);
     protected AutomationOptions Options => options.Value;
 
     public virtual double Fit(Uri url) =>
@@ -63,115 +62,12 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
         return filled.Kind == AdapterResultKind.Completed ? AdapterResult<PreparedForm>.Ok(filled.Value!, "Formulário preenchido e conferido. Nada foi enviado.") : filled;
     }
 
-    public async Task<AdapterResult<SubmissionReceipt>> SubmitAsync(ApplyTarget target, MaterialBundle materials, SubmitToken token, CancellationToken ct)
-    {
-        if (token.ApplicationId != target.ApplicationId || !token.IsValid(key.Bytes, time.GetUtcNow().UtcDateTime))
-            return AdapterResult<SubmissionReceipt>.Fail(AdapterResultKind.BlockedByPolicy, "invalid-token", "Autorização de envio inválida ou vencida.");
-        await using var lease = await LeaseAsync(target, ct);
-        var page = await lease.Context.NewPageAsync();
-        var filled = await FillAsync(page, target, materials);
-        if (filled.Kind != AdapterResultKind.Completed)
-            return AdapterResult<SubmissionReceipt>.Fail(filled.Kind, filled.ReasonCode!, filled.Detail);
-        if (filled.Value!.PayloadHash != token.PayloadHash)
-            return AdapterResult<SubmissionReceipt>.Fail(AdapterResultKind.BlockedByPolicy, "payload-changed", "O formulário mudou desde a aprovação. Nada foi enviado.");
-        // The site checks at the send that a person is there (Greenhouse then mails you a code): the robot never clicks, the send is yours.
-        if (filled.Value.HumanCheck is { } check)
-            return AdapterResult<SubmissionReceipt>.Fail(AdapterResultKind.NeedsHuman, "human-check", $"{check} Nada foi clicado.");
-
-        // Instructions and hidden success templates are not evidence that this submission arrived.
-        var priorConfirmations = await VisibleTextAsync(page.GetByText(Confirmed));
-        var priorDuplicates = await VisibleTextAsync(page.GetByText(AlreadyApplied()));
-        var priorAlerts = await VisibleTextAsync(page.Locator("[role=alert]"));
-        var priorReceipts = await VisibleTextAsync(page.GetByText(ReceiptId()));
-        // No send button on the page: nothing can have been clicked, so the application goes back to you instead of "maybe sent".
-        if (await SubmitControl(page).CountAsync() == 0)
-            return AdapterResult<SubmissionReceipt>.Fail(AdapterResultKind.NeedsHuman, "no-submit", "O botão de envio do formulário não foi encontrado; nada foi enviado.");
-        Chaos.Point("before-click");
-        try
-        {
-            await SubmitControl(page).ClickAsync();
-        }
-        catch (Exception ex) when (ex is PlaywrightException or TimeoutException)
-        {
-            // O clique pode ter saído antes da falha: só a reconciliação decide.
-            return AdapterResult<SubmissionReceipt>.Fail(AdapterResultKind.SubmissionUnknown, "click-uncertain", "O clique de envio falhou no meio; vai para reconciliação.");
-        }
-        Chaos.Point("after-click");
-
-        var waiting = System.Diagnostics.Stopwatch.StartNew();
-        string[] confirmations = [], duplicates = [], alerts = [];
-        do
-        {
-            ct.ThrowIfCancellationRequested();
-            confirmations = (await VisibleTextAsync(page.GetByText(Confirmed))).Except(priorConfirmations, StringComparer.Ordinal).ToArray();
-            duplicates = (await VisibleTextAsync(page.GetByText(AlreadyApplied()))).Except(priorDuplicates, StringComparer.Ordinal).ToArray();
-            alerts = (await VisibleTextAsync(page.Locator("[role=alert]"))).Except(priorAlerts, StringComparer.Ordinal).ToArray();
-            if (confirmations.Length == 0 && await page.Locator(PersonCheck).Filter(new LocatorFilterOptions { Visible = true }).CountAsync() > 0)
-                return AdapterResult<SubmissionReceipt>.Fail(AdapterResultKind.NeedsHuman, "human-check",
-                    "O site pediu para confirmar que é uma pessoa (um código no seu e-mail ou um CAPTCHA): a candidatura não foi aceita.");
-            if (confirmations.Length > 0 || duplicates.Length > 0 || alerts.Length > 0) break;
-            await Task.Delay(100, ct);
-        }
-        while (waiting.ElapsedMilliseconds < browsers.TimeoutMs);
-
-        if (duplicates.Length > 0)
-            return AdapterResult<SubmissionReceipt>.Fail(AdapterResultKind.PermanentFailure, "already-applied", "O ATS recusou: já existe candidatura com este e-mail.");
-        // The site refused the form with its own message: nothing was accepted, and the application goes back to you with that message.
-        if (confirmations.Length == 0 && alerts.Length > 0)
-            return AdapterResult<SubmissionReceipt>.Fail(AdapterResultKind.NeedsHuman, "ats-validation", $"O site recusou o formulário: {Cut(string.Join(" | ", alerts.Take(4)), 400)}");
-        if (confirmations.Length == 0)
-            return AdapterResult<SubmissionReceipt>.Fail(AdapterResultKind.SubmissionUnknown, "no-confirmation", "Clicou em enviar, mas nenhuma nova confirmação visível apareceu. O envio precisa de reconciliação.");
-        var newReceipts = (await VisibleTextAsync(page.GetByText(ReceiptId()))).Except(priorReceipts, StringComparer.Ordinal);
-        var receipt = ReceiptId().Match(string.Join('\n', confirmations.Concat(newReceipts)));
-        return receipt.Success
-            ? AdapterResult<SubmissionReceipt>.Ok(new SubmissionReceipt(receipt.Groups[1].Value, 4, "Página de confirmação com número do recibo."))
-            : AdapterResult<SubmissionReceipt>.Ok(new SubmissionReceipt("", 3, "Página de confirmação reconhecida, sem número de recibo."));
-    }
-
-    private static async Task<string[]> VisibleTextAsync(ILocator locator)
-    {
-        var result = new HashSet<string>(StringComparer.Ordinal);
-        for (var i = 0; i < Math.Min(await locator.CountAsync(), 100); i++)
-        {
-            var node = locator.Nth(i);
-            if (await node.IsVisibleAsync()) result.Add(Regex.Replace(await node.InnerTextAsync(), @"\s+", " ").Trim());
-        }
-        return [.. result.Where(t => t.Length > 0)];
-    }
-
-    /// <summary>Só leitura: pergunta ao portal do ATS se existe candidatura deste e-mail para esta vaga.</summary>
-    public async Task<AdapterResult<ReconcileResult>> ReconcileAsync(ApplyTarget target, MaterialBundle materials, CancellationToken ct)
-    {
-        var uri = new Uri(target.ApplyUrl);
-        var job = JobId().Match(uri.AbsolutePath);
-        if (!job.Success || !options.Value.FakeAtsHosts.Contains(uri.Authority, StringComparer.OrdinalIgnoreCase))
-            return AdapterResult<ReconcileResult>.Fail(AdapterResultKind.NeedsHuman, "no-portal", "Este ATS não tem consulta de candidatura; confira o e-mail de confirmação.");
-        var url = $"{uri.Scheme}://{uri.Authority}/api/receipts?job={job.Groups[1].Value}&email={Uri.EscapeDataString(materials.Email)}";
-        using var response = await http.CreateClient("sources").GetAsync(url, ct);
-        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
-            return AdapterResult<ReconcileResult>.Ok(new ReconcileResult(false, null, "O ATS não tem candidatura deste e-mail para a vaga."));
-        response.EnsureSuccessStatusCode();
-        using var doc = await HttpBodies.JsonAsync(response.Content, ct);
-        var id = doc.RootElement.GetProperty("receiptId").GetString();
-        return AdapterResult<ReconcileResult>.Ok(new ReconcileResult(true, id, "O ATS confirma a candidatura."));
-    }
-
     /// <summary>Hosts de arquivos do próprio ATS (CDN, depósito de arquivos) que a página precisa para abrir o formulário; nunca o de verificação anti-robô.</summary>
     protected virtual string[] AssetHosts => [];
     private IReadOnlyCollection<string> Hosts(ApplyTarget target) => [new Uri(target.ApplyUrl).Authority, .. Domains, .. AssetHosts];
 
     /// <summary>A clean browser context that only reaches the hosts this form needs.</summary>
     protected virtual Task<BrowserLease> LeaseAsync(ApplyTarget target, CancellationToken ct) => browsers.LeaseAsync(Hosts(target), ct);
-
-    /// <summary>The button that sends the filled form.</summary>
-    /// <summary>The form's own send button, whatever it says ("Enviar inscrição" on Greenhouse in Portuguese); by its words when the form has none.</summary>
-    protected virtual ILocator SubmitControl(IPage page) =>
-        page.Locator("form button[type=submit]:visible, form input[type=submit]:visible").Or(page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { NameRegex = SubmitButton() })).First;
-
-    /// <summary>The words of the page that says the application arrived.</summary>
-    protected virtual Regex Confirmed => Confirmation();
-
-    internal static bool SaysSubmitted(string text) => Confirmation().IsMatch(text);
 
     /// <summary>Where the form is: the job's link itself, unless the platform keeps the form on a page of its own.</summary>
     protected internal virtual string FormUrl(string applyUrl) => applyUrl;
@@ -229,22 +125,6 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
     protected BrowserPool Browsers => browsers;
     /// <summary>CAPTCHA e verificação anti-robô (reCAPTCHA, hCaptcha, Cloudflare Turnstile): o robô para e a vaga fica com você.</summary>
     protected const string BotCheck = "[data-sitekey], .g-recaptcha, .h-captcha, .cf-turnstile, iframe[src*='captcha'], iframe[src*='challenges.cloudflare.com'], [data-captcha]";
-
-    /// <summary>What a site shows after the click when it holds the application for a person: Greenhouse's e-mailed security code, or a CAPTCHA.</summary>
-    private const string PersonCheck = "#email-verification, input[id^='security-input-'], " + BotCheck;
-
-    /// <summary>
-    /// An invisible check at the send (reCAPTCHA Enterprise on Greenhouse, hCaptcha, Turnstile): nothing shows until the click, and the
-    /// robot never loads it, so the site would hold the application. Found in the page's own code; null when the page has none.
-    /// </summary>
-    protected static async Task<string?> HumanCheckAsync(IPage page) => await page.EvaluateAsync<string?>("""
-        () => {
-          const html = document.documentElement.innerHTML;
-          return /RECAPTCHA_INVISIBLE_KEY|recaptcha\/(enterprise|api)\.js|grecaptcha\./i.test(html) ? 'reCAPTCHA'
-            : /hcaptcha\.com\/1\/api\.js|hcaptcha\.execute/i.test(html) ? 'hCaptcha'
-            : /challenges\.cloudflare\.com\/turnstile/i.test(html) ? 'Turnstile' : null;
-        }
-        """) is { } name ? $"O site confirma no envio que é uma pessoa ({name})." : null;
 
     /// <summary>Abre, confere bloqueios, preenche por rótulo (em até três passadas, para campo condicional) e lê de volta. Mesmo caminho no preparo e no envio.</summary>
     protected virtual async Task<AdapterResult<PreparedForm>> FillAsync(IPage page, ApplyTarget target, MaterialBundle m)
@@ -362,7 +242,7 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
                 """)));
         if (fields.Count == 0) return AdapterResult<PreparedForm>.Fail(AdapterResultKind.Unsupported, "no-fields", "Nenhum campo com rótulo foi reconhecido.");
         var hash = PayloadHash(fields);
-        return AdapterResult<PreparedForm>.Ok(new PreparedForm(Id, Version, new Uri(target.ApplyUrl).Authority, hash, fields, await HumanCheckAsync(page)));
+        return AdapterResult<PreparedForm>.Ok(new PreparedForm(Id, Version, new Uri(target.ApplyUrl).Authority, hash, fields));
     }
 
     private static readonly string[][] Equivalents =
@@ -392,7 +272,7 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
 
     /// <summary>A privacy, data processing or terms box: only your authorization ticks it, never a guess.</summary>
     protected static AdapterResult<PreparedForm> NeedsDeclaration(string label) => AdapterResult<PreparedForm>.Fail(AdapterResultKind.NeedsHuman, "declaration",
-        $"O formulário pede uma declaração: \"{(label.Length > 120 ? label[..120] + "…" : label)}\". Aceite no app, nas perguntas, ou ligue \"aceito as declarações\" na autorização.")
+        $"O formulário pede uma declaração: \"{(label.Length > 120 ? label[..120] + "…" : label)}\". Marque você no site, ao enviar.")
         with { Questions = [new FormQuestion(label, "declaration", [])] };
 
     /// <summary>
@@ -404,7 +284,7 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
         if (Marketing().IsMatch(label)) return null;
         // A declaration is ticked by your authorization or by your own yes to this exact text, in the app's questions.
         if (Consent().IsMatch(label))
-            return m.AcceptDeclarations ? ("Aceito", "sua autorização (declarações)")
+            return m.AcceptDeclarations ? ("Aceito", "só no preparo; no site, você marca")
                 : Mine(label, m) is { Source: "sua resposta" } yours && Yes().IsMatch(CustomAnswer.Normalize(yours.Value)) ? ("Aceito", "sua resposta") : null;
         return Mine(label, m) is { } mine && Yes().IsMatch(CustomAnswer.Normalize(mine.Value)) ? ("Marcado", mine.Source) : null;
     }
@@ -501,13 +381,8 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
     [GeneratedRegex(@"phone|telefone|celular|whats ?app", RegexOptions.IgnoreCase)] protected static partial Regex Phone();
     [GeneratedRegex(@"linkedin", RegexOptions.IgnoreCase)] private static partial Regex LinkedIn();
     [GeneratedRegex(@"resume|cv|curr[ií]culo", RegexOptions.IgnoreCase)] protected static partial Regex Resume();
-    [GeneratedRegex(@"submit|send application|enviar (candidatura|inscri[cç][aã]o)|candidatar-se|finalizar candidatura", RegexOptions.IgnoreCase)] private static partial Regex SubmitButton();
     // Workable says "Your application has been submitted successfully."
-    [GeneratedRegex(@"thank(s| you)( so much)? for (applying|your application)|application (has been |was )?(received|submitted|sent)|submitted successfully|candidatura (foi )?(recebida|enviada)|inscri[cç][aã]o (foi )?(enviada|recebida|realizada|conclu[ií]da)|obrigad[oa] (por|pela) (sua )?(inscri[cç][aã]o|candidatura|se candidatar|se inscrever)|recebemos (a |sua )?(inscri[cç][aã]o|candidatura)", RegexOptions.IgnoreCase)]
-    private static partial Regex Confirmation();
-    [GeneratedRegex(@"already (applied|submitted)|j[aá] se candidatou", RegexOptions.IgnoreCase)] private static partial Regex AlreadyApplied();
     [GeneratedRegex(@"verification code|c[oó]digo de verifica[cç][aã]o|two-factor|autentica[cç][aã]o em dois", RegexOptions.IgnoreCase)] protected static partial Regex Mfa();
-    [GeneratedRegex(@"application id:?\s*([A-Z0-9-]{4,})", RegexOptions.IgnoreCase)] private static partial Regex ReceiptId();
     [GeneratedRegex(@"^(select|selecione|choose|escolha)\b|^-+$|^\.\.\.$", RegexOptions.IgnoreCase)] private static partial Regex Placeholder();
     [GeneratedRegex(@"^(yes|sim|y|s|true|verdadeiro|si)$")] protected static partial Regex Yes();
     // Privacy policy, personal data processing, terms and the truth of what was sent: what your authorization may accept for you.
@@ -525,12 +400,11 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
     [GeneratedRegex(@"\b(current|present)\s+(gross\s+|monthly\s+|annual\s+)?(sal[aá]r|compensation|pay)|sal[aá]rio atual|remunera[cç][aã]o atual|quanto (você )?ganha", RegexOptions.IgnoreCase)]
     private static partial Regex CurrentPay();
     [GeneratedRegex(@"\b(voc[eê]|anos|experi[eê]ncia|tem|possui|qual)\b", RegexOptions.IgnoreCase)] private static partial Regex Portuguese();
-    [GeneratedRegex(@"/(\d+)(?:/[a-z]+)?/?$")] private static partial Regex JobId();
 }
 
 /// <summary>Formulário no padrão Greenhouse (nome e sobrenome separados).</summary>
-internal sealed partial class GreenhouseLikeForm(BrowserPool browsers, IHttpClientFactory http, GuardKey key, TimeProvider time, IOptions<AutomationOptions> options)
-    : LabelForm(browsers, http, key, time, options)
+internal sealed partial class GreenhouseLikeForm(BrowserPool browsers, IOptions<AutomationOptions> options)
+    : LabelForm(browsers, options)
 {
     public override string Id => "greenhouse-form";
     public override string Name => "Formulário Greenhouse";
@@ -540,8 +414,8 @@ internal sealed partial class GreenhouseLikeForm(BrowserPool browsers, IHttpClie
 }
 
 /// <summary>Formulário do Lever (jobs.lever.co): nome completo num campo só, upload do currículo e perguntas que abrem outras.</summary>
-internal sealed partial class LeverForm(BrowserPool browsers, IHttpClientFactory http, GuardKey key, TimeProvider time, IOptions<AutomationOptions> options)
-    : LabelForm(browsers, http, key, time, options)
+internal sealed partial class LeverForm(BrowserPool browsers, IOptions<AutomationOptions> options)
+    : LabelForm(browsers, options)
 {
     public override string Id => "lever-form";
     public override string Name => "Formulário Lever";
@@ -553,8 +427,8 @@ internal sealed partial class LeverForm(BrowserPool browsers, IHttpClientFactory
 }
 
 /// <summary>Formulário do Ashby (jobs.ashbyhq.com): nome completo e campos extras (localização, pretensão, como soube).</summary>
-internal sealed partial class AshbyForm(BrowserPool browsers, IHttpClientFactory http, GuardKey key, TimeProvider time, IOptions<AutomationOptions> options)
-    : LabelForm(browsers, http, key, time, options)
+internal sealed partial class AshbyForm(BrowserPool browsers, IOptions<AutomationOptions> options)
+    : LabelForm(browsers, options)
 {
     public override string Id => "ashby-form";
     public override string Name => "Formulário Ashby";

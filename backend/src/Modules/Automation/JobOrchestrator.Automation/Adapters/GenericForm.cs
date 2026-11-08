@@ -10,8 +10,8 @@ namespace JobOrchestrator.Automation.Adapters;
 /// em etapas ou sem campo de currículo devolvem a vaga para você, com o currículo pronto. Sites que pedem conta (LinkedIn, Gupy,
 /// Indeed, Catho, Workday) e agregadores que só repassam a vaga ficam de fora; as plataformas com adapter próprio também.
 /// </summary>
-internal sealed partial class GenericForm(BrowserPool browsers, IHttpClientFactory http, GuardKey key, TimeProvider time, IOptions<AutomationOptions> options)
-    : LabelForm(browsers, http, key, time, options)
+internal sealed partial class GenericForm(BrowserPool browsers, IOptions<AutomationOptions> options)
+    : LabelForm(browsers, options)
 {
     /// <summary>The chosen form is marked on the page, so the fill and the send act on that one form only.</summary>
     private const string Scope = "[data-jo-form]";
@@ -64,12 +64,6 @@ internal sealed partial class GenericForm(BrowserPool browsers, IHttpClientFacto
             ? Browsers.LeaseAsync([url.Authority], ct)
             : Browsers.LeaseAsync(["*"], ct, navigationDomain: Registrable(url.Host));
     }
-
-    protected override ILocator SubmitControl(IPage page) =>
-        page.Locator($"{Scope} button[type=submit]:visible, {Scope} input[type=submit]:visible")
-            .Or(page.Locator($"{Scope} button:visible, {Scope} [role=button]:visible").Filter(new LocatorFilterOptions { HasTextRegex = Send() })).First;
-
-    protected override Regex Confirmed => Thanks();
 
     protected override async Task<AdapterResult<PreparedForm>> FillAsync(IPage page, ApplyTarget target, MaterialBundle m)
     {
@@ -175,8 +169,6 @@ internal sealed partial class GenericForm(BrowserPool browsers, IHttpClientFacto
     private static partial Regex Next();
     [GeneratedRegex(@"^\s*(reject|decline|deny|refuse)( all| non-essential| optional)?( cookies)?\s*$|^\s*(only|use only) (necessary|required|essential)( cookies)?\s*$|^\s*(rejeitar|recusar)( todos| tudo| cookies)?\s*$|^\s*(somente|apenas) (os )?(necess[aá]rios|essenciais)\s*$|^\s*rechazar( todo| todas| cookies)?\s*$", RegexOptions.IgnoreCase)]
     private static partial Regex Decline();
-    [GeneratedRegex(@"thank(s| you)( so much)? for (applying|your (application|interest))|application (has been |was )?(received|submitted|sent|completed?)|we('ve| have) received your application|successfully (applied|submitted)|obrigad[oa] (por (se candidatar|sua candidatura|seu interesse|participar))|candidatura (foi )?(recebida|enviada|realizada|conclu[ií]da)|recebemos (a |sua )?candidatura|inscri[cç][aã]o (foi )?(realizada|conclu[ií]da|enviada)|gracias por (postularte|tu postulaci[oó]n|aplicar)|postulaci[oó]n (enviada|recibida)", RegexOptions.IgnoreCase)]
-    private static partial Regex Thanks();
     [GeneratedRegex(@"no longer accepting|not accepting applications|this (job|position) (is|has been) (closed|filled)|vaga (encerrada|fechada|expirada)|processo seletivo encerrado|inscri[cç][oõ]es encerradas", RegexOptions.IgnoreCase)]
     private static partial Regex Closed();
 }

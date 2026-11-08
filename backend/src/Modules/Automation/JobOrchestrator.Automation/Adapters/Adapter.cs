@@ -29,16 +29,12 @@ internal interface IHintedSource
     Task<IReadOnlyList<DiscoveredPosting>> DiscoverAsync(string source, IReadOnlyList<string> hints, CancellationToken ct);
 }
 
-/// <summary>Formulário de candidatura: prepara sem enviar, envia só com token, reconcilia só lendo.</summary>
+/// <summary>Formulário de candidatura: lê e prepara sem nunca enviar. Quem envia é você, com o copiloto.</summary>
 internal interface IFormAdapter : IAdapter
 {
     Task<AdapterResult<PreparedForm>> PrepareAsync(ApplyTarget target, MaterialBundle materials, CancellationToken ct);
-    Task<AdapterResult<SubmissionReceipt>> SubmitAsync(ApplyTarget target, MaterialBundle materials, SubmitToken token, CancellationToken ct);
-    Task<AdapterResult<ReconcileResult>> ReconcileAsync(ApplyTarget target, MaterialBundle materials, CancellationToken ct);
     /// <summary>The real sites this form works on, without the test ATS.</summary>
     IReadOnlyList<string> LiveDomains { get; }
-    /// <summary>Whether the site itself can be asked if an application arrived. Today only the test ATS has such a portal.</summary>
-    bool CanReconcile(Uri url);
 }
 
 /// <summary>Resultado tipado de uma operação de adapter. Questions: the required questions it had no answer for.</summary>

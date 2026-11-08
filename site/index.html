@@ -57,7 +57,7 @@
     <section class="hero" id="top">
       <div class="hero-copy">
         <h1 class="h1"><span data-i18n="hero.l1">Find jobs using</span><br><span class="accent" data-i18n="hero.l2">your own GPU.</span></h1>
-        <p class="lead" data-i18n="hero.lead">A local app that finds openings, writes a résumé for each one from your own facts, fills the application form with your AI models and sends it within the limits you set.</p>
+        <p class="lead" data-i18n="hero.lead">A local app that finds openings, writes a résumé for each one from your own facts and opens every application already filled in your browser: you check it and click send.</p>
         <div class="cta">
           <a class="btn primary" id="hero-download" href="#download">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 19h16"/></svg>
@@ -85,8 +85,8 @@
         <p data-i18n="p2.d">CV, profile, résumés and history live in your user folder. The panel only listens on 127.0.0.1.</p>
       </div>
       <div class="pillar">
-        <h3 data-i18n="p3.t">Your rules, your numbers</h3>
-        <p data-i18n="p3.d">Applications go out under an authorization you give: the minimum score, the daily limit and the end date are yours to set, and one click revokes it.</p>
+        <h3 data-i18n="p3.t">The send click is yours</h3>
+        <p data-i18n="p3.d">The app prepares and fills; it never clicks send. Every application goes out from your browser, after you read it.</p>
       </div>
     </section>
 
@@ -157,12 +157,12 @@
             <li class="step" data-station="guardian">
               <div class="step-mini" aria-hidden="true"></div>
               <span class="step-n">04</span>
-              <div><h3 data-i18n="st4.t">Apply, within your rules</h3><p data-i18n="st4.d">Forms are filled in a real browser and sent under your authorization, with the score, the daily limit and the end date you chose. Every send waits for the site's confirmation. A site the robot cannot pass, with a login or a CAPTCHA, opens already filled in your browser through the copilot extension, with the résumé attached: you check and click send.</p></div>
+              <div><h3 data-i18n="st4.t">Send, from your browser</h3><p data-i18n="st4.d">The copilot extension opens the job already filled in your browser, with the résumé attached. A field it cannot fill goes to the AI, which answers from your profile, and the rest waits in an answer kit with a copy button, next to a cover letter already written. You check and click send, and the confirmation page marks the application as sent.</p></div>
             </li>
             <li class="step" data-station="inbox">
               <div class="step-mini" aria-hidden="true"></div>
               <span class="step-n">05</span>
-              <div><h3 data-i18n="st5.t">Follow up</h3><p data-i18n="st5.d">With read-only access to your inbox, replies and the status e-mails of Gupy, Greenhouse, Lever and Indeed move each application along the funnel. Every application keeps an append-only history and a proof of submission.</p></div>
+              <div><h3 data-i18n="st5.t">Follow up</h3><p data-i18n="st5.d">Applications sit on a board or in a list. With read-only access to your inbox, the AI reads the replies and the status e-mails of Gupy, Greenhouse, Lever and Indeed and moves each card to interview, offer or rejection. Every application keeps an append-only history and a proof of submission.</p></div>
             </li>
           </ol>
         </div>
@@ -185,7 +185,7 @@
           <li data-i18n-html="self.b2">Your data lives in <code>~/.local/share/job-orchestrator</code>, <code>~/Library/Application Support/JobOrchestrator</code> or <code>%LOCALAPPDATA%\JobOrchestrator</code>.</li>
           <li data-i18n="self.b3">API keys go to the system keyring, never to a file.</li>
           <li data-i18n="self.b4">Claude Code or the Codex CLI step in where the local model falls short, for the heavier writing and the form answers it gets wrong, with a reserve that protects the quota you need for your own work.</li>
-          <li data-i18n="self.b5">No telemetry. What leaves the computer is what a source needs to answer and the applications you approve.</li>
+          <li data-i18n="self.b5">No telemetry. What leaves the computer is what a source needs to answer and the applications you send yourself.</li>
         </ul>
       </div>
       <div class="self-art" id="machine-art" aria-hidden="true"></div>
@@ -196,7 +196,7 @@
       <h2 class="h2"><span data-i18n="rules.t1">Fast where it is allowed.</span><br><span class="dim" data-i18n="rules.t2">Off where it is not.</span></h2>
       <div class="rule-grid">
         <div class="rule"><h3 data-i18n="r1.t">LinkedIn is never automated</h3><p data-i18n="r1.d">Its terms forbid it. Import your LinkedIn data export instead, and save LinkedIn jobs by link.</p></div>
-        <div class="rule"><h3 data-i18n="r2.t">No CAPTCHA solvers, no stealth</h3><p data-i18n="r2.d">When a site blocks automated access, the robot stops there and the copilot opens it filled for you to finish.</p></div>
+        <div class="rule"><h3 data-i18n="r2.t">No CAPTCHA solvers, no stealth</h3><p data-i18n="r2.d">The app never solves or bypasses CAPTCHAs or anti-bot checks: the copilot opens the job filled and you finish it.</p></div>
         <div class="rule"><h3 data-i18n="r3.t">Polite collection</h3><p data-i18n="r3.d">The scraper follows robots.txt, waits between requests and opens one connection per site.</p></div>
         <div class="rule"><h3 data-i18n="r4.t">Terms on record</h3><p data-i18n="r4.d">Sources whose terms do not allow this use stay registered as blocked or partner-only, with the reason in view.</p></div>
       </div>
@@ -364,7 +364,7 @@ job-orchestrator --uninstall   <span class="c"># removes the app and keeps your 
         <div><h3 data-i18n="h1.t">Backend</h3><p data-i18n="h1.d">.NET 10, a modular monolith in vertical slices with DDD and CQRS, an outbox and an inbox for events, Carter endpoints and Dapper over PostgreSQL.</p></div>
         <div><h3 data-i18n="h2.t">Panel</h3><p data-i18n="h2.d">Angular 22 with signals. The live map is a hand-drawn SVG canvas, and every isometric icon comes from one shared geometry.</p></div>
         <div><h3 data-i18n="h3.t">Collection</h3><p data-i18n="h3.d">Official APIs first, Scrapy spiders for career pages and a Playwright browser pool for pages that need JavaScript and for forms.</p></div>
-        <div><h3 data-i18n="h4.t">Tests and releases</h3><p data-i18n="h4.d">Unit and end-to-end suites against a fake ATS, chaos tests that kill the process around the submit click and a night rehearsal of hours. Each release is built by GitHub Actions from the tested commit, with its SHA-256 and source revision.</p></div>
+        <div><h3 data-i18n="h4.t">Tests and releases</h3><p data-i18n="h4.d">Unit and end-to-end suites against a fake ATS, with a real browser and database. Each release is built by GitHub Actions from the tested commit, with its SHA-256 and source revision.</p></div>
       </div>
     </section>
 

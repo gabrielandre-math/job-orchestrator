@@ -13,9 +13,9 @@ using Microsoft.Extensions.Options;
 
 namespace JobOrchestrator.Tests.EndToEnd;
 
-/// <summary>Actual Chromium and HTTP on loopback; synthetic identity, no third-party application.</summary>
+/// <summary>The form fill, on actual Chromium and HTTP on loopback; synthetic identity, no third-party site, and nothing is ever sent.</summary>
 [Trait("Category", "E2E")]
-public sealed class SubmissionEvidenceTests
+public sealed class FormPrepareTests
 {
     [Theory]
     [InlineData(false, AdapterResultKind.Completed)]
@@ -29,7 +29,7 @@ public sealed class SubmissionEvidenceTests
         var options = Options.Create(new AutomationOptions { FakeAtsHosts = [new Uri(site.Url).Authority], Browser = new() { TimeoutSeconds = 2 } });
         await using var browser = new BrowserPool(options, NullLogger<BrowserPool>.Instance);
         using var folder = new TestFiles();
-        var adapter = new GenericForm(browser, new HttpFactory(), folder.Key, TimeProvider.System, options);
+        var adapter = new GenericForm(browser, options);
         var bundle = folder.Bundle with { Answers = new Dictionary<string, string> { ["needs_sponsorship"] = "Yes" } };
         var result = await adapter.PrepareAsync(new(Guid.NewGuid(), site.Url + "/job"), bundle, default);
         Assert.True(expected == result.Kind, $"Expected {expected}, got {result.Kind}: {result.ReasonCode}: {result.Detail}");
@@ -46,7 +46,7 @@ public sealed class SubmissionEvidenceTests
         var options = Options.Create(new AutomationOptions { FakeAtsHosts = [new Uri(site.Url).Authority], Browser = new() { TimeoutSeconds = 2 } });
         await using var browser = new BrowserPool(options, NullLogger<BrowserPool>.Instance);
         using var folder = new TestFiles();
-        var adapter = new GenericForm(browser, new HttpFactory(), folder.Key, TimeProvider.System, options);
+        var adapter = new GenericForm(browser, options);
         var bundle = folder.Bundle with { Answers = new Dictionary<string, string> { [CustomAnswer.Key(question)] = answer } };
         var result = await adapter.PrepareAsync(new(Guid.NewGuid(), site.Url + "/job"), bundle, default);
         Assert.True(expected == result.Kind, $"Expected {expected}, got {result.Kind}: {result.ReasonCode}: {result.Detail}");
@@ -60,81 +60,12 @@ public sealed class SubmissionEvidenceTests
         var options = Options.Create(new AutomationOptions { FakeAtsHosts = [new Uri(site.Url).Authority], Browser = new() { TimeoutSeconds = 2 } });
         await using var browser = new BrowserPool(options, NullLogger<BrowserPool>.Instance);
         using var folder = new TestFiles();
-        var adapter = new GreenhouseLikeForm(browser, new HttpFactory(), folder.Key, TimeProvider.System, options);
+        var adapter = new GreenhouseLikeForm(browser, options);
         var result = await adapter.PrepareAsync(new(Guid.NewGuid(), site.Url + "/job"), folder.Bundle, default);
         Assert.Equal(AdapterResultKind.Unsupported, result.Kind);
         var question = Assert.Single(result.Questions!);
         Assert.Equal("Describe a feature you owned", question.Label);
         Assert.Equal("textarea", question.Kind);
-    }
-
-    [Theory]
-    [InlineData("stale", AdapterResultKind.SubmissionUnknown, 0)]
-    [InlineData("hidden", AdapterResultKind.SubmissionUnknown, 0)]
-    [InlineData("accepted", AdapterResultKind.Completed, 1)]
-    // The site refused the form with its own message: the application goes back to the person with that message, not to Failed.
-    [InlineData("rejected", AdapterResultKind.NeedsHuman, 0)]
-    // Greenhouse holds a robot's send and asks for the code it mailed: not accepted, and the send goes to the person.
-    [InlineData("security-code", AdapterResultKind.NeedsHuman, 0)]
-    [InlineData("generic", AdapterResultKind.Completed, 1)]
-    public async Task Only_a_new_visible_confirmation_proves_the_submission(string mode, AdapterResultKind expected, int accepted)
-    {
-        var received = 0;
-        await using var site = await TestSite.StartAsync(app =>
-        {
-            app.MapGet("/job", () => Results.Content(Form(mode), "text/html"));
-            app.MapPost("/submit", () =>
-            {
-                Interlocked.Increment(ref received);
-                return Results.Content("<h1>Application received</h1><p>Application ID: TEST-1234</p>", "text/html");
-            });
-        });
-        var options = Options.Create(new AutomationOptions { FakeAtsHosts = [new Uri(site.Url).Authority], Browser = new() { TimeoutSeconds = 2 } });
-        await using var browser = new BrowserPool(options, NullLogger<BrowserPool>.Instance);
-        using var folder = new TestFiles();
-        IFormAdapter adapter = mode == "generic"
-            ? new GenericForm(browser, new HttpFactory(), folder.Key, TimeProvider.System, options)
-            : new GreenhouseLikeForm(browser, new HttpFactory(), folder.Key, TimeProvider.System, options);
-        var target = new ApplyTarget(Guid.NewGuid(), site.Url + "/job");
-        var prepared = await adapter.PrepareAsync(target, folder.Bundle, default);
-        Assert.Equal(AdapterResultKind.Completed, prepared.Kind);
-        Assert.Equal(0, received);
-        var id = Guid.NewGuid(); var expires = DateTime.UtcNow.AddMinutes(1); var hash = prepared.Value!.PayloadHash;
-        var token = new SubmitToken(id, target.ApplicationId, hash, expires, SubmitToken.Sign(folder.Key.Bytes, id, target.ApplicationId, hash, expires));
-        var result = await adapter.SubmitAsync(target, folder.Bundle, token, default);
-        Assert.Equal(expected, result.Kind);
-        Assert.Equal(accepted, received);
-        if (mode == "rejected") Assert.Contains("Invalid application", result.Detail);
-        if (mode == "security-code") Assert.Equal("human-check", result.ReasonCode);
-        if (expected == AdapterResultKind.Completed)
-        {
-            Assert.Equal("TEST-1234", result.Value!.ReceiptId);
-            Assert.Equal(4, result.Value.EvidenceLevel);
-        }
-    }
-
-    [Fact]
-    public async Task A_site_that_checks_for_a_person_at_the_send_is_prepared_but_never_clicked()
-    {
-        var received = 0;
-        await using var site = await TestSite.StartAsync(app =>
-        {
-            app.MapGet("/job", () => Results.Content(Form("person-check"), "text/html"));
-            app.MapPost("/submit", () => { Interlocked.Increment(ref received); return Results.Content("<h1>Application received</h1>", "text/html"); });
-        });
-        var options = Options.Create(new AutomationOptions { FakeAtsHosts = [new Uri(site.Url).Authority], Browser = new() { TimeoutSeconds = 2 } });
-        await using var browser = new BrowserPool(options, NullLogger<BrowserPool>.Instance);
-        using var folder = new TestFiles();
-        var adapter = new GreenhouseLikeForm(browser, new HttpFactory(), folder.Key, TimeProvider.System, options);
-        var target = new ApplyTarget(Guid.NewGuid(), site.Url + "/job");
-        var prepared = await adapter.PrepareAsync(target, folder.Bundle, default);
-        Assert.Equal(AdapterResultKind.Completed, prepared.Kind);
-        Assert.Contains("reCAPTCHA", prepared.Value!.HumanCheck);
-        var id = Guid.NewGuid(); var expires = DateTime.UtcNow.AddMinutes(1); var hash = prepared.Value.PayloadHash;
-        var token = new SubmitToken(id, target.ApplicationId, hash, expires, SubmitToken.Sign(folder.Key.Bytes, id, target.ApplicationId, hash, expires));
-        var result = await adapter.SubmitAsync(target, folder.Bundle, token, default);
-        Assert.Equal((AdapterResultKind.NeedsHuman, "human-check"), (result.Kind, result.ReasonCode));
-        Assert.Equal(0, received);
     }
 
     [Theory]
@@ -149,7 +80,7 @@ public sealed class SubmissionEvidenceTests
         await using var browser = new BrowserPool(options, NullLogger<BrowserPool>.Instance);
         using var folder = new TestFiles();
         var bundle = folder.Bundle with { Answers = new Dictionary<string, string> { [CustomAnswer.Key("Date of birth")] = "2000-02-29" } };
-        foreach (IFormAdapter adapter in new IFormAdapter[] { new GenericForm(browser, new HttpFactory(), folder.Key, TimeProvider.System, options), new GreenhouseLikeForm(browser, new HttpFactory(), folder.Key, TimeProvider.System, options) })
+        foreach (IFormAdapter adapter in new IFormAdapter[] { new GenericForm(browser, options), new GreenhouseLikeForm(browser, options) })
         {
             var result = await adapter.PrepareAsync(new(Guid.NewGuid(), site.Url + "/job"), bundle, default);
             Assert.True(result.Kind == AdapterResultKind.Completed, $"{adapter.Id}: {result.ReasonCode}: {result.Detail}");
@@ -158,31 +89,23 @@ public sealed class SubmissionEvidenceTests
     }
 
     private static string Form(string mode) => $$"""
-        <!doctype html><html><head><meta charset="utf-8">{{(mode == "person-check" ? "<script>window.ENV={\"GOOGLE_RECAPTCHA_INVISIBLE_KEY\":\"test-key\"}</script>" : "")}}</head><body>
-        {{(mode == "stale" ? "<p>Thank you for applying. Application received.</p>" : "")}}
-        {{(mode == "hidden" ? "<p hidden>Application received</p>" : "")}}
-        {{(mode == "generic" ? "<button onclick=\"document.body.innerHTML='Unrelated newsletter';\">Send</button>" : "")}}
-        <form method="post" action="/submit" {{(mode is "stale" or "hidden" ? "onsubmit=\"event.preventDefault()\"" : "")}}
-          {{(mode == "rejected" ? "onsubmit=\"event.preventDefault(); document.getElementById('error').innerHTML='<p role=alert>Invalid application</p>'\"" : "")}}
-          {{(mode == "security-code" ? "onsubmit=\"event.preventDefault(); document.getElementById('error').innerHTML='<fieldset id=email-verification><legend>Enter the code we sent</legend><input id=security-input-0 maxlength=1></fieldset>'\"" : "")}}>
+        <!doctype html><html><head><meta charset="utf-8"></head><body>
+        <form method="post" action="/submit">
           <label for="first">First name</label><input id="first" name="first" required>
           <label for="last">Last name</label><input id="last" name="last" required>
           <label for="email">Email</label><input id="email" name="email" type="email" required>
           <label for="resume">Resume</label><input id="resume" name="resume" type="file" required>
           {{(mode == "questions" ? "<label for=question>Describe a feature you owned</label><textarea id=question required></textarea>" : "")}}
           <button type="submit">Submit application</button>
-        </form><div id="error"></div></body></html>
+        </form></body></html>
         """;
 
-    private sealed class HttpFactory : IHttpClientFactory { public HttpClient CreateClient(string name) => new(); }
     private sealed class TestFiles : IDisposable
     {
         private readonly string dir = Directory.CreateTempSubdirectory("jo-form-proof-").FullName;
-        public GuardKey Key { get; }
         public MaterialBundle Bundle { get; }
         public TestFiles()
         {
-            Key = new(Path.Combine(dir, "guard.key"));
             var pdf = Path.Combine(dir, "resume.pdf"); File.WriteAllText(pdf, "%PDF-1.4 synthetic test file");
             Bundle = new("Ana", "Lima", "candidate@example.test", "123456789", "", pdf, new Dictionary<string, string>());
         }

@@ -11,4 +11,7 @@ O app ficou mais simples: um caminho só, de achar a vaga a acompanhar a respost
 - O Início avisa quando o e-mail dos formulários não é o que o app lê, porque as respostas das empresas chegam nele.
 - Menu com cinco itens: Início, Vagas, Candidaturas, Perfil e Configurações. O que buscar, IA, Fontes, E-mail e Diagnóstico viraram abas de Configurações. Saíram o mapa ao vivo, Atenção, Revisão, o ensaio e as telas técnicas de fontes.
 - Vagas em cartões ou em lista; os gráficos ficam em "Ver os números das vagas".
-- Na atualização, o que esperava aprovação ou estava preso num envio do robô vai para "Para enviar".
+- O código do envio pelo robô saiu do app inteiro: envio, conferência depois do envio, aprovação, autorização, ensaio dos formulários, mapa ao vivo e os testes deles. O app só prepara.
+- A caixa de privacidade ou termos não para mais o preparo: ele a marca no próprio navegador, que nunca envia, e no site quem marca é você. As candidaturas que pararam nela voltam a ser preparadas.
+- O assistente sugere só "só buscar" ou "buscar e preparar" e leva às telas novas.
+- Na atualização, o que esperava aprovação, estava preso num envio do robô ou incerto vai para "Para enviar"; no envio incerto, confira o e-mail antes: se a confirmação chegou, marque "Já enviei".

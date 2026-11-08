@@ -54,9 +54,6 @@ export interface Activity { at: string; applicationId: string; company: string; 
 export interface CampaignCard { id: string; name: string; mode: string; minFitScore: number; maxSubmissionsPerDay: number; sources: number; }
 export interface Adapter { id: string; version: string; name: string; kind: string; capabilities: string[]; domains: string[]; attempts: number; confirmed: number; failures: number; circuitOpen: boolean; circuitOpenUntil: string | null; }
 export interface Overview { campaign: CampaignCard | null; jobs: JobCounts; applications: StateCounts; pendingTasks: number; confirmedToday: number; activity: Activity[]; adapters: Adapter[]; }
-export interface FlowNode { id: string; label: string; role: string; status: 'active' | 'idle' | 'attention' | 'planned'; count: number; detail: string; phase: string | null; }
-export interface FlowEdge { from: string; to: string; count: number; kind: 'flow' | 'fallback' | 'planned'; }
-export interface Flow { nodes: FlowNode[]; edges: FlowEdge[]; at: string; }
 export interface JobRow { id: string; sentBy: string | null; company: string; title: string; location: string; status: string; score: number | null; confidence: number | null; reason: string | null; applyUrl: string; source: string; firstSeenAt: string; lastVerifiedAt: string | null; open: boolean; duplicateOf: string | null; seniority: string | null; modality: string | null; salaryText: string | null; contract: string | null; english: string | null; sponsorship: string | null; eligibility: string | null; eligibilityEvidence: string | null; applyChannel: string; applyEmail: string | null; stack: string[]; companyDomain: string | null; }
 export interface CaptureResult { kind: 'watch' | 'saved' | 'known'; jobId: string | null; source: string | null; message: string; }
 export interface Factor { name: string; weight: number; value: number; points: number; note: string; unknown: boolean; }
@@ -66,7 +63,7 @@ export interface Field { label: string; value: string; source: string; }
 export interface HistoryRow { at: string; from: string | null; to: string; reason: string; actor: string; detail: string | null; }
 export interface EvidenceRow { level: number; kind: string; detail: string; at: string; }
 export interface TaskRow { id: string; applicationId: string; kind: string; title: string; detail: string; createdAt: string; resolvedAt: string | null; resolution: string | null; }
-export interface ApplyCapability { channel: string; platform: string | null; prepare: boolean; submit: boolean; confirm: string; recover: string; }
+export interface ApplyCapability { channel: string; platform: string | null; prepare: boolean; }
 export interface ApplicationDetail { application: ApplicationRow; applyUrl: string; payloadHash: string | null; fields: Field[]; hasResume: boolean; history: HistoryRow[]; evidence: EvidenceRow[]; tasks: TaskRow[]; capability: ApplyCapability; }
 export interface Campaign { id: string; name: string; enabled: boolean; mode: string; minFitScore: number; maxSubmissionsPerDay: number; technologies: string[]; titles: string[]; locations: string[]; sources: string[]; timeZone: string; window: string; lastRunAt: string | null; }
 export interface UsageWindow { name: string; usedPercent: number | null; resetsAt: string | null; }
@@ -131,7 +128,6 @@ export interface MailTemplate { id: string; kind: 'first' | 'followup'; language
 export interface MailTarget { jobId: string; company: string; title: string; location: string; applyEmail: string; applyUrl: string; companyDomain: string | null; score: number; mailStatus: string | null; mailId: string | null; }
 export interface OutgoingMail { id: string; jobId: string; company: string; jobTitle: string; to: string; subject: string; body: string; kind: 'first' | 'followup'; followsId: string | null; status: string; createdAt: string; approvedAt: string | null; sentAt: string | null; messageId: string | null; attachmentPath: string | null; attachmentName: string | null; error: string | null; draftedBy: string; checkNotes: string | null; repliedAt: string | null; replyClass: string | null; threadId: string | null; }
 export interface IncomingMail { id: string; messageId: string; from: string; subject: string; date: string; snippet: string; class: string | null; actionNeeded: boolean; outgoingId: string | null; ambiguous: boolean; receivedAt: string; }
-export interface AuthorizationItem { id: string; grantedAt: string; expiresAt: string; maxPerDay: number; minScore: number; adapters: string[]; revokedAt: string | null; status: 'ativa' | 'vencida' | 'revogada'; }
 
 export interface ExploreVerdict { source: string; origin: string; total: number; relevant: number; sample: string[]; fit: boolean; reason: string; at: string; }
 export interface ExploreLast { at: string; tested: number; added: string[]; frontier: number; swept: number; seconds: number; skipped: string | null; origins: Record<string, number> | null; }

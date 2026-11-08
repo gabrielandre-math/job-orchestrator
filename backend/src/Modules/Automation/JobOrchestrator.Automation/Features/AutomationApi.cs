@@ -51,26 +51,8 @@ internal sealed class AutomationApi(
         return source is null ? Task.FromResult(new PostingStatus(true, "Sem conferência para este domínio.")) : source.CheckOpenAsync(applyUrl, ct);
     }
 
-    public async Task<AutomationOutcome<PreparedForm>> PrepareAsync(ApplyTarget target, MaterialBundle materials, CancellationToken ct)
-    {
-        var outcome = await router.RunAsync(target.ApplicationId, Capability.PrepareForm, new Uri(target.ApplyUrl), null, a => a.PrepareAsync(target, materials, ct), ct);
-        // A site where the robot's send never went through (it asked for a person, or refused every click) gets your click, like one
-        // whose page shows the check.
-        if (outcome is { Kind: AdapterResultKind.Completed, Value: { HumanCheck: null } form }
-            && await read.FirstAsync<int?>("""
-                select 1 from automation.adapter_stats
-                where domain = @domain and capability = 'SubmitApplication' and confirmed = 0 and (last_failure_code = 'human-check' or attempts >= 3)
-                limit 1
-                """, new { domain = form.Domain }, ct) is not null)
-            outcome = outcome with { Value = form with { HumanCheck = "O site recusou os envios automáticos até agora." } };
-        return outcome;
-    }
-
-    public Task<AutomationOutcome<SubmissionReceipt>> SubmitAsync(ApplyTarget target, MaterialBundle materials, SubmitToken token, string adapterId, CancellationToken ct) =>
-        router.RunAsync(target.ApplicationId, Capability.SubmitApplication, new Uri(target.ApplyUrl), adapterId, a => a.SubmitAsync(target, materials, token, ct), ct);
-
-    public Task<AutomationOutcome<ReconcileResult>> ReconcileAsync(ApplyTarget target, MaterialBundle materials, string adapterId, CancellationToken ct) =>
-        router.RunAsync(target.ApplicationId, Capability.ReconcileSubmission, new Uri(target.ApplyUrl), adapterId, a => a.ReconcileAsync(target, materials, ct), ct);
+    public Task<AutomationOutcome<PreparedForm>> PrepareAsync(ApplyTarget target, MaterialBundle materials, CancellationToken ct) =>
+        router.RunAsync(target.ApplicationId, Capability.PrepareForm, new Uri(target.ApplyUrl), null, a => a.PrepareAsync(target, materials, ct), ct);
 
     /// <summary>HTML para PDF no Chromium, sem rede: o template não busca nada de fora.</summary>
     public async Task RenderPdfAsync(string html, string path, CancellationToken ct)

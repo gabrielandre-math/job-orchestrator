@@ -2,24 +2,17 @@ namespace JobOrchestrator.Campaigns.Contracts;
 
 // Contratos públicos do módulo Campaigns: outros módulos só conhecem o que está aqui, nunca as tabelas.
 
-/// <summary>Até onde a campanha pode ir sozinha. O envio automático só existe com autorização dada no painel.</summary>
+/// <summary>
+/// Até onde a campanha vai: só buscar ou buscar e preparar. Quem envia é sempre você, com o copiloto; ReviewRequired e AutoSubmit
+/// são valores antigos, guardados só porque o histórico os cita, e valem como PrepareOnly.
+/// </summary>
 public enum SubmissionMode { DiscoveryOnly, PrepareOnly, ReviewRequired, AutoSubmit }
 
-/// <summary>
-/// Autorização de envio automático dada na tela: validade, teto por dia, nota mínima e quais adapters podem enviar (vazio = todos com
-/// envio testado). AcceptDeclarations: you also accept, in your name, the privacy, data processing and terms boxes forms require.
-/// </summary>
-public sealed record SubmitAuthorizationView(Guid Id, DateTime GrantedAt, DateTime ExpiresAt, int MaxPerDay, int MinScore, IReadOnlyList<string> Adapters, bool AcceptDeclarations = false)
-{
-    public bool ValidAt(DateTime now) => now < ExpiresAt;
-    public bool Allows(string? adapterId) => Adapters.Count == 0 || adapterId is not null && Adapters.Contains(adapterId);
-}
-
-/// <summary>O que os outros módulos precisam saber de uma campanha. Authorization é a autorização ativa, se houver.</summary>
+/// <summary>O que os outros módulos precisam saber de uma campanha.</summary>
 public sealed record CampaignSettings(
     Guid Id, string Name, bool Enabled, SubmissionMode Mode, int MinFitScore, int MaxSubmissionsPerDay,
     IReadOnlyList<string> Technologies, IReadOnlyList<string> Locations, IReadOnlyList<string> Sources, string TimeZone,
-    SubmitAuthorizationView? Authorization = null, IReadOnlyList<string>? Titles = null);
+    IReadOnlyList<string>? Titles = null);
 
 /// <summary>Evento de integração: alguém pediu uma rodada de descoberta. Only limita a rodada a essas fontes (as que o Explorador acabou de achar).</summary>
 public sealed record RunRequestedV1(Guid RunId, Guid CampaignId, DateTime RequestedAt, IReadOnlyList<string>? Only = null)
@@ -28,27 +21,12 @@ public sealed record RunRequestedV1(Guid RunId, Guid CampaignId, DateTime Reques
 }
 
 /// <summary>
-/// Integration event: the campaign left "só buscar" (on the campaign screen or by an authorization). Jobs found while it only searched
-/// never got an application; now the ones still in the queue get theirs.
+/// Integration event: the campaign left "só buscar". Jobs found while it only searched never got an application; now the ones still in
+/// the queue get theirs.
 /// </summary>
 public sealed record PreparationStartedV1(Guid CampaignId, DateTime At)
 {
     public const string EventType = "campaigns.preparation-started.v1";
-}
-
-/// <summary>Evento de integração: o envio automático foi desligado (revogado ou trocado de modo). O que estava pronto pela autorização volta para você.</summary>
-public sealed record AutoSubmitEndedV1(Guid CampaignId, DateTime At)
-{
-    public const string EventType = "campaigns.auto-submit-ended.v1";
-}
-
-/// <summary>
-/// Integration event: a new authorization was granted. What waited for you under the old limits is checked again under the new
-/// ones, and, when it accepts the declarations, what stopped on a privacy or terms box goes back to the form.
-/// </summary>
-public sealed record AutoSubmitGrantedV1(Guid CampaignId, bool AcceptDeclarations, DateTime At)
-{
-    public const string EventType = "campaigns.auto-submit-granted.v1";
 }
 
 /// <summary>Contrato público do módulo Campaigns.</summary>

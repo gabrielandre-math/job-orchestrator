@@ -73,130 +73,20 @@ public sealed class FlowTests
     }
 
     [Fact]
-    public async Task Automatico_so_com_autorizacao_dentro_do_teto_e_revogar_volta_para_revisao()
+    public async Task Site_sem_adapter_proprio_fica_pronto_para_voce_com_a_declaracao_so_no_preparo()
     {
         await using var s = await Stack.StartAsync();
-        var id = (await s.GetAsync("/campaigns"))[0].GetProperty("id").GetString();
-        await s.ConfigureAsync("ReviewRequired");
-        // O arquivo de configuração e o PUT da campanha não ligam o automático.
-        Assert.Equal(HttpStatusCode.Forbidden, await s.PutAsync($"/campaigns/{id}", new { mode = "AutoSubmit", minFitScore = 80, maxSubmissionsPerDay = 15,
-            technologies = new[] { "C#", ".NET" }, locations = new[] { "Brasil", "Remoto" }, sources = new[] { $"greenhouse:{s.Ats}/boards/demo" } }));
-        Assert.Equal(HttpStatusCode.BadRequest, await s.PostAsync($"/campaigns/{id}/authorizations", new { days = 1, maxPerDay = 1, minScore = 80, adapters = new[] { "greenhouse-form" }, accepted = false }));
-        Assert.Equal(HttpStatusCode.OK, await s.PostAsync($"/campaigns/{id}/authorizations", new { days = 1, maxPerDay = 1, minScore = 80, adapters = new[] { "greenhouse-form" }, accepted = true }));
-        Assert.Equal("AutoSubmit", (await s.GetAsync("/campaigns"))[0].GetProperty("mode").GetString());
-
-        await s.RunAsync();
-        await s.WaitAsync(async () => await s.SubmissionsAsync() >= 1, Settle, "o primeiro envio automático");
-        // Teto de 1 por dia da autorização: um envio só, mesmo com duas vagas prontas (a lenta conta enquanto está incerta).
-        // A outra não se perde: continua pronta, com o envio para quando o dia virar.
-        await s.WaitAsync(async () => (await s.GetAsync("/applications")).EnumerateArray().Any(a => a.GetProperty("state").GetString() == "ReadyToSubmit"
-            && a.GetProperty("lastReason").GetString()?.Contains("fica para amanhã") == true), Settle, "a segunda pronta esperar o dia seguinte");
-        Assert.Equal(1, await s.SubmissionsAsync());
-
-        var auth = (await s.GetAsync($"/campaigns/{id}/authorizations"))[0].GetProperty("id").GetString();
-        Assert.Equal(HttpStatusCode.NoContent, (await s.Http.DeleteAsync($"{s.Api}/campaigns/{id}/authorizations/{auth}")).StatusCode);
-        Assert.Equal("ReviewRequired", (await s.GetAsync("/campaigns"))[0].GetProperty("mode").GetString());
-        // A que esperava o dia seguinte pela autorização volta já para a sua aprovação: nada sai sozinho depois de revogar.
-        await s.WaitAsync(async () => (await s.GetAsync("/applications")).EnumerateArray().Any(a => a.GetProperty("state").GetString() == "AwaitingApproval"
-            && a.GetProperty("lastReason").GetString()?.Contains("foi desligado") == true), Settle, "a pronta pela autorização voltar para você");
-        Assert.Equal(1, await s.SubmissionsAsync());
-
-        // A new authorization picks up what waited for you: the form is checked again and the Guardian sends it under the new limit.
-        Assert.Equal(HttpStatusCode.OK, await s.PostAsync($"/campaigns/{id}/authorizations", new { days = 1, maxPerDay = 5, minScore = 80, adapters = new[] { "greenhouse-form" }, accepted = true }));
-        await s.WaitAsync(async () => await s.SubmissionsAsync() >= 2, Settle, "a que esperava você sair com a autorização nova");
-    }
-
-    [Fact]
-    public async Task Aprovacao_envia_uma_vez_e_confirmacao_lenta_vira_reconciliacao()
-    {
-        await using var s = await Stack.StartAsync();
-        await s.ConfigureAsync("ReviewRequired");
-        await s.RunAsync();
-        await SettledAsync(s, 4);
-        await s.ApproveAsync("Norte Pagamentos");
-        await s.ApproveAsync("Ponte Logística");
-        await s.WaitAsync(async () => await s.StateAsync("Norte Pagamentos") == "SubmittedConfirmed" && await s.StateAsync("Ponte Logística") == "SubmittedConfirmed", Settle, "confirmações");
-        Assert.Equal(1, await s.SubmissionsAsync(101));
-        Assert.Equal(1, await s.SubmissionsAsync(103));
-        Assert.Contains("SubmissionUnknown", await s.HistoryAsync("Ponte Logística"));
-    }
-
-    [Theory]
-    [InlineData("after-click", 1, "SubmittedConfirmed")]
-    [InlineData("before-click", 0, "NeedsHuman")]
-    public async Task Queda_do_processo_no_envio_nunca_duplica(string crashAt, int expectedSubmissions, string finalState)
-    {
-        await using var s = await Stack.StartAsync(crashAt);
-        await s.ConfigureAsync("ReviewRequired");
-        await s.RunAsync();
-        await SettledAsync(s, 4);
-        await s.ApproveAsync("Norte Pagamentos");
-        await s.WaitWorkerDeathAsync(TimeSpan.FromSeconds(60));
-        s.StartWorker();
-        await s.WaitAsync(async () => await s.StateAsync("Norte Pagamentos") == finalState, Settle, $"estado final {finalState}");
-        Assert.Equal(expectedSubmissions, await s.SubmissionsAsync(101));
-        Assert.Contains("SubmissionUnknown", await s.HistoryAsync("Norte Pagamentos"));
-    }
-
-    [Fact]
-    public async Task Queda_durante_a_reconciliacao_retoma_sem_reenviar()
-    {
-        await using var s = await Stack.StartAsync("during-reconcile");
-        await s.ConfigureAsync("ReviewRequired");
-        await s.RunAsync();
-        await SettledAsync(s, 4);
-        await s.ApproveAsync("Ponte Logística");
-        await s.WaitWorkerDeathAsync(TimeSpan.FromSeconds(90));
-        s.StartWorker();
-        await s.WaitAsync(async () => await s.StateAsync("Ponte Logística") == "SubmittedConfirmed", Settle, "confirmação depois da queda");
-        Assert.Equal(1, await s.SubmissionsAsync(103));
-    }
-
-    [Fact]
-    public async Task Site_sem_adapter_proprio_envia_pelo_formulario_aberto_com_a_declaracao_autorizada()
-    {
-        await using var s = await Stack.StartAsync();
-        // The daily limit is the person's: 300 a day on the campaign lets the authorization go to 300, and no further.
-        await s.SourcesAsync("ReviewRequired", 300, $"greenhouse:{s.Ats}/boards/site");
-        var id = (await s.GetAsync("/campaigns"))[0].GetProperty("id").GetString();
-        Assert.Equal(HttpStatusCode.BadRequest, await s.PostAsync($"/campaigns/{id}/authorizations",
-            new { days = 1, maxPerDay = 301, minScore = 80, adapters = Array.Empty<string>(), accepted = true, acceptDeclarations = true }));
-        Assert.Equal(HttpStatusCode.OK, await s.PostAsync($"/campaigns/{id}/authorizations",
-            new { days = 1, maxPerDay = 300, minScore = 80, adapters = Array.Empty<string>(), accepted = true, acceptDeclarations = true }));
+        await s.SourcesAsync("PrepareOnly", $"greenhouse:{s.Ats}/boards/site");
         await s.RunAsync();
         // A link to a site with no adapter of its own: the form opens behind "Candidatar-se", has no form tag and labels beside the fields.
-        await s.WaitAsync(async () => await s.StateAsync("Brisa Sistemas") == "SubmittedConfirmed", Settle, "o envio pelo formulário aberto do site");
-        Assert.Equal(1, await s.SubmissionsAsync(501));
+        await s.WaitAsync(async () => await s.StateAsync("Brisa Sistemas") == "ManualHandoff", Settle, "o formulário aberto do site ficar pronto");
+        await ReadyForYouAsync(s, "Brisa Sistemas");
+        Assert.Equal(0, await s.SubmissionsAsync(501));
         var app = await s.ApplicationAsync("Brisa Sistemas");
         var fields = (await s.GetAsync($"/applications/{app!.Value.GetProperty("id").GetString()}")).GetProperty("fields").EnumerateArray()
             .Select(f => $"{f.GetProperty("label").GetString()}={f.GetProperty("value").GetString()}").ToList();
-        // Privacy accepted by the authorization; the newsletter box stays blank.
+        // The privacy box is ticked only in the prepare's own browser, which never sends (on the site, you tick it); the newsletter stays blank.
         Assert.Contains(fields, f => f.StartsWith("Li e aceito a Política de Privacidade", StringComparison.Ordinal) && f.EndsWith("=Aceito", StringComparison.Ordinal));
         Assert.DoesNotContain(fields, f => f.Contains("novidades", StringComparison.Ordinal));
-    }
-
-    [Fact]
-    public async Task Uma_declaracao_sem_autorizacao_vira_pergunta_e_o_seu_sim_envia()
-    {
-        await using var s = await Stack.StartAsync();
-        await s.SourcesAsync("ReviewRequired", $"greenhouse:{s.Ats}/boards/site");
-        var id = (await s.GetAsync("/campaigns"))[0].GetProperty("id").GetString();
-        Assert.Equal(HttpStatusCode.OK, await s.PostAsync($"/campaigns/{id}/authorizations",
-            new { days = 1, maxPerDay = 5, minScore = 80, adapters = Array.Empty<string>(), accepted = true, acceptDeclarations = false }));
-        await s.RunAsync();
-        // Without the declarations in the authorization, the privacy box stops the form before sending and becomes your question.
-        // All the declarations waiting are one line: "1 vaga pede o seu aceite", with the form's own text kept underneath.
-        JsonElement? asked = null;
-        await s.WaitAsync(async () => (asked = (await s.GetAsync("/applications/questions")).EnumerateArray()
-            .Cast<JsonElement?>().FirstOrDefault(q => q!.Value.GetProperty("kind").GetString() == "consent")) is not null, Settle, "a declaração virar pergunta");
-        Assert.Equal(0, await s.SubmissionsAsync(501));
-        Assert.Equal("consent", asked!.Value.GetProperty("key").GetString());
-        Assert.StartsWith("1 vaga pede o seu aceite", asked.Value.GetProperty("title").GetString());
-        Assert.StartsWith("Li e aceito a Política de Privacidade", asked.Value.GetProperty("items")[0].GetProperty("label").GetString());
-        Assert.Equal(HttpStatusCode.OK, await s.PostAsync("/applications/questions/answers",
-            new { answers = new[] { new { question = asked.Value.GetProperty("title").GetString(), answer = "Sim", key = "consent" } } }));
-        // Your yes ticks that box for this form: the form is filled again and sent within the authorization.
-        await s.WaitAsync(async () => await s.StateAsync("Brisa Sistemas") == "SubmittedConfirmed", Settle, "o envio depois do seu sim");
-        Assert.Equal(1, await s.SubmissionsAsync(501));
     }
 }

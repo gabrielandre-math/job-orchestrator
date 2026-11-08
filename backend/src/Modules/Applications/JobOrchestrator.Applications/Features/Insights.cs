@@ -36,7 +36,7 @@ internal sealed class GetOverviewHandler(IReadDb<ApplicationsDbContext> db, ICam
         var today = await db.FirstAsync<int>("""
             select count(distinct e.application_id)::int from applications.events e join applications.applications a on a.id = e.application_id
             where e."to" in ('SubmittedConfirmed', 'SubmittedDeclared') and e.at >= @Since and a.archived_at is null
-            """, new { Since = SubmissionGuard.StartOfDay(time.GetUtcNow().UtcDateTime, campaign?.TimeZone) }, ct);
+            """, new { Since = Day.Start(time.GetUtcNow().UtcDateTime, campaign?.TimeZone) }, ct);
         var activity = await db.ListAsync<ActivityRow>("""
             select e.at, e.application_id, a.company, a.title, e."from", e."to", e.reason, e.actor
             from applications.events e join applications.applications a on a.id = e.application_id
@@ -49,99 +49,11 @@ internal sealed class GetOverviewHandler(IReadDb<ApplicationsDbContext> db, ICam
     }
 }
 
-/// <summary>Um nó do fluxo: agente, papel, situação e quantos itens passaram por ele.</summary>
-internal sealed record FlowNode(string Id, string Label, string Role, string Status, int Count, string Detail, string? Phase);
-internal sealed record FlowEdge(string From, string To, int Count, string Kind);
-internal sealed record FlowView(IReadOnlyList<FlowNode> Nodes, IReadOnlyList<FlowEdge> Edges, DateTime At);
-
-internal sealed record GetFlowQuery : IQuery<FlowView>;
-
-/// <summary>O fluxo dos agentes para o canvas. A topologia é fixa: o Guardião sempre fica no caminho do envio.</summary>
-internal sealed class GetFlowHandler(IReadDb<ApplicationsDbContext> db, IJobsApi jobs, TimeProvider time) : IQueryHandler<GetFlowQuery, FlowView>
-{
-    private sealed record Extra(int Materials, int Prepared, int Intents, int Tasks, int Reviewed, int Replies);
-
-    public async Task<Result<FlowView>> Handle(GetFlowQuery q, CancellationToken ct)
-    {
-        var j = await jobs.CountsAsync(ct);
-        var sources = await jobs.SourcesAsync(ct);
-        var a = (await db.FirstAsync<StateCounts>(GetOverviewHandler.CountsSql, null, ct))!;
-        var x = (await db.FirstAsync<Extra>("""
-            select (select count(*) from applications.applications where resume_hash is not null and archived_at is null)::int as materials,
-                   (select count(*) from applications.applications where payload_hash is not null and archived_at is null)::int as prepared,
-                   (select count(*) from applications.submission_intents)::int as intents,
-                   (select count(*) from applications.human_tasks where resolved_at is null)::int as tasks,
-                   (select count(*) from materials.resume_versions where reviewed)::int as reviewed,
-                   (select count(*) from mail.incoming)::int as replies
-            """, null, ct))!;
-        var eligible = j.Total - j.Duplicates - j.Rejected - j.Expired;
-        var guarded = a.AwaitingApproval + a.Sending + a.Confirmed + a.Unknown + a.Blocked;
-        string S(int n) => n > 0 ? "active" : "idle";
-        var nodes = new List<FlowNode>();
-        var edges = new List<FlowEdge>();
-        // Uma fonte por plataforma no canvas; o detalhe por board fica na tela de vagas.
-        foreach (var g in sources.GroupBy(x => Platform(x.Source)).OrderBy(g => g.Key.Order))
-        {
-            var postings = g.Sum(x => x.Postings);
-            var boards = g.Count();
-            nodes.Add(new($"source-{g.Key.Id}", g.Key.Name, boards == 1 ? "1 fonte" : $"{boards} fontes", S(postings), postings, $"{g.Sum(x => x.Shortlisted)} na fila", null));
-            edges.Add(new($"source-{g.Key.Id}", "scout", postings, "flow"));
-        }
-        nodes.AddRange(
-        [
-            new("scout", "Batedor", "Descoberta", S(j.Total), j.Total, "Busca nas fontes permitidas", null),
-            new("normalizer", "Normalizador", "Identidade e duplicadas", S(j.Total), j.Total - j.Duplicates, $"{j.Duplicates} duplicadas", null),
-            new("judge", "Juiz", "Filtros eliminatórios", S(eligible), eligible, $"{j.Rejected} cortadas, {j.Expired} encerradas", null),
-            new("analyst", "Analista", "Nota explicada", S(j.Shortlisted), j.Shortlisted, "Acima do corte da campanha", null),
-            new("writer", "Redator", "Currículo", S(x.Materials), x.Materials, "Só fatos do perfil", null),
-            new("reviewer", "Revisor", "Checagem de fatos", S(x.Reviewed), x.Reviewed, "Outra família de modelo confere", null),
-            new("preparer", "Preparador", "Formulário", S(x.Prepared), x.Prepared, "Preenche sem enviar", null),
-            new("guard", "Guardião", "Política de envio", a.AwaitingApproval > 0 ? "attention" : S(guarded), guarded, $"{a.AwaitingApproval} esperando você", null),
-            new("sender", "Remetente", "Envio", S(x.Intents), x.Intents, "Um por vez, com token", null),
-            new("verifier", "Verificador", "Confirmação", a.Unknown > 0 ? "attention" : S(a.Confirmed), a.Confirmed, $"{a.Unknown} incertas", null),
-            new("tracker", "Rastreador", "E-mail e funil", S(x.Replies), x.Replies, "Respostas ligadas aos envios", null),
-            new("attention", "Atenção", "Fila humana", x.Tasks > 0 ? "attention" : "idle", x.Tasks, "CAPTCHA, login, perguntas", null)
-        ]);
-        edges.AddRange(
-        [
-            new("scout", "normalizer", j.Total, "flow"),
-            new("normalizer", "judge", j.Total - j.Duplicates, "flow"),
-            new("judge", "analyst", eligible, "flow"),
-            new("analyst", "writer", j.Shortlisted, "flow"),
-            new("writer", "reviewer", x.Reviewed, "flow"),
-            new("writer", "preparer", x.Materials, "flow"),
-            new("preparer", "guard", x.Prepared, "flow"),
-            new("guard", "sender", x.Intents, "flow"),
-            new("sender", "verifier", x.Intents, "flow"),
-            new("verifier", "tracker", x.Replies, "flow"),
-            new("preparer", "attention", a.NeedsHuman, "fallback"),
-            new("guard", "attention", a.AwaitingApproval, "fallback"),
-            new("verifier", "attention", a.Unknown, "fallback")
-        ]);
-        return new FlowView(nodes, edges, time.GetUtcNow().UtcDateTime);
-    }
-
-    /// <summary>Plataforma de uma fonte ("greenhouse:acme" vira Greenhouse), com a ordem de exibição.</summary>
-    internal static (string Id, string Name, int Order) Platform(string source) => source.Split(':', 2)[0].ToLowerInvariant() switch
-    {
-        "greenhouse" => ("greenhouse", "Greenhouse", 0),
-        "lever" => ("lever", "Lever", 1),
-        "ashby" => ("ashby", "Ashby", 2),
-        "smartrecruiters" => ("smartrecruiters", "SmartRecruiters", 3),
-        "github" => ("github", "GitHub", 4),
-        "hn" => ("hackernews", "Hacker News", 5),
-        "remotive" => ("remotive", "Remotive", 6),
-        "manual" => ("manual", "Salvas por você", 7),
-        var other => (other, other, 9)
-    };
-}
-
-/// <summary>Rotas HTTP (Carter) da visão geral e do fluxo.</summary>
+/// <summary>Rotas HTTP (Carter) da visão geral.</summary>
 internal sealed class InsightEndpoints : ICarterModule
 {
     public void AddRoutes(IEndpointRouteBuilder app)
     {
         app.MapGet("/api/overview", async (ISender sender, CancellationToken ct) => (await sender.Send(new GetOverviewQuery(), ct)).ToHttp(Results.Ok)).WithTags("Insights");
-        app.MapGet("/api/flow", async (ISender sender, CancellationToken ct) => (await sender.Send(new GetFlowQuery(), ct)).ToHttp(Results.Ok)).WithTags("Insights");
     }
 }

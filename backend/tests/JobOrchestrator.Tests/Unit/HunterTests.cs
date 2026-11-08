@@ -35,7 +35,7 @@ public sealed class HunterTests
     [Fact]
     public void Sem_modelo_o_plano_sai_da_campanha()
     {
-        var c = new CampaignSettings(Guid.NewGuid(), "Backend .NET", true, default, 80, 10, ["C#", ".NET", "AWS"], ["Remoto"], [], "America/Sao_Paulo", null, ["Backend Software Engineer .NET"]);
+        var c = new CampaignSettings(Guid.NewGuid(), "Backend .NET", true, default, 80, 10, ["C#", ".NET", "AWS"], ["Remoto"], [], "America/Sao_Paulo", ["Backend Software Engineer .NET"]);
         var plan = Hunter.Fallback(c, null);
         Assert.Contains("csharp", plan.Slugs);
         Assert.Contains("dotnet", plan.Slugs);

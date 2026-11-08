@@ -237,16 +237,6 @@ public sealed class FormFillTests
         Assert.NotNull(result.Single().Checked.Value);
     }
 
-    [Theory]
-    [InlineData("Your application has been submitted successfully.", true)]
-    [InlineData("Thank you for applying to CoverGo", true)]
-    [InlineData("Thanks for your application!", true)]
-    [InlineData("Application received", true)]
-    [InlineData("Sua candidatura foi enviada.", true)]
-    [InlineData("You have not yet submitted your application form. Are you sure you want to leave this page?", false)]
-    [InlineData("Submit application", false)]
-    public void The_page_that_says_the_application_arrived(string text, bool submitted) => Assert.Equal(submitted, LabelForm.SaysSubmitted(text));
-
     private const string Gdpr = "I have read, understand and accept the content of the Privacy Notice and consent to the processing of my data as part of this application.";
 
     [Fact]

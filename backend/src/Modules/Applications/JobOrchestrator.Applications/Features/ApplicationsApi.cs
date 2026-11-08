@@ -13,7 +13,7 @@ internal sealed class ApplicationsApi(ApplicationsDbContext db, ICampaignsApi ca
         int N(params ApplicationState[] states) => states.Sum(s => by.GetValueOrDefault(s));
         // "Today" is the campaign's day, in its time zone, as the daily limit counts it.
         var zone = (await campaigns.ListAsync(ct)).FirstOrDefault()?.TimeZone;
-        var today = SubmissionGuard.StartOfDay(time.GetUtcNow().UtcDateTime, zone);
+        var today = Day.Start(time.GetUtcNow().UtcDateTime, zone);
         // Sent today by the time of the send in the history, as the home page counts it: an outcome marked today on an old one is not a send.
         var sentToday = await db.Events.AsNoTracking().Where(e => (e.To == "SubmittedConfirmed" || e.To == "SubmittedDeclared") && e.At >= today
                 && db.Applications.Any(a => a.Id == e.ApplicationId && a.ArchivedAt == null))

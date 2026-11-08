@@ -114,29 +114,6 @@ internal sealed class JobApplication : AggregateRoot
         Move(ApplicationState.FormValidated, $"Formulário preenchido e conferido por {form.AdapterId}. Nada foi enviado.", "Preparador", now, new { form.PayloadHash, route });
     }
 
-    /// <summary>Automático: a autorização ativa aprova o payload exato que o adapter acabou de preparar.</summary>
-    public void AutoApprove(Guid authorizationId, DateTime now)
-    {
-        if (PayloadHash is null) throw new DomainRuleException("Sem formulário preparado não há o que aprovar.");
-        Move(ApplicationState.ReadyToSubmit, "Aprovada pela autorização de envio automático.", "Guardião", now, new { authorizationId, PayloadHash });
-    }
-
-    /// <summary>Aprovação vale só para o payload exato que você viu.</summary>
-    public void Approve(string payloadHash, DateTime now)
-    {
-        if (PayloadHash is null || payloadHash != PayloadHash) throw new DomainRuleException("A aprovação não corresponde ao formulário preparado.");
-        Move(ApplicationState.ReadyToSubmit, "Aprovada por você.", "Você", now, new { payloadHash });
-    }
-
-    /// <summary>Pronta, mas o teto do dia já foi: continua pronta e o envio fica para depois. O histórico ganha a linha com o motivo.</summary>
-    public void Postpone(string reason, string actor, DateTime now)
-    {
-        if (State != ApplicationState.ReadyToSubmit) throw new DomainRuleException("Só dá para adiar o envio de candidatura pronta para enviar.");
-        LastReason = reason;
-        UpdatedAt = now;
-        _history.Add(ApplicationEvent.Create(Id, State, State, reason, actor, null, now));
-    }
-
     public void Confirmed(SubmissionReceipt receipt, string actor, DateTime now)
     {
         if (receipt.EvidenceLevel < 3) throw new DomainRuleException("Confirmação exige página de confirmação, recibo ou e-mail casado.");

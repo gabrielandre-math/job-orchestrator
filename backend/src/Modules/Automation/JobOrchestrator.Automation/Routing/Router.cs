@@ -2,7 +2,7 @@ namespace JobOrchestrator.Automation.Routing;
 
 /// <summary>
 /// Capability routing: elimina quem não pode (capacidade, domínio, circuito), dá nota a quem sobra e tenta em ordem.
-/// Fallback só quando é seguro: campo não suportado ou falha de preparo. Envio e reconciliação nunca trocam de adapter.
+/// Fallback só quando é seguro: campo não suportado ou falha de preparo.
 /// </summary>
 internal sealed class Router(IEnumerable<IFormAdapter> adapters, AutomationDbContext db, TimeProvider time, IOptions<AutomationOptions> options, ILogger<Router> log)
 {
@@ -42,12 +42,8 @@ internal sealed class Router(IEnumerable<IFormAdapter> adapters, AutomationDbCon
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 log.LogWarning(ex, "Adapter {Adapter} failed on {Capability}", adapter.Id, capability);
-                // Depois de começar um envio, exceção não prova nada (o erro pode vir do redirecionamento depois do clique): só a
-                // reconciliação decide. Fora do envio, uma página que nem abriu diz o que houve.
-                result = (capability == Capability.SubmitApplication ? null : Unreachable<T>(ex.Message))
-                    ?? (capability == Capability.SubmitApplication
-                        ? AdapterResult<T>.Fail(AdapterResultKind.SubmissionUnknown, "exception", "O adapter caiu durante o envio.")
-                        : AdapterResult<T>.Fail(AdapterResultKind.RetryableFailure, "exception", "O adapter caiu; a etapa pode ser repetida."));
+                // A page that never opened says what happened; anything else is the adapter's, and the step can run again.
+                result = Unreachable<T>(ex.Message) ?? AdapterResult<T>.Fail(AdapterResultKind.RetryableFailure, "exception", "O adapter caiu; a etapa pode ser repetida.");
             }
             route.Add(new(adapter.Id, Math.Round(score, 3), result.Kind.ToString(), $"{why}; {result.Detail}"));
             await RecordAsync(adapter, url.Authority, capability, result, ct);
@@ -97,16 +93,12 @@ internal sealed class Router(IEnumerable<IFormAdapter> adapters, AutomationDbCon
     private Task RecordAsync<T>(IFormAdapter a, string domain, Capability capability, AdapterResult<T> r, CancellationToken ct)
     {
         var ok = r.Kind == AdapterResultKind.Completed;
-        // A send the robot could not confirm is not a failure of the adapter (the site may just say "thank you" in other words): it does
-        // not pause the adapter, or one unrecognized confirmation page would hold every approved application behind it.
         var failure = r.Kind is AdapterResultKind.RetryableFailure or AdapterResultKind.PermanentFailure;
-        // A site that asked for a person is no fault of the adapter either, but it is remembered: the next ones go to you without a try.
-        var noted = failure || r.ReasonCode == "human-check";
         var openUntil = time.GetUtcNow().UtcDateTime.Add(CircuitPause);
         return db.Database.ExecuteSqlInterpolatedAsync($"""
             INSERT INTO automation.adapter_stats (adapter_id, domain, capability, version, attempts, confirmed, failures, consecutive_failures, last_failure_at, last_failure_code)
             VALUES ({a.Id}, {domain}, {capability.ToString()}, {a.Version}, 1, {(ok ? 1 : 0)}, {(failure ? 1 : 0)}, {(failure ? 1 : 0)},
-                    {(noted ? time.GetUtcNow().UtcDateTime : null)}, {(noted ? r.ReasonCode : null)})
+                    {(failure ? time.GetUtcNow().UtcDateTime : null)}, {(failure ? r.ReasonCode : null)})
             ON CONFLICT (adapter_id, domain, capability) DO UPDATE SET
               version = excluded.version,
               attempts = adapter_stats.attempts + 1,

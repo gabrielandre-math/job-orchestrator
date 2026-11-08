@@ -22,7 +22,7 @@
   <a href="LICENSE.md"><img alt="Licença: PolyForm Noncommercial 1.0.0" src="https://img.shields.io/badge/licen%C3%A7a-PolyForm_Noncommercial-ff90ac?style=flat-square&labelColor=141414"></a>
 </p>
 
-O Job Orchestrator faz a sua busca de emprego no seu próprio computador. Ele lê quadros de vagas e páginas de carreira das empresas, separa as vagas em que você pode mesmo se candidatar, dá a cada uma uma nota contra o seu currículo com um modelo de linguagem rodando na sua GPU, escreve um currículo para cada vaga só com fatos dos seus documentos e preenche a candidatura quando você aprova.
+O Job Orchestrator faz a sua busca de emprego no seu próprio computador. Ele lê quadros de vagas e páginas de carreira das empresas, separa as vagas em que você pode mesmo se candidatar, dá a cada uma uma nota contra o seu currículo com um modelo de linguagem rodando na sua GPU, escreve um currículo para cada vaga só com fatos dos seus documentos e prepara cada candidatura para abrir já preenchida no seu navegador: você confere e clica em enviar.
 
 Não existe conta, servidor nem assinatura do Job Orchestrator. A instalação é a de qualquer app de desktop, e tudo fica na sua pasta de usuário.
 
@@ -38,7 +38,7 @@ A interface é em português do Brasil. Currículos e respostas de formulário s
 ## Self-hosted de verdade
 
 - **Tudo roda na sua máquina.** O app, o banco (um PostgreSQL próprio que o instalador baixa, com uns 60 MB, sem Docker), a automação do navegador, o coletor e o modelo de IA. O painel só atende em `127.0.0.1:7410`.
-- **Os seus dados ficam na sua pasta de usuário.** Currículo, perfil, currículos gerados, histórico das candidaturas e dados dos e-mails ficam em `~/.local/share/job-orchestrator` no Linux, em `~/Library/Application Support/JobOrchestrator` no macOS e em `%LOCALAPPDATA%\JobOrchestrator` no Windows. Sai do computador apenas o que uma fonte precisa para responder e as candidaturas que você aprova.
+- **Os seus dados ficam na sua pasta de usuário.** Currículo, perfil, currículos gerados, histórico das candidaturas e dados dos e-mails ficam em `~/.local/share/job-orchestrator` no Linux, em `~/Library/Application Support/JobOrchestrator` no macOS e em `%LOCALAPPDATA%\JobOrchestrator` no Windows. Sai do computador apenas o que uma fonte precisa para responder e as candidaturas que você mesmo envia.
 - **Sem telemetria.** Nada informa uso para lugar nenhum.
 - **O modelo local vem primeiro.** Ler currículo, dar nota às vagas e escrever textos fica com um modelo servido pelo [Ollama](https://ollama.com). Ele usa a sua GPU quando o Ollama tem suporte a ela (NVIDIA, AMD ou Apple Silicon) e o processador nos outros casos. A tela de Provedores instala o modelo para você.
 - **Um rastro para diagnóstico, no seu disco.** Requisições que mudam algo, cada passo da fila, cada mudança de estado, as chamadas de IA e os erros da tela vão para um log local guardado por 14 dias, que a tela Diagnóstico filtra. Nenhuma resposta, currículo ou corpo de e-mail entra nele, e ele nunca é enviado a lugar nenhum.
@@ -61,20 +61,20 @@ A interface é em português do Brasil. Currículos e respostas de formulário s
   </tr>
   <tr>
     <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/step-guardian-dark.svg"><img alt="" src=".github/assets/step-guardian-light.svg" width="96"></picture></td>
-    <td><b>4. Candidatar, com o seu ok.</b> O formulário é preenchido num navegador de verdade, e um ensaio para antes do botão de enviar. Perguntas abertas como "conte um projeto" são respondidas pelo seu currículo. O que só você sabe, como uma declaração para aceitar ou o seu salário atual, chega uma vez, agrupado pelo sentido, e uma resposta vale para todo formulário que pergunta a mesma coisa, em qualquer língua. Nada sai sem a sua aprovação ou sem uma autorização que você deu para aquele tipo de vaga, sempre dentro de um teto por dia e de uma janela de horário. Um site em que o robô não passa, com login, CAPTCHA ou verificação anti-robô, abre já preenchido no seu navegador pela extensão do copiloto: ela preenche o que o app preparou para a vaga e anexa o currículo dela, você confere e clica em enviar, e a página de confirmação marca a candidatura como enviada.</td>
+    <td><b>4. Enviar, do seu navegador.</b> O app lê cada formulário e prepara as respostas, e a extensão do copiloto abre a vaga já preenchida no seu navegador, com o currículo dela anexado. O campo que ela não preenche vai para a IA, que responde pelo seu perfil e nunca inventa, e o que sobrar fica no kit de respostas da candidatura, com botão de copiar, ao lado de uma carta de apresentação já escrita. O que só você sabe, como o seu salário atual, chega uma vez, agrupado pelo sentido, e uma resposta vale para todo formulário que pergunta a mesma coisa, em qualquer língua. Você confere e clica em enviar: o app nunca clica, e a página de confirmação marca a candidatura como enviada. No Início, "Envie a próxima" leva você pelas candidaturas prontas, a de maior nota primeiro.</td>
   </tr>
   <tr>
     <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/step-inbox-dark.svg"><img alt="" src=".github/assets/step-inbox-light.svg" width="96"></picture></td>
-    <td><b>5. Acompanhar.</b> Com acesso só de leitura ao seu e-mail, as respostas movem cada candidatura no funil, e os e-mails de status da Gupy, do Greenhouse, do Lever, do Indeed e de outras plataformas confirmam as candidaturas enviadas por elas e marcam entrevista, oferta e recusa. Toda candidatura tem um histórico que só cresce e uma prova de envio.</td>
+    <td><b>5. Acompanhar.</b> As candidaturas ficam num quadro (preparando, para enviar, enviada, entrevista, oferta, encerrada) ou numa lista com busca. Com acesso só de leitura ao seu e-mail, a IA lê as respostas e os e-mails de status da Gupy, do Greenhouse, do Lever, do Indeed e de outras plataformas, confirma o que você enviou e move cada cartão para entrevista, oferta ou recusa; você também pode arrastar. Conecte o endereço que vai nos formulários: o Início avisa quando ele é outro. Toda candidatura tem um histórico que só cresce e uma prova de envio.</td>
   </tr>
 </table>
 
-O Job Orchestrator se candidata em seu nome. Leia o que ele prepara antes de deixar que envie sozinho.
+O Job Orchestrator nunca clica em enviar: toda candidatura sai do seu navegador, depois que você lê.
 
 ## Dentro das regras
 
 - A busca opcional do LinkedIn usa uma sessão autenticada no navegador local, com limites de consultas. Login e desafios exigem sua ação; Easy Apply permanece assistido. A extensão captura o conteúdo da página que você abriu. Veja o [guia e os limites de validação real](docs/REAL_LINKEDIN_AND_CAPTCHA.md); testes de DOM não comprovam acesso autenticado ao serviço.
-- CAPTCHAs de sites externos ficam com você. Quando um site bloqueia acesso automático, o robô para ali e o copiloto abre a vaga preenchida no seu navegador para você terminar.
+- O app nunca resolve nem contorna CAPTCHA ou verificação anti-robô. Quando um site tem uma, o copiloto abre a vaga preenchida no seu navegador e você termina.
 - O coletor segue o robots.txt, espera entre as requisições e abre uma conexão por site.
 - O app não entra na Gupy, no Indeed nem no Glassdoor com a sua conta para buscar ou se candidatar, porque os termos deles proíbem acesso automatizado às contas. Ele lê as vagas públicas onde isso é permitido, os alertas que eles mandam para o seu e-mail e os e-mails de status, e o copiloto preenche o formulário enquanto você se candidata no seu próprio navegador.
 - Fontes cujos termos não permitem esse uso ficam no registro como bloqueadas (LinkedIn Jobs, France Travail) ou apenas com parceria (a API de empregador da Gupy e o MyCareersFuture de Singapura), com o motivo à vista.
@@ -224,7 +224,7 @@ Os pacotes ainda não têm assinatura com certificado pago, então o arquivo bai
 1. Rode o instalador. Ele confere a máquina (navegador, banco, coletor, modelo local, placa de vídeo, espaço em disco e chaveiro), copia o app para a sua pasta de usuário, liga o PostgreSQL próprio, prepara o coletor com um Python só dele e cria o atalho no menu. Nada pede senha de administrador, e o que faltar na máquina vira um comando ou um link para você.
 2. Quando o app abre, uma configuração curta pede para ligar uma IA (o modelo local, o seu CLI ou os dois), enviar o currículo em PDF e confirmar uma tela com o que ele não conseguiu deduzir: autorização de trabalho, piso salarial, modalidade, data de início e nível de inglês. Conectar o Gmail é opcional.
 3. Opcional: em Configurações, carregue a extensão do copiloto no Chrome, no Edge ou no Brave em quatro passos. A janela do app já vem com ela.
-4. No Início, **Automatizar tudo** liga de uma vez a busca programada, o Explorador, o modo de envio e o e-mail. Se preferir, fique no modo de revisão e aprove cada candidatura.
+4. O Início mostra um próximo passo por vez: responder as perguntas que os formulários fizeram e depois enviar as candidaturas prontas, uma por uma, com o copiloto.
 
 ```sh
 job-orchestrator               # abre o app; na primeira vez, o instalador

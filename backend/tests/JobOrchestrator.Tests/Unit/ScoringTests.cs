@@ -20,7 +20,7 @@ public sealed class ScoringTests
 
     /// <summary>Qualquer área: enfermagem, com cargos-alvo e palavras da área, sem nenhuma tecnologia.</summary>
     private static readonly CampaignSettings Nursing = new(Guid.NewGuid(), "Enfermagem", true, SubmissionMode.PrepareOnly, 70, 15,
-        ["enfermagem", "UTI", "COREN", "plantão"], ["São Paulo", "Remoto"], [], "America/Sao_Paulo", null, ["Enfermeira", "Enfermeiro de UTI", "Técnica de enfermagem"]);
+        ["enfermagem", "UTI", "COREN", "plantão"], ["São Paulo", "Remoto"], [], "America/Sao_Paulo", ["Enfermeira", "Enfermeiro de UTI", "Técnica de enfermagem"]);
 
     [Fact]
     public void Vaga_de_enfermagem_tem_nota_alta_com_cargo_alvo()
@@ -69,20 +69,6 @@ public sealed class ScoringTests
         Assert.False(BrowserPool.Allowed("http://192.168.0.10/admin", allowed));
         Assert.False(BrowserPool.Allowed("file:///etc/passwd", allowed));
         Assert.False(BrowserPool.Allowed("https://evil.example.com/", allowed));
-    }
-
-    [Fact]
-    public void Token_de_envio_nao_aceita_payload_trocado_nem_vencido()
-    {
-        var key = new byte[32];
-        Random.Shared.NextBytes(key);
-        var now = DateTime.UtcNow;
-        var intent = Guid.NewGuid(); var app = Guid.NewGuid();
-        var token = new SubmitToken(intent, app, "abc", now.AddMinutes(10), SubmitToken.Sign(key, intent, app, "abc", now.AddMinutes(10)));
-        Assert.True(token.IsValid(key, now));
-        Assert.False((token with { PayloadHash = "abd" }).IsValid(key, now));
-        Assert.False(token.IsValid(key, now.AddMinutes(11)));
-        Assert.False(token.IsValid(new byte[32], now));
     }
 
     private static readonly Preferences OnlyRemote = new(["remote"], 9000, 12000, 5000);

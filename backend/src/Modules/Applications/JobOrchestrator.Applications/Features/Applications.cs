@@ -59,32 +59,7 @@ internal sealed class ListTasksHandler(IReadDb<ApplicationsDbContext> db) : IQue
             "select id, application_id, kind, title, detail, created_at, resolved_at, resolution from applications.human_tasks where resolved_at is null order by created_at", null, ct));
 }
 
-/// <summary>Comando: aprova o payload exato que você viu. Outro payload não passa.</summary>
-internal sealed record ApproveCommand(Guid Id, string PayloadHash) : ICommand<Done>, IApplicationsCommand;
-
-internal sealed class ApproveValidator : AbstractValidator<ApproveCommand>
-{
-    public ApproveValidator() => RuleFor(x => x.PayloadHash).Length(64).WithMessage("Hash do formulário inválido.");
-}
-
-internal sealed class ApproveHandler(ApplicationsDbContext db, TimeProvider time) : ICommandHandler<ApproveCommand, Done>
-{
-    public async Task<Result<Done>> Handle(ApproveCommand c, CancellationToken ct)
-    {
-        var app = await db.Applications.FirstOrDefaultAsync(a => a.Id == c.Id, ct);
-        if (app is null) return Error.NotFound("application-not-found", "Candidatura não encontrada.");
-        if (app.State != ApplicationState.AwaitingApproval) return Error.Conflict("not-awaiting", "Esta candidatura não está esperando aprovação.");
-        if (app.PayloadHash != c.PayloadHash) return Error.Conflict("payload-changed", "O formulário mudou desde que você abriu. Revise de novo.");
-        var now = time.GetUtcNow().UtcDateTime;
-        db.Approvals.Add(new ApprovalDecision { Id = Guid.CreateVersion7(), ApplicationId = app.Id, PayloadHash = c.PayloadHash, Approved = true, At = now });
-        await db.ResolveTasksAsync(app.Id, "Aprovada", now, ct);
-        app.Approve(c.PayloadHash, now);
-        db.WorkItems.Add(WorkItem.Create(app.Id, WorkStep.Submit, now, now));
-        return new Done();
-    }
-}
-
-/// <summary>Comando: recusa. A candidatura sai da fila e fica registrada.</summary>
+/// <summary>Comando: descarta. A candidatura sai da fila e fica registrada.</summary>
 internal sealed record WithdrawCommand(Guid Id) : ICommand<Done>, IApplicationsCommand;
 
 internal sealed class WithdrawHandler(ApplicationsDbContext db, TimeProvider time) : ICommandHandler<WithdrawCommand, Done>
@@ -95,8 +70,6 @@ internal sealed class WithdrawHandler(ApplicationsDbContext db, TimeProvider tim
         if (app is null) return Error.NotFound("application-not-found", "Candidatura não encontrada.");
         if (!Transitions.Allowed(app.State, ApplicationState.Withdrawn)) return Error.Conflict("cannot-withdraw", "Esta candidatura não pode mais ser retirada.");
         var now = time.GetUtcNow().UtcDateTime;
-        if (app.PayloadHash is not null && app.State == ApplicationState.AwaitingApproval)
-            db.Approvals.Add(new ApprovalDecision { Id = Guid.CreateVersion7(), ApplicationId = app.Id, PayloadHash = app.PayloadHash, Approved = false, At = now });
         await db.ResolveTasksAsync(app.Id, "Recusada", now, ct);
         app.Move(ApplicationState.Withdrawn, "Recusada por você.", "Você", now);
         return new Done();
@@ -193,7 +166,6 @@ internal sealed class ApplicationEndpoints : ICarterModule
         var group = app.MapGroup("/api/applications").WithTags("Applications");
         group.MapGet("", async (string? state, ISender sender, CancellationToken ct) => (await sender.Send(new ListApplicationsQuery(state), ct)).ToHttp(Results.Ok));
         group.MapGet("{id:guid}", async (Guid id, ISender sender, CancellationToken ct) => (await sender.Send(new GetApplicationQuery(id), ct)).ToHttp(Results.Ok));
-        group.MapPost("{id:guid}/approve", async (Guid id, ApproveCommand body, ISender sender, CancellationToken ct) => (await sender.Send(body with { Id = id }, ct)).ToHttp(_ => Results.NoContent()));
         group.MapPost("{id:guid}/withdraw", async (Guid id, ISender sender, CancellationToken ct) => (await sender.Send(new WithdrawCommand(id), ct)).ToHttp(_ => Results.NoContent()));
         group.MapPost("{id:guid}/archive", async (Guid id, ISender sender, CancellationToken ct) => (await sender.Send(new ArchiveCommand(id), ct)).ToHttp(_ => Results.NoContent()));
         group.MapPut("{id:guid}/outcome", async (Guid id, OutcomeBody body, ISender sender, CancellationToken ct) =>

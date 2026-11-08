@@ -40,7 +40,6 @@ public static class AutomationModule
             o.CircuitBreaker.BreakDuration = TimeSpan.FromMinutes(2);
         })
         .SelectPipelineByAuthority();
-        s.TryAddSingleton<GuardKey>();
         s.AddSingleton<BrowserPool>();
         s.AddSingleton<Features.ControlledTests>();
         s.AddSingleton<Features.LinkedInSession>();

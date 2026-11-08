@@ -11,8 +11,8 @@ namespace JobOrchestrator.Automation.Adapters;
 /// respostas que você já deu e as que a IA escreveu pelos fatos do perfil. A declaração de privacidade e termos só é marcada com a
 /// sua autorização; pergunta que ninguém respondeu volta inteira (tipo e opções) para a IA.
 /// </summary>
-internal sealed partial class WorkableForm(BrowserPool browsers, IHttpClientFactory http, GuardKey key, TimeProvider time, IOptions<AutomationOptions> options)
-    : LabelForm(browsers, http, key, time, options)
+internal sealed partial class WorkableForm(BrowserPool browsers, IOptions<AutomationOptions> options)
+    : LabelForm(browsers, options)
 {
     public override string Id => "workable-form";
     public override string Name => "Formulário Workable";

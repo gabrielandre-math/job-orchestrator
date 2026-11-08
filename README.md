@@ -22,7 +22,7 @@
   <a href="LICENSE.md"><img alt="License: PolyForm Noncommercial 1.0.0" src="https://img.shields.io/badge/license-PolyForm_Noncommercial-ff90ac?style=flat-square&labelColor=141414"></a>
 </p>
 
-Job Orchestrator runs your job search on your own computer. It reads job boards and company career pages, keeps the openings you are actually allowed to apply to, scores each one against your CV with a language model on your GPU, writes a résumé for every job using only facts from your own documents, and fills in the application when you approve it.
+Job Orchestrator runs your job search on your own computer. It reads job boards and company career pages, keeps the openings you are actually allowed to apply to, scores each one against your CV with a language model on your GPU, writes a résumé for every job using only facts from your own documents, and prepares each application so it opens already filled in your browser: you check it and click send.
 
 There is no Job Orchestrator account, server or subscription. You install it like any desktop app, and it keeps everything in your user folder.
 
@@ -38,7 +38,7 @@ The interface is in Brazilian Portuguese. Résumés and form answers are written
 ## Self-hosted by design
 
 - **Everything runs on your machine.** The app, its database (a private PostgreSQL that the installer downloads, about 60 MB, no Docker needed), the browser automation, the scraper and the AI model. The panel only listens on `127.0.0.1:7410`.
-- **Your data stays in your user folder.** CV, profile, résumés, application history and e-mail metadata live in `~/.local/share/job-orchestrator` on Linux, `~/Library/Application Support/JobOrchestrator` on macOS and `%LOCALAPPDATA%\JobOrchestrator` on Windows. What leaves the computer is what a source needs to answer a request and the applications you approve.
+- **Your data stays in your user folder.** CV, profile, résumés, application history and e-mail metadata live in `~/.local/share/job-orchestrator` on Linux, `~/Library/Application Support/JobOrchestrator` on macOS and `%LOCALAPPDATA%\JobOrchestrator` on Windows. What leaves the computer is what a source needs to answer a request and the applications you send yourself.
 - **No telemetry.** Nothing reports usage anywhere.
 - **The local model comes first.** Reading CVs, scoring jobs and drafting text run on a model served by [Ollama](https://ollama.com). It uses your GPU when Ollama supports it (NVIDIA, AMD or Apple Silicon) and the CPU otherwise. The Providers screen installs the model for you.
 - **A trail for diagnosis, on your disk.** Requests that change something, each step of the queue, each change of state, the AI calls and the errors on screen go to a local log kept for 14 days, which the Diagnóstico screen filters. No answer, CV or e-mail body is written to it, and it is never sent anywhere.
@@ -61,20 +61,20 @@ The interface is in Brazilian Portuguese. Résumés and form answers are written
   </tr>
   <tr>
     <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/step-guardian-dark.svg"><img alt="" src=".github/assets/step-guardian-light.svg" width="96"></picture></td>
-    <td><b>4. Apply, with your OK.</b> The form is filled in a real browser, and you can run a rehearsal that stops before the submit button. Open questions such as "tell us about a project" are answered from your CV. What only you know, like a declaration to accept or your current pay, reaches you once, grouped by meaning, and one answer covers every form that asks it, in any language. Nothing goes out without your approval or an authorization you set up for that kind of job, always within a daily cap and a time window. A site the robot cannot pass, with a login, a CAPTCHA or an anti-bot check, opens already filled in your browser through the copilot extension: it fills what the app prepared for that job and attaches its résumé, you check and click send, and the confirmation page marks the application as sent.</td>
+    <td><b>4. Send, from your browser.</b> The app reads each form and prepares the answers, and the copilot extension opens the job already filled in your browser, with its résumé attached. Fields it could not fill go to the AI, which answers from your profile and never invents, and whatever is left waits in the application's answer kit with a copy button, next to a cover letter already written. What only you know, like your current pay, reaches you once, grouped by meaning, and one answer covers every form that asks it, in any language. You check the form and click send yourself: the app never clicks it, and the confirmation page marks the application as sent. On the home screen, "Send the next one" walks you through the ready applications, highest score first.</td>
   </tr>
   <tr>
     <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/step-inbox-dark.svg"><img alt="" src=".github/assets/step-inbox-light.svg" width="96"></picture></td>
-    <td><b>5. Follow up.</b> With read-only access to your inbox, replies move each application along the funnel, and the status e-mails from Gupy, Greenhouse, Lever, Indeed and other platforms confirm the applications you sent through them and mark interviews, offers and rejections. Every application keeps an append-only history and a proof of submission.</td>
+    <td><b>5. Follow up.</b> Applications sit on a board (preparing, to send, sent, interview, offer, closed) or in a list you can search. With read-only access to your inbox, the AI reads the replies and the status e-mails from Gupy, Greenhouse, Lever, Indeed and other platforms, confirms what you sent and moves each card to interview, offer or rejection; you can also drag it. Connect the address your forms use, and the home screen tells you when it is a different one. Every application keeps an append-only history and a proof of submission.</td>
   </tr>
 </table>
 
-Job Orchestrator applies to jobs in your name. Read what it prepares before you let it send anything on its own.
+Job Orchestrator never clicks send: every application goes out from your own browser, after you read it.
 
 ## Access and operating limits
 
 - An optional, disabled-by-default LinkedIn session connector reads job searches through a separate local browser you log in to. It is experimental, depends on the site's layout and can be interrupted by login, verification or access limits. LinkedIn restricts automated access in its terms. Profile export, alert e-mails and user-triggered page capture remain available. See the [setup and live-test guide](docs/REAL_LINKEDIN_AND_CAPTCHA.md).
-- CAPTCHAs on external job sites remain with the user: the robot stops there and the copilot opens the job filled in your browser for you to finish. For your own server, the controlled test flow supports local image OCR, arithmetic and official Turnstile/reCAPTCHA v2/hCaptcha widgets with server validation and session continuity.
+- The app never solves or bypasses CAPTCHAs or anti-bot checks. When a site has one, the copilot opens the job filled in your browser and you finish it.
 - The scraper follows robots.txt, waits between requests and opens one connection per site.
 - The app does not sign in to Gupy, Indeed or Glassdoor with your account to search or apply, because their terms forbid automated access to accounts. It reads their public listings where that is allowed, the job alerts they e-mail you and their status e-mails, and the copilot fills the form while you apply in your own browser.
 - Sources whose terms do not allow this kind of use stay in the registry as blocked (LinkedIn Jobs, France Travail) or partner-only (the Gupy employer API and Singapore's MyCareersFuture), so you can see why they are off.
@@ -224,7 +224,7 @@ The builds are not signed with a paid certificate yet, so a file downloaded in t
 1. Run the installer. It checks the machine (browser, database, scraper, local model, GPU, disk space and keyring), copies the app to your user folder, starts its own PostgreSQL, prepares the scraper with a Python of its own and adds a menu entry. It never asks for an administrator password, and anything missing turns into a command or a link for you.
 2. When the app opens, a short setup asks you to connect an AI (the local model, your CLI or both), upload your CV as a PDF and confirm one screen with what it could not infer: work authorization, salary floor, work model, start date and English level. Connecting Gmail is optional.
 3. Optional: in Configurações, load the copilot extension in Chrome, Edge or Brave in four steps. The app window already has it.
-4. On the home screen, **Automatizar tudo** (automate everything) turns on the search schedule, the Explorer, the sending mode and e-mail in one pass. If you prefer, stay in review mode and approve each application yourself.
+4. The home screen shows one next step at a time: answer the questions the forms asked, then send the ready applications one by one with the copilot.
 
 ```sh
 job-orchestrator               # opens the app; the first time, the installer

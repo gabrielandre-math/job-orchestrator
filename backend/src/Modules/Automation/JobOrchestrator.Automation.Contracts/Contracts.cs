@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using System.Text;
 
 namespace JobOrchestrator.Automation.Contracts;
@@ -6,10 +5,10 @@ namespace JobOrchestrator.Automation.Contracts;
 // Contratos públicos do módulo Automation: adapters, roteamento e navegador ficam atrás desta porta.
 
 /// <summary>O que um adapter sabe fazer.</summary>
-public enum Capability { DiscoverJobs, CheckPostingOpen, PrepareForm, SubmitApplication, ReconcileSubmission }
+public enum Capability { DiscoverJobs, CheckPostingOpen, PrepareForm }
 
 /// <summary>Como uma operação de adapter terminou. O roteador decide o fallback a partir daqui.</summary>
-public enum AdapterResultKind { Completed, Unsupported, RetryableFailure, PermanentFailure, NeedsHuman, BlockedByPolicy, QuotaExceeded, SubmissionUnknown }
+public enum AdapterResultKind { Completed, Unsupported, RetryableFailure, PermanentFailure, NeedsHuman, BlockedByPolicy, QuotaExceeded }
 
 /// <summary>Uma vaga como veio da fonte, antes de normalizar. ListedAsOpen: a API oficial só lista vagas abertas, então não precisa conferir uma por uma.</summary>
 /// <summary>Vaga lida de uma fonte. Tombstone: a fonte declarou a vaga encerrada (ex.: INACTIVE na NAV); fecha a que existe e nunca cria linha nova.</summary>
@@ -32,7 +31,7 @@ public sealed record ApplyTarget(Guid ApplicationId, string ApplyUrl);
 
 /// <summary>
 /// Tudo que vai no formulário: contato, PDF do currículo e respostas aprovadas. Nunca vai para log.
-/// AcceptDeclarations: your authorization lets the app tick, in your name, the privacy, data processing and terms boxes a form requires.
+/// AcceptDeclarations: the prepare ticks the privacy and terms boxes in its own browser, which never sends; on the site, you tick them.
 /// </summary>
 public sealed record MaterialBundle(string FirstName, string LastName, string Email, string Phone, string LinkedIn, string ResumePdfPath, IReadOnlyDictionary<string, string> Answers,
     bool AcceptDeclarations = false);
@@ -71,11 +70,8 @@ public static class CustomAnswer
 /// <summary>Um campo preenchido e de onde veio o valor.</summary>
 public sealed record FieldValue(string Label, string Value, string Source);
 
-/// <summary>
-/// O formulário preenchido e validado, sem envio. HumanCheck: o site confirma no envio que é uma pessoa (reCAPTCHA invisível, código por
-/// e-mail) ou recusou todos os envios do robô; o robô não passa por isso, então o clique final é seu, com o copiloto.
-/// </summary>
-public sealed record PreparedForm(string AdapterId, string AdapterVersion, string Domain, string PayloadHash, IReadOnlyList<FieldValue> Fields, string? HumanCheck = null);
+/// <summary>O formulário preenchido e validado, sem envio: o que vai em cada campo, para o copiloto e para o kit de respostas.</summary>
+public sealed record PreparedForm(string AdapterId, string AdapterVersion, string Domain, string PayloadHash, IReadOnlyList<FieldValue> Fields);
 
 /// <summary>Um passo do roteamento: qual adapter, com que nota e por quê.</summary>
 public sealed record RoutingStep(string AdapterId, double Score, string Outcome, string Why);
@@ -89,47 +85,23 @@ public sealed record AutomationOutcome<T>(AdapterResultKind Kind, T? Value, stri
     public bool Completed => Kind == AdapterResultKind.Completed;
 }
 
-/// <summary>Prova de envio. Nível 3 é a página de confirmação; nível 4, o número do recibo.</summary>
+/// <summary>Prova de envio: a página de confirmação que apareceu no seu navegador (nível 3) ou o número do recibo (nível 4).</summary>
 public sealed record SubmissionReceipt(string ReceiptId, int EvidenceLevel, string Evidence);
-
-/// <summary>Reconciliação só de leitura depois de um envio incerto.</summary>
-public sealed record ReconcileResult(bool Found, string? ReceiptId, string Detail);
 
 /// <summary>Um adapter como aparece no painel.</summary>
 public sealed record AdapterView(
     string Id, string Version, string Name, string Kind, IReadOnlyList<string> Capabilities, IReadOnlyList<string> Domains,
     int Attempts, int Confirmed, int Failures, bool CircuitOpen, DateTime? CircuitOpenUntil);
 
-/// <summary>
-/// Autorização de um envio, emitida só pelo Guardião (módulo Applications) e conferida pelo adapter antes do clique.
-/// Amarrada à intenção, ao payload aprovado e a um prazo curto.
-/// </summary>
-public sealed record SubmitToken(Guid IntentId, Guid ApplicationId, string PayloadHash, DateTime ExpiresAt, string Signature)
-{
-    public static string Sign(byte[] key, Guid intentId, Guid applicationId, string payloadHash, DateTime expiresAt)
-    {
-        var data = Encoding.UTF8.GetBytes($"{intentId:N}|{applicationId:N}|{payloadHash}|{expiresAt.Ticks}");
-        return Convert.ToHexStringLower(HMACSHA256.HashData(key, data));
-    }
-
-    public bool IsValid(byte[] key, DateTime now) =>
-        ExpiresAt > now && CryptographicOperations.FixedTimeEquals(
-            Encoding.ASCII.GetBytes(Sign(key, IntentId, ApplicationId, PayloadHash, ExpiresAt)), Encoding.ASCII.GetBytes(Signature));
-}
 
 /// <summary>Contrato público do módulo Automation.</summary>
 /// <summary>Uma plataforma do registro como está agora: estado, países, se há conector, se o portão está aberto e a última sondagem.</summary>
 public sealed record RegistryEntry(string Prefix, string Name, string Lifecycle, string[] Countries, bool Connector, bool GateOpen, bool? ProbeOk, int ProbeCount);
 
-/// <summary>
-/// What the app does with one application, before you trust it with the night. Confirm: receipt (the ATS confirmation page), smtp
-/// (accepted by the mail server) or declared (you say it was sent). Recover: portal (the site is asked), email (you check the
-/// confirmation e-mail), uncertain (an interrupted send waits for you) or you.
-/// </summary>
-public sealed record ApplyCapability(string Channel, string? Platform, bool Prepare, bool Submit, string Confirm, string Recover);
-
-/// <summary>One platform the app fills and sends by itself, on its real sites (the test ATS left out).</summary>
-public sealed record PlatformCapability(string Id, string Name, IReadOnlyList<string> Domains, bool Prepare, bool Submit, bool Confirm, bool Recover);
+/// <summary>How one application goes out: by an ATS form the app reads and prepares, by the job's own site, by e-mail, or by you alone.</summary>
+public sealed record ApplyCapability(string Channel, string? Platform, bool Prepare);
+/// <summary>One platform whose forms the app reads and prepares, on its real sites (the test ATS left out).</summary>
+public sealed record PlatformCapability(string Id, string Name, IReadOnlyList<string> Domains, bool Prepare);
 
 public interface IAutomationApi
 {
@@ -156,8 +128,6 @@ public interface IAutomationApi
     Task<IReadOnlyList<SiteFinding>> SweepSitesAsync(IReadOnlyList<string> domains, CancellationToken ct);
     Task<PostingStatus> CheckOpenAsync(string applyUrl, CancellationToken ct);
     Task<AutomationOutcome<PreparedForm>> PrepareAsync(ApplyTarget target, MaterialBundle materials, CancellationToken ct);
-    Task<AutomationOutcome<SubmissionReceipt>> SubmitAsync(ApplyTarget target, MaterialBundle materials, SubmitToken token, string adapterId, CancellationToken ct);
-    Task<AutomationOutcome<ReconcileResult>> ReconcileAsync(ApplyTarget target, MaterialBundle materials, string adapterId, CancellationToken ct);
     Task RenderPdfAsync(string html, string path, CancellationToken ct);
     Task<IReadOnlyList<AdapterView>> ListAdaptersAsync(CancellationToken ct);
     /// <summary>Boards de ATS citados numa página de carreira (respeita o robots.txt).</summary>

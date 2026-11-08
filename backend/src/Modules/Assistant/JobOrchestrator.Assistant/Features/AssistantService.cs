@@ -23,8 +23,8 @@ public sealed record SetupProposal(bool Ok, string? Error, string Area, string S
 internal sealed partial class AssistantService(IIntelligenceApi ai, IServiceScopeFactory scopes, IProfileApi profile, ICampaignsApi campaigns, IJobsApi jobs, ILogger<AssistantService> log)
 {
     private static readonly string[] ActionTypes = ["campaign.keywords", "campaign.locations", "campaign.minScore", "campaign.mode", "sources.add", "navigate"];
-    private static readonly string[] Paths = ["/perfil", "/vagas", "/candidaturas", "/busca", "/fontes", "/fontes/varredura", "/campanha", "/provedores", "/revisao", "/atencao", "/"];
-    private static readonly string[] Modes = ["DiscoveryOnly", "PrepareOnly", "ReviewRequired"];
+    private static readonly string[] Paths = ["/", "/vagas", "/candidaturas", "/perfil", "/configuracoes", "/campanha", "/provedores", "/fontes", "/email", "/busca"];
+    private static readonly string[] Modes = ["DiscoveryOnly", "PrepareOnly"];
 
     private const string ChatSchema = """
         {"type":"object","properties":{"reply":{"type":"string"},"confidence":{"type":"number"},"escalate":{"type":"boolean"},
@@ -57,9 +57,9 @@ internal sealed partial class AssistantService(IIntelligenceApi ai, IServiceScop
         qual tela do app a pessoa resolve. Você pode propor ações, que só acontecem quando a pessoa clicar em Aplicar:
         campaign.keywords (values: de 3 a 12 palavras-chave e competências da área da pessoa; as duas primeiras são as essenciais),
         campaign.locations (values: cidades e, se fizer sentido, Remoto), campaign.minScore (number de 50 a 95),
-        campaign.mode (values: DiscoveryOnly, PrepareOnly ou ReviewRequired; o envio automático só liga pela tela de consentimento),
+        campaign.mode (values: DiscoveryOnly para só buscar, PrepareOnly para buscar e preparar; quem envia é sempre a pessoa, com o copiloto),
         sources.add (values: fontes; {SourceFormats}),
-        navigate (values: um caminho entre /perfil, /vagas, /candidaturas, /busca, /fontes, /campanha, /provedores, /revisao, /atencao).
+        navigate (values: um caminho entre /, /vagas, /candidaturas, /perfil, /configuracoes, /campanha, /provedores, /fontes, /email, /busca).
         Nunca diga que aplicou algo. LinkedIn não é automatizado: sugira o export de dados do LinkedIn para o perfil e o link salvo da vaga.
         confidence (0 a 1) diz o quanto você confia na resposta; escalate=true pede um modelo mais forte quando a pergunta exige análise que você não faz bem.
         """;
@@ -148,7 +148,7 @@ internal sealed partial class AssistantService(IIntelligenceApi ai, IServiceScop
         catch (JsonException) { return (new AssistantAnswer(false, "", [], res.ProviderId, res.Model, rung.ToString(), clock.Elapsed.TotalSeconds, from, "resposta fora do formato"), false, 0); }
     }
 
-    /// <summary>Só ações da lista, com valores limpos: caminho conhecido, fonte no formato aceito, modo sem envio automático, nota entre 50 e 95.</summary>
+    /// <summary>Só ações da lista, com valores limpos: caminho conhecido, fonte no formato aceito, modo de busca ou preparo, nota entre 50 e 95.</summary>
     private static List<AssistantAction> Actions(JsonElement list)
     {
         var result = new List<AssistantAction>();

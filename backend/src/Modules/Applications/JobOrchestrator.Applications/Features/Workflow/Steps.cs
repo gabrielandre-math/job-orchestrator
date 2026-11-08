@@ -19,8 +19,6 @@ internal sealed class StepKit(ApplicationsDbContext db, IAutomationApi automatio
     public IMaterialsApi Materials => materials;
     public Bundles Bundles => bundles;
     public DateTime Now => time.GetUtcNow().UtcDateTime;
-    public TimeSpan ReconcileDelay => TimeSpan.FromSeconds(config.GetValue("Workflow:ReconcileDelaySeconds", 20));
-    public TimeSpan ReconcileRetry => TimeSpan.FromSeconds(config.GetValue("Workflow:ReconcileRetrySeconds", 30));
 
     /// <summary>What the form adapters did, in the trail: the adapter that ran, how it ended, the reason code and the questions it brought.</summary>
     public static void Traced<T>(AutomationOutcome<T> outcome, string what, JobApplication app)
@@ -45,9 +43,6 @@ internal sealed class StepKit(ApplicationsDbContext db, IAutomationApi automatio
     /// <summary>Perfil de teste nunca vai para vaga real: só para os hosts do ATS de teste.</summary>
     public bool IsTestHost(string url) =>
         (config.GetSection("Automation:FakeAtsHosts").Get<string[]>() ?? []).Contains(new Uri(url).Authority, StringComparer.OrdinalIgnoreCase);
-
-    /// <summary>Only an authorization in force that accepts the declarations lets the app tick privacy and terms boxes in your name.</summary>
-    public static bool AcceptsDeclarations(CampaignSettings campaign) => campaign.Mode == SubmissionMode.AutoSubmit && campaign.Authorization is { AcceptDeclarations: true };
 
     /// <summary>A stop that no answer of yours solves: the site itself keeps the robot out or shows no form it can fill.</summary>
     public static bool Technical(string? code) => code is "captcha" or "login" or "mfa" or "blocked" or "no-form" or "no-fields" or "multi-step" or "file"
@@ -134,7 +129,7 @@ internal sealed class MaterialsStep(StepKit k) : IStep
     }
 }
 
-/// <summary>Agente Preparador: preenche pelo roteador (com fallback) e entrega ao Guardião. Nunca envia.</summary>
+/// <summary>Agente Preparador: preenche pelo roteador (com fallback) e entrega a candidatura pronta para você enviar. Nunca envia.</summary>
 internal sealed class PrepareStep(StepKit k, Answerer answerer) : IStep
 {
     public WorkStep Step => WorkStep.Prepare;
@@ -154,41 +149,22 @@ internal sealed class PrepareStep(StepKit k, Answerer answerer) : IStep
             return;
         }
 
-        var campaign = await k.CampaignAsync(app.CampaignId, ct);
-        var bundle = await k.Bundles.ForAsync(app, StepKit.AcceptsDeclarations(campaign), ct) ?? throw new InvalidOperationException("Perfil sumiu entre as etapas.");
+        // The privacy and terms boxes are ticked only in the prepare's own browser, which never sends; on the site, you tick them.
+        var bundle = await k.Bundles.ForAsync(app, true, ct) ?? throw new InvalidOperationException("Perfil sumiu entre as etapas.");
         var outcome = await k.Automation.PrepareAsync(new ApplyTarget(app.Id, app.ApplyUrl), bundle, ct);
         StepKit.Traced(outcome, "preparo", app);
         var now = k.Now;
         switch (outcome.Kind)
         {
             case AdapterResultKind.Completed:
+                // Ready: the form is filled and checked, and the send is yours, with the copilot. The app never clicks send.
                 app.Prepared(outcome.Value!, outcome.Route, now);
-                var (next, reason) = SubmissionGuard.AfterPrepare(campaign.Mode, campaign.Authorization, now, app.Score, outcome.Value!.AdapterId, await k.Jobs.EligibilityAsync(app.JobId, ct), app.ResumeVetted);
-                // The site checks at the send that a person is there: approving would lead nowhere, the robot cannot click. It goes straight
-                // to you, filled by the copilot, and your click on the site's own button is the approval.
-                if (outcome.Value.HumanCheck is { } check && next is ApplicationState.AwaitingApproval or ApplicationState.ReadyToSubmit)
-                {
-                    app.Move(ApplicationState.ManualHandoff, $"Pronta para você enviar. {check} Abra preenchida: o copiloto completa o formulário e o clique em enviar é seu.", "Guardião", now, new { check });
-                    k.Db.AddTask(app.Id, HumanTaskKind.Review, "Candidatar-se pelo site da vaga", $"{app.Title}, {app.Company}", now);
-                    break;
-                }
-                // The prepare mode, the one the app offers: the application is ready and the send is yours, with the copilot.
-                if (next == ApplicationState.FormValidated)
-                {
-                    app.Move(ApplicationState.ManualHandoff, "Pronta para você enviar. Abra preenchida: o copiloto completa o formulário e anexa o currículo, e o clique em enviar é seu.", "Preparador", now);
-                    k.Db.AddTask(app.Id, HumanTaskKind.Review, "Candidatar-se pelo site da vaga", $"{app.Title}, {app.Company}", now);
-                    break;
-                }
-                if (next == ApplicationState.ReadyToSubmit)
-                {
-                    // Automático autorizado: a aprovação fica registrada como da autorização, para o payload exato preparado agora.
-                    k.Db.Approvals.Add(new ApprovalDecision { Id = Guid.CreateVersion7(), ApplicationId = app.Id, PayloadHash = app.PayloadHash!, Approved = true, At = now, ByAuthorization = true, AuthorizationId = campaign.Authorization!.Id });
-                    app.AutoApprove(campaign.Authorization.Id, now);
-                    k.Enqueue(app.Id, WorkStep.Submit, TimeSpan.Zero);
-                }
-                else if (next != ApplicationState.FormValidated) app.Move(next, reason, "Guardião", now);
-                if (next == ApplicationState.AwaitingApproval) k.Db.AddTask(app.Id, HumanTaskKind.Approval, "Aprovar envio", $"{app.Title}, {app.Company}", now);
+                app.Move(ApplicationState.ManualHandoff, "Pronta para você enviar. Abra preenchida: o copiloto completa o formulário e anexa o currículo, e o clique em enviar é seu.", "Preparador", now);
+                k.Db.AddTask(app.Id, HumanTaskKind.Review, "Candidatar-se pelo site da vaga", $"{app.Title}, {app.Company}", now);
                 break;
+            case AdapterResultKind.RetryableFailure when outcome.ReasonCode == "circuit-open":
+                // A paused adapter (three failures in a row on this site) is back in minutes: the form waits for it instead of asking you.
+                throw new RetryLaterException(TimeSpan.FromMinutes(11), outcome.Detail);
             case AdapterResultKind.NeedsHuman or AdapterResultKind.Unsupported:
                 // Questions the form asked and nobody answered yet go to the AI with your profile's facts; with answers, the form is filled again.
                 if (outcome.Questions is { Count: > 0 } asked && await answerer.AnswerAsync(app, asked, ct) is { Retry: true } round)
@@ -197,9 +173,6 @@ internal sealed class PrepareStep(StepKit k, Answerer answerer) : IStep
                     k.Enqueue(app.Id, WorkStep.Prepare, round.Delay);
                     break;
                 }
-                // A paused adapter (three failures in a row on this site) is back in minutes: the form waits for it instead of asking you.
-                if (outcome.ReasonCode == "no-adapter" && outcome.Route.Any(r => r.Why.StartsWith("circuito aberto", StringComparison.Ordinal)))
-                    throw new RetryLaterException(TimeSpan.FromMinutes(15), "O adapter deste site está pausado por falhas seguidas; o formulário espera ele voltar.");
                 if ((app.ApplyChannel == "link" || StepKit.Technical(outcome.ReasonCode)) && outcome.Questions is null)
                 {
                     // What a robot cannot pass (login, CAPTCHA, anti-robot, no open form) sends the application the usual way, by you:
@@ -224,176 +197,6 @@ internal sealed class PrepareStep(StepKit k, Answerer answerer) : IStep
             default:
                 throw new RetryLaterException(TimeSpan.FromSeconds(30), outcome.Detail);
         }
-        item.Complete(now);
-        await k.Db.SaveChangesAsync(ct);
-    }
-}
-
-/// <summary>
-/// Agente Remetente sob o Guardião. A intenção e o estado Submitting são gravados antes do clique; se o processo cair,
-/// a próxima execução encontra Submitting e vai para reconciliação, sem clicar de novo.
-/// </summary>
-internal sealed class SubmitStep(StepKit k, TokenIssuer tokens) : IStep
-{
-    public WorkStep Step => WorkStep.Submit;
-
-    public async Task RunAsync(Claimed c, CancellationToken ct)
-    {
-        var (app, item) = await k.LoadAsync(c, ct);
-        var db = k.Db;
-        if (app.State == ApplicationState.Submitting)
-        {
-            var stale = await db.Intents.FirstOrDefaultAsync(i => i.ApplicationId == app.Id && i.State == IntentState.Open, ct);
-            stale?.Close(IntentState.SentUnverified, "O processo caiu durante o envio.", k.Now);
-            app.Move(ApplicationState.SubmissionUnknown, "O processo caiu durante o envio. Nada será reenviado sem reconciliação.", "Supervisor", k.Now);
-            k.Enqueue(app.Id, WorkStep.Reconcile, k.ReconcileDelay);
-            item.Complete(k.Now);
-            await db.SaveChangesAsync(ct);
-            return;
-        }
-        if (app.State != ApplicationState.ReadyToSubmit)
-        {
-            item.Complete(k.Now);
-            await db.SaveChangesAsync(ct);
-            return;
-        }
-
-        var campaign = await k.CampaignAsync(app.CampaignId, ct);
-        var today = SubmissionGuard.StartOfDay(k.Now, campaign.TimeZone);
-        var dayAgo = k.Now.AddDays(-1);
-        const string confirmed = nameof(ApplicationState.SubmittedConfirmed);
-        var input = new GuardInput(
-            campaign.Mode, app.State, app.PayloadHash,
-            await db.Approvals.Where(a => a.ApplicationId == app.Id).OrderByDescending(a => a.At).FirstOrDefaultAsync(ct),
-            // Teto do dia conta o que saiu hoje, pela hora da confirmação no histórico (marcar entrevista ou arquivar não é envio),
-            // e o que está saindo ou incerto: envio incerto pode ter chegado.
-            await db.Applications.CountAsync(a => a.CampaignId == app.CampaignId && a.Id != app.Id && (a.State == ApplicationState.SubmissionUnknown || a.State == ApplicationState.Submitting
-                || db.Events.Any(e => e.ApplicationId == a.Id && e.To == confirmed && e.At >= today)), ct),
-            campaign.MaxSubmissionsPerDay,
-            await db.Intents.AnyAsync(i => i.ApplicationId == app.Id && (i.State == IntentState.Open || i.State == IntentState.SentUnverified), ct),
-            await db.Tasks.CountAsync(t => t.ApplicationId == app.Id && t.ResolvedAt == null, ct),
-            campaign.Authorization, k.Now, app.Score, app.PreparedBy,
-            await db.Applications.CountAsync(a => a.Id != app.Id && a.Company == app.Company && db.Events.Any(e => e.ApplicationId == a.Id && e.To == confirmed && e.At >= dayAgo), ct),
-            await k.Jobs.EligibilityAsync(app.JobId, ct), app.ResumeVetted);
-        var decision = SubmissionGuard.CanSubmit(input);
-        if (!decision.Allowed && decision.Code is "consent-required" or "eligibility-unconfirmed" or "resume-unvetted")
-        {
-            // Sem autorização valendo, nada sai sozinho: a vaga volta para a sua aprovação em vez de travar.
-            app.Move(ApplicationState.AwaitingApproval, decision.Reason, "Guardião", k.Now);
-            item.Complete(k.Now);
-            await db.SaveChangesAsync(ct);
-            return;
-        }
-        if (!decision.Allowed && SubmissionGuard.WaitsForTomorrow(decision.Code))
-        {
-            // Teto cheio não perde a vaga: ela continua pronta e o Guardião olha de novo quando o dia virar no fuso da campanha.
-            app.Postpone($"{decision.Reason} O envio fica para amanhã.", "Guardião", k.Now);
-            if (!await db.WorkItems.AnyAsync(w => w.ApplicationId == app.Id && w.Step == WorkStep.Submit && w.CompletedAt == null && w.Id != item.Id, ct))
-                k.Enqueue(app.Id, WorkStep.Submit, today.AddDays(1) - k.Now);
-            item.Complete(k.Now);
-            await db.SaveChangesAsync(ct);
-            return;
-        }
-        if (!decision.Allowed)
-        {
-            app.Move(ApplicationState.BlockedByPolicy, decision.Reason, "Guardião", k.Now, new { decision.Code });
-            item.Complete(k.Now);
-            await db.SaveChangesAsync(ct);
-            return;
-        }
-
-        var intent = SubmissionIntent.Open(app.Id, app.PayloadHash!, app.PreparedBy!, k.Now);
-        db.Intents.Add(intent);
-        app.Move(ApplicationState.Submitting, "O Guardião liberou. Intenção gravada antes do clique.", "Guardião", k.Now, new { intentId = intent.Id });
-        await db.SaveChangesAsync(ct);
-
-        var bundle = await k.Bundles.ForAsync(app, StepKit.AcceptsDeclarations(campaign), ct) ?? throw new InvalidOperationException("Perfil sumiu entre as etapas.");
-        var outcome = await k.Automation.SubmitAsync(new ApplyTarget(app.Id, app.ApplyUrl), bundle, tokens.Issue(intent), app.PreparedBy!, ct);
-        StepKit.Traced(outcome, "envio", app);
-        var now = k.Now;
-        switch (outcome.Kind)
-        {
-            case AdapterResultKind.Completed:
-                app.Confirmed(outcome.Value!, "Verificador", now);
-                intent.Close(IntentState.Confirmed, outcome.Value!.Evidence, now);
-                db.Evidence.Add(new Evidence { Id = Guid.CreateVersion7(), ApplicationId = app.Id, Level = outcome.Value.EvidenceLevel, Kind = outcome.Value.EvidenceLevel == 4 ? "receipt_id_extracted" : "confirmation_page_observed", Detail = outcome.Value.Evidence, At = now });
-                break;
-            case AdapterResultKind.SubmissionUnknown:
-                intent.Close(IntentState.SentUnverified, outcome.Detail, now);
-                app.Move(ApplicationState.SubmissionUnknown, outcome.Detail, "Remetente", now, new { outcome.ReasonCode });
-                k.Enqueue(app.Id, WorkStep.Reconcile, k.ReconcileDelay);
-                break;
-            case AdapterResultKind.PermanentFailure:
-                intent.Close(IntentState.Discarded, outcome.Detail, now);
-                app.Move(ApplicationState.Failed, outcome.Detail, "Remetente", now, new { outcome.ReasonCode });
-                break;
-            case AdapterResultKind.BlockedByPolicy:
-                intent.Close(IntentState.Discarded, "Nada foi clicado.", now);
-                app.Move(ApplicationState.BlockedByPolicy, outcome.Detail, "Remetente", now, new { outcome.ReasonCode });
-                break;
-            case AdapterResultKind.NeedsHuman when outcome.ReasonCode is "ats-validation" or "human-check":
-                // The site refused the form with its own message (Workable answers "Something went wrong" to a robot) or held it for a
-                // person (Greenhouse mails a code): nothing was accepted. It goes by the site, where the copilot opens it filled for you.
-                intent.Close(IntentState.Discarded, outcome.Detail, now);
-                app.Move(ApplicationState.NeedsHuman, outcome.Detail, "Remetente", now, new { outcome.ReasonCode });
-                app.Move(ApplicationState.ManualHandoff, $"{outcome.Detail} Abra preenchida e envie você: o copiloto completa o formulário.", "Remetente", now);
-                db.AddTask(app.Id, HumanTaskKind.Review, "Candidatar-se pelo site da vaga", $"{app.Title}, {app.Company}", now);
-                break;
-            case AdapterResultKind.RetryableFailure when outcome.ReasonCode == "circuit-open":
-                // Nothing was clicked: the application stays approved and the send waits for the pause to end.
-                intent.Close(IntentState.Discarded, "Nada foi clicado.", now);
-                app.Move(ApplicationState.ReadyToSubmit, outcome.Detail, "Guardião", now);
-                k.Enqueue(app.Id, WorkStep.Submit, TimeSpan.FromMinutes(11));
-                break;
-            default:
-                // O adapter só devolve estes resultados antes do clique: nada foi enviado.
-                intent.Close(IntentState.Discarded, "Nada foi clicado.", now);
-                app.Move(ApplicationState.NeedsHuman, $"Nada foi enviado: {outcome.Detail}", "Remetente", now, new { outcome.ReasonCode });
-                db.AddTask(app.Id, StepKit.TaskFor(outcome.ReasonCode), "Revisar envio", outcome.Detail, now);
-                break;
-        }
-        item.Complete(now);
-        await db.SaveChangesAsync(ct);
-    }
-}
-
-/// <summary>Agente Verificador: depois de envio incerto, só lê. Três consultas sem achar viram tarefa sua.</summary>
-internal sealed class ReconcileStep(StepKit k) : IStep
-{
-    public WorkStep Step => WorkStep.Reconcile;
-
-    public async Task RunAsync(Claimed c, CancellationToken ct)
-    {
-        var (app, item) = await k.LoadAsync(c, ct);
-        if (app.State != ApplicationState.SubmissionUnknown)
-        {
-            item.Complete(k.Now);
-            await k.Db.SaveChangesAsync(ct);
-            return;
-        }
-        Chaos.Point("during-reconcile");
-        var bundle = await k.Bundles.ForAsync(app, ct) ?? throw new InvalidOperationException("Perfil sumiu entre as etapas.");
-        var outcome = await k.Automation.ReconcileAsync(new ApplyTarget(app.Id, app.ApplyUrl), bundle, app.PreparedBy!, ct);
-        StepKit.Traced(outcome, "conferência", app);
-        var now = k.Now;
-        var intent = await k.Db.Intents.FirstOrDefaultAsync(i => i.ApplicationId == app.Id && i.State == IntentState.SentUnverified, ct);
-        if (outcome.Kind == AdapterResultKind.Completed && outcome.Value!.Found)
-        {
-            var id = outcome.Value.ReceiptId ?? "";
-            app.Confirmed(new SubmissionReceipt(id, id.Length > 0 ? 4 : 3, "Reconciliação: o ATS confirma a candidatura."), "Verificador", now);
-            intent?.Close(IntentState.Confirmed, "Confirmada na reconciliação.", now);
-            k.Db.Evidence.Add(new Evidence { Id = Guid.CreateVersion7(), ApplicationId = app.Id, Level = id.Length > 0 ? 4 : 3, Kind = "reconciled", Detail = outcome.Value.Detail, At = now });
-        }
-        else if (outcome.Kind == AdapterResultKind.Completed && c.Attempts < 3)
-        {
-            throw new RetryLaterException(k.ReconcileRetry, "O ATS ainda não mostra a candidatura.");
-        }
-        else if (outcome.Kind is AdapterResultKind.Completed or AdapterResultKind.NeedsHuman)
-        {
-            app.Move(ApplicationState.NeedsHuman, outcome.Kind == AdapterResultKind.Completed ? "O ATS não mostra a candidatura depois de 3 consultas. Confira e decida." : outcome.Detail, "Verificador", now);
-            k.Db.AddTask(app.Id, HumanTaskKind.Reconcile, "Conferir envio incerto", "Veja no site ou no e-mail se a candidatura chegou.", now);
-        }
-        else throw new RetryLaterException(k.ReconcileRetry, outcome.Detail);
         item.Complete(now);
         await k.Db.SaveChangesAsync(ct);
     }

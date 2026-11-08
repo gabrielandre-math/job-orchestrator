@@ -31,7 +31,7 @@ internal sealed class Stack : IAsyncDisposable
     public string Api => $"http://127.0.0.1:{_api}/api";
     public string Ats => $"http://127.0.0.1:{_ats}";
 
-    public static async Task<Stack> StartAsync(string? crashAt = null, Dictionary<string, string>? extra = null)
+    public static async Task<Stack> StartAsync(Dictionary<string, string>? extra = null)
     {
         var s = new Stack();
         foreach (var (k, v) in extra ?? []) s._extra[k] = v;
@@ -42,7 +42,7 @@ internal sealed class Stack : IAsyncDisposable
         }
         s.StartAts();
         await s.StartApiAsync();
-        s.StartWorker(crashAt);
+        s.StartWorker();
         return s;
     }
 
@@ -71,8 +71,7 @@ internal sealed class Stack : IAsyncDisposable
         return (Mb(_apiProcess), Mb(_worker));
     }
 
-    public void StartWorker(string? crashAt = null) =>
-        _worker = Launch("Bootstrappers/JobOrchestrator.Worker", Env(crashAt is null ? new() : new() { ["JO_CRASH_AT"] = crashAt }));
+    public void StartWorker() => _worker = Launch("Bootstrappers/JobOrchestrator.Worker", Env(new()));
 
     public async Task WaitWorkerDeathAsync(TimeSpan timeout)
     {
@@ -135,13 +134,6 @@ internal sealed class Stack : IAsyncDisposable
         Assert.Equal(HttpStatusCode.Accepted, await PostAsync($"/campaigns/{id}/runs"));
     }
 
-    public async Task ApproveAsync(string company)
-    {
-        var id = (await ApplicationAsync(company))!.Value.GetProperty("id").GetString();
-        var hash = (await GetAsync($"/applications/{id}")).GetProperty("payloadHash").GetString();
-        Assert.Equal(HttpStatusCode.NoContent, await PostAsync($"/applications/{id}/approve", new { payloadHash = hash }));
-    }
-
     public async Task<string[]> HistoryAsync(string company)
     {
         var id = (await ApplicationAsync(company))!.Value.GetProperty("id").GetString();
@@ -172,7 +164,6 @@ internal sealed class Stack : IAsyncDisposable
             ["Automation__FakeAtsHosts__0"] = $"127.0.0.1:{_ats}", ["Automation__Browser__TimeoutSeconds"] = "5",
             ["Seed__Sources__0"] = $"greenhouse:{Ats}/boards/demo", ["Seed__Sources__1"] = $"greenhouse:{Ats}/boards/agregador",
             ["Seed__Keywords__0"] = "C#", ["Seed__Keywords__1"] = ".NET", ["Seed__Keywords__2"] = "ASP.NET Core", ["Seed__Keywords__3"] = "AWS", ["Seed__Keywords__4"] = "PostgreSQL",
-            ["Workflow__ReconcileDelaySeconds"] = "1", ["Workflow__ReconcileRetrySeconds"] = "2",
             // O Explorador e a busca contínua saem para a internet: no teste ponta a ponta ficam desligados.
             ["Explorer__Enabled"] = "false", ["Search__IntervalMinutes"] = "1440",
             ["Logging__LogLevel__Default"] = "Warning"

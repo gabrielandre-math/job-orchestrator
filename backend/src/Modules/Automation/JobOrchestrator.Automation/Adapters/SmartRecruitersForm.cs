@@ -8,8 +8,8 @@ namespace JobOrchestrator.Automation.Adapters;
 /// aparece atrás da verificação anti-robô da DataDome. O app não passa por ela: abre, confere e, com a verificação, a vaga fica com
 /// você. Sem a verificação, segue o mesmo preenchimento por rótulo dos outros formulários.
 /// </summary>
-internal sealed partial class SmartRecruitersForm(BrowserPool browsers, IHttpClientFactory http, GuardKey key, TimeProvider time, IOptions<AutomationOptions> options)
-    : LabelForm(browsers, http, key, time, options)
+internal sealed partial class SmartRecruitersForm(BrowserPool browsers, IOptions<AutomationOptions> options)
+    : LabelForm(browsers, options)
 {
     public override string Id => "smartrecruiters-form";
     public override string Name => "Formulário SmartRecruiters";

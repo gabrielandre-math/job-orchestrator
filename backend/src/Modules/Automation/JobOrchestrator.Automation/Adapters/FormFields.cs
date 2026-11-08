@@ -220,7 +220,7 @@ internal abstract partial class LabelForm
         }
         if (missing.Count > 0) return Missing(missing);
         if (fields.Count == 0) return AdapterResult<PreparedForm>.Fail(AdapterResultKind.Unsupported, "no-fields", "Nenhum campo com rótulo foi reconhecido.");
-        return AdapterResult<PreparedForm>.Ok(new PreparedForm(Id, Version, new Uri(target.ApplyUrl).Authority, PayloadHash(fields), fields, await HumanCheckAsync(page)));
+        return AdapterResult<PreparedForm>.Ok(new PreparedForm(Id, Version, new Uri(target.ApplyUrl).Authority, PayloadHash(fields), fields));
     }
 
     // A salary mask can strip currency text. The same digits in a name or free-text answer do not preserve the answer.

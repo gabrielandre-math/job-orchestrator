@@ -43,7 +43,7 @@ internal static class Transitions
     public static IReadOnlyDictionary<ApplicationState, ApplicationState[]> All => Graph;
 }
 
-/// <summary>Etapas da fila de trabalho. Só Submit é irreversível.</summary>
+/// <summary>Os passos da fila. Submit e Reconcile eram do envio pelo robô, que saiu: ficam só porque linhas antigas os citam.</summary>
 internal enum WorkStep { Materials, Prepare, Submit, Reconcile }
 
 internal enum IntentState { Open, SentUnverified, Confirmed, Discarded }
