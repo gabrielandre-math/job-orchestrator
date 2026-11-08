@@ -18,7 +18,7 @@ public sealed class LogBehavior<TReq, TRes>(ILogger<LogBehavior<TReq, TRes>> log
         var start = Stopwatch.GetTimestamp();
         var name = typeof(TReq).Name;
         TRes response;
-        try { response = await next(ct); }
+        try { response = await next(); }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             trail?.Error(IsCommand ? "command" : "query", name, $"{ex.GetType().Name}: {ex.Message}", (int)Stopwatch.GetElapsedTime(start).TotalMilliseconds, "exception");
@@ -43,7 +43,7 @@ public sealed class ValidationBehavior<TReq, TRes>(IEnumerable<IValidator<TReq>>
     {
         var failures = new List<FluentValidation.Results.ValidationFailure>();
         foreach (var v in validators) failures.AddRange((await v.ValidateAsync(req, ct)).Errors);
-        if (failures.Count == 0) return await next(ct);
+        if (failures.Count == 0) return await next();
         var fields = failures.GroupBy(f => f.PropertyName).ToDictionary(g => g.Key, g => g.Select(f => f.ErrorMessage).ToArray());
         return TRes.Failure(Error.Validation("invalid-data", "Confira os dados enviados.", fields));
     }

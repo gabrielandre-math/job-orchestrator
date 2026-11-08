@@ -13,7 +13,7 @@ public abstract class TransactionBehavior<TReq, TRes, TDb>(TDb db) : IPipelineBe
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         try
         {
-            var response = await next(ct);
+            var response = await next();
             if (!response.IsSuccess)
             {
                 await transaction.RollbackAsync(ct);

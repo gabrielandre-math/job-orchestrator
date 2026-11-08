@@ -5,7 +5,8 @@
   <ItemGroup>
     <PackageVersion Include="Carter" Version="10.0.0" />
     <PackageVersion Include="Dapper" Version="2.1.89" />
-    <PackageVersion Include="MediatR" Version="14.2.0" />
+    <!-- 12.5 is the last Apache-2.0 MediatR; 13+ needs a Lucky Penny license key. -->
+    <PackageVersion Include="MediatR" Version="12.5.0" />
     <PackageVersion Include="FluentValidation" Version="12.2.0" />
     <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="12.2.0" />
     <PackageVersion Include="HtmlAgilityPack" Version="1.13.1" />
