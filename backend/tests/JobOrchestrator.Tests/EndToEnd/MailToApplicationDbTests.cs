@@ -106,6 +106,9 @@ public sealed class MailToApplicationDbTests
             Assert.Equal(3, after.EvidenceLevel);
             Assert.Equal("Entrevista", after.Outcome);
             Assert.Equal(2, await db.Evidence.AsNoTracking().CountAsync(x => x.ApplicationId == mine.Id && x.Kind == "platform_mail"));
+            // The history says the e-mail moved the step, not you.
+            var step = await db.Events.AsNoTracking().SingleAsync(x => x.ApplicationId == mine.Id && x.To == "Entrevista");
+            Assert.Equal(("Correio", "Aviso da plataforma por e-mail: de Enviada para Entrevista."), (step.Actor, step.Reason));
             Assert.Equal(ApplicationState.ManualHandoff, (await db.Applications.AsNoTracking().SingleAsync(a => a.Id == other.Id)).State);
         }
         finally

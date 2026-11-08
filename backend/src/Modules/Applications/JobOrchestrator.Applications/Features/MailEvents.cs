@@ -57,7 +57,7 @@ internal sealed class JobEmailRepliedConsumer(ApplicationsDbContext db, TimeProv
         if (await db.Applications.FirstOrDefaultAsync(a => a.JobId == e.JobId, ct) is { } app)
         {
             if (app.State is ApplicationState.SubmittedDeclared or ApplicationState.SubmittedConfirmed && Step(e.Class) is { } step && Advances(app.Outcome, step))
-                app.SetOutcome(step, now);
+                app.SetOutcome(step, now, "Resposta da empresa por e-mail");
             db.Evidence.Add(new Evidence
             {
                 Id = Guid.CreateVersion7(), ApplicationId = app.Id, Level = 2, Kind = "email_reply",
@@ -99,7 +99,7 @@ internal sealed class HiringMailConsumer(ApplicationsDbContext db, TimeProvider 
             if (proof && app.State is ApplicationState.ManualHandoff or ApplicationState.SubmissionUnknown or ApplicationState.SubmittedDeclared)
                 app.Confirmed(new SubmissionReceipt(e.MessageId, 3, $"A plataforma confirmou por e-mail: {e.Subject}"), "Correio", now);
             if (app.State is ApplicationState.SubmittedDeclared or ApplicationState.SubmittedConfirmed && JobEmailRepliedConsumer.Step(e.Class) is { } step && JobEmailRepliedConsumer.Advances(app.Outcome, step))
-                app.SetOutcome(step, now);
+                app.SetOutcome(step, now, "Aviso da plataforma por e-mail");
             db.Evidence.Add(new Evidence
             {
                 Id = Guid.CreateVersion7(), ApplicationId = app.Id, Level = proof ? 3 : 2, Kind = "platform_mail",

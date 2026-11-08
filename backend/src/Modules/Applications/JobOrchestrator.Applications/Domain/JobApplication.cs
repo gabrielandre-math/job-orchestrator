@@ -58,13 +58,14 @@ internal sealed class JobApplication : AggregateRoot
     }
 
     /// <summary>Você marca a etapa depois do envio (o quadro de candidaturas); vazio volta para "Enviada". Fica no histórico.</summary>
-    public void SetOutcome(string? outcome, DateTime now)
+    /// <summary>Marks the step after sending. "by" names who moved it when it was not you ("Aviso da plataforma por e-mail").</summary>
+    public void SetOutcome(string? outcome, DateTime now, string? by = null)
     {
         if (State is not (ApplicationState.SubmittedConfirmed or ApplicationState.SubmittedDeclared))
             throw new DomainRuleException("Só dá para marcar entrevista, oferta ou resposta numa candidatura enviada.");
         if (outcome is not null && !Outcomes.Contains(outcome)) throw new DomainRuleException($"Etapa desconhecida: {outcome}.");
         if (outcome == Outcome) return;
-        _history.Add(ApplicationEvent.Step(Id, Outcome ?? "Enviada", outcome ?? "Enviada", now));
+        _history.Add(ApplicationEvent.Step(Id, Outcome ?? "Enviada", outcome ?? "Enviada", now, by));
         Outcome = outcome;
         OutcomeAt = outcome is null ? null : now;
         UpdatedAt = now;
@@ -165,8 +166,8 @@ internal sealed class ApplicationEvent
         new() { ApplicationId = applicationId, At = now, From = from, To = "Arquivada", Reason = "Você arquivou: ela sai das telas e das contagens, e o histórico fica.", Actor = "Você" };
 
     /// <summary>Uma etapa depois do envio, marcada por você no quadro.</summary>
-    internal static ApplicationEvent Step(Guid applicationId, string from, string to, DateTime now) =>
-        new() { ApplicationId = applicationId, At = now, From = from, To = to, Reason = $"Você moveu de {from} para {to}.", Actor = "Você" };
+    internal static ApplicationEvent Step(Guid applicationId, string from, string to, DateTime now, string? by = null) =>
+        new() { ApplicationId = applicationId, At = now, From = from, To = to, Reason = by is null ? $"Você moveu de {from} para {to}." : $"{by}: de {from} para {to}.", Actor = by is null ? "Você" : "Correio" };
 }
 
 /// <summary>Item da fila de trabalho, com lease para não rodar em dois lugares ao mesmo tempo.</summary>
