@@ -61,7 +61,7 @@ A interface é em português do Brasil. Currículos e respostas de formulário s
   </tr>
   <tr>
     <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/step-guardian-dark.svg"><img alt="" src=".github/assets/step-guardian-light.svg" width="96"></picture></td>
-    <td><b>4. Candidatar, com o seu ok.</b> O formulário é preenchido num navegador de verdade, e um ensaio para antes do botão de enviar. Perguntas abertas como "conte um projeto" são respondidas pelo seu currículo. O que só você sabe, como uma declaração para aceitar ou o seu salário atual, chega uma vez, agrupado pelo sentido, e uma resposta vale para todo formulário que pergunta a mesma coisa, em qualquer língua. Nada sai sem a sua aprovação ou sem uma autorização que você deu para aquele tipo de vaga, sempre dentro de um teto por dia e de uma janela de horário. CAPTCHA e login ficam com você.</td>
+    <td><b>4. Candidatar, com o seu ok.</b> O formulário é preenchido num navegador de verdade, e um ensaio para antes do botão de enviar. Perguntas abertas como "conte um projeto" são respondidas pelo seu currículo. O que só você sabe, como uma declaração para aceitar ou o seu salário atual, chega uma vez, agrupado pelo sentido, e uma resposta vale para todo formulário que pergunta a mesma coisa, em qualquer língua. Nada sai sem a sua aprovação ou sem uma autorização que você deu para aquele tipo de vaga, sempre dentro de um teto por dia e de uma janela de horário. Um site em que o robô não passa, com login, CAPTCHA ou verificação anti-robô, abre já preenchido no seu navegador pela extensão do copiloto: ela preenche o que o app preparou para a vaga e anexa o currículo dela, você confere e clica em enviar, e a página de confirmação marca a candidatura como enviada.</td>
   </tr>
   <tr>
     <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/step-inbox-dark.svg"><img alt="" src=".github/assets/step-inbox-light.svg" width="96"></picture></td>
@@ -74,7 +74,7 @@ O Job Orchestrator se candidata em seu nome. Leia o que ele prepara antes de dei
 ## Dentro das regras
 
 - A busca opcional do LinkedIn usa uma sessão autenticada no navegador local, com limites de consultas. Login e desafios exigem sua ação; Easy Apply permanece assistido. A extensão captura o conteúdo da página que você abriu. Veja o [guia e os limites de validação real](docs/REAL_LINKEDIN_AND_CAPTCHA.md); testes de DOM não comprovam acesso autenticado ao serviço.
-- CAPTCHAs de sites externos ficam com você. Quando um site bloqueia acesso automático, a fonte fica de fora.
+- CAPTCHAs de sites externos ficam com você. Quando um site bloqueia acesso automático, o robô para ali e o copiloto abre a vaga preenchida no seu navegador para você terminar.
 - O coletor segue o robots.txt, espera entre as requisições e abre uma conexão por site.
 - O app não entra na Gupy, no Indeed nem no Glassdoor com a sua conta para buscar ou se candidatar, porque os termos deles proíbem acesso automatizado às contas. Ele lê as vagas públicas onde isso é permitido, os alertas que eles mandam para o seu e-mail e os e-mails de status, e o copiloto preenche o formulário enquanto você se candidata no seu próprio navegador.
 - Fontes cujos termos não permitem esse uso ficam no registro como bloqueadas (LinkedIn Jobs, France Travail) ou apenas com parceria (a API de empregador da Gupy e o MyCareersFuture de Singapura), com o motivo à vista.
@@ -223,7 +223,8 @@ Os pacotes ainda não têm assinatura com certificado pago, então o arquivo bai
 
 1. Rode o instalador. Ele confere a máquina (navegador, banco, coletor, modelo local, placa de vídeo, espaço em disco e chaveiro), copia o app para a sua pasta de usuário, liga o PostgreSQL próprio, prepara o coletor com um Python só dele e cria o atalho no menu. Nada pede senha de administrador, e o que faltar na máquina vira um comando ou um link para você.
 2. Quando o app abre, uma configuração curta pede para ligar uma IA (o modelo local, o seu CLI ou os dois), enviar o currículo em PDF e confirmar uma tela com o que ele não conseguiu deduzir: autorização de trabalho, piso salarial, modalidade, data de início e nível de inglês. Conectar o Gmail é opcional.
-3. No Início, **Automatizar tudo** liga de uma vez a busca programada, o Explorador, o modo de envio e o e-mail. Se preferir, fique no modo de revisão e aprove cada candidatura.
+3. Opcional: em Configurações, carregue a extensão do copiloto no Chrome, no Edge ou no Brave em quatro passos. A janela do app já vem com ela.
+4. No Início, **Automatizar tudo** liga de uma vez a busca programada, o Explorador, o modo de envio e o e-mail. Se preferir, fique no modo de revisão e aprove cada candidatura.
 
 ```sh
 job-orchestrator               # abre o app; na primeira vez, o instalador

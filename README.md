@@ -61,7 +61,7 @@ The interface is in Brazilian Portuguese. Résumés and form answers are written
   </tr>
   <tr>
     <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/step-guardian-dark.svg"><img alt="" src=".github/assets/step-guardian-light.svg" width="96"></picture></td>
-    <td><b>4. Apply, with your OK.</b> The form is filled in a real browser, and you can run a rehearsal that stops before the submit button. Open questions such as "tell us about a project" are answered from your CV. What only you know, like a declaration to accept or your current pay, reaches you once, grouped by meaning, and one answer covers every form that asks it, in any language. Nothing goes out without your approval or an authorization you set up for that kind of job, always within a daily cap and a time window. CAPTCHAs and logins are handed to you.</td>
+    <td><b>4. Apply, with your OK.</b> The form is filled in a real browser, and you can run a rehearsal that stops before the submit button. Open questions such as "tell us about a project" are answered from your CV. What only you know, like a declaration to accept or your current pay, reaches you once, grouped by meaning, and one answer covers every form that asks it, in any language. Nothing goes out without your approval or an authorization you set up for that kind of job, always within a daily cap and a time window. A site the robot cannot pass, with a login, a CAPTCHA or an anti-bot check, opens already filled in your browser through the copilot extension: it fills what the app prepared for that job and attaches its résumé, you check and click send, and the confirmation page marks the application as sent.</td>
   </tr>
   <tr>
     <td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/step-inbox-dark.svg"><img alt="" src=".github/assets/step-inbox-light.svg" width="96"></picture></td>
@@ -74,7 +74,7 @@ Job Orchestrator applies to jobs in your name. Read what it prepares before you 
 ## Access and operating limits
 
 - An optional, disabled-by-default LinkedIn session connector reads job searches through a separate local browser you log in to. It is experimental, depends on the site's layout and can be interrupted by login, verification or access limits. LinkedIn restricts automated access in its terms. Profile export, alert e-mails and user-triggered page capture remain available. See the [setup and live-test guide](docs/REAL_LINKEDIN_AND_CAPTCHA.md).
-- CAPTCHAs on external job sites remain with the user. For your own server, the controlled test flow supports local image OCR, arithmetic and official Turnstile/reCAPTCHA v2/hCaptcha widgets with server validation and session continuity.
+- CAPTCHAs on external job sites remain with the user: the robot stops there and the copilot opens the job filled in your browser for you to finish. For your own server, the controlled test flow supports local image OCR, arithmetic and official Turnstile/reCAPTCHA v2/hCaptcha widgets with server validation and session continuity.
 - The scraper follows robots.txt, waits between requests and opens one connection per site.
 - The app does not sign in to Gupy, Indeed or Glassdoor with your account to search or apply, because their terms forbid automated access to accounts. It reads their public listings where that is allowed, the job alerts they e-mail you and their status e-mails, and the copilot fills the form while you apply in your own browser.
 - Sources whose terms do not allow this kind of use stay in the registry as blocked (LinkedIn Jobs, France Travail) or partner-only (the Gupy employer API and Singapore's MyCareersFuture), so you can see why they are off.
@@ -223,7 +223,8 @@ The builds are not signed with a paid certificate yet, so a file downloaded in t
 
 1. Run the installer. It checks the machine (browser, database, scraper, local model, GPU, disk space and keyring), copies the app to your user folder, starts its own PostgreSQL, prepares the scraper with a Python of its own and adds a menu entry. It never asks for an administrator password, and anything missing turns into a command or a link for you.
 2. When the app opens, a short setup asks you to connect an AI (the local model, your CLI or both), upload your CV as a PDF and confirm one screen with what it could not infer: work authorization, salary floor, work model, start date and English level. Connecting Gmail is optional.
-3. On the home screen, **Automatizar tudo** (automate everything) turns on the search schedule, the Explorer, the sending mode and e-mail in one pass. If you prefer, stay in review mode and approve each application yourself.
+3. Optional: in Configurações, load the copilot extension in Chrome, Edge or Brave in four steps. The app window already has it.
+4. On the home screen, **Automatizar tudo** (automate everything) turns on the search schedule, the Explorer, the sending mode and e-mail in one pass. If you prefer, stay in review mode and approve each application yourself.
 
 ```sh
 job-orchestrator               # opens the app; the first time, the installer
