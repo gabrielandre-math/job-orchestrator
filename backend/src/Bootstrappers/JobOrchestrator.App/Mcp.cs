@@ -38,7 +38,7 @@ internal static class Mcp
                     {
                         ["protocolVersion"] = msg?["params"]?["protocolVersion"]?.GetValue<string>() is { } v && Versions.Contains(v) ? v : Versions[0],
                         ["capabilities"] = new JsonObject { ["tools"] = new JsonObject { ["listChanged"] = false } },
-                        ["serverInfo"] = new JsonObject { ["name"] = "job-orchestrator", ["version"] = "1.0.0" },
+                        ["serverInfo"] = new JsonObject { ["name"] = "job-orchestrator", ["version"] = JobOrchestrator.App.Launcher.Version },
                         ["instructions"] = "Job Orchestrator, o orquestrador local de busca de vagas da pessoa. Busque e leia vagas, o perfil e as candidaturas; " +
                             "gere o currículo ou a carta de uma vaga como rascunho. Nada aqui envia candidatura nem e-mail. Fatos da pessoa só vêm do perfil: não invente.",
                     }),
