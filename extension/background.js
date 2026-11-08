@@ -2,8 +2,9 @@
 // O app só aceita os pedidos desta extensão: o id dela é fixo (a chave no manifest), e o navegador manda esse id em cada pedido.
 const API = 'http://127.0.0.1:7410';
 
-async function api(path, init) {
-  try { return await fetch(`${API}${path}`, init); } catch { return null; }
+// Every request says it comes from this extension: Chrome leaves the Origin out of an extension's GET, and the app checks this header.
+async function api(path, init = {}) {
+  try { return await fetch(`${API}${path}`, { ...init, headers: { ...(init.headers || {}), 'X-Jo-Copilot': chrome.runtime.id } }); } catch { return null; }
 }
 
 // Sinal de vida: o app mostra "Copiloto conectado" enquanto ele chega.

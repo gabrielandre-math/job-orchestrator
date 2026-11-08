@@ -80,6 +80,9 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
         var priorDuplicates = await VisibleTextAsync(page.GetByText(AlreadyApplied()));
         var priorAlerts = await VisibleTextAsync(page.Locator("[role=alert]"));
         var priorReceipts = await VisibleTextAsync(page.GetByText(ReceiptId()));
+        // No send button on the page: nothing can have been clicked, so the application goes back to you instead of "maybe sent".
+        if (await SubmitControl(page).CountAsync() == 0)
+            return AdapterResult<SubmissionReceipt>.Fail(AdapterResultKind.NeedsHuman, "no-submit", "O botão de envio do formulário não foi encontrado; nada foi enviado.");
         Chaos.Point("before-click");
         try
         {
@@ -155,7 +158,9 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
     protected virtual Task<BrowserLease> LeaseAsync(ApplyTarget target, CancellationToken ct) => browsers.LeaseAsync(Hosts(target), ct);
 
     /// <summary>The button that sends the filled form.</summary>
-    protected virtual ILocator SubmitControl(IPage page) => page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { NameRegex = SubmitButton() }).First;
+    /// <summary>The form's own send button, whatever it says ("Enviar inscrição" on Greenhouse in Portuguese); by its words when the form has none.</summary>
+    protected virtual ILocator SubmitControl(IPage page) =>
+        page.Locator("form button[type=submit]:visible, form input[type=submit]:visible").Or(page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { NameRegex = SubmitButton() })).First;
 
     /// <summary>The words of the page that says the application arrived.</summary>
     protected virtual Regex Confirmed => Confirmation();
@@ -463,7 +468,7 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
     [GeneratedRegex(@"phone|telefone|celular|whats ?app", RegexOptions.IgnoreCase)] protected static partial Regex Phone();
     [GeneratedRegex(@"linkedin", RegexOptions.IgnoreCase)] private static partial Regex LinkedIn();
     [GeneratedRegex(@"resume|cv|curr[ií]culo", RegexOptions.IgnoreCase)] protected static partial Regex Resume();
-    [GeneratedRegex(@"submit|send application|enviar candidatura", RegexOptions.IgnoreCase)] private static partial Regex SubmitButton();
+    [GeneratedRegex(@"submit|send application|enviar (candidatura|inscri[cç][aã]o)|candidatar-se|finalizar candidatura", RegexOptions.IgnoreCase)] private static partial Regex SubmitButton();
     // Workable says "Your application has been submitted successfully."
     [GeneratedRegex(@"thank(s| you)( so much)? for (applying|your application)|application (has been |was )?(received|submitted|sent)|submitted successfully|candidatura (foi )?(recebida|enviada)", RegexOptions.IgnoreCase)]
     private static partial Regex Confirmation();

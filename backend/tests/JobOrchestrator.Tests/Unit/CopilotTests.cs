@@ -23,6 +23,11 @@ public sealed class CopilotTests
         Assert.False(CopilotExtension.From(From("chrome-extension://abcdefghijklmnopabcdefghijklmnop"), None));
         Assert.False(CopilotExtension.From(From("https://evil.example"), None));
         Assert.False(CopilotExtension.From(From(null), None));
+        // Chrome leaves the Origin out of the extension's GET: the header it sends on every request counts, but never next to a web page's origin.
+        var get = From(null); get.Request.Headers["X-Jo-Copilot"] = CopilotExtension.Id;
+        Assert.True(CopilotExtension.From(get, None));
+        var page = From("https://evil.example"); page.Request.Headers["X-Jo-Copilot"] = CopilotExtension.Id;
+        Assert.False(CopilotExtension.From(page, None));
         var store = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["Copilot:ExtensionIds"] = "storebuildidstorebuildidstorebui" }).Build();
         Assert.True(CopilotExtension.From(From("chrome-extension://storebuildidstorebuildidstorebui"), store));
     }

@@ -13,12 +13,17 @@ internal static class CopilotExtension
     /// <summary>The extension's id, fixed by the public key in extension/manifest.json; Copilot:ExtensionIds adds others (a store build).</summary>
     public const string Id = "ghclhgdehejmhbcfejcgglhlkjbibmni";
 
+    /// <summary>
+    /// The extension's id in the Origin header (Chrome sends it on POST) or in X-Jo-Copilot (sent on every request: Chrome leaves the
+    /// Origin out of an extension's GET). A web page cannot send that header to the app: the browser would ask first, and the app never
+    /// allows it.
+    /// </summary>
     public static bool From(HttpContext http, IConfiguration config)
     {
         var origin = http.Request.Headers.Origin.ToString();
-        if (!origin.StartsWith("chrome-extension://", StringComparison.Ordinal)) return false;
-        var id = origin["chrome-extension://".Length..].TrimEnd('/');
-        return id == Id || (config["Copilot:ExtensionIds"] ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Contains(id);
+        var id = origin.StartsWith("chrome-extension://", StringComparison.Ordinal) ? origin["chrome-extension://".Length..].TrimEnd('/') : http.Request.Headers["X-Jo-Copilot"].ToString();
+        if (origin.Length > 0 && !origin.StartsWith("chrome-extension://", StringComparison.Ordinal)) return false;
+        return id == Id || id.Length > 0 && (config["Copilot:ExtensionIds"] ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Contains(id);
     }
 }
 
