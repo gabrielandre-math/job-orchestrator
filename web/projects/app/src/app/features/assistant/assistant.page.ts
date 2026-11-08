@@ -5,15 +5,15 @@ import { Router } from '@angular/router';
 import { Icon } from '@jo/ui/icon';
 import { Iso } from '@jo/ui/iso';
 import { Mark } from '@jo/ui/mark';
-import { AskResponse, AssistantAction, Campaign, ChatTurn, ConversationView, Profile, get, send, upload } from '../../core/api';
+import { AssistantAction, Campaign, ChatTurn, ConversationView, Profile, get, send, upload } from '../../core/api';
 import { command } from '../../core/command';
 import { ago } from '../../core/format';
 import { Live } from '../../core/live';
 import { markdown } from '../../core/markdown';
 import { query } from '../../core/query';
 import { describeSource } from '../../core/sources';
+import { AssistantSession, Bubble } from './assistant-session';
 
-interface Bubble { id: string; role: 'user' | 'assistant' | 'route' | 'error'; text: string; html: string; actions: AssistantAction[]; model: string | null; provider: string | null; rung: string | null; escalatedFrom: string | null; seconds: number | null; compare: boolean }
 /** Linha da conversa: uma fala sozinha ou as respostas da mesma pergunta em modelos diferentes, uma ao lado da outra. */
 type Row = { kind: 'one'; bubble: Bubble } | { kind: 'side'; id: string; bubbles: Bubble[] };
 
@@ -44,9 +44,10 @@ export class AssistantPage {
   private readonly router = inject(Router);
   private readonly live = inject(Live);
   private readonly scroller = viewChild<ElementRef<HTMLElement>>('scroller');
+  private readonly session = inject(AssistantSession);
   protected readonly conversations = query<ConversationView[]>(() => '/assistant/conversations', 0);
-  protected readonly current = signal<string | null>(null);
-  protected readonly bubbles = signal<Bubble[]>([]);
+  protected readonly current = this.session.current;
+  protected readonly bubbles = this.session.bubbles;
   protected readonly draft = signal('');
   protected readonly compare = signal(false);
   protected readonly rung = signal<string | null>(null);
@@ -55,7 +56,7 @@ export class AssistantPage {
   protected readonly rungs = RUNGS;
   protected readonly suggestions = SUGGESTIONS;
   protected readonly ago = ago;
-  protected readonly asking = command((body: object) => send<AskResponse>('POST', '/assistant/ask', body));
+  protected readonly asking = this.session.asking;
   protected readonly applying = command((a: AssistantAction) => this.apply(a));
 
   /** Respostas seguidas do modo comparar (acertos e falhas) viram uma linha só, com uma coluna por modelo. */
