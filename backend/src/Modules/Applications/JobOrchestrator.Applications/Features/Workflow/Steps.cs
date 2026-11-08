@@ -316,6 +316,12 @@ internal sealed class SubmitStep(StepKit k, TokenIssuer tokens) : IStep
                 intent.Close(IntentState.Discarded, "Nada foi clicado.", now);
                 app.Move(ApplicationState.BlockedByPolicy, outcome.Detail, "Remetente", now, new { outcome.ReasonCode });
                 break;
+            case AdapterResultKind.NeedsHuman when outcome.ReasonCode == "ats-validation":
+                // The click went out and the site refused the form with its own error: nothing was accepted. Yours to fix on the site.
+                intent.Close(IntentState.Discarded, outcome.Detail, now);
+                app.Move(ApplicationState.NeedsHuman, outcome.Detail, "Remetente", now, new { outcome.ReasonCode });
+                db.AddTask(app.Id, HumanTaskKind.Review, "Corrigir e enviar pelo site", outcome.Detail, now);
+                break;
             default:
                 // O adapter só devolve estes resultados antes do clique: nada foi enviado.
                 intent.Close(IntentState.Discarded, "Nada foi clicado.", now);

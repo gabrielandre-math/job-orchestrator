@@ -107,8 +107,9 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
 
         if (duplicates.Length > 0)
             return AdapterResult<SubmissionReceipt>.Fail(AdapterResultKind.PermanentFailure, "already-applied", "O ATS recusou: já existe candidatura com este e-mail.");
+        // The site refused the form with its own message: nothing was accepted, and the application goes back to you with that message.
         if (confirmations.Length == 0 && alerts.Length > 0)
-            return AdapterResult<SubmissionReceipt>.Fail(AdapterResultKind.PermanentFailure, "ats-validation", "O ATS recusou o formulário e mostrou erro de validação.");
+            return AdapterResult<SubmissionReceipt>.Fail(AdapterResultKind.NeedsHuman, "ats-validation", $"O site recusou o formulário: {Cut(string.Join(" | ", alerts.Take(4)), 400)}");
         if (confirmations.Length == 0)
             return AdapterResult<SubmissionReceipt>.Fail(AdapterResultKind.SubmissionUnknown, "no-confirmation", "Clicou em enviar, mas nenhuma nova confirmação visível apareceu. O envio precisa de reconciliação.");
         var newReceipts = (await VisibleTextAsync(page.GetByText(ReceiptId()))).Except(priorReceipts, StringComparer.Ordinal);
@@ -161,6 +162,16 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
 
     internal static bool SaysSubmitted(string text) => Confirmation().IsMatch(text);
 
+    /// <summary>
+    /// A closed Greenhouse job answers 200 on the company's board with ?error=true instead of the job: that is a closed job, not a
+    /// page without a form for you to try.
+    /// </summary>
+    internal static bool Closed(string asked, string landed) =>
+        Uri.TryCreate(landed, UriKind.Absolute, out var to) && (to.Query.Contains("error=true", StringComparison.OrdinalIgnoreCase)
+            || Uri.TryCreate(asked, UriKind.Absolute, out var from) && from.AbsolutePath.Contains("/jobs/", StringComparison.Ordinal) && !to.AbsolutePath.Contains("/jobs/", StringComparison.Ordinal) && to.Host == from.Host);
+
+    private static string Cut(string text, int max) => text.Length <= max ? text : text[..max] + "…";
+
     protected BrowserPool Browsers => browsers;
     /// <summary>CAPTCHA e verificação anti-robô (reCAPTCHA, hCaptcha, Cloudflare Turnstile): o robô para e a vaga fica com você.</summary>
     protected const string BotCheck = "[data-sitekey], .g-recaptcha, .h-captcha, .cf-turnstile, iframe[src*='captcha'], iframe[src*='challenges.cloudflare.com'], [data-captcha]";
@@ -169,7 +180,7 @@ internal abstract partial class LabelForm(BrowserPool browsers, IHttpClientFacto
     protected virtual async Task<AdapterResult<PreparedForm>> FillAsync(IPage page, ApplyTarget target, MaterialBundle m)
     {
         var response = await page.GotoAsync(target.ApplyUrl, new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded });
-        if (response is null || response.Status is 404 or 410)
+        if (response is null || response.Status is 404 or 410 || Closed(target.ApplyUrl, page.Url))
             return AdapterResult<PreparedForm>.Fail(AdapterResultKind.PermanentFailure, "posting-closed", "A vaga não está mais no ar.");
         if (await page.Locator(BotCheck).CountAsync() > 0)
             return AdapterResult<PreparedForm>.Fail(AdapterResultKind.NeedsHuman, "captcha", "A página tem CAPTCHA ou verificação anti-robô: o app não passa por ela, o envio fica com você.");

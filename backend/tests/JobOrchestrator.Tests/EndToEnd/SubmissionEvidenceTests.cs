@@ -72,7 +72,8 @@ public sealed class SubmissionEvidenceTests
     [InlineData("stale", AdapterResultKind.SubmissionUnknown, 0)]
     [InlineData("hidden", AdapterResultKind.SubmissionUnknown, 0)]
     [InlineData("accepted", AdapterResultKind.Completed, 1)]
-    [InlineData("rejected", AdapterResultKind.PermanentFailure, 0)]
+    // The site refused the form with its own message: the application goes back to the person with that message, not to Failed.
+    [InlineData("rejected", AdapterResultKind.NeedsHuman, 0)]
     [InlineData("generic", AdapterResultKind.Completed, 1)]
     public async Task Only_a_new_visible_confirmation_proves_the_submission(string mode, AdapterResultKind expected, int accepted)
     {
@@ -101,6 +102,7 @@ public sealed class SubmissionEvidenceTests
         var result = await adapter.SubmitAsync(target, folder.Bundle, token, default);
         Assert.Equal(expected, result.Kind);
         Assert.Equal(accepted, received);
+        if (mode == "rejected") Assert.Contains("Invalid application", result.Detail);
         if (expected == AdapterResultKind.Completed)
         {
             Assert.Equal("TEST-1234", result.Value!.ReceiptId);
