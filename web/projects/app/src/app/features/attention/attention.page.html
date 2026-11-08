@@ -21,8 +21,33 @@
           <button type="button" class="chip" [attr.aria-pressed]="filter() === k.key" (click)="pick(k.key)">{{ k.label }}<span class="n">{{ k.n }}</span></button>
         }
       </div>
+      @if (bySite().length && (filter() === null || filter() === 'Site')) {
+        <section class="site-bar panel">
+          <div>
+            <strong>{{ bySite().length === 1 ? '1 vaga vai pelo site' : bySite().length + ' vagas vão pelo site' }}</strong>
+            <p class="muted small">
+              @if (copilot.status.value()?.connected) { Copiloto conectado: cada vaga abre preenchida, com o currículo anexado. Você confere e envia, e a confirmação marca a candidatura como enviada. }
+              @else { O copiloto do navegador ainda não respondeu. Instale em <a routerLink="/configuracoes" fragment="copiloto">Configurações</a> para abrir as vagas já preenchidas. }
+            </p>
+          </div>
+          @if (copilot.here()) {
+            <button type="button" class="btn primary" (click)="openNext()" [disabled]="opening()"><jo-icon name="browser" [size]="14" />Abrir as próximas {{ bySite().length < 5 ? bySite().length : 5 }}</button>
+          }
+        </section>
+      }
       <div class="list">
         @for (t of rows(); track t.id) {
+          @if (kindOf(t) === 'Site') {
+            <div class="task">
+              <jo-iso [name]="meta('Site').iso" [size]="54" />
+              <a class="what" [routerLink]="['/candidaturas', t.applicationId]">
+                <span class="kind">{{ meta('Site').label }}<span class="faint"> · {{ ago(t.createdAt) }}</span></span>
+                <strong>{{ t.title }}</strong>
+                <span class="muted detail">{{ t.detail || meta('Site').hint }}</span>
+              </a>
+              <button type="button" class="btn" (click)="copilot.open({ id: t.applicationId })"><jo-icon name="arrow-square-out" [size]="14" />Abrir preenchida</button>
+            </div>
+          } @else {
           <a class="task" [routerLink]="['/candidaturas', t.applicationId]">
             <jo-iso [name]="meta(kindOf(t)).iso" [size]="54" />
             <span class="what">
@@ -32,6 +57,7 @@
             </span>
             <span class="go">{{ meta(kindOf(t)).action }}<jo-icon name="arrow-right" [size]="14" /></span>
           </a>
+          }
         }
       </div>
     }

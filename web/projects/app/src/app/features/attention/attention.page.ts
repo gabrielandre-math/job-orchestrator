@@ -1,9 +1,10 @@
-import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Icon } from '@jo/ui/icon';
 import { Iso } from '@jo/ui/iso';
 import { HeroStat, PageHero } from '@jo/ui/page-hero';
 import { TaskRow } from '../../core/api';
+import { BrowserCopilot } from '../../core/browser-copilot';
 import { ago } from '../../core/format';
 import { query } from '../../core/query';
 
@@ -16,7 +17,7 @@ const KINDS: Record<string, { label: string; iso: string; action: string; hint: 
   Question: { label: 'Pergunta nova', iso: 'form', action: 'Responder', hint: 'O formulário perguntou algo que você ainda não respondeu.' },
   Reconcile: { label: 'Envio incerto', iso: 'receipt', action: 'Conferir', hint: 'Não deu para confirmar se o envio chegou. Confira antes de tentar de novo.' },
   // A Review task that hands the job to you (login, CAPTCHA, a site with no open form) is not an approval: it is yours to send.
-  Site: { label: 'Pelo site', iso: 'send', action: 'Abrir com o copiloto', hint: 'O app não envia por este site. O currículo está pronto: envie pelo site da vaga e marque "Já enviei".' },
+  Site: { label: 'Pelo site', iso: 'send', action: 'Ver a candidatura', hint: 'O app não envia por este site. Abra preenchida: o copiloto completa o formulário e anexa o currículo, você confere e envia.' },
 };
 
 /** Atenção: tudo que só você resolve, mais antigo primeiro, agrupado por tipo e com o próximo passo de cada um. */
@@ -29,6 +30,9 @@ const KINDS: Record<string, { label: string; iso: string; action: string; hint: 
 })
 export class AttentionPage {
   protected readonly tasks = query<TaskRow[]>(() => '/tasks', 4000);
+  protected readonly copilot = inject(BrowserCopilot);
+  protected readonly opening = signal(false);
+  protected readonly bySite = computed(() => this.open().filter((t) => this.kindOf(t) === 'Site'));
   protected readonly filter = signal<string | null>(null);
   protected readonly ago = ago;
 
@@ -56,4 +60,11 @@ export class AttentionPage {
   protected meta(kind: string) { return KINDS[kind] ?? { label: kind, iso: 'you', action: 'Abrir', hint: '' }; }
   protected kindOf(t: TaskRow) { return t.kind === 'Review' && t.title.startsWith('Candidatar-se pelo site') ? 'Site' : t.kind; }
   protected pick(kind: string | null) { this.filter.set(this.filter() === kind ? null : kind); }
+
+  /** The next five that go by the site, each in a tab already filled, through the extension of this browser. */
+  protected async openNext() {
+    this.opening.set(true);
+    try { await this.copilot.openMany(this.bySite().slice(0, 5).map((t) => t.applicationId)); }
+    finally { this.opening.set(false); }
+  }
 }

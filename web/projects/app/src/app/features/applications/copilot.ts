@@ -1,7 +1,9 @@
-import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { Icon } from '@jo/ui/icon';
 import { Iso } from '@jo/ui/iso';
 import { send } from '../../core/api';
+import { BrowserCopilot } from '../../core/browser-copilot';
 import { command } from '../../core/command';
 import { query } from '../../core/query';
 
@@ -20,7 +22,7 @@ const LABEL: Record<string, string> = {
  */
 @Component({
   selector: 'app-copilot',
-  imports: [Icon, Iso],
+  imports: [Icon, Iso, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="panel copilot">
@@ -32,8 +34,8 @@ const LABEL: Record<string, string> = {
         <ol class="steps">
           <li>
             <jo-iso name="selector" [size]="44" />
-            <div><strong>Abra a vaga</strong><p class="muted small">O site da vaga abre numa aba nova. Entre com a sua conta, se ele pedir.</p></div>
-            <a class="btn" [href]="v.applyUrl" target="_blank" rel="noopener"><jo-icon name="arrow-square-out" [size]="14" />Abrir a vaga</a>
+            <div><strong>Abra a vaga já preenchida</strong><p class="muted small">O site abre numa aba nova e o copiloto preenche o que o app preparou para esta vaga, com o currículo dela anexado. Entre com a sua conta se o site pedir, confira e envie: a página de confirmação marca a candidatura como enviada.@if (!browser.status.value()?.connected) { O copiloto ainda não respondeu: instale em <a routerLink="/configuracoes" fragment="copiloto">Configurações</a>. }</p></div>
+            <button type="button" class="btn primary" (click)="browser.open({ id: applicationId(), applyUrl: v.applyUrl })"><jo-icon name="arrow-square-out" [size]="14" />Abrir preenchida</button>
           </li>
           <li>
             <jo-iso name="renderer" [size]="44" />
@@ -73,8 +75,8 @@ const LABEL: Record<string, string> = {
           </li>
           <li class="wide">
             <jo-iso name="form" [size]="44" />
-            <div><strong>Ou deixe a extensão preencher</strong><p class="muted small">Com a extensão do copiloto no Chromium, um clique na página da vaga preenche os campos vazios com estas respostas e anexa o currículo; você confere e envia. Ela não roda no LinkedIn. Na janela do app ela já vem ligada: abra a vaga por aqui e clique no ícone dela. No seu navegador de sempre: chrome://extensions, modo de desenvolvedor, "Carregar sem compactação" e a pasta <span class="mono">~/.local/opt/job-orchestrator/extension</span>.</p></div>
-            <button type="button" class="btn ghost" (click)="copy('ext', 'chrome://extensions')"><jo-icon [name]="copied() === 'ext' ? 'check' : 'copy'" [size]="14" />Copiar endereço</button>
+            <div><strong>Abriu a vaga por fora?</strong><p class="muted small">Numa página que você abriu sem passar pelo app, clique no ícone do copiloto no navegador: ele acha esta candidatura pelo endereço e preenche do mesmo jeito. Na janela do app ele já vem ligado; para o seu Chrome, o passo a passo está em Configurações.</p></div>
+            <a class="btn ghost" routerLink="/configuracoes" fragment="copiloto"><jo-icon name="puzzle-piece" [size]="14" />Instalar no Chrome</a>
           </li>
           <li>
             <jo-iso name="send" [size]="44" />
@@ -110,6 +112,7 @@ export class Copilot {
   readonly jobId = input.required<string>();
   readonly done = output<void>();
   protected readonly view = query<CopilotView>(() => `/applications/${this.applicationId()}/copilot`, 0);
+  protected readonly browser = inject(BrowserCopilot);
   protected readonly letter = signal<CoverLetter | null>(null);
   protected readonly text = signal('');
   protected readonly copied = signal<string | null>(null);

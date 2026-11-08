@@ -98,6 +98,35 @@
     </section>
   }
 
+  <section class="panel" id="copiloto">
+    <header><h2>Copiloto do navegador</h2>
+      @if (copilot.status.value()?.connected) { <span class="connected small">conectado{{ copilot.status.value()?.version ? ', versão ' + copilot.status.value()?.version : '' }}</span> }
+      @else { <span class="faint small">{{ copilot.status.value()?.seenAt ? 'visto ' + ago(copilot.status.value()!.seenAt!) : 'ainda não conectou' }}</span> }
+    </header>
+    <div class="rows">
+      <div class="row">
+        <span><strong>Vagas que vão pelo site, já preenchidas</strong><p class="muted">Login, CAPTCHA e verificação anti-robô o app não atravessa. Nessas vagas, "Abrir preenchida" abre o site no navegador e o copiloto completa o formulário com o que o app preparou e anexa o currículo da vaga. Você confere e envia; a página de confirmação marca a candidatura como enviada. Ele só mexe em páginas que o app abriu nos últimos 15 minutos e nunca clica em enviar. Na janela do app ele já vem ligado.</p></span>
+      </div>
+      <div class="row">
+        <span><strong>1. Abra a página de extensões do Chrome</strong><p class="muted">Cole o endereço numa aba nova. Serve para Chrome, Edge, Brave e Chromium.</p></span>
+        <button type="button" class="btn" (click)="copyText('chrome://extensions', 'copilot-ext')"><jo-icon [name]="copiedKey() === 'copilot-ext' ? 'check' : 'copy'" [size]="14" />Copiar endereço</button>
+      </div>
+      <div class="row">
+        <span><strong>2. Ligue o modo do desenvolvedor</strong><p class="muted">A chave fica no canto de cima, à direita. O Chrome mostra um aviso sobre extensões fora da loja: esta vem dentro do app.</p></span>
+      </div>
+      <div class="row">
+        <span><strong>3. Carregue a pasta do copiloto</strong><p class="muted">Clique em "Carregar sem compactação" e escolha a pasta <span class="mono">{{ extension.value()?.path }}</span>.</p></span>
+        <span class="actions">
+          <button type="button" class="btn" (click)="copyText(extension.value()?.path ?? '', 'copilot-path')" [disabled]="!extension.value()?.exists"><jo-icon [name]="copiedKey() === 'copilot-path' ? 'check' : 'copy'" [size]="14" />Copiar caminho</button>
+          <button type="button" class="btn" (click)="openingFolder.run()" [disabled]="!extension.value()?.exists || openingFolder.running()"><jo-icon name="folder-open" [size]="14" />Abrir a pasta</button>
+        </span>
+      </div>
+      <div class="row">
+        <span><strong>4. Pronto</strong><p class="muted">Em até um minuto o título desta seção diz "conectado". A extensão atualiza junto com o app: depois de uma atualização, clique em recarregar no cartão dela em chrome://extensions.</p></span>
+      </div>
+    </div>
+  </section>
+
   <section class="panel danger">
     <header><h2>Apagar tudo</h2></header>
     <div class="rows">

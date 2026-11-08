@@ -1,11 +1,40 @@
 {
   "manifest_version": 3,
   "name": "Job Orchestrator: copiloto",
-  "version": "1.1.0",
-  "description": "Preenche o formulário de candidatura com os seus dados aprovados no Job Orchestrator. Você confere e envia; a extensão nunca clica em enviar.",
-  "permissions": ["activeTab", "scripting"],
-  "host_permissions": ["http://127.0.0.1:7410/*"],
-  "background": { "service_worker": "background.js" },
-  "action": { "default_popup": "popup.html", "default_title": "Job Orchestrator: preencher esta candidatura", "default_icon": { "16": "icons/icon-16.png", "32": "icons/icon-32.png", "48": "icons/icon-48.png" } },
-  "icons": { "16": "icons/icon-16.png", "48": "icons/icon-48.png", "128": "icons/icon-128.png" }
+  "version": "1.2.0",
+  "description": "Preenche no seu navegador as candidaturas que o Job Orchestrator abriu para você: dados, respostas da vaga e o currículo anexado. Você confere e envia; a extensão nunca clica em enviar.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "tabs",
+    "storage",
+    "alarms"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1:7410/*",
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Job Orchestrator: preencher esta candidatura",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxvIj8YpcXuM1AdusKrlzJngLCA5l8Ce2vTfbS7vFs0CBTEY3AtfkerrL1LiFNAFX3PC2s0LyKRl0OM6h5beMT0L+lSU8ukOV3iVyX2hl3BgdC3pEG8nRtAISGu2WIEPLoo8diripWmAb4eyJ+mzktjw/QRa7B9kADr5L+JgSEtYgKq+Y0umkLLNmesdcvH+p50R1veGQne3qZziXiDm06n8sebTXycz8TL8t3ssb1zhgVMfUD4NnsmBCxP9xpPGibe3sovw0vYpQEZXqoPcjtz2xQ0y5bdO88dqrxVOjPtYoadT/QPRCksLo7VLcZKevN8TPFeVCvQlACHI2cSfCnQIDAQAB",
+  "externally_connectable": {
+    "matches": [
+      "http://127.0.0.1:7410/*"
+    ]
+  }
 }

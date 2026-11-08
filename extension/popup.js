@@ -48,6 +48,14 @@ $('capture-save').addEventListener('click', async () => {
 
 $('fill').addEventListener('click', async () => {
   $('fill').disabled = true;
+  // A page of an application in the app: the whole fill (answers of this job, resume) and the watch for the confirmation.
+  if (data?.found) {
+    const r = await chrome.runtime.sendMessage({ type: 'fill-tab', tabId: tab.id, id: data.applicationId });
+    $('result').hidden = false;
+    $('result').textContent = r?.filled > 0 ? `${r.filled} ${r.filled === 1 ? 'campo preenchido' : 'campos preenchidos'}. Confira e envie você mesmo; a confirmação marca a candidatura como enviada.` : 'Nenhum campo vazio reconhecido nesta página.';
+    $('fill').disabled = false;
+    return;
+  }
   let resume = null;
   if (data?.found && data.copilot?.hasResume) resume = await chrome.runtime.sendMessage({ type: 'resume', id: data.applicationId, name: `curriculo-${(data.company || 'vaga').toLowerCase().replace(/[^a-z0-9]+/g, '-')}.pdf` });
   const values = {};

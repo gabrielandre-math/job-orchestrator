@@ -1,7 +1,9 @@
-import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { Icon } from '@jo/ui/icon';
 import { PageHero } from '@jo/ui/page-hero';
 import { Campaign, ExploreStatus, send } from '../../core/api';
+import { BrowserCopilot, CopilotExtension } from '../../core/browser-copilot';
+import { ago } from '../../core/format';
 import { command } from '../../core/command';
 import { query } from '../../core/query';
 import { TermsDialog } from '../terms/terms';
@@ -28,6 +30,10 @@ export class SettingsPage {
   protected async termsClosed() { this.readingTerms.set(false); await this.termsInfo.reload(); }
   protected acceptedOn(iso: string | null | undefined) { return iso ? new Date(iso).toLocaleDateString('pt-BR') : ''; }
   protected readonly settings = query<Privacy>(() => '/settings', 0);
+  protected readonly copilot = inject(BrowserCopilot);
+  protected readonly extension = query<CopilotExtension>(() => '/copilot/extension', 0);
+  protected readonly ago = ago;
+  protected readonly openingFolder = command((_: void) => send('POST', '/copilot/extension/open'));
   protected readonly campaigns = query<Campaign[]>(() => '/campaigns', 0);
   protected readonly campaign = computed(() => this.campaigns.value()?.[0] ?? null);
   protected readonly explore = query<ExploreStatus>(() => '/explore/status', 0);
